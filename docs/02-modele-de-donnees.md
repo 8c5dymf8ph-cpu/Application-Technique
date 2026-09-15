@@ -70,6 +70,7 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `v_bouteilles_par_emplacement` | Théorique vs réel, chambre par chambre |
 | `v_incidents_bouteille` | Dossiers avec montant retenu ou théorique, et caractère facturable |
 | `v_reappro_necessaire` | Articles sous seuil, produits et bouteilles, groupés par fournisseur |
+| `v_controle_donnees` | Données reprises douteuses : dates futures, localisations incertaines |
 
 Toutes sont en `security_invoker = on` : elles appliquent les droits de l'appelant, et ne peuvent donc
 pas servir de contournement aux règles de sécurité.

@@ -141,7 +141,7 @@ begin
     'v_recap_interventions','v_tournees','v_fil_commentaires',
     'v_factures_rapprochement','v_recurrences_emplacement','v_bouteilles_positions',
     'v_stock_bouteilles','v_bouteilles_par_emplacement','v_incidents_bouteille',
-    'v_reappro_necessaire'
+    'v_reappro_necessaire','v_controle_donnees'
   ] loop
     execute format('alter view %I set (security_invoker = on)', v);
     execute format('grant select on %I to authenticated', v);

@@ -72,19 +72,18 @@ cd outils && python3 importer_anomalies.py ../donnees/export/test-tech-3.xlsx \
 
 Le SQL produit est **rejouable** : chaque insertion est conditionnée, un second passage n'ajoute rien.
 
-## Points à trancher
+## Décisions prises
 
-1. **Classement des intervenants.** `outils/importer_anomalies.py` sépare utilisateurs et
-   prestataires sur une liste de noms. Sont classés **prestataires** : EcoFlair, Technicien AVIR,
-   Technicien Kone, Technicien TELEC, Technicien EUROPROH, MR NEGRONI, ALAIN, Hedi, Juan.
-   Sont classés **utilisateurs** : Miguel, Victoria, Serafino, Sarah P, Taibi, FARID, Rachid.
-   À corriger dans la constante `PRESTATAIRES` si le classement est faux.
+**Intervenants extérieurs** (ils facturent une journée, ne se connectent pas) : EcoFlair,
+Technicien AVIR, Technicien Kone, Technicien TELEC, Technicien EUROPROH, MR NEGRONI, ALAIN, Hedi,
+Juan. **Utilisateurs de l'application** : Miguel, Victoria, Serafino, Sarah P, Taibi, FARID, Rachid.
+Le classement se corrige dans la constante `PRESTATAIRES` du script d'import.
 
-2. **Aménagement proposé pour le catalogue.** Plutôt que de bloquer la gouvernante sur les 64 % de
-   cas neufs : elle choisit dans le catalogue, et si rien ne convient elle saisit son texte, qui
-   crée une anomalie marquée **« à classer »**. L'admin la voit dans une file dédiée et, d'un clic,
-   la promeut au catalogue ou la rattache à une entrée existante. Le catalogue reste sous contrôle,
-   sans que le travail s'arrête. C'est une politique RLS à changer, pas une refonte.
+**Catalogue strict**, conformément à la demande : aucune saisie libre depuis le téléphone. Une
+anomalie absente du catalogue doit d'abord y être ajoutée par un admin, depuis un ordinateur.
+La réserve reste valable — 64 % des libellés n'ont servi qu'une fois — donc l'écran d'administration
+du catalogue doit être rapide à utiliser, et l'ajout d'une entrée tenir en quelques secondes.
 
-3. **Les 12 dates dans le futur** sont probablement des fautes de frappe (2026 au lieu de 2025).
-   À confirmer avant de les corriger.
+**Dates douteuses importées telles quelles** et listées dans `v_controle_donnees`, qui alimente un
+écran de contrôle : 12 anomalies datées dans le futur, 11 interventions dans le futur, 4 anomalies
+dont la localisation n'a pas pu être résolue. Rien n'est corrigé sans décision explicite.

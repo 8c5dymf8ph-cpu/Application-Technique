@@ -628,3 +628,43 @@ language sql stable as $$
   -- bonne réponse doit être dans les premiers résultats.
   order by c.occurrences desc, c.libelle;
 $$;
+
+-- -----------------------------------------------------------------------------
+-- Contrôle des données reprises de SharePoint.
+-- Les anomalies douteuses sont importées telles quelles puis listées ici, pour
+-- être corrigées en connaissance de cause plutôt que devinées à l'import.
+-- -----------------------------------------------------------------------------
+create view v_controle_donnees as
+select
+  'date_future'::text  as anomalie_donnee,
+  a.id                 as anomalie_id,
+  a.reference,
+  e.code               as emplacement,
+  a.description,
+  'Déclarée le ' || to_char(a.declare_le, 'DD/MM/YYYY') || ', soit dans le futur' as detail
+from anomalies a
+join emplacements e on e.id = a.emplacement_id
+where a.declare_le::date > current_date
+union all
+select
+  'localisation_incertaine',
+  a.id,
+  a.reference,
+  e.code,
+  a.description,
+  coalesce(a.commentaire, 'Localisation d''origine inconnue')
+from anomalies a
+join emplacements e on e.id = a.emplacement_id
+where e.code = 'General'
+union all
+select
+  'intervention_future',
+  a.id,
+  a.reference,
+  e.code,
+  a.description,
+  'Intervention datée du ' || to_char(i.date_intervention, 'DD/MM/YYYY')
+from interventions i
+join anomalies a    on a.id = i.anomalie_id
+join emplacements e on e.id = a.emplacement_id
+where i.date_intervention > current_date;
