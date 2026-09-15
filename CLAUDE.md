@@ -13,13 +13,23 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 
 1. **Rien de calculable n'est stocké.** Stock matériel, parc de bouteilles et coût d'intervention
    sont des vues dérivées des mouvements. Ne jamais ajouter une colonne `stock` matérialisée.
-2. **Une perte de bouteille ne déduit qu'une bouteille.** La re-dotation d'une chambre est un
-   déplacement `reserve → emplacement`, pas une seconde sortie de parc.
+2. **Une bouteille emportée n'est pas perdue.** Elle passe en position `chez_client` et peut
+   revenir. Le parc ne diminue qu'à la facturation, à la non-restitution ou à la casse. La
+   re-dotation d'une chambre est un déplacement `reserve → emplacement`, jamais une seconde
+   sortie de parc. Une bouteille restituée rejoint la **réserve**, pas la chambre.
 3. **Les deux validations sont conservées.** Le refus d'une gouvernante renvoie l'anomalie en
    `a_faire` mais n'efface jamais l'avis du technicien : les récapitulatifs doivent pouvoir
    afficher « déclarée faite par X — non validée par la gouvernante ».
 4. **Un écart d'inventaire passe toujours par une régularisation tracée**, jamais par une
    écriture directe du stock.
+5. **Le technicien ne saisit aucun prix.** Il coche l'anomalie faite et le matériel utilisé, rien
+   de plus. Ne jamais ajouter de champ de montant sur un écran technicien.
+6. **Un produit sans prix n'est pas compté pour zéro.** Les vues de coût exposent
+   `articles_sans_prix` et `cout_incomplet` : l'interface doit le dire, pas l'ignorer.
+7. **Un seul mail par fournisseur** pour les demandes de devis, même si plusieurs articles
+   tombent sous le seuil en même temps.
+8. **Une anomalie hors catalogue ne se crée que par un admin**, depuis un ordinateur. La règle est
+   dans la RLS : ne pas la déplacer dans l'interface.
 
 ## Base de données
 

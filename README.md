@@ -19,7 +19,8 @@ Remplace l'application Power Apps Canvas existante.
 
 ## État
 
-- [x] Modèle de données, règles métier et sécurité (validés par les tests de scénario)
+- [x] Modèle de données, règles métier et sécurité — validés par `supabase/tests/01_scenarios.sql`
 - [ ] Import des données SharePoint — *en attente des exports CSV*
 - [ ] Interface : interventions, stock matériel, bouteilles
-- [ ] Récapitulatifs par email
+- [ ] Photos d'anomalies et factures
+- [ ] Récapitulatifs, alertes et demandes de devis par email

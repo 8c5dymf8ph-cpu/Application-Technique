@@ -57,21 +57,32 @@ join etages e on e.code = s.etage
 on conflict (code) do nothing;
 
 insert into types_intervention (code, nom) values
-  ('plomberie',   'Plomberie'),
-  ('electricite', 'Électricité'),
-  ('menuiserie',  'Menuiserie'),
-  ('peinture',    'Peinture'),
-  ('mobilier',    'Mobilier'),
+  ('plomberie',    'Plomberie'),
+  ('electricite',  'Électricité'),
+  ('menuiserie',   'Menuiserie'),
+  ('peinture',     'Peinture'),
+  ('mobilier',     'Mobilier'),
   ('climatisation','Climatisation / Chauffage'),
-  ('serrurerie',  'Serrurerie'),
-  ('multimedia',  'TV / Multimédia'),
-  ('autre',       'Autre')
+  ('serrurerie',   'Serrurerie'),
+  ('multimedia',   'TV / Multimédia'),
+  ('autre',        'Autre')
 on conflict (code) do nothing;
 
+-- Fournisseur des bouteilles. Les autres fournisseurs seront créés à l'import
+-- des produits, ou saisis depuis l'écran d'administration.
+insert into fournisseurs (nom) values ('Purezza')
+on conflict (nom) do nothing;
+
 -- Bouteilles Purezza : 17,50 € facturés au client, 8 € de coût d'achat.
-insert into bouteille_types (code, libelle, prix_vente, prix_achat, couleur) values
-  ('filtree',    'Eau filtrée',    17.50, 8.00, '#2D7FF9'),
-  ('petillante', 'Eau pétillante', 17.50, 8.00, '#E5484D')
+-- `seuil_alerte` porte sur la RÉSERVE — le nombre de bouteilles encore
+-- disponibles pour re-doter une chambre. Valeurs à ajuster à l'usage.
+insert into bouteille_types (code, libelle, prix_vente, prix_achat, seuil_alerte, quantite_reappro, fournisseur_id, couleur)
+select v.code, v.libelle, v.prix_vente, v.prix_achat, v.seuil, v.reappro, f.id, v.couleur
+from (values
+  ('filtree',    'Eau filtrée',    17.50, 8.00, 10, 24, '#2D7FF9'),
+  ('petillante', 'Eau pétillante', 17.50, 8.00, 10, 24, '#E5484D')
+) as v (code, libelle, prix_vente, prix_achat, seuil, reappro, couleur)
+left join fournisseurs f on f.nom = 'Purezza'
 on conflict (code) do nothing;
 
 -- Dotation permanente : 1 filtrée + 1 pétillante dans chaque chambre.
@@ -81,3 +92,11 @@ from emplacements e
 cross join bouteille_types bt
 where e.dote_bouteilles
 on conflict (emplacement_id, bouteille_type_id) do nothing;
+
+-- Destinataires des alertes automatiques. À compléter depuis l'écran
+-- d'administration : ce sont ces adresses qui reçoivent le mail lorsqu'une
+-- bouteille est signalée manquante ou qu'un stock passe sous son seuil.
+insert into alertes_destinataires (evenement, destinataires, actif) values
+  ('incident_bouteille', '{}', false),
+  ('seuil_stock',        '{}', false)
+on conflict (evenement) do nothing;
