@@ -217,6 +217,50 @@ join emplacements e  on e.id = a.emplacement_id
 left join facture_interventions fi on fi.facture_id = f.id and fi.intervention_id = i.id
 where f.type = 'prestation';
 
+-- Liste des intervenants pour le filtre à avatars de l'écran technicien.
+-- `specialites` vide = polyvalent : on lui propose toutes les anomalies.
+-- Sinon sa section ne montre que les types listés.
+create view v_intervenants as
+select
+  u.id                  as utilisateur_id,
+  null::uuid            as prestataire_id,
+  u.nom,
+  'interne'::text       as origine,
+  u.actif,
+  coalesce(array_remove(array_agg(t.code), null), '{}')::text[] as specialites
+from utilisateurs u
+left join specialites_intervenant s on s.utilisateur_id = u.id
+left join types_intervention t      on t.id = s.type_intervention_id
+group by u.id
+union all
+select
+  null::uuid,
+  p.id,
+  p.nom,
+  'externe'::text,
+  p.actif,
+  coalesce(array_remove(array_agg(t.code), null), '{}')::text[]
+from prestataires p
+left join specialites_intervenant s on s.prestataire_id = p.id
+left join types_intervention t      on t.id = s.type_intervention_id
+group by p.id;
+
+-- Anomalies qu'un intervenant donné doit voir dans sa section : toutes s'il est
+-- polyvalent, sinon celles de ses seuls types.
+create function fn_anomalies_pour_intervenant(p_nom text)
+returns setof anomalies
+language sql stable as $$
+  select a.*
+  from anomalies a
+  left join types_intervention t on t.id = a.type_id
+  cross join lateral (
+    select specialites from v_intervenants where nom = p_nom limit 1
+  ) i
+  where a.statut in ('a_faire', 'en_cours')
+    and (cardinality(i.specialites) = 0 or t.code = any (i.specialites))
+  order by a.emplacement_id, a.declare_le;
+$$;
+
 -- Chambres qui reviennent trop souvent. Le drapeau reprend le seuil de la
 -- maquette : 3 interventions ou plus sur les six derniers mois.
 create view v_recurrences_emplacement as

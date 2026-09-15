@@ -14,7 +14,7 @@ import sys
 import unicodedata
 
 from analyse_source import charger, lire_date, normaliser_libelle
-from referentiel_lieux import CHAMBRES_INCONNUES, EMPLACEMENTS, SYNONYMES
+from referentiel_lieux import CHAMBRES_DE_TEST, EMPLACEMENTS, SYNONYMES
 
 # Intervenants extérieurs : ils facturent une journée, ils ne se connectent pas.
 # Tout autre nom devient un utilisateur. À corriger ici si le classement est faux.
@@ -28,6 +28,14 @@ STATUTS = {
     "FAIT": "validee", "A FAIRE": "a_faire", "EN COURS": "en_cours",
     "ACHATS": "a_acheter",
 }
+
+# Avant 2025, le suivi était tenu hors application et beaucoup de lignes
+# déclarées faites n'ont jamais été vérifiées. On ne les reprend pas : l'export
+# reste l'archive.
+DEPUIS = datetime.date(2025, 1, 1)
+
+# Spécialités connues : la section d'ALAIN ne doit montrer que l'électrique.
+SPECIALITES = {"alain": ["ELECTRIQUE"]}
 
 
 def cle(t) -> str:
@@ -44,21 +52,25 @@ def q(t) -> str:
 
 
 def code_emplacement(brut, rapport) -> str | None:
-    """Un lieu non résolu bascule sur « Général » : on préfère une anomalie mal
-    localisée à une anomalie perdue. L'original est conservé en commentaire."""
+    """Rend le code du référentiel, ou None si la ligne ne doit pas être reprise.
+    Un lieu non résolu bascule sur « Parties communes » : on préfère une anomalie
+    mal localisée à une anomalie perdue, et l'original part en commentaire."""
     if not brut:
         return None
     brut = str(brut).strip()
     if brut.isdigit():
+        if brut in CHAMBRES_DE_TEST:
+            rapport["lignes_de_test"][brut] += 1
+            return None
         code = f"{int(brut):02d}"
-        if code in EMPLACEMENTS and brut not in CHAMBRES_INCONNUES:
+        if code in EMPLACEMENTS:
             return code
         rapport["chambres_hors_plan"][brut] += 1
-        return "General"
+        return "Parties communes"
     code = SYNONYMES.get(cle(brut))
     if not code:
         rapport["lieux_non_reconnus"][brut] += 1
-        return "General"
+        return "Parties communes"
     return code
 
 
@@ -103,6 +115,17 @@ def main(chemin: str) -> None:
     for nom in sorted(prestataires.values()):
         print(f"insert into prestataires (nom) values ({q(nom)}) on conflict do nothing;")
 
+    print("\n-- Spécialités : une section qui ne montre que son métier -------------")
+    for nom in sorted(list(utilisateurs.values()) + list(prestataires.values())):
+        for type_code in SPECIALITES.get(cle(nom), []):
+            print(
+                "insert into specialites_intervenant (utilisateur_id, prestataire_id,"
+                " type_intervention_id)\n  select u.id, p.id, t.id from types_intervention t"
+                f"\n  left join utilisateurs u  on u.nom = {q(nom)}"
+                f"\n  left join prestataires p  on p.nom = {q(nom)}"
+                f"\n  where t.code = {q(type_code)}"
+                "\n    and num_nonnulls(u.id, p.id) = 1 on conflict do nothing;")
+
     # --- Tournées ----------------------------------------------------------
     tournees = {}
     for d in data:
@@ -129,13 +152,18 @@ def main(chemin: str) -> None:
         if sid is None or not libelle:
             rapport["ignorees"]["sans identifiant ou sans libellé"] += 1
             continue
+        date = lire_date(d.get("Date"))
+        if date and date < DEPUIS:
+            rapport["archivees"][f"antérieures au {DEPUIS:%d/%m/%Y}"] += 1
+            continue
+
         lieu_brut = str(d.get("LOCALISATION") or "").strip()
         code = code_emplacement(lieu_brut, rapport)
         if not code:
             rapport["ignorees"]["sans localisation"] += 1
             continue
 
-        date = lire_date(d.get("Date")) or aujourdhui
+        date = date or aujourdhui
         if date > aujourdhui:
             rapport["dates_futures"][str(date)] += 1
         statut = STATUTS.get(str(d.get("STATUT") or "").strip(), "a_faire")
@@ -145,7 +173,7 @@ def main(chemin: str) -> None:
         canonique = canoniques.get(normaliser_libelle(libelle), libelle)
 
         commentaire = d.get("COMMENTAIRES")
-        if code == "General" and lieu_brut:
+        if code == "Parties communes" and cle(lieu_brut) != "parties communes":
             note = f"Localisation d'origine : {lieu_brut}"
             commentaire = f"{commentaire}\n{note}" if commentaire else note
 

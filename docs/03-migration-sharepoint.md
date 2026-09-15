@@ -23,13 +23,20 @@
 `ACHATS` (9 lignes) est un état d'attente : la ligne ne peut pas avancer tant que l'achat n'est pas
 fait. Repris tel quel sous `a_acheter`.
 
-### Le catalogue est plus fragile qu'espéré
+### Une déclaration est presque toujours une reprise
+
+Une anomalie saisie depuis l'application reprend un libellé déjà employé ; ce qui change, c'est la
+date et la personne qui l'a constatée. Le catalogue n'est donc pas un carcan ajouté par la refonte,
+c'est la description de l'usage réel.
+
+### Le catalogue reste étroit
 
 759 anomalies renseignées, **268 libellés distincts après regroupement** — mais **172 (64 %) ne sont
 apparus qu'une seule fois**. Deux tiers des déclarations sont donc des cas neufs.
 
-La règle « la gouvernante ne saisit pas de texte libre » est appliquée telle que demandée, mais avec
-ce taux, elle sera bloquée souvent. Voir la proposition d'aménagement en fin de document.
+La règle « la gouvernante ne saisit pas de texte libre » est appliquée telle que demandée. L'écran
+d'administration du catalogue doit donc être rapide : ajouter une entrée est ce qui débloque une
+déclaration en attente.
 
 ### Qualité des données
 
@@ -37,8 +44,9 @@ ce taux, elle sera bloquée souvent. Voir la proposition d'aménagement en fin d
 |---|---|
 | Dates à moitié en texte (`13/04/2026`), à moitié en date Excel | Les deux formats sont lus |
 | 12 dates postérieures à aujourd'hui (jusqu'au 01/12/2026) | Importées telles quelles, **signalées dans le rapport** |
-| 86 orthographes de localisation pour ~74 lieux réels | Table de correspondance dans `outils/referentiel_lieux.py` |
-| Chambres « 6 » et « 7 », absentes du plan des 37 chambres | Rattachées à « Général », localisation d'origine conservée en commentaire |
+| 86 orthographes de localisation | Ramenées aux 63 emplacements de la liste d'origine — **aucune non reconnue** |
+| Suivi peu fiable avant l'application | **Import à partir du 01/01/2025**, 87 anomalies antérieures restent dans l'export |
+| Chambres « 6 » et « 7 » | Lignes de test de l'ancienne application : **non importées** |
 | `Materiel_Utilise` et `PRODUIT_UTILISE` en double | Une seule colonne conservée |
 | 36 lignes entièrement vides | Ignorées, comptées dans le rapport |
 
@@ -48,12 +56,13 @@ bascule sur « Général » plutôt que d'écarter une anomalie mal localisée.
 ## Résultat de l'import
 
 ```
-795 lignes  −  36 vides  =  759 anomalies
-625 FAIT      → 415 en attente de vérification + 210 validées
-110 A FAIRE   → 110        15 EN COURS → 15        9 ACHATS → 9
-759/759 rattachées au catalogue
-611 interventions · 797 validations · 29 tournées · 8 utilisateurs · 9 prestataires
+795 lignes  −  36 vides  −  87 antérieures à 2025  −  2 lignes de test  =  670 anomalies
+541 FAIT      → 338 en attente de vérification + 203 validées
+110 A FAIRE   → 110        12 EN COURS → 10        9 ACHATS → 9
+528 interventions · 29 tournées · 8 utilisateurs · 9 prestataires · 63 emplacements
 ```
+
+Les deux `EN COURS` manquantes sont les deux lignes sans localisation, signalées par le rapport.
 
 ## Mode d'emploi
 
@@ -78,6 +87,15 @@ Le SQL produit est **rejouable** : chaque insertion est conditionnée, un second
 Technicien AVIR, Technicien Kone, Technicien TELEC, Technicien EUROPROH, MR NEGRONI, ALAIN, Hedi,
 Juan. **Utilisateurs de l'application** : Miguel, Victoria, Serafino, Sarah P, Taibi, FARID, Rachid.
 Le classement se corrige dans la constante `PRESTATAIRES` du script d'import.
+
+**Référentiel des localisations** : reprise exacte de la liste de l'application d'origine, codes
+compris — un escalier est rangé à l'étage d'où l'on part. Trois emplacements ont dû être ajoutés pour
+placer une vingtaine de lignes de l'export (`Ascenseur`, `Sous-sol divers`, `Parties communes`) :
+ils sont marqués dans le fichier de référentiel et restent à confirmer.
+
+**Spécialités** : la section d'ALAIN ne montre que les anomalies de type électrique. La règle vaut
+pour les salariés comme pour les entreprises extérieures (`specialites_intervenant`) ; sans ligne de
+spécialité, un intervenant est polyvalent et voit tout.
 
 **Catalogue strict**, conformément à la demande : aucune saisie libre depuis le téléphone. Une
 anomalie absente du catalogue doit d'abord y être ajoutée par un admin, depuis un ordinateur.

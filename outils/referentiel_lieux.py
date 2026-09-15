@@ -1,122 +1,97 @@
 #!/usr/bin/env python3
-"""Table de correspondance entre les localisations saisies et le référentiel.
+"""Référentiel des localisations, tel que défini dans l'application d'origine.
 
-Les 86 orthographes relevées dans l'export sont ramenées à un emplacement
-canonique. Ce qui n'est pas listé ici est signalé à l'import, jamais ignoré.
+EMPLACEMENTS reproduit exactement la liste fournie : le code est la chaîne
+utilisée dans le Switch de l'application Power Apps, pour que rien ne se perde
+à la traduction. À noter, et c'est volontaire : un escalier est rangé à l'étage
+d'où l'on part, pas à celui où l'on arrive.
+
+SYNONYMES ramène les 86 orthographes rencontrées dans l'export vers ces codes.
 """
 
-# code canonique -> (libellé, étage, type)
+# étage -> codes, dans l'ordre de la liste d'origine
+LISTE_ORIGINE = {
+    "RDC":      ["01", "02", "03", "PDJ", "Réception", "Lobby", "Entrée", "Cuisine", "Bagagerie"],
+    "1er":      ["Palier 1er", "11", "12", "14", "15", "16", "18"],
+    "2eme":     ["2eme étage", "21", "22", "24", "25", "26", "27", "28"],
+    "3eme":     ["3eme étage", "31", "32", "34", "35", "36", "37", "38",
+                 "escalier qui mène au 4ème"],
+    "4eme":     ["4eme étage", "41", "42", "44", "45", "46", "47", "48",
+                 "escalier qui mène au 5ème"],
+    "5eme":     ["Palier 5ème", "Office 5 ème étage", "51", "52", "54", "55", "56", "57", "58"],
+    "Sous-Sol": ["WC Clients", "WC Femmes", "Chaufferie", "Local TGBT", "Local Technique",
+                 "Lingerie", "Salle de sport"],
+    "Autres":   ["Toit", "COUR intèrieure"],
+}
+
+# Trois emplacements absents de la liste d'origine mais nécessaires pour placer
+# une vingtaine de lignes de l'export. À confirmer, puis à intégrer à la liste.
+AJOUTS_A_CONFIRMER = {
+    "Ascenseur":        "Autres",     # 6 lignes dans l'export
+    "Sous-sol divers":  "Sous-Sol",   # « sous sol », « Salle de repos (sous sol) »
+    "Parties communes": "Autres",     # « Divers », « GENERAL », bureau, escaliers du RDC
+}
+
+TYPES = {
+    "PDJ": "commun", "Réception": "commun", "Lobby": "commun", "Entrée": "commun",
+    "Cuisine": "technique", "Bagagerie": "technique",
+    "Palier 1er": "commun", "2eme étage": "commun", "3eme étage": "commun",
+    "4eme étage": "commun", "Palier 5ème": "commun", "Office 5 ème étage": "technique",
+    "escalier qui mène au 4ème": "commun", "escalier qui mène au 5ème": "commun",
+    "WC Clients": "commun", "WC Femmes": "commun", "Salle de sport": "commun",
+    "Chaufferie": "technique", "Local TGBT": "technique", "Local Technique": "technique",
+    "Lingerie": "technique",
+    "Toit": "exterieur", "COUR intèrieure": "exterieur",
+    "Ascenseur": "technique", "Sous-sol divers": "commun", "Parties communes": "commun",
+}
+
+# code -> (étage, type). Un code purement numérique est une chambre.
 EMPLACEMENTS = {
-    # Chambres — 37 au total, une par ligne du référentiel d'origine
-    **{f"{n:02d}": (f"Chambre {n:02d}", etage, "chambre")
-       for etage, nums in {
-           "RDC":  [1, 2, 3],
-           "1er":  [11, 12, 14, 15, 16, 18],
-           "2eme": [21, 22, 24, 25, 26, 27, 28],
-           "3eme": [31, 32, 34, 35, 36, 37, 38],
-           "4eme": [41, 42, 44, 45, 46, 47, 48],
-           "5eme": [51, 52, 54, 55, 56, 57, 58],
-       }.items() for n in nums},
+    code: (etage, "chambre" if code.isdigit() else TYPES[code])
+    for etage, codes in LISTE_ORIGINE.items() for code in codes
+}
+EMPLACEMENTS.update({
+    code: (etage, TYPES[code]) for code, etage in AJOUTS_A_CONFIRMER.items()
+})
 
+# orthographe rencontrée (minuscules, sans accent, espaces lissés) -> code
+SYNONYMES = {
     # Rez-de-chaussée
-    "Reception":      ("Réception",              "RDC", "commun"),
-    "Lobby":          ("Lobby",                  "RDC", "commun"),
-    "Entree":         ("Entrée",                 "RDC", "commun"),
-    "PDJ":            ("Salle petit-déjeuner",   "RDC", "commun"),
-    "Cuisine":        ("Cuisine",                "RDC", "technique"),
-    "Bagagerie":      ("Bagagerie",              "RDC", "technique"),
-    "Bureau":         ("Bureau",                 "RDC", "technique"),
-    "Escalier-RDC":   ("Escalier de secours RDC","RDC", "commun"),
+    "reception": "Réception", "mur a cote de la reception": "Réception",
+    "lobby": "Lobby", "lobby devant(le pillier)": "Lobby",
+    "rdc face ascenseur": "Lobby", "rdc": "Lobby",
+    "entree": "Entrée", "pdj": "PDJ", "buffet du petit dejeuner": "PDJ",
+    "cuisine": "Cuisine", "bagagerie": "Bagagerie",
 
-    # Étages
-    "Etage-1":        ("1er étage — général",    "1er",  "commun"),
-    "Palier-1":       ("Palier 1er",             "1er",  "commun"),
-    "Escalier-1":     ("Escalier du 1er",        "1er",  "commun"),
-    "Etage-2":        ("2ème étage — général",   "2eme", "commun"),
-    "Etage-3":        ("3ème étage — général",   "3eme", "commun"),
-    "Palier-3":       ("Palier 3ème",            "3eme", "commun"),
-    "Etage-4":        ("4ème étage — général",   "4eme", "commun"),
-    "Escalier-4":     ("Escalier du 4ème",       "4eme", "commun"),
-    "Etage-5":        ("5ème étage — général",   "5eme", "commun"),
-    "Palier-5":       ("Palier 5ème",            "5eme", "commun"),
-    "Escalier-5":     ("Escalier du 5ème",       "5eme", "commun"),
-    "Office-5":       ("Office 5ème étage",      "5eme", "technique"),
+    # Étages : un escalier appartient à l'étage d'où l'on part
+    "palier 1er": "Palier 1er", "1er etage": "Palier 1er", "escalier du 1er": "Palier 1er",
+    "2eme etage": "2eme étage",
+    "3eme etage": "3eme étage", "palier du 3eme": "3eme étage",
+    "escalier qui mene au 4eme": "escalier qui mène au 4ème",
+    "4eme etage": "4eme étage",
+    "escalier qui mene au 5eme": "escalier qui mène au 5ème",
+    "palier 5eme": "Palier 5ème", "5eme etage": "Palier 5ème",
+    "office 5 eme etage": "Office 5 ème étage",
 
     # Sous-sol
-    "WC-Clients":     ("WC clients",             "Sous-Sol", "commun"),
-    "WC-Femmes":      ("WC femmes",              "Sous-Sol", "commun"),
-    "WC-Hommes":      ("WC hommes",              "Sous-Sol", "commun"),
-    "Salle-Sport":    ("Salle de sport",         "Sous-Sol", "commun"),
-    "Salle-Repos":    ("Salle de repos",         "Sous-Sol", "commun"),
-    "Chaufferie":     ("Chaufferie",             "Sous-Sol", "technique"),
-    "Local-TGBT":     ("Local TGBT",             "Sous-Sol", "technique"),
-    "Local-Technique":("Local technique",        "Sous-Sol", "technique"),
-    "Lingerie":       ("Lingerie",               "Sous-Sol", "technique"),
-    "Escalier-SS":    ("Escalier du sous-sol",   "Sous-Sol", "commun"),
-    "Sous-Sol":       ("Sous-sol — général",     "Sous-Sol", "commun"),
+    "wc clients": "WC Clients", "wc hommes": "WC Clients", "wc femmes": "WC Femmes",
+    "salle de sport": "Salle de sport", "chaufferie": "Chaufferie",
+    "local tgbt": "Local TGBT", "local technique": "Local Technique", "lingerie": "Lingerie",
+    "sous sol": "Sous-sol divers", "salle de repos (sous sol)": "Sous-sol divers",
+    "escalier qui mene au sous-sol": "Sous-sol divers",
 
     # Transverses et extérieurs
-    "Ascenseur":      ("Ascenseur",              "Autres", "technique"),
-    "Communs":        ("Parties communes",       "Autres", "commun"),
-    "Toit":           ("Toit",                   "Autres", "exterieur"),
-    "Cour":           ("Cour intérieure",        "Autres", "exterieur"),
-    "Exterieur":      ("Extérieur de l'hôtel",   "Autres", "exterieur"),
-    "General":        ("Général / non localisé", "Autres", "commun"),
-}
-
-# orthographe rencontrée (minuscules, espaces lissés) -> code canonique
-SYNONYMES = {
-    "reception": "Reception",
-    "mur a cote de la reception": "Reception",
-    "rdc face ascenseur": "Lobby",
-    "lobby": "Lobby",
-    "lobby devant(le pillier)": "Lobby",
-    "lobby devant le pillier": "Lobby",
-    "entree": "Entree",
-    "rdc": "Lobby",
-    "pdj": "PDJ",
-    "buffet du petit dejeuner": "PDJ",
-    "cuisine": "Cuisine",
-    "bagagerie": "Bagagerie",
-    "bureau": "Bureau",
-    "escalier de secours (rdc)": "Escalier-RDC",
-
-    "1er etage": "Etage-1",
-    "palier 1er": "Palier-1",
-    "escalier du 1er": "Escalier-1",
-    "escalier qui mene au 1er": "Escalier-1",
-    "2eme etage": "Etage-2",
-    "3eme etage": "Etage-3",
-    "palier du 3eme": "Palier-3",
-    "4eme etage": "Etage-4",
-    "escalier qui mene au 4eme": "Escalier-4",
-    "5eme etage": "Etage-5",
-    "palier 5eme": "Palier-5",
-    "escalier qui mene au 5eme": "Escalier-5",
-    "office 5 eme etage": "Office-5",
-
-    "wc clients": "WC-Clients",
-    "wc femmes": "WC-Femmes",
-    "wc hommes": "WC-Hommes",
-    "salle de sport": "Salle-Sport",
-    "salle de repos (sous sol)": "Salle-Repos",
-    "chaufferie": "Chaufferie",
-    "local tgbt": "Local-TGBT",
-    "local technique": "Local-Technique",
-    "lingerie": "Lingerie",
-    "escalier qui mene au sous-sol": "Escalier-SS",
-    "sous sol": "Sous-Sol",
-
     "ascenseur": "Ascenseur",
-    "parties communes": "Communs",
     "toit": "Toit",
-    "cour interieure": "Cour",
-    "exterieur de l'hotel": "Exterieur",
-    "exterieur de lhotel": "Exterieur",
-    "general": "General",
-    "divers": "General",
+    "cour interieure": "COUR intèrieure", "exterieur de l'hotel": "COUR intèrieure",
+    "parties communes": "Parties communes", "divers": "Parties communes",
+    "general": "Parties communes", "bureau": "Parties communes",
+    "escalier de secours (rdc)": "Parties communes",
+    "escalier qui mene au 1er": "Parties communes",
 }
 
-# Numéros présents dans l'export mais absents du plan de l'hôtel (37 chambres).
-# Signalés à l'import plutôt que créés en douce.
-CHAMBRES_INCONNUES = {"6", "7"}
+# Lignes de test de l'application d'origine : elles ne sont pas importées.
+CHAMBRES_DE_TEST = {"6", "7"}
+
+ORDRE_ETAGES = {"RDC": 0, "1er": 1, "2eme": 2, "3eme": 3,
+                "4eme": 4, "5eme": 5, "Sous-Sol": 6, "Autres": 7}

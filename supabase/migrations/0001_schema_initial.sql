@@ -85,15 +85,6 @@ create table types_intervention (
   actif  boolean not null default true
 );
 
--- Spécialités d'un intervenant. Aucune ligne = polyvalent, il voit tout.
--- Une ou plusieurs lignes = il ne se voit proposer que ces types d'anomalie
--- (ex. un électricien ne reçoit que l'électrique).
-create table utilisateur_specialites (
-  utilisateur_id       uuid not null references utilisateurs (id) on delete cascade,
-  type_intervention_id uuid not null references types_intervention (id) on delete cascade,
-  primary key (utilisateur_id, type_intervention_id)
-);
-
 -- Entreprise extérieure qui intervient (plombier, ascensoriste...). Elle facture
 -- une journée d'intervention, pas une anomalie : voir la table `factures`.
 create table prestataires (
@@ -104,6 +95,22 @@ create table prestataires (
   telephone   text,
   actif       boolean not null default true
 );
+
+-- Spécialités d'un intervenant, salarié ou entreprise extérieure. Aucune ligne
+-- = polyvalent, il voit tout. Une ou plusieurs lignes = sa section ne lui
+-- propose que ces types d'anomalie — ainsi l'électricien ne voit que
+-- l'électrique.
+create table specialites_intervenant (
+  id                   uuid primary key default gen_random_uuid(),
+  utilisateur_id       uuid references utilisateurs (id) on delete cascade,
+  prestataire_id       uuid references prestataires (id) on delete cascade,
+  type_intervention_id uuid not null references types_intervention (id) on delete cascade,
+  constraint un_seul_intervenant check (num_nonnulls(utilisateur_id, prestataire_id) = 1)
+);
+create unique index on specialites_intervenant (utilisateur_id, type_intervention_id)
+  where utilisateur_id is not null;
+create unique index on specialites_intervenant (prestataire_id, type_intervention_id)
+  where prestataire_id is not null;
 
 -- Fournisseur de consommables. Plusieurs produits peuvent partager le même
 -- fournisseur : les demandes de devis sont alors regroupées en un seul envoi.

@@ -36,7 +36,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'utilisateurs','utilisateur_specialites','etages','emplacements',
+    'utilisateurs','specialites_intervenant','etages','emplacements',
     'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
     'anomalies','tournees','interventions','validations','photos_anomalie',
     'factures','facture_interventions',
@@ -112,7 +112,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'utilisateurs','utilisateur_specialites','etages','emplacements',
+    'utilisateurs','specialites_intervenant','etages','emplacements',
     'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
     'produits','bouteille_types','dotations',
     'recap_abonnements','alertes_destinataires'
@@ -138,7 +138,7 @@ declare v text;
 begin
   foreach v in array array[
     'v_stock_produits','v_cout_prestataire','v_interventions_cout',
-    'v_recap_interventions','v_tournees','v_fil_commentaires',
+    'v_recap_interventions','v_tournees','v_fil_commentaires','v_intervenants',
     'v_factures_rapprochement','v_recurrences_emplacement','v_bouteilles_positions',
     'v_stock_bouteilles','v_bouteilles_par_emplacement','v_incidents_bouteille',
     'v_reappro_necessaire','v_controle_donnees'

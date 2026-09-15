@@ -3,12 +3,13 @@
     { "file": "Main.dc.html",        "x": 0,    "y": 0,    "w": 390, "h": 844, "title": "Accueil" },
     { "file": "Declaration.dc.html", "x": 500,  "y": 0,    "w": 390, "h": 844, "title": "Déclarer — gouvernante" },
     { "file": "Technicien.dc.html",  "x": 1000, "y": 0,    "w": 390, "h": 844, "title": "Tournée — technicien" },
+    { "file": "Materiel.dc.html",    "x": 1500, "y": 0,    "w": 390, "h": 844, "title": "Matériel utilisé" },
     { "file": "Gouvernante.dc.html", "x": 0,    "y": 1000, "w": 390, "h": 844, "title": "Valider — gouvernante" },
     { "file": "Bouteilles.dc.html",  "x": 500,  "y": 1000, "w": 390, "h": 844, "title": "Bouteilles Purezza" },
     { "file": "Produit.dc.html",     "x": 1000, "y": 1000, "w": 390, "h": 844, "title": "Fiche produit" }
   ],
   "annotations": [
-    { "id": "note-parcours", "x": 0, "y": -150, "w": 1390, "text": "Parcours du haut : ce que voit la gouvernante quand elle déclare, et ce que voit le technicien sur sa tournée.\nParcours du bas : validation, bouteilles, stock. Chiffres et libellés repris de l'export réel." }
+    { "id": "note-parcours", "x": 0, "y": -150, "w": 1890, "text": "Rangée du haut — le parcours quotidien : la gouvernante déclare depuis le catalogue, le technicien coche sa tournée et dit, anomalie par anomalie, ce qu'il a pris en réserve.\nRangée du bas — Victoria valide en trois issues, les bouteilles, le stock. Chiffres et libellés repris de l'export réel." }
   ],
   "launch": { "view": "canvas" }
 }

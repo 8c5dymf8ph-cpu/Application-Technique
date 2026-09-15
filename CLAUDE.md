@@ -41,7 +41,13 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 12. **Un ajustement de stock porte toujours un motif** (`inventaire`, `casse`, `perte`,
    `erreur_saisie`, `autre`). Seul le motif `inventaire` exige un comptage complet : une casse
    se corrige au fil de l'eau.
-13. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
+13. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
+   choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
+   explicite, pas une absence de réponse.
+14. **Une section spécialisée ne montre que son métier.** Sans ligne dans
+   `specialites_intervenant`, un intervenant est polyvalent ; avec, il ne voit que ses types.
+   La règle vaut pour les salariés comme pour les entreprises extérieures.
+15. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
    Ne jamais réintroduire `Stock_Initial`, `StockActuel` ni `EstHistorique`.
 
 ## Base de données
