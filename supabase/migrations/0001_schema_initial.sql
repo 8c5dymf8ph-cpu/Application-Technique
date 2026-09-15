@@ -40,7 +40,10 @@ create type lieu_bouteille            as enum ('reserve', 'emplacement', 'chez_c
 create type type_mouvement_bouteille  as enum ('entree', 'dotation', 'emport', 'retour', 'perte', 'casse', 'regularisation');
 create type nature_incident_bouteille as enum ('emport', 'casse');
 create type responsable_incident      as enum ('client', 'personnel', 'inconnu');
-create type statut_incident_bouteille as enum ('signale', 'client_contacte', 'restitue', 'facture', 'non_facture', 'clos');
+-- Le dossier suit quatre étapes : constaté, transmis, client contacté, puis
+-- une résolution — restitué, facturé ou non facturé — avant clôture.
+create type statut_incident_bouteille as enum ('signale', 'transmis', 'client_contacte',
+                                              'restitue', 'facture', 'non_facture', 'clos');
 
 -- -----------------------------------------------------------------------------
 -- Référentiels
@@ -412,6 +415,9 @@ create table incidents_bouteille (
   quantite           int not null default 1 check (quantite > 0),
   nature             nature_incident_bouteille not null,
   responsable        responsable_incident not null default 'client',
+  -- Nom du client occupant la chambre : c'est lui qu'on recontacte, et c'est
+  -- à lui que la bouteille est facturée le cas échéant.
+  client_nom         text,
   constate_par       uuid references utilisateurs (id),
   constate_le        timestamptz not null default now(),
   statut             statut_incident_bouteille not null default 'signale',
@@ -419,6 +425,8 @@ create table incidents_bouteille (
   -- deux bouteilles. Mettre à false si la réserve est vide.
   redoter            boolean not null default true,
   notifie_le         timestamptz,       -- alerte envoyée à l'équipe
+  transmis_a         uuid references utilisateurs (id),
+  transmis_le        timestamptz,
   client_contacte_le timestamptz,
   resolu_le          timestamptz,
   resolu_par         uuid references utilisateurs (id),

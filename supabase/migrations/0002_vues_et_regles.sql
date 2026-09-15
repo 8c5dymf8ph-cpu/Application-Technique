@@ -348,12 +348,20 @@ select
   i.quantite,
   i.nature,
   i.responsable,
+  i.client_nom,
   uc.nom                                   as constate_par,
+  ut.nom                                   as transmis_a,
   i.constate_le,
   i.statut,
   i.notifie_le,
+  i.transmis_le,
   i.client_contacte_le,
   i.resolu_le,
+  -- Les quatre étapes du dossier, pour la frise de l'écran de facturation.
+  i.constate_le is not null                as etape_constate,
+  i.transmis_le is not null                as etape_transmis,
+  i.client_contacte_le is not null         as etape_client_contacte,
+  i.statut in ('restitue', 'facture', 'non_facture', 'clos') as etape_resolue,
   coalesce(
     i.montant,
     case
@@ -362,12 +370,13 @@ select
     end
   )                                        as montant,
   i.responsable = 'client'                 as facturable_client,
-  i.statut in ('signale', 'client_contacte') as dossier_ouvert,
+  i.statut in ('signale', 'transmis', 'client_contacte') as dossier_ouvert,
   i.commentaire
 from incidents_bouteille i
 join emplacements e     on e.id = i.emplacement_id
 join bouteille_types bt on bt.id = i.bouteille_type_id
-left join utilisateurs uc on uc.id = i.constate_par;
+left join utilisateurs uc on uc.id = i.constate_par
+left join utilisateurs ut on ut.id = i.transmis_a;
 
 -- -----------------------------------------------------------------------------
 -- Réapprovisionnement : articles sous seuil, regroupés par fournisseur.
