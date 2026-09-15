@@ -30,6 +30,19 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    tombent sous le seuil en même temps.
 8. **Une anomalie hors catalogue ne se crée que par un admin**, depuis un ordinateur. La règle est
    dans la RLS : ne pas la déplacer dans l'interface.
+9. **Le technicien rend un lot, la gouvernante valide à l'unité.** Une `tournee` regroupe les
+   anomalies traitées ensemble (l'ancien `InterventionID`). Le mail récapitulatif ne part que
+   lorsque `v_tournees.prete_pour_recap` est vrai et que `mail_recap_envoye_le` est nul : la
+   gouvernante peut valider en plusieurs sessions sans déclencher d'envoi prématuré.
+10. **La gouvernante a trois issues**, pas deux : `validee`, `en_cours`, `a_refaire`. Ne jamais
+   réduire le choix à valider/refuser.
+11. **Les commentaires ne s'empilent pas dans un champ texte.** Chaque avis est une ligne de
+   `validations` avec son auteur et sa date ; `v_fil_commentaires` reconstitue le fil.
+12. **Un ajustement de stock porte toujours un motif** (`inventaire`, `casse`, `perte`,
+   `erreur_saisie`, `autre`). Seul le motif `inventaire` exige un comptage complet : une casse
+   se corrige au fil de l'eau.
+13. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
+   Ne jamais réintroduire `Stock_Initial`, `StockActuel` ni `EstHistorique`.
 
 ## Base de données
 

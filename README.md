@@ -24,3 +24,4 @@ Remplace l'application Power Apps Canvas existante.
 - [ ] Interface : interventions, stock matériel, bouteilles
 - [ ] Photos d'anomalies et factures
 - [ ] Récapitulatifs, alertes et demandes de devis par email
+- [ ] Écran Documents : factures, rapport mensuel, historique des devis

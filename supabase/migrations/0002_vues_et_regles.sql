@@ -1,11 +1,13 @@
 -- =============================================================================
 -- Migration 0002 : vues de calcul et règles métier
 -- Tout ce qui se calcule est calculé ici. Aucune valeur de stock n'est stockée
--- en dur : c'est la garantie qu'elle ne peut pas diverger de son historique.
+-- en dur : ni Stock_Initial, ni StockActuel, ni EstHistorique, et donc aucun
+-- bouton « recalculer le stock » — il n'y a rien à recalculer.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- Stock matériel
+-- Stock matériel — alimente aussi la fiche produit
+-- (Initial / Entrées / Sorties / Ajustements / Stock actuel)
 -- -----------------------------------------------------------------------------
 create view v_stock_produits as
 select
@@ -15,14 +17,18 @@ select
   p.categorie,
   p.unite,
   p.prix_unitaire,
-  p.prix_unitaire is null                             as prix_inconnu,
+  p.prix_unitaire is null                              as prix_inconnu,
   p.seuil_alerte,
   p.fournisseur_id,
   p.photo_url,
   p.actif,
-  coalesce(sum(m.quantite), 0)                        as stock,
-  coalesce(sum(m.quantite), 0) * p.prix_unitaire      as valeur_stock,
-  coalesce(sum(m.quantite), 0) <= p.seuil_alerte      as sous_seuil
+  coalesce(sum(m.quantite) filter (where m.type = 'entree'), 0)          as total_entrees,
+  coalesce(-sum(m.quantite) filter (where m.type = 'sortie'), 0)         as total_sorties,
+  coalesce(sum(m.quantite) filter (where m.type = 'regularisation'), 0)  as total_ajustements,
+  coalesce(sum(m.quantite), 0)                         as stock,
+  coalesce(sum(m.quantite), 0) * p.prix_unitaire       as valeur_stock,
+  coalesce(sum(m.quantite), 0) <= p.seuil_alerte       as sous_seuil,
+  max(m.date_mouvement)                                as dernier_mouvement
 from produits p
 left join mouvements_stock m on m.produit_id = p.id
 group by p.id;
@@ -77,6 +83,7 @@ left join v_cout_prestataire cp on cp.intervention_id = i.id;
 create view v_recap_interventions as
 select
   i.id                        as intervention_id,
+  t.reference                 as tournee,
   a.id                        as anomalie_id,
   a.reference                 as anomalie_reference,
   e.code                      as emplacement,
@@ -94,8 +101,11 @@ select
   vg.decision                 as decision_gouvernante,
   vg.decide_le                as decide_gouvernante_le,
   vg.commentaire              as commentaire_gouvernante,
-  -- Ce drapeau est ce qui doit apparaître en clair dans le récapitulatif envoyé
-  (vt.decision = 'fait' and vg.decision = 'refusee') as refusee_par_gouvernante,
+  -- Ce drapeau est ce qui doit apparaître en clair dans le récapitulatif envoyé :
+  -- le technicien a déclaré l'anomalie faite, la gouvernante ne l'a pas validée.
+  (vt.decision = 'fait' and vg.decision is distinct from 'validee'
+     and vg.decision is not null)         as non_validee_par_gouvernante,
+  (vt.decision = 'fait' and vg.decision is null) as en_attente_gouvernante,
   c.cout_materiel,
   c.articles_sans_prix,
   c.cout_prestataire,
@@ -107,6 +117,7 @@ from interventions i
 join anomalies a           on a.id = i.anomalie_id
 join emplacements e        on e.id = a.emplacement_id
 join etages et             on et.id = e.etage_id
+left join tournees t       on t.id = i.tournee_id
 left join types_intervention ti on ti.id = a.type_id
 left join utilisateurs ut  on ut.id = i.technicien_id
 left join prestataires pr  on pr.id = i.prestataire_id
@@ -123,13 +134,69 @@ left join lateral (
 ) vg on true
 left join utilisateurs ug on ug.id = vg.utilisateur_id;
 
--- Interventions candidates au rapprochement d'une facture : même prestataire,
--- même date. C'est ce que l'écran de rapprochement propose à cocher.
+-- -----------------------------------------------------------------------------
+-- État d'une tournée. `prete_pour_recap` remplace la logique « plus aucune ligne
+-- EnAttente pour cet InterventionID » : le mail récap part quand elle devient
+-- vraie et que mail_recap_envoye_le est encore nul.
+-- -----------------------------------------------------------------------------
+create view v_tournees as
+select
+  t.id,
+  t.reference,
+  t.date_tournee,
+  coalesce(u.nom, p.nom)                   as intervenant,
+  t.cloturee_le,
+  t.mail_technicien_envoye_le,
+  t.mail_recap_envoye_le,
+  count(r.intervention_id)                                                  as nb_interventions,
+  count(*) filter (where r.intervention_id is not null
+                     and r.decision_gouvernante is null)                    as nb_en_attente,
+  count(*) filter (where r.decision_gouvernante = 'validee')                as nb_validees,
+  count(*) filter (where r.decision_gouvernante = 'a_refaire')              as nb_a_refaire,
+  count(*) filter (where r.decision_gouvernante = 'en_cours')               as nb_en_cours,
+  coalesce(sum(r.cout_total), 0)                                            as cout_total,
+  bool_or(r.cout_incomplet)                                                 as cout_incomplet,
+  count(r.intervention_id) > 0
+    and count(*) filter (where r.intervention_id is not null
+                           and r.decision_gouvernante is null) = 0          as prete_pour_recap
+from tournees t
+left join utilisateurs u  on u.id = t.technicien_id
+left join prestataires p  on p.id = t.prestataire_id
+left join v_recap_interventions r on r.tournee = t.reference
+group by t.id, u.nom, p.nom;
+
+-- Fil chronologique des commentaires d'une anomalie. Remplace l'empilement de
+-- texte « NOM · date \n contenu » : chaque commentaire garde son auteur, sa date
+-- et son rôle, donc rien ne peut être écrasé ni mal découpé à la relecture.
+create view v_fil_commentaires as
+select
+  a.id                as anomalie_id,
+  'declaration'::text as source,
+  a.declare_le        as date_commentaire,
+  u.nom               as auteur,
+  a.commentaire       as texte
+from anomalies a
+left join utilisateurs u on u.id = a.declare_par
+where coalesce(btrim(a.commentaire), '') <> ''
+union all
+select
+  i.anomalie_id,
+  v.acteur::text,
+  v.decide_le,
+  u.nom,
+  v.commentaire
+from validations v
+join interventions i on i.id = v.intervention_id
+left join utilisateurs u on u.id = v.utilisateur_id
+where coalesce(btrim(v.commentaire), '') <> '';
+
+-- Interventions candidates au rapprochement d'une facture de prestation : même
+-- prestataire, même date. C'est ce que l'écran de rapprochement propose à cocher.
 create view v_factures_rapprochement as
 select
   f.id              as facture_id,
   f.reference       as facture_reference,
-  f.date_intervention,
+  f.date_reference,
   f.montant_ht,
   p.nom             as prestataire,
   i.id              as intervention_id,
@@ -140,10 +207,27 @@ select
 from factures f
 join prestataires p  on p.id = f.prestataire_id
 join interventions i on i.prestataire_id = f.prestataire_id
-                    and i.date_intervention = f.date_intervention
+                    and i.date_intervention = f.date_reference
 join anomalies a     on a.id = i.anomalie_id
 join emplacements e  on e.id = a.emplacement_id
-left join facture_interventions fi on fi.facture_id = f.id and fi.intervention_id = i.id;
+left join facture_interventions fi on fi.facture_id = f.id and fi.intervention_id = i.id
+where f.type = 'prestation';
+
+-- Chambres qui reviennent trop souvent. Le drapeau reprend le seuil de la
+-- maquette : 3 interventions ou plus sur les six derniers mois.
+create view v_recurrences_emplacement as
+select
+  e.id                as emplacement_id,
+  e.code              as emplacement,
+  et.nom              as etage,
+  count(a.id) filter (where a.declare_le > now() - interval '6 months') as nb_6_mois,
+  count(a.id)                                                          as nb_total,
+  max(a.declare_le)                                                    as derniere_anomalie,
+  count(a.id) filter (where a.declare_le > now() - interval '6 months') >= 3 as recurrent
+from emplacements e
+join etages et on et.id = e.etage_id
+left join anomalies a on a.emplacement_id = e.id
+group by e.id, et.nom;
 
 -- -----------------------------------------------------------------------------
 -- Bouteilles : positions réelles
@@ -219,6 +303,7 @@ select
   uc.nom                                   as constate_par,
   i.constate_le,
   i.statut,
+  i.notifie_le,
   i.client_contacte_le,
   i.resolu_le,
   coalesce(
@@ -275,7 +360,36 @@ where b.en_reserve <= bt.seuil_alerte;
 -- Règles métier
 -- =============================================================================
 
--- 1. Un incident enregistre AUTOMATIQUEMENT les mouvements physiques.
+-- 1. Ouvrir une tournée. La référence reprend le format actuel (INT-<TECH>-...)
+--    avec un suffixe aléatoire : deux tournées ouvertes dans la même seconde ne
+--    peuvent pas entrer en collision.
+create function fn_creer_tournee(
+  p_technicien_id uuid default null,
+  p_prestataire_id uuid default null
+) returns tournees
+language plpgsql as $$
+declare
+  v_nom text;
+  v_tournee tournees;
+begin
+  select upper(regexp_replace(coalesce(u.nom, pr.nom, 'INT'), '[^A-Za-z0-9]', '', 'g'))
+    into v_nom
+  from (select 1) x
+  left join utilisateurs u   on u.id = p_technicien_id
+  left join prestataires pr  on pr.id = p_prestataire_id;
+
+  insert into tournees (reference, technicien_id, prestataire_id)
+  values (
+    'INT-' || left(v_nom, 10) || '-' || to_char(now(), 'YYYYMMDD-HH24MISS')
+           || '-' || substr(md5(random()::text), 1, 4),
+    p_technicien_id, p_prestataire_id)
+  returning * into v_tournee;
+
+  return v_tournee;
+end;
+$$;
+
+-- 2. Un incident enregistre AUTOMATIQUEMENT les mouvements physiques.
 --    Emport : la bouteille part « chez le client », d'où elle peut revenir.
 --    Casse  : la bouteille sort définitivement du parc.
 --    Dans les deux cas la chambre est re-dotée depuis la réserve, ce qui déplace
@@ -319,7 +433,7 @@ create trigger tg_incident_bouteille_mouvements
 after insert on incidents_bouteille
 for each row execute function fn_incident_bouteille_mouvements();
 
--- 2. La résolution d'un emport décide du sort de la bouteille en attente.
+-- 3. La résolution d'un emport décide du sort de la bouteille en attente.
 --    Restituée  => elle rejoint la RÉSERVE (la chambre a déjà été re-dotée).
 --    Facturée   => sortie définitive du parc.
 --    Le garde-fou empêche de compter deux fois une bouteille déjà tranchée.
@@ -364,7 +478,7 @@ create trigger tg_incident_bouteille_resolution
 after update on incidents_bouteille
 for each row execute function fn_incident_bouteille_resolution();
 
--- 3. Re-doter une chambre depuis la réserve, hors incident (après inventaire).
+-- 4. Re-doter une chambre depuis la réserve, hors incident (après inventaire).
 create function fn_redoter_emplacement(
   p_emplacement_id uuid,
   p_bouteille_type_id uuid,
@@ -387,8 +501,8 @@ begin
 end;
 $$;
 
--- 4. Le statut de l'anomalie suit la dernière validation enregistrée.
---    Refus de la gouvernante => retour à « à faire », commentaire conservé.
+-- 5. Le statut de l'anomalie suit la dernière validation enregistrée.
+--    La gouvernante dispose de ses trois issues : FAIT, EN COURS, A FAIRE.
 --    Le matériel déjà sorti reste consommé : il n'est jamais annulé par un refus.
 create function fn_validation_maj_anomalie() returns trigger
 language plpgsql as $$
@@ -399,10 +513,11 @@ begin
 
   update anomalies set
     statut = case
-      when new.acteur = 'technicien'  and new.decision = 'fait'     then 'attente_validation'::statut_anomalie
-      when new.acteur = 'technicien'  and new.decision = 'non_fait' then 'en_cours'::statut_anomalie
-      when new.acteur = 'gouvernante' and new.decision = 'validee'  then 'validee'::statut_anomalie
-      when new.acteur = 'gouvernante' and new.decision = 'refusee'  then 'a_faire'::statut_anomalie
+      when new.acteur = 'technicien'  and new.decision = 'fait'      then 'attente_validation'::statut_anomalie
+      when new.acteur = 'technicien'  and new.decision = 'non_fait'  then 'en_cours'::statut_anomalie
+      when new.acteur = 'gouvernante' and new.decision = 'validee'   then 'validee'::statut_anomalie
+      when new.acteur = 'gouvernante' and new.decision = 'en_cours'  then 'en_cours'::statut_anomalie
+      when new.acteur = 'gouvernante' and new.decision = 'a_refaire' then 'a_faire'::statut_anomalie
       else statut
     end,
     cloture_le = case
@@ -420,17 +535,17 @@ create trigger tg_validation_maj_anomalie
 after insert on validations
 for each row execute function fn_validation_maj_anomalie();
 
--- 5. Valider un inventaire matériel écrit les régularisations correspondantes.
+-- 6. Valider un inventaire matériel écrit les régularisations correspondantes.
 --    Le stock est recalé par un mouvement tracé, jamais par une écriture directe.
 create function fn_valider_inventaire_materiel() returns trigger
 language plpgsql as $$
 begin
   if new.statut = 'valide' and old.statut = 'brouillon' and new.type = 'materiel' then
     insert into mouvements_stock (
-      produit_id, type, quantite, date_mouvement,
+      produit_id, type, motif, quantite, date_mouvement,
       utilisateur_id, inventaire_id, commentaire)
     select
-      l.produit_id, 'regularisation', l.ecart, new.valide_le,
+      l.produit_id, 'regularisation', 'inventaire', l.ecart, new.valide_le,
       new.valide_par, new.id,
       'Régularisation d''inventaire (théorique ' || l.quantite_theorique ||
       ', compté ' || l.quantite_comptee || ')'
@@ -445,9 +560,8 @@ create trigger tg_valider_inventaire_materiel
 after update on inventaires
 for each row execute function fn_valider_inventaire_materiel();
 
--- 6. Préparer une demande de devis par fournisseur, regroupant tous ses articles
---    sous le seuil. Renvoie les demandes créées — une par fournisseur, donc un
---    seul mail par fournisseur.
+-- 7. Préparer une demande de devis par fournisseur, regroupant tous ses articles
+--    sous le seuil. Une seule demande par fournisseur, donc un seul mail.
 create function fn_preparer_demandes_devis(p_utilisateur_id uuid default null)
 returns setof demandes_devis
 language plpgsql as $$
@@ -469,7 +583,7 @@ begin
 
     insert into demandes_devis (fournisseur_id, cree_par, destinataires)
     select v_fournisseur.fournisseur_id, p_utilisateur_id,
-           coalesce(array_remove(array[f.email], null), '{}')
+           array_remove(array[f.email, f.email_2], null)
     from fournisseurs f where f.id = v_fournisseur.fournisseur_id
     returning * into v_demande;
 
@@ -489,7 +603,7 @@ begin
 end;
 $$;
 
--- 7. Recherche du catalogue par mots-clés, depuis le téléphone de la gouvernante.
+-- 8. Recherche du catalogue par mots-clés, depuis le téléphone de la gouvernante.
 --    Tolérante : elle ne lève jamais d'erreur de syntaxe quel que soit le texte
 --    saisi, contrairement à une requête plein-texte construite à la volée.
 create function fn_rechercher_catalogue(p_terme text default null)

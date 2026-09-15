@@ -70,7 +70,7 @@ on conflict (code) do nothing;
 
 -- Fournisseur des bouteilles. Les autres fournisseurs seront créés à l'import
 -- des produits, ou saisis depuis l'écran d'administration.
-insert into fournisseurs (nom) values ('Purezza')
+insert into fournisseurs (nom, delai_livraison_jours) values ('Purezza', 7)
 on conflict (nom) do nothing;
 
 -- Bouteilles Purezza : 17,50 € facturés au client, 8 € de coût d'achat.

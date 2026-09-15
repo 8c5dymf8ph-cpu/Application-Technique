@@ -14,10 +14,18 @@ create type type_emplacement          as enum ('chambre', 'commun', 'technique',
 create type statut_anomalie           as enum ('a_faire', 'en_cours', 'attente_validation', 'validee', 'annulee');
 create type priorite_anomalie         as enum ('basse', 'normale', 'haute', 'urgente');
 create type acteur_validation         as enum ('technicien', 'gouvernante');
-create type decision_validation       as enum ('fait', 'non_fait', 'validee', 'refusee');
+-- La gouvernante dispose de trois issues, comme ses trois boutons actuels :
+-- FAIT (validee), EN COURS, A FAIRE (a_refaire).
+create type decision_validation       as enum ('fait', 'non_fait', 'validee', 'a_refaire', 'en_cours');
 create type moment_photo              as enum ('constat', 'apres');
 create type statut_facture            as enum ('a_rapprocher', 'rapprochee', 'reglee', 'litige');
+-- Prestation : une journée d'intervention facturée par un prestataire.
+-- Achat      : une livraison de matériel facturée par un fournisseur.
+create type type_facture              as enum ('prestation', 'achat');
 create type type_mouvement_stock      as enum ('entree', 'sortie', 'regularisation');
+-- Motif d'un ajustement de stock. Seul « inventaire » suppose un comptage
+-- complet : casse, perte et erreur de saisie se corrigent au fil de l'eau.
+create type motif_regularisation      as enum ('inventaire', 'casse', 'perte', 'erreur_saisie', 'autre');
 create type type_inventaire           as enum ('materiel', 'bouteilles');
 create type statut_inventaire         as enum ('brouillon', 'valide');
 create type statut_demande_devis      as enum ('brouillon', 'envoyee', 'recue', 'commandee', 'annulee');
@@ -75,6 +83,15 @@ create table types_intervention (
   actif  boolean not null default true
 );
 
+-- Spécialités d'un intervenant. Aucune ligne = polyvalent, il voit tout.
+-- Une ou plusieurs lignes = il ne se voit proposer que ces types d'anomalie
+-- (ex. un électricien ne reçoit que l'électrique).
+create table utilisateur_specialites (
+  utilisateur_id       uuid not null references utilisateurs (id) on delete cascade,
+  type_intervention_id uuid not null references types_intervention (id) on delete cascade,
+  primary key (utilisateur_id, type_intervention_id)
+);
+
 -- Entreprise extérieure qui intervient (plombier, ascensoriste...). Elle facture
 -- une journée d'intervention, pas une anomalie : voir la table `factures`.
 create table prestataires (
@@ -89,12 +106,14 @@ create table prestataires (
 -- Fournisseur de consommables. Plusieurs produits peuvent partager le même
 -- fournisseur : les demandes de devis sont alors regroupées en un seul envoi.
 create table fournisseurs (
-  id          uuid primary key default gen_random_uuid(),
-  nom         text not null unique,
-  email       text,
-  telephone   text,
-  contact     text,
-  actif       boolean not null default true
+  id                    uuid primary key default gen_random_uuid(),
+  nom                   text not null unique,
+  email                 text,
+  email_2               text,
+  contact               text,
+  telephone             text,
+  delai_livraison_jours int check (delai_livraison_jours >= 0),
+  actif                 boolean not null default true
 );
 
 -- -----------------------------------------------------------------------------
@@ -144,12 +163,31 @@ create index on anomalies (statut);
 create index on anomalies (emplacement_id);
 create index on anomalies (declare_le desc);
 
+-- Une tournée regroupe toutes les anomalies qu'un intervenant traite en une
+-- fois — l'équivalent de l'InterventionID actuel. La gouvernante valide ensuite
+-- anomalie par anomalie, éventuellement en plusieurs sessions ; le mail récap
+-- ne part que lorsque plus aucune anomalie de la tournée n'est en attente.
+create table tournees (
+  id                        uuid primary key default gen_random_uuid(),
+  reference                 text not null unique,   -- INT-MIGUEL-20260517-143012
+  technicien_id             uuid references utilisateurs (id),
+  prestataire_id            uuid references prestataires (id),
+  date_tournee              date not null default current_date,
+  cloturee_le               timestamptz,            -- le technicien a rendu son lot
+  mail_technicien_envoye_le timestamptz,
+  mail_recap_envoye_le      timestamptz,
+  commentaire               text,
+  cree_le                   timestamptz not null default now()
+);
+create index on tournees (technicien_id, date_tournee desc);
+
 -- Une intervention = le traitement d'une anomalie, par un technicien interne ou
 -- un prestataire, à une date. Une anomalie refusée puis reprise en génère une
 -- seconde : les allers-retours sont lisibles ligne à ligne.
 create table interventions (
   id                 uuid primary key default gen_random_uuid(),
   anomalie_id        uuid not null references anomalies (id) on delete cascade,
+  tournee_id         uuid references tournees (id) on delete set null,
   technicien_id      uuid references utilisateurs (id),
   prestataire_id     uuid references prestataires (id),
   date_intervention  date not null default current_date,
@@ -166,6 +204,7 @@ create table interventions (
     check (cout_divers = 0 or coalesce(btrim(cout_divers_motif), '') <> '')
 );
 create index on interventions (anomalie_id);
+create index on interventions (tournee_id);
 create index on interventions (technicien_id);
 create index on interventions (prestataire_id, date_intervention);
 
@@ -181,7 +220,7 @@ create table validations (
   decide_le       timestamptz not null default now(),
   constraint decision_coherente_avec_acteur check (
     (acteur = 'technicien'  and decision in ('fait', 'non_fait')) or
-    (acteur = 'gouvernante' and decision in ('validee', 'refusee'))
+    (acteur = 'gouvernante' and decision in ('validee', 'a_refaire', 'en_cours'))
   )
 );
 create index on validations (intervention_id);
@@ -198,15 +237,21 @@ create table photos_anomalie (
 create index on photos_anomalie (anomalie_id);
 
 -- -----------------------------------------------------------------------------
--- Factures de prestataires
--- Un prestataire facture une journée, pas une anomalie. La facture est donc
--- rapprochée de toutes les interventions qu'il a faites ce jour-là.
+-- Factures
+--   prestation : un prestataire facture une JOURNÉE, pas une anomalie. La
+--                facture est rapprochée de toutes ses interventions de ce jour.
+--   achat      : un fournisseur facture une livraison de matériel. Une même
+--                facture peut couvrir plusieurs produits — les entrées de stock
+--                concernées la référencent.
 -- -----------------------------------------------------------------------------
 create table factures (
   id                uuid primary key default gen_random_uuid(),
-  prestataire_id    uuid not null references prestataires (id),
+  type              type_facture not null,
+  prestataire_id    uuid references prestataires (id),
+  fournisseur_id    uuid references fournisseurs (id),
   reference         text,
-  date_intervention date not null,
+  -- Date d'intervention pour une prestation, date de livraison pour un achat.
+  date_reference    date not null,
   date_facture      date,
   montant_ht        numeric(10, 2) check (montant_ht >= 0),
   montant_ttc       numeric(10, 2) check (montant_ttc >= 0),
@@ -214,9 +259,14 @@ create table factures (
   statut            statut_facture not null default 'a_rapprocher',
   saisie_par        uuid references utilisateurs (id),
   cree_le           timestamptz not null default now(),
-  commentaire       text
+  commentaire       text,
+  constraint emetteur_coherent_avec_type check (
+    (type = 'prestation' and prestataire_id is not null and fournisseur_id is null) or
+    (type = 'achat'      and fournisseur_id is not null and prestataire_id is null)
+  )
 );
-create index on factures (prestataire_id, date_intervention);
+create index on factures (prestataire_id, date_reference);
+create index on factures (fournisseur_id, date_reference);
 create index on factures (statut);
 
 -- `montant_affecte` nul => la facture est répartie à parts égales entre les
@@ -272,22 +322,34 @@ create table mouvements_stock (
   produit_id      uuid not null references produits (id),
   type            type_mouvement_stock not null,
   quantite        numeric(10, 2) not null check (quantite <> 0),
+  motif           motif_regularisation,
   date_mouvement  timestamptz not null default now(),
   utilisateur_id  uuid references utilisateurs (id),
   emplacement_id  uuid references emplacements (id),
   intervention_id uuid references interventions (id) on delete set null,
   inventaire_id   uuid references inventaires (id) on delete cascade,
+  -- Prix payé pour CETTE livraison : il varie d'une commande à l'autre, alors
+  -- que produits.prix_unitaire reste le prix de référence.
+  prix_unitaire   numeric(10, 2) check (prix_unitaire >= 0),
+  facture_id      uuid references factures (id) on delete set null,
   commentaire     text,
   constraint signe_coherent check (
     (type = 'entree' and quantite > 0) or
     (type = 'sortie' and quantite < 0) or
     (type = 'regularisation')
   ),
-  constraint regularisation_rattachee_a_un_inventaire
-    check (type <> 'regularisation' or inventaire_id is not null)
+  -- Un ajustement dit toujours pourquoi. Seul un ajustement d'inventaire
+  -- suppose un comptage complet ; casse, perte et erreur vivent sans.
+  constraint motif_requis_sur_regularisation
+    check ((type = 'regularisation') = (motif is not null)),
+  constraint inventaire_requis_si_motif_inventaire
+    check (motif is distinct from 'inventaire' or inventaire_id is not null),
+  constraint facture_reservee_aux_entrees
+    check (facture_id is null or type = 'entree')
 );
 create index on mouvements_stock (produit_id, date_mouvement desc);
 create index on mouvements_stock (intervention_id);
+create index on mouvements_stock (facture_id);
 
 create table inventaire_lignes_produit (
   id                  uuid primary key default gen_random_uuid(),

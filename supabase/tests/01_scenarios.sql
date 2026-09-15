@@ -176,9 +176,21 @@ select '33333333-3333-3333-3333-333333333333', id, 'Fuite lavabo',
        '22222222-2222-2222-2222-222222222222'
 from emplacements where code = '32';
 
-insert into interventions (id, anomalie_id, technicien_id)
+-- Le technicien ouvre une tournée : toutes les anomalies qu'il traite en une
+-- fois y sont rattachées, comme l'InterventionID actuel.
+do $$
+declare v_tournee tournees;
+begin
+  v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111');
+  assert v_tournee.reference like 'INT-MIGUEL-%',
+    format('référence de tournée inattendue : %s', v_tournee.reference);
+end $$;
+
+
+insert into interventions (id, anomalie_id, tournee_id, technicien_id)
 values ('44444444-4444-4444-4444-444444444444',
         '33333333-3333-3333-3333-333333333333',
+        (select id from tournees limit 1),
         '11111111-1111-1111-1111-111111111111');
 
 -- Le technicien coche le matériel utilisé — rien d'autre
@@ -213,7 +225,7 @@ end $$;
 -- La gouvernante refuse => retour en « à faire », avis du technicien conservé,
 -- et le matériel déjà sorti reste consommé.
 insert into validations (intervention_id, acteur, decision, utilisateur_id, commentaire)
-values ('44444444-4444-4444-4444-444444444444', 'gouvernante', 'refusee',
+values ('44444444-4444-4444-4444-444444444444', 'gouvernante', 'a_refaire',
         '22222222-2222-2222-2222-222222222222', 'Fuite toujours présente');
 
 do $$
@@ -227,9 +239,20 @@ begin
   select * into v from v_recap_interventions
    where intervention_id = '44444444-4444-4444-4444-444444444444';
   assert v.decision_technicien  = 'fait',    'l''avis du technicien doit être conservé';
-  assert v.decision_gouvernante = 'refusee', 'l''avis de la gouvernante doit être conservé';
-  assert v.refusee_par_gouvernante,          'le récapitulatif doit signaler le refus';
+  assert v.decision_gouvernante = 'a_refaire', 'l''avis de la gouvernante doit être conservé';
+  assert v.non_validee_par_gouvernante,        'le récapitulatif doit signaler la non-validation';
   assert v.intervenant = 'Miguel' and v.gouvernante = 'Victoria', 'les deux noms doivent apparaître';
+  assert v.tournee is not null,                'l''intervention doit porter sa tournée';
+end $$;
+
+-- Le fil de commentaires garde chaque avis avec son auteur et sa date, au lieu
+-- d'empiler du texte dans un seul champ.
+do $$
+declare v_nb int;
+begin
+  select count(*) into v_nb from v_fil_commentaires
+   where anomalie_id = '33333333-3333-3333-3333-333333333333';
+  assert v_nb = 2, format('%s commentaires dans le fil, attendu 2 (technicien + gouvernante)', v_nb);
 end $$;
 
 -- ===========================================================================
@@ -248,8 +271,9 @@ select ('66666666-0000-0000-0000-00000000000' || n)::uuid,
        '99999999-9999-9999-9999-999999999999', date '2026-05-17'
 from generate_series(1, 3) n;
 
-insert into factures (id, prestataire_id, reference, date_intervention, montant_ht, statut)
-values ('77777777-7777-7777-7777-777777777777', '99999999-9999-9999-9999-999999999999',
+insert into factures (id, type, prestataire_id, reference, date_reference, montant_ht, statut)
+values ('77777777-7777-7777-7777-777777777777', 'prestation',
+        '99999999-9999-9999-9999-999999999999',
         'FA-2026-0512', date '2026-05-17', 450.00, 'a_rapprocher');
 
 do $$
@@ -352,6 +376,160 @@ begin
    join fournisseurs f on f.id = d.fournisseur_id
    where f.nom = 'Quincaillerie Martin';
   assert v_demandes = 1, format('%s demandes après second appel, attendu 1', v_demandes);
+end $$;
+
+-- ===========================================================================
+-- SCÉNARIO 6 — Tournée : le mail récapitulatif ne part que lorsque plus aucune
+-- anomalie du lot n'est en attente, la gouvernante pouvant valider en plusieurs
+-- fois. C'est la logique de l'InterventionID actuel.
+-- ===========================================================================
+do $$
+declare
+  v_tournee tournees;
+  v_anomalie uuid;
+  v_intervention uuid;
+  v_etat record;
+  n int;
+begin
+  v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111');
+
+  -- Trois anomalies traitées dans la même tournée
+  for n in 1..3 loop
+    insert into anomalies (emplacement_id, description, declare_par)
+    select id, 'Anomalie tournée ' || n, '22222222-2222-2222-2222-222222222222'
+    from emplacements where code = '55'
+    returning id into v_anomalie;
+
+    insert into interventions (anomalie_id, tournee_id, technicien_id)
+    values (v_anomalie, v_tournee.id, '11111111-1111-1111-1111-111111111111')
+    returning id into v_intervention;
+
+    insert into validations (intervention_id, acteur, decision, utilisateur_id)
+    values (v_intervention, 'technicien', 'fait', '11111111-1111-1111-1111-111111111111');
+  end loop;
+
+  update tournees set cloturee_le = now() where id = v_tournee.id;
+
+  select * into v_etat from v_tournees where id = v_tournee.id;
+  assert v_etat.nb_interventions = 3, format('%s interventions, attendu 3', v_etat.nb_interventions);
+  assert v_etat.nb_en_attente = 3,    format('%s en attente, attendu 3', v_etat.nb_en_attente);
+  assert not v_etat.prete_pour_recap, 'la tournée ne doit pas être prête : rien n''est validé';
+
+  -- La gouvernante traite deux anomalies, puis s'arrête : toujours pas de mail.
+  insert into validations (intervention_id, acteur, decision, utilisateur_id)
+  select i.id, 'gouvernante', 'validee', '22222222-2222-2222-2222-222222222222'
+  from interventions i where i.tournee_id = v_tournee.id limit 2;
+
+  select * into v_etat from v_tournees where id = v_tournee.id;
+  assert v_etat.nb_en_attente = 1,    format('%s en attente, attendu 1', v_etat.nb_en_attente);
+  assert not v_etat.prete_pour_recap, 'une anomalie reste en attente : pas de mail récap';
+
+  -- Elle revient plus tard et traite la dernière, avec un avis différent.
+  insert into validations (intervention_id, acteur, decision, utilisateur_id, commentaire)
+  select i.id, 'gouvernante', 'a_refaire', '22222222-2222-2222-2222-222222222222', 'À reprendre'
+  from interventions i
+  where i.tournee_id = v_tournee.id
+    and not exists (select 1 from validations v
+                    where v.intervention_id = i.id and v.acteur = 'gouvernante');
+
+  select * into v_etat from v_tournees where id = v_tournee.id;
+  assert v_etat.nb_en_attente = 0,  format('%s en attente, attendu 0', v_etat.nb_en_attente);
+  assert v_etat.prete_pour_recap,   'la tournée complète doit déclencher le mail récap';
+  assert v_etat.nb_validees = 2,    format('%s validées, attendu 2', v_etat.nb_validees);
+  assert v_etat.nb_a_refaire = 1,   format('%s à refaire, attendu 1', v_etat.nb_a_refaire);
+  assert v_etat.mail_recap_envoye_le is null, 'le mail n''est pas encore parti';
+end $$;
+
+-- La décision « EN COURS » de la gouvernante remet bien l'anomalie en cours
+do $$
+declare v_anomalie uuid; v_intervention uuid;
+begin
+  insert into anomalies (emplacement_id, description, declare_par)
+  select id, 'Anomalie en cours', '22222222-2222-2222-2222-222222222222'
+  from emplacements where code = '56' returning id into v_anomalie;
+
+  insert into interventions (anomalie_id, technicien_id)
+  values (v_anomalie, '11111111-1111-1111-1111-111111111111') returning id into v_intervention;
+
+  insert into validations (intervention_id, acteur, decision, utilisateur_id)
+  values (v_intervention, 'gouvernante', 'en_cours', '22222222-2222-2222-2222-222222222222');
+
+  assert (select statut from anomalies where id = v_anomalie) = 'en_cours',
+    'la décision EN COURS doit remettre l''anomalie en cours';
+end $$;
+
+-- ===========================================================================
+-- SCÉNARIO 7 — Ajustement de stock hors inventaire (casse, perte, erreur) et
+-- facture d'achat couvrant plusieurs produits d'une même livraison.
+-- ===========================================================================
+-- Un ajustement doit toujours porter un motif
+do $$
+begin
+  begin
+    insert into mouvements_stock (produit_id, type, quantite)
+    select id, 'regularisation', -1 from produits where code = 'FLX-40';
+    raise exception 'un ajustement sans motif aurait dû être refusé';
+  exception when check_violation then null;
+  end;
+end $$;
+
+-- Une casse se corrige au fil de l'eau, sans ouvrir d'inventaire
+do $$
+declare v_avant numeric; v_apres numeric;
+begin
+  select stock into v_avant from v_stock_produits where code = 'FLX-40';
+
+  insert into mouvements_stock (produit_id, type, motif, quantite, utilisateur_id, commentaire)
+  select id, 'regularisation', 'casse', -2, '11111111-1111-1111-1111-111111111111',
+         'Deux flexibles cassés au montage'
+  from produits where code = 'FLX-40';
+
+  select stock into v_apres from v_stock_produits where code = 'FLX-40';
+  assert v_apres = v_avant - 2, format('stock %s attendu %s', v_apres, v_avant - 2);
+end $$;
+
+-- Une facture d'achat couvre plusieurs produits d'une même livraison
+do $$
+declare v_facture uuid; v_nb int; v_total numeric;
+begin
+  insert into factures (type, fournisseur_id, reference, date_reference, montant_ht, statut)
+  values ('achat', '88888888-8888-8888-8888-888888888888', 'BL-2026-118',
+          date '2026-06-02', 96.00, 'rapprochee')
+  returning id into v_facture;
+
+  insert into mouvements_stock (produit_id, type, quantite, prix_unitaire, facture_id, commentaire)
+  select p.id, 'entree', q.qte, q.prix, v_facture, 'Livraison du 02/06'
+  from (values ('JNT-12', 20, 2.40), ('FLX-40', 5, 9.60)) as q (code, qte, prix)
+  join produits p on p.code = q.code;
+
+  select count(*), sum(quantite * prix_unitaire) into v_nb, v_total
+  from mouvements_stock where facture_id = v_facture;
+  assert v_nb = 2, format('%s lignes rattachées à la facture, attendu 2', v_nb);
+  assert v_total = 96.00, format('total des lignes = %s, attendu 96.00', v_total);
+end $$;
+
+-- Une facture ne peut pas être rattachée à une sortie de stock
+do $$
+begin
+  begin
+    insert into mouvements_stock (produit_id, type, quantite, facture_id)
+    select p.id, 'sortie', -1, f.id
+    from produits p, factures f where p.code = 'JNT-12' and f.type = 'achat' limit 1;
+    raise exception 'une sortie rattachée à une facture aurait dû être refusée';
+  exception when check_violation then null;
+  end;
+end $$;
+
+-- Une facture de prestation sans prestataire, ou d'achat sans fournisseur,
+-- est refusée
+do $$
+begin
+  begin
+    insert into factures (type, fournisseur_id, date_reference)
+    values ('prestation', '88888888-8888-8888-8888-888888888888', current_date);
+    raise exception 'une prestation facturée par un fournisseur aurait dû être refusée';
+  exception when check_violation then null;
+  end;
 end $$;
 
 \echo '✅ Tous les scénarios sont passés'

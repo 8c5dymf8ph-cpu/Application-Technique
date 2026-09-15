@@ -43,7 +43,47 @@ requête directe ne peut pas la contourner.
 Le catalogue définitif sera généré à partir des libellés réellement utilisés dans la colonne
 `AnomaliesCommentaires` de `TEST Tech 3`, une fois l'export CSV disponible.
 
-### 3.2 Cycle de vie
+### 3.2 Tournées — le technicien rend un lot, la gouvernante valide à l'unité
+
+C'est la mécanique de l'`InterventionID` actuel, reprise telle quelle.
+
+```
+  Technicien                              Gouvernante
+  ──────────                              ───────────
+  ouvre une tournée                       reçoit le lot
+  INT-MIGUEL-20260517-143012
+       │
+       ├── anomalie 32  + matériel        ├── 32 → FAIT        ┐  session 1
+       ├── anomalie 14  + matériel        └── 14 → FAIT        ┘
+       └── anomalie 41  + matériel        ┄┄ elle s'interrompt ┄┄
+       │                                  └── 41 → A FAIRE     ┐  session 2
+       ▼                                                       ┘
+  clôture → mail technicien                     ▼
+                                    plus rien en attente → mail récapitulatif
+```
+
+Le mail récapitulatif ne part **que** lorsque plus aucune anomalie de la tournée n'est en attente.
+La gouvernante peut donc valider en plusieurs fois sans déclencher d'envoi prématuré — c'est la vue
+`v_tournees.prete_pour_recap` qui le dit.
+
+### 3.3 Les trois décisions de la gouvernante
+
+Elle dispose de ses trois boutons actuels, et chacun a un effet distinct sur l'anomalie :
+
+| Bouton | Décision | L'anomalie devient |
+|---|---|---|
+| **FAIT** | `validee` | `validee` — dossier clos |
+| **EN COURS** | `en_cours` | `en_cours` — commencé, pas terminé |
+| **A FAIRE** | `a_refaire` | `a_faire` — repart chez le technicien |
+
+### 3.4 Commentaires : un fil, pas un champ texte
+
+L'application actuelle empile le texte au format `NOMDUTECH · dd/mm/yyyy\nContenu` dans une seule
+colonne, avec le risque d'écraser l'historique. Ici, **chaque commentaire est une ligne** portant son
+auteur, son rôle et sa date. La vue `v_fil_commentaires` reconstitue le fil chronologique — c'est ce
+qui alimente les blocs bleu (technicien) et orange (gouvernante) de l'affichage.
+
+### 3.5 Cycle de vie
 
 ```
    Déclaration                Prise en charge           Déclaration technicien        Décision gouvernante
@@ -61,13 +101,13 @@ par X le JJ/MM — **non validée par la gouvernante** le JJ/MM ».
 **Le matériel utilisé reste consommé même en cas de refus.** Un refus ne réintègre rien au stock : le
 technicien a bien utilisé la pièce. C'est vérifié par un test.
 
-### 3.3 Photos
+### 3.6 Photos
 
 Chaque anomalie peut porter des photos : au **constat** (par la gouvernante) et **après** intervention
 (par le technicien). Elles sont stockées dans Supabase Storage et consultables dans l'historique de la
 chambre.
 
-### 3.4 Coût d'une intervention
+### 3.7 Coût d'une intervention
 
 ```
 coût total = matériel (calculé)  +  prestataire (rapproché)  +  divers (saisi)
@@ -83,7 +123,7 @@ coût total = matériel (calculé)  +  prestataire (rapproché)  +  divers (sais
 zéro en silence : la vue expose `articles_sans_prix` et `cout_incomplet`, et l'interface affiche
 « 13,90 € + 1 article sans prix connu ». Un coût partiel annoncé comme tel vaut mieux qu'un faux total.
 
-### 3.5 Factures de prestataires
+### 3.8 Factures
 
 Un prestataire ne facture pas une anomalie, il facture **une journée d'intervention**. Le plombier passe
 le 17 mai 2026 et envoie une facture de 450 € pour les trois anomalies traitées ce jour-là.
@@ -91,6 +131,10 @@ le 17 mai 2026 et envoie une facture de 450 € pour les trois anomalies traité
 L'écran de rapprochement part de la facture (prestataire + date) et propose **toutes les interventions
 de ce prestataire à cette date**. On coche, et le montant se répartit à parts égales — ou on affecte un
 montant précis à chaque ligne si la facture le détaille.
+
+**Factures d'achat.** Une facture de fournisseur couvre souvent plusieurs produits d'une même
+livraison. Les entrées de stock concernées la référencent, et chaque entrée garde le **prix payé pour
+cette livraison-là** — distinct du prix de référence du produit, qui ne bouge pas à chaque commande.
 
 ## 4. Module Stock matériel
 
@@ -103,7 +147,12 @@ stock = Σ (entrées) − Σ (sorties) ± Σ (régularisations d'inventaire)
 - **Comptage physique initial** à la mise en service : c'est la première ligne de mouvement.
 - Toute sortie est rattachée à une intervention — on sait ce qui a été consommé où.
 - Un **inventaire** compare théorique et compté, et génère une **régularisation** signée et datée.
-  Le stock ne saute jamais sans trace.
+- Un **ajustement au fil de l'eau** (casse, perte, erreur de saisie) se fait sans ouvrir d'inventaire,
+  mais **doit porter un motif**. Le stock ne saute jamais sans trace ni sans raison.
+
+**Ce qui disparaît :** `Stock_Initial`, `StockActuel`, la colonne `EstHistorique` et le bouton
+« recalculer le stock ». Le stock étant la somme de son historique, il n'y a plus rien à recalculer ni
+à resynchroniser — et donc plus rien à désynchroniser.
 
 ## 5. Module Bouteilles Purezza
 
@@ -173,6 +222,21 @@ fournisseur n'est jamais dupliquée. C'est vérifié par un test.
 
 ## 7. Récapitulatifs et écran Documents
 
+### 7.1 Les envois automatiques à reproduire
+
+| Flux Power Automate actuel | Remplacé par | Déclenchement |
+|---|---|---|
+| `Testpowerapps` | Mail technicien | À la clôture d'une tournée |
+| `ValidationGouvernante_Mail` | Mail récapitulatif | Quand `v_tournees.prete_pour_recap` devient vrai |
+| `BouteillesPerte_Mail` | Alerte bouteille | À chaque incident signalé |
+| *(nouveau)* | Demande de devis | Quand un article passe sous son seuil — un mail par fournisseur |
+| *(nouveau)* | Récapitulatif périodique | Quotidien / hebdomadaire / mensuel selon abonnement |
+
+Chaque envoi est journalisé dans `emails_envoyes`, et les écrans de détail permettront de **renvoyer**
+un mail technicien ou un mail récapitulatif.
+
+### 7.2 Consultation
+
 **Récapitulatifs :** écran de consultation avec filtres (période, étage, chambre, intervenant, statut,
 validé ou non) **et** envoi automatique par email selon une fréquence paramétrable.
 
@@ -191,6 +255,12 @@ Contenu :
    prestataire ; comparaison avec les mois précédents ; pertes de bouteilles valorisées.
 3. **Devis et commandes** — historique des demandes de devis envoyées.
 4. **Fiches techniques** — notices et documentation des équipements, par emplacement.
+
+### 7.3 Historique
+
+Trois modes de lecture, comme dans la maquette préparée : **par intervention**, **par chambre**,
+**par produit**, avec les indicateurs en tête. La vue `v_recurrences_emplacement` signale les chambres
+à problème — 3 interventions ou plus sur six mois.
 
 ## 8. Architecture technique
 
@@ -223,7 +293,7 @@ dédiée protégée par sa propre règle — faisable, à décider si l'enjeu le
 | Liste SharePoint | Destination | Volume |
 |---|---|---|
 | `TEST Tech 3` | `anomalies` + `interventions` + `validations` + `catalogue_anomalies` | 739 lignes |
-| `RecapInterventions` | fusionné dans `interventions` (dédoublonné sur `SharePointId`) | — |
+| `RecapInterventions` | `interventions` + `validations` + `tournees` (regroupées par `InterventionID`) | — |
 | `Produits` | `produits` (+ photos vers Storage) | 34 |
 | `MouvementsStock` | `mouvements_stock` | — |
 | `Bouteilles_Purezza` | `incidents_bouteille` + `mouvements_bouteilles` (**recalculés**) | — |

@@ -36,9 +36,9 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'utilisateurs','etages','emplacements','types_intervention','prestataires',
-    'fournisseurs','catalogue_anomalies',
-    'anomalies','interventions','validations','photos_anomalie',
+    'utilisateurs','utilisateur_specialites','etages','emplacements',
+    'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
+    'anomalies','tournees','interventions','validations','photos_anomalie',
     'factures','facture_interventions',
     'produits','mouvements_stock','inventaires','inventaire_lignes_produit',
     'bouteille_types','dotations','incidents_bouteille','mouvements_bouteilles',
@@ -60,7 +60,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'interventions','photos_anomalie','factures','facture_interventions',
+    'tournees','interventions','photos_anomalie','factures','facture_interventions',
     'mouvements_stock','inventaires','inventaire_lignes_produit',
     'incidents_bouteille','mouvements_bouteilles','inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes'
@@ -112,8 +112,9 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'utilisateurs','etages','emplacements','types_intervention','prestataires',
-    'fournisseurs','catalogue_anomalies','produits','bouteille_types','dotations',
+    'utilisateurs','utilisateur_specialites','etages','emplacements',
+    'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
+    'produits','bouteille_types','dotations',
     'recap_abonnements','alertes_destinataires'
   ] loop
     execute format('grant insert, update, delete on %I to authenticated', t);
@@ -137,7 +138,8 @@ declare v text;
 begin
   foreach v in array array[
     'v_stock_produits','v_cout_prestataire','v_interventions_cout',
-    'v_recap_interventions','v_factures_rapprochement','v_bouteilles_positions',
+    'v_recap_interventions','v_tournees','v_fil_commentaires',
+    'v_factures_rapprochement','v_recurrences_emplacement','v_bouteilles_positions',
     'v_stock_bouteilles','v_bouteilles_par_emplacement','v_incidents_bouteille',
     'v_reappro_necessaire'
   ] loop

@@ -16,6 +16,7 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `utilisateurs` | Personnel. `auth_id` nul = personne sélectionnable sans droit de connexion |
 | `etages`, `emplacements` | RDC → 5ème, sous-sol, extérieurs. `dote_bouteilles` marque les 37 chambres |
 | `types_intervention` | Plomberie, électricité… |
+| `utilisateur_specialites` | Aucune ligne = polyvalent ; sinon l'intervenant ne voit que ces types |
 | `prestataires` | Entreprises extérieures qui facturent une journée |
 | `fournisseurs` | Fournisseurs de consommables — plusieurs produits peuvent en partager un |
 | `catalogue_anomalies` | Libellés déclarables + mots-clés de recherche |
@@ -24,16 +25,17 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | Table | Rôle |
 |---|---|
 | `anomalies` | Le problème constaté. `catalogue_id` obligatoire sauf pour un admin. `sharepoint_id` garde le lien avec la ligne d'origine |
-| `interventions` | Le traitement d'une anomalie, par un technicien interne ou un prestataire, à une date |
+| `tournees` | Le lot d'anomalies traité en une fois — l'ancien `InterventionID` |
+| `interventions` | Le traitement d'une anomalie, par un technicien interne ou un prestataire |
 | `validations` | **Une ligne par avis**, technicien et gouvernante. Jamais écrasées, ni modifiables |
 | `photos_anomalie` | Photos de constat et d'après-intervention |
-| `factures`, `facture_interventions` | Facture d'une journée de prestataire, rapprochée de N interventions |
+| `factures`, `facture_interventions` | Prestation (une journée de prestataire, rapprochée de N interventions) ou achat (une livraison, rattachée à N entrées de stock) |
 
 ### Stock matériel
 | Table | Rôle |
 |---|---|
 | `produits` | Articles. `prix_unitaire` **nullable** = prix inconnu |
-| `mouvements_stock` | Quantité **signée** : `+` entrée, `−` sortie, libre pour une régularisation |
+| `mouvements_stock` | Quantité **signée** : `+` entrée, `−` sortie, libre pour un ajustement. Un ajustement porte un `motif` ; une entrée peut porter son `prix_unitaire` payé et sa `facture_id` |
 | `inventaires`, `inventaire_lignes_produit` | Comptage physique ; la validation écrit les régularisations |
 
 ### Bouteilles Purezza
@@ -56,10 +58,13 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 
 | Vue | Donne |
 |---|---|
-| `v_stock_produits` | Stock, valeur, `prix_inconnu`, dépassement de seuil |
+| `v_stock_produits` | Entrées, sorties, ajustements, stock, valeur, `prix_inconnu`, dépassement de seuil — c'est aussi la fiche produit |
 | `v_interventions_cout` | matériel + prestataire + divers, `articles_sans_prix`, `cout_incomplet` |
 | `v_cout_prestataire` | Part de facture revenant à chaque intervention |
-| `v_recap_interventions` | Les deux avis côte à côte + `refusee_par_gouvernante` |
+| `v_recap_interventions` | Les deux avis côte à côte, `non_validee_par_gouvernante`, `en_attente_gouvernante` |
+| `v_tournees` | État d'un lot : en attente, validées, à refaire, coût, `prete_pour_recap` |
+| `v_fil_commentaires` | Fil chronologique des commentaires d'une anomalie, avec auteur et rôle |
+| `v_recurrences_emplacement` | Chambres à problème — `recurrent` à 3 interventions sur 6 mois |
 | `v_factures_rapprochement` | Interventions candidates pour une facture (même prestataire, même date) |
 | `v_stock_bouteilles` | Réserve / chambre / chez clients / parc total / sous seuil |
 | `v_bouteilles_par_emplacement` | Théorique vs réel, chambre par chambre |
@@ -76,6 +81,7 @@ pas servir de contournement aux règles de sécurité.
 | `fn_rechercher_catalogue(terme)` | Recherche du catalogue par libellé ou mot-clé. Ne lève jamais d'erreur de syntaxe quel que soit le texte saisi |
 | `fn_redoter_emplacement(...)` | Re-dote une chambre depuis la réserve, hors incident |
 | `fn_preparer_demandes_devis(...)` | Prépare **une** demande par fournisseur, sans dupliquer une demande en cours |
+| `fn_creer_tournee(...)` | Ouvre une tournée et génère sa référence `INT-<NOM>-<horodatage>-<aléa>` |
 
 ## Pourquoi un registre de déplacements pour les bouteilles
 
@@ -99,3 +105,16 @@ bouteille *réellement* perdue.
 - Une bouteille cassée ne peut pas être « restituée ».
 - Un mouvement de bouteille doit être un déplacement réel et cohérent avec son type.
 - Les validations et le journal d'audit ne sont ni modifiables ni supprimables depuis l'application.
+- Un ajustement de stock porte toujours un motif ; seul le motif « inventaire » exige un inventaire.
+- Une facture ne se rattache qu'à une entrée de stock, jamais à une sortie.
+- Une facture de prestation vient d'un prestataire, une facture d'achat d'un fournisseur.
+
+## Ce qui disparaît de l'ancien modèle
+
+| Ancien mécanisme | Pourquoi il n'existe plus |
+|---|---|
+| `Stock_Initial` + `StockActuel` | Le stock est la somme de ses mouvements. Deux sources de vérité, c'était la garantie de la dérive |
+| `EstHistorique` | Servait à repartir d'un comptage physique sans perdre l'historique. Un ajustement de motif `inventaire` fait la même chose, en restant lisible |
+| Bouton « recalculer le stock » | Il n'y a rien à recalculer |
+| `RecapInterventions` (buffer) | Les validations *sont* le registre ; plus besoin d'une liste tampon entre technicien et gouvernante |
+| Commentaires empilés dans un champ | Une ligne par avis, avec auteur et date |
