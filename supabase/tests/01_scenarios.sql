@@ -171,7 +171,7 @@ insert into produits (code, designation, prix_unitaire, seuil_alerte, fournisseu
 insert into mouvements_stock (produit_id, type, quantite, commentaire)
 select id, 'entree', 20, 'Comptage physique initial' from produits;
 
-insert into anomalies (id, emplacement_id, description, declare_par)
+insert into anomalies (id, emplacement_id, description, constate_par)
 select '33333333-3333-3333-3333-333333333333', id, 'Fuite lavabo',
        '22222222-2222-2222-2222-222222222222'
 from emplacements where code = '32';
@@ -259,7 +259,7 @@ end $$;
 -- SCÉNARIO 3 — Facture de prestataire : une facture couvre TOUTES les
 -- interventions faites par ce prestataire ce jour-là.
 -- ===========================================================================
-insert into anomalies (id, emplacement_id, description, declare_par)
+insert into anomalies (id, emplacement_id, description, constate_par)
 select ('55555555-0000-0000-0000-00000000000' || n)::uuid, e.id,
        'Anomalie prestataire ' || n, '22222222-2222-2222-2222-222222222222'
 from generate_series(1, 3) n
@@ -395,7 +395,7 @@ begin
 
   -- Trois anomalies traitées dans la même tournée
   for n in 1..3 loop
-    insert into anomalies (emplacement_id, description, declare_par)
+    insert into anomalies (emplacement_id, description, constate_par)
     select id, 'Anomalie tournée ' || n, '22222222-2222-2222-2222-222222222222'
     from emplacements where code = '55'
     returning id into v_anomalie;
@@ -444,7 +444,7 @@ end $$;
 do $$
 declare v_anomalie uuid; v_intervention uuid;
 begin
-  insert into anomalies (emplacement_id, description, declare_par)
+  insert into anomalies (emplacement_id, description, constate_par)
   select id, 'Anomalie en cours', '22222222-2222-2222-2222-222222222222'
   from emplacements where code = '56' returning id into v_anomalie;
 

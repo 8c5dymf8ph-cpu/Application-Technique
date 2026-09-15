@@ -11,7 +11,9 @@ create extension if not exists pg_trgm;
 -- -----------------------------------------------------------------------------
 create type role_utilisateur          as enum ('technicien', 'gouvernante', 'admin', 'lecture');
 create type type_emplacement          as enum ('chambre', 'commun', 'technique', 'exterieur');
-create type statut_anomalie           as enum ('a_faire', 'en_cours', 'attente_validation', 'validee', 'annulee');
+-- « a_acheter » existe dans les données d'origine : une ligne qui attend un
+-- achat avant de pouvoir être traitée.
+create type statut_anomalie           as enum ('a_faire', 'en_cours', 'attente_validation', 'validee', 'a_acheter', 'annulee');
 create type priorite_anomalie         as enum ('basse', 'normale', 'haute', 'urgente');
 create type acteur_validation         as enum ('technicien', 'gouvernante');
 -- La gouvernante dispose de trois issues, comme ses trois boutons actuels :
@@ -123,13 +125,16 @@ create table fournisseurs (
 -- (règle appliquée par la sécurité, migration 0003).
 -- -----------------------------------------------------------------------------
 create table catalogue_anomalies (
-  id         uuid primary key default gen_random_uuid(),
-  libelle    text not null,
-  mots_cles  text[] not null default '{}',
-  type_id    uuid references types_intervention (id),
-  actif      boolean not null default true,
-  cree_par   uuid references utilisateurs (id),
-  cree_le    timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  libelle     text not null unique,
+  mots_cles   text[] not null default '{}',
+  type_id     uuid references types_intervention (id),
+  -- Nombre de fois que ce libellé a été utilisé : sert à remonter les plus
+  -- courants en tête de la recherche, sur un téléphone où l'écran est étroit.
+  occurrences int not null default 0,
+  actif       boolean not null default true,
+  cree_par    uuid references utilisateurs (id),
+  cree_le     timestamptz not null default now()
 );
 
 -- Deux index complémentaires : recherche approximative sur le libellé, et
@@ -152,7 +157,10 @@ create table anomalies (
   commentaire     text,
   statut          statut_anomalie   not null default 'a_faire',
   priorite        priorite_anomalie not null default 'normale',
-  declare_par     uuid references utilisateurs (id),
+  -- Trois personnes distinctes dans les données d'origine : celle qui constate,
+  -- celle qui saisit, et plus tard celle qui vérifie (voir `validations`).
+  constate_par    uuid references utilisateurs (id),
+  saisie_par      uuid references utilisateurs (id),
   declare_le      timestamptz not null default now(),
   cloture_le      timestamptz,
   -- Traçabilité de la reprise SharePoint (null pour les anomalies créées dans l'app)

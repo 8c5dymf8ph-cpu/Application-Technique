@@ -91,6 +91,8 @@ select
   ti.nom                      as type_intervention,
   a.description,
   a.statut                    as statut_anomalie,
+  uc.nom                      as constate_par,
+  us.nom                      as saisie_par,
   i.date_intervention,
   coalesce(ut.nom, pr.nom)    as intervenant,
   pr.nom                      as prestataire,
@@ -119,6 +121,8 @@ join emplacements e        on e.id = a.emplacement_id
 join etages et             on et.id = e.etage_id
 left join tournees t       on t.id = i.tournee_id
 left join types_intervention ti on ti.id = a.type_id
+left join utilisateurs uc  on uc.id = a.constate_par
+left join utilisateurs us  on us.id = a.saisie_par
 left join utilisateurs ut  on ut.id = i.technicien_id
 left join prestataires pr  on pr.id = i.prestataire_id
 left join v_interventions_cout c on c.intervention_id = i.id
@@ -176,7 +180,7 @@ select
   u.nom               as auteur,
   a.commentaire       as texte
 from anomalies a
-left join utilisateurs u on u.id = a.declare_par
+left join utilisateurs u on u.id = coalesce(a.constate_par, a.saisie_par)
 where coalesce(btrim(a.commentaire), '') <> ''
 union all
 select
@@ -620,5 +624,7 @@ language sql stable as $$
         where m ilike btrim(p_terme) || '%'
       )
     )
-  order by c.libelle;
+  -- Les libellés les plus utilisés remontent en tête : sur un téléphone, la
+  -- bonne réponse doit être dans les premiers résultats.
+  order by c.occurrences desc, c.libelle;
 $$;

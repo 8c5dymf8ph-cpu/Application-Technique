@@ -15,57 +15,99 @@ insert into etages (code, nom, ordre) values
   ('Autres',    'Extérieurs',      7)
 on conflict (code) do nothing;
 
--- Emplacements. `type` = 'chambre' pour les codes numériques (ils reçoivent la
--- dotation Purezza), 'commun' / 'technique' / 'exterieur' pour le reste.
-with source (etage, code, type) as (values
-  ('RDC','01','chambre'), ('RDC','02','chambre'), ('RDC','03','chambre'),
-  ('RDC','PDJ','commun'), ('RDC','Réception','commun'), ('RDC','Lobby','commun'),
-  ('RDC','Entrée','commun'), ('RDC','Cuisine','technique'), ('RDC','Bagagerie','technique'),
-
-  ('1er','11','chambre'), ('1er','12','chambre'), ('1er','14','chambre'),
-  ('1er','15','chambre'), ('1er','16','chambre'), ('1er','18','chambre'),
-
-  ('2eme','21','chambre'), ('2eme','22','chambre'), ('2eme','24','chambre'),
-  ('2eme','25','chambre'), ('2eme','26','chambre'), ('2eme','27','chambre'), ('2eme','28','chambre'),
-
-  ('3eme','31','chambre'), ('3eme','32','chambre'), ('3eme','34','chambre'),
-  ('3eme','35','chambre'), ('3eme','36','chambre'), ('3eme','37','chambre'), ('3eme','38','chambre'),
-
-  ('4eme','41','chambre'), ('4eme','42','chambre'), ('4eme','44','chambre'),
-  ('4eme','45','chambre'), ('4eme','46','chambre'), ('4eme','47','chambre'), ('4eme','48','chambre'),
-
-  ('5eme','51','chambre'), ('5eme','52','chambre'), ('5eme','54','chambre'),
-  ('5eme','55','chambre'), ('5eme','56','chambre'), ('5eme','57','chambre'), ('5eme','58','chambre'),
-
-  ('Sous-Sol','WC Clients','commun'),   ('Sous-Sol','WC Femmes','commun'),
-  ('Sous-Sol','Chaufferie','technique'), ('Sous-Sol','Local TGBT','technique'),
-  ('Sous-Sol','Local Technique','technique'), ('Sous-Sol','Lingerie','technique'),
-  ('Sous-Sol','Salle de sport','commun'),
-
-  ('Autres','Toit','exterieur'), ('Autres','Cour ext.','exterieur')
+-- Emplacements : référentiel canonique reconstruit à partir des 86 orthographes
+-- relevées dans l'export de « TEST Tech 3 ». La table de correspondance entre
+-- ces orthographes et ces codes vit dans outils/referentiel_lieux.py.
+-- Les chambres (37) reçoivent la dotation Purezza, rien d'autre.
+with source (etage, code, nom, type) as (values
+  ('RDC','01','Chambre 01','chambre'),
+  ('RDC','02','Chambre 02','chambre'),
+  ('RDC','03','Chambre 03','chambre'),
+  ('RDC','Bagagerie','Bagagerie','technique'),
+  ('RDC','Bureau','Bureau','technique'),
+  ('RDC','Cuisine','Cuisine','technique'),
+  ('RDC','Entree','Entrée','commun'),
+  ('RDC','Escalier-RDC','Escalier de secours RDC','commun'),
+  ('RDC','Lobby','Lobby','commun'),
+  ('RDC','PDJ','Salle petit-déjeuner','commun'),
+  ('RDC','Reception','Réception','commun'),
+  ('1er','11','Chambre 11','chambre'),
+  ('1er','12','Chambre 12','chambre'),
+  ('1er','14','Chambre 14','chambre'),
+  ('1er','15','Chambre 15','chambre'),
+  ('1er','16','Chambre 16','chambre'),
+  ('1er','18','Chambre 18','chambre'),
+  ('1er','Escalier-1','Escalier du 1er','commun'),
+  ('1er','Etage-1','1er étage — général','commun'),
+  ('1er','Palier-1','Palier 1er','commun'),
+  ('2eme','21','Chambre 21','chambre'),
+  ('2eme','22','Chambre 22','chambre'),
+  ('2eme','24','Chambre 24','chambre'),
+  ('2eme','25','Chambre 25','chambre'),
+  ('2eme','26','Chambre 26','chambre'),
+  ('2eme','27','Chambre 27','chambre'),
+  ('2eme','28','Chambre 28','chambre'),
+  ('2eme','Etage-2','2ème étage — général','commun'),
+  ('3eme','31','Chambre 31','chambre'),
+  ('3eme','32','Chambre 32','chambre'),
+  ('3eme','34','Chambre 34','chambre'),
+  ('3eme','35','Chambre 35','chambre'),
+  ('3eme','36','Chambre 36','chambre'),
+  ('3eme','37','Chambre 37','chambre'),
+  ('3eme','38','Chambre 38','chambre'),
+  ('3eme','Etage-3','3ème étage — général','commun'),
+  ('3eme','Palier-3','Palier 3ème','commun'),
+  ('4eme','41','Chambre 41','chambre'),
+  ('4eme','42','Chambre 42','chambre'),
+  ('4eme','44','Chambre 44','chambre'),
+  ('4eme','45','Chambre 45','chambre'),
+  ('4eme','46','Chambre 46','chambre'),
+  ('4eme','47','Chambre 47','chambre'),
+  ('4eme','48','Chambre 48','chambre'),
+  ('4eme','Escalier-4','Escalier du 4ème','commun'),
+  ('4eme','Etage-4','4ème étage — général','commun'),
+  ('5eme','51','Chambre 51','chambre'),
+  ('5eme','52','Chambre 52','chambre'),
+  ('5eme','54','Chambre 54','chambre'),
+  ('5eme','55','Chambre 55','chambre'),
+  ('5eme','56','Chambre 56','chambre'),
+  ('5eme','57','Chambre 57','chambre'),
+  ('5eme','58','Chambre 58','chambre'),
+  ('5eme','Escalier-5','Escalier du 5ème','commun'),
+  ('5eme','Etage-5','5ème étage — général','commun'),
+  ('5eme','Office-5','Office 5ème étage','technique'),
+  ('5eme','Palier-5','Palier 5ème','commun'),
+  ('Sous-Sol','Chaufferie','Chaufferie','technique'),
+  ('Sous-Sol','Escalier-SS','Escalier du sous-sol','commun'),
+  ('Sous-Sol','Lingerie','Lingerie','technique'),
+  ('Sous-Sol','Local-TGBT','Local TGBT','technique'),
+  ('Sous-Sol','Local-Technique','Local technique','technique'),
+  ('Sous-Sol','Salle-Repos','Salle de repos','commun'),
+  ('Sous-Sol','Salle-Sport','Salle de sport','commun'),
+  ('Sous-Sol','Sous-Sol','Sous-sol — général','commun'),
+  ('Sous-Sol','WC-Clients','WC clients','commun'),
+  ('Sous-Sol','WC-Femmes','WC femmes','commun'),
+  ('Sous-Sol','WC-Hommes','WC hommes','commun'),
+  ('Autres','Ascenseur','Ascenseur','technique'),
+  ('Autres','Communs','Parties communes','commun'),
+  ('Autres','Cour','Cour intérieure','exterieur'),
+  ('Autres','Exterieur','Extérieur de l''hôtel','exterieur'),
+  ('Autres','General','Général / non localisé','commun'),
+  ('Autres','Toit','Toit','exterieur')
 )
 insert into emplacements (code, nom, etage_id, type, dote_bouteilles, ordre)
-select
-  s.code,
-  s.code,
-  e.id,
-  s.type::type_emplacement,
-  s.type = 'chambre',
-  row_number() over (partition by s.etage order by s.code)
+select s.code, s.nom, e.id, s.type::type_emplacement, s.type = 'chambre',
+       row_number() over (partition by s.etage order by s.code)
 from source s
 join etages e on e.code = s.etage
 on conflict (code) do nothing;
 
+-- Les quatre types réellement utilisés dans la liste d'origine.
 insert into types_intervention (code, nom) values
-  ('plomberie',    'Plomberie'),
-  ('electricite',  'Électricité'),
-  ('menuiserie',   'Menuiserie'),
-  ('peinture',     'Peinture'),
-  ('mobilier',     'Mobilier'),
-  ('climatisation','Climatisation / Chauffage'),
-  ('serrurerie',   'Serrurerie'),
-  ('multimedia',   'TV / Multimédia'),
-  ('autre',        'Autre')
+  ('TECHNIQUE',   'Technique'),
+  ('ELECTRIQUE',  'Électrique'),
+  ('PLOMBERIE',   'Plomberie'),
+  ('ACHATS',      'Achats')
 on conflict (code) do nothing;
 
 -- Fournisseur des bouteilles. Les autres fournisseurs seront créés à l'import
