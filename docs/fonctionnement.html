@@ -1,0 +1,492 @@
+<title>Le Parisianer, mode d'emploi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+  :root {
+    --ground:#F4F2F7; --surface:#FFFFFF; --surface-2:#FAF9FC;
+    --ink:#1B1930; --ink-soft:#4F4B6B; --muted:#8E8AA3; --line:#E7E4EF;
+    --plum:#453A6E; --plum-soft:#EDE9F5; --plum-ink:#35305A;
+    --amber:#A8641F; --amber-soft:#F6EEE3;
+    --blue:#3A6499;  --blue-soft:#E6EDF6;
+    --green:#357051; --green-soft:#E3EFE8;
+    --red:#9E3538;   --red-soft:#F7E6E7;
+    --shadow:0 1px 2px rgba(27,25,48,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#141320; --surface:#1D1B2A; --surface-2:#232134;
+      --ink:#EDEBF3; --ink-soft:#B6B2C8; --muted:#847F98; --line:#2E2B40;
+      --plum:#AFA2E0; --plum-soft:#282340; --plum-ink:#CFC7EE;
+      --amber:#D9A05E; --amber-soft:#332618;
+      --blue:#8DB0DC;  --blue-soft:#1C2739;
+      --green:#77BA95; --green-soft:#17291F;
+      --red:#DE8C8D;   --red-soft:#31191C;
+      --shadow:0 1px 2px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#141320; --surface:#1D1B2A; --surface-2:#232134;
+    --ink:#EDEBF3; --ink-soft:#B6B2C8; --muted:#847F98; --line:#2E2B40;
+    --plum:#AFA2E0; --plum-soft:#282340; --plum-ink:#CFC7EE;
+    --amber:#D9A05E; --amber-soft:#332618;
+    --blue:#8DB0DC;  --blue-soft:#1C2739;
+    --green:#77BA95; --green-soft:#17291F;
+    --red:#DE8C8D;   --red-soft:#31191C;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: 'Source Serif 4', Georgia, serif; font-size: 17px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding-inline: 20px; padding-block: 56px 88px; }
+
+  h1 { font-family:'Playfair Display',Georgia,serif; font-size:clamp(34px,7vw,50px); font-weight:700;
+       line-height:1.08; letter-spacing:-.015em; margin:0; text-wrap:balance; }
+  h2 { font-family:'Playfair Display',Georgia,serif; font-size:clamp(23px,4.5vw,30px); font-weight:600;
+       line-height:1.2; margin:0; text-wrap:balance; }
+  h3 { font-family:'Playfair Display',Georgia,serif; font-size:19px; font-weight:600; margin:0; }
+  p  { margin:0; text-wrap:pretty; }
+  strong { font-weight:600; }
+  code { font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:.88em;
+         background:var(--plum-soft); color:var(--plum-ink); padding:.1em .38em; border-radius:4px; }
+
+  .eyebrow { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .lede { font-size:20px; line-height:1.5; color:var(--ink-soft); }
+  .note { font-size:15px; color:var(--muted); }
+
+  section { display:flex; flex-direction:column; gap:20px; margin-block-start:64px; }
+  .stack { display:flex; flex-direction:column; gap:14px; }
+  .head  { display:flex; flex-direction:column; gap:7px; }
+
+  hr { border:0; border-top:1px solid var(--line); margin:0; }
+
+  /* Rôles */
+  .roles { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px; }
+  .role { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+          padding:18px; display:flex; flex-direction:column; gap:9px; box-shadow:var(--shadow); }
+  .role h3 { color:var(--plum); }
+  .role ul { margin:0; padding-inline-start:18px; display:flex; flex-direction:column; gap:5px;
+             font-size:15.5px; color:var(--ink-soft); }
+
+  /* Étapes numérotées : une vraie séquence */
+  .steps { display:flex; flex-direction:column; gap:2px; counter-reset:s; }
+  .step { display:grid; grid-template-columns:44px 1fr; gap:14px; padding:15px 0;
+          border-top:1px solid var(--line); align-items:start; }
+  .step:last-child { border-bottom:1px solid var(--line); }
+  .step::before { counter-increment:s; content:counter(s,decimal-leading-zero);
+                  font-family:'Playfair Display',Georgia,serif; font-size:19px; font-weight:600;
+                  color:var(--plum); line-height:1.35; }
+  .step-b { display:flex; flex-direction:column; gap:4px; }
+  .who { font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); }
+
+  /* Tableaux */
+  .scroll { overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px; }
+  th { text-align:left; font-weight:600; font-size:11px; letter-spacing:.11em; text-transform:uppercase;
+       color:var(--muted); padding:12px 15px; background:var(--surface-2);
+       border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:12px 15px; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-soft); }
+  tr:last-child td { border-bottom:0; }
+  td:first-child { color:var(--ink); }
+  .num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* Compteurs de bouteilles */
+  .counters { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+  .counter { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+             padding:15px 16px; display:flex; flex-direction:column; gap:3px; }
+  .counter.total { background:var(--plum-soft); border-color:transparent; }
+  .counter b { font-family:'Playfair Display',Georgia,serif; font-size:29px; font-weight:600;
+               line-height:1; font-variant-numeric:tabular-nums; }
+  .counter span { font-size:13.5px; color:var(--muted); }
+
+  .delta-none { color:var(--muted); }
+  .delta-down { color:var(--red); font-weight:600; }
+  .delta-up   { color:var(--green); font-weight:600; }
+
+  /* Encarts */
+  .callout { border-radius:12px; padding:17px 19px; display:flex; flex-direction:column; gap:7px; }
+  .callout.key  { background:var(--plum-soft);  color:var(--plum-ink); }
+  .callout.warn { background:var(--amber-soft); color:var(--amber); }
+  .callout .t { font-family:'Playfair Display',Georgia,serif; font-size:17px; font-weight:600; }
+  .callout p { font-size:15.5px; }
+
+  /* Briques techniques */
+  .bricks { display:flex; flex-direction:column; }
+  .brick { display:grid; grid-template-columns:1fr auto; gap:6px 18px; padding:16px 0;
+           border-top:1px solid var(--line); align-items:baseline; }
+  .brick:last-child { border-bottom:1px solid var(--line); }
+  .brick .n { font-family:'Playfair Display',Georgia,serif; font-size:18px; font-weight:600; }
+  .brick .c { font-size:13.5px; color:var(--muted); white-space:nowrap;
+              font-variant-numeric:tabular-nums; }
+  .brick .d { grid-column:1/-1; font-size:15.5px; color:var(--ink-soft); }
+
+  /* Reste à faire */
+  .todo { display:flex; flex-direction:column; gap:10px; }
+  .todo-item { display:grid; grid-template-columns:auto 1fr; gap:13px; align-items:start;
+               background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:15px 16px; }
+  .pill { font-size:11px; letter-spacing:.08em; text-transform:uppercase; padding:4px 9px;
+          border-radius:6px; white-space:nowrap; font-weight:600; }
+  .pill.block { background:var(--red-soft); color:var(--red); }
+  .pill.soon  { background:var(--amber-soft); color:var(--amber); }
+  .pill.later { background:var(--surface-2); color:var(--muted); }
+
+  @media (max-width:430px) {
+    body { font-size:16px; }
+    .step { grid-template-columns:32px 1fr; gap:11px; }
+    .brick { grid-template-columns:1fr; }
+    .brick .c { white-space:normal; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="stack" style="gap:18px">
+    <div class="eyebrow">Hôtel Parisianer — refonte de l'application technique</div>
+    <h1>Le Parisianer,<br>mode d'emploi</h1>
+    <p class="lede">Ce que fait l'application, qui s'en sert et pour quoi, ce qui tourne
+      derrière, et ce qu'il reste à préparer avant de basculer.</p>
+  </header>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">En une phrase</div>
+      <h2>Une anomalie est signalée, réparée, vérifiée — et tout ce qu'elle a coûté reste attaché à elle</h2>
+    </div>
+    <p>C'est la seule chose que l'application fait vraiment. Le stock de matériel, le parc de
+      bouteilles et les mails automatiques ne sont que des conséquences de ce fil-là. Si ce fil est
+      solide, le reste tient tout seul.</p>
+    <div class="callout key">
+      <div class="t">La règle qui gouverne tout le reste</div>
+      <p>Rien de ce qui se calcule n'est stocké. Le stock d'un produit n'est pas un nombre que
+        l'application met à jour : c'est la somme de ses mouvements, recalculée à chaque affichage.
+        Un chiffre ne peut donc jamais s'écarter de ce qui l'explique — et il n'y a plus rien à
+        « recalculer ».</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Les personnes</div>
+      <h2>Qui fait quoi</h2>
+    </div>
+    <div class="roles">
+      <div class="role">
+        <h3>Victoria</h3>
+        <div class="who">Gouvernante</div>
+        <ul>
+          <li>Déclare les anomalies depuis son téléphone</li>
+          <li>Valide ou refuse ce que le technicien a fait</li>
+          <li>Signale les bouteilles manquantes</li>
+          <li>Fait les inventaires</li>
+        </ul>
+      </div>
+      <div class="role">
+        <h3>Serafino, Miguel</h3>
+        <div class="who">Techniciens</div>
+        <ul>
+          <li>Voient leurs anomalies, groupées par chambre</li>
+          <li>Cochent ce qu'ils ont fait</li>
+          <li>Disent quel matériel ils ont pris</li>
+          <li>Ne voient aucun prix</li>
+        </ul>
+      </div>
+      <div class="role">
+        <h3>Toi</h3>
+        <div class="who">Administrateur</div>
+        <ul>
+          <li>Tiens le catalogue d'anomalies</li>
+          <li>Saisis les factures des prestataires</li>
+          <li>Paramètres les destinataires des mails</li>
+          <li>Vois tous les coûts</li>
+        </ul>
+      </div>
+      <div class="role">
+        <h3>La direction</h3>
+        <div class="who">Lecture seule</div>
+        <ul>
+          <li>Consulte les récapitulatifs</li>
+          <li>Voit les coûts par mois, par étage, par prestataire</li>
+          <li>N'écrit rien</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">ALAIN, EcoFlair, AVIR, Kone, TELEC, EUROPROH, MR NEGRONI, Hedi et Juan sont des
+      intervenants extérieurs : ils apparaissent dans l'application mais ne s'y connectent pas.
+      ALAIN a une particularité — sa section ne montre que l'électrique, soit 16 anomalies au lieu
+      des 120 qu'un polyvalent voit.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Le fil principal</div>
+      <h2>Une anomalie, du constat à la clôture</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-b">
+        <div class="who">Victoria · téléphone</div>
+        <p>Elle choisit la <strong>chambre</strong>, puis cherche l'anomalie <strong>par mots-clés</strong>
+          dans le catalogue : « liseuse » lui propose « serrer le bras liseuse côté droit », vue 16 fois.
+          Elle ne tape jamais de texte libre — le catalogue compte 268 libellés tirés de vos 759
+          anomalies passées.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <div class="who">Serafino · téléphone</div>
+        <p>Il ouvre sa <strong>tournée</strong> et voit les anomalies groupées par chambre. Il coche
+          celles qu'il a faites et répond, <strong>pour chacune</strong>, s'il a pris du matériel en
+          réserve. « Aucun matériel » est une réponse, pas une case laissée vide.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <div class="who">Automatique</div>
+        <p>Chaque article coché sort du stock, rattaché à cette anomalie précise. Le coût matériel
+          se calcule tout seul. Le technicien, lui, n'a vu aucun prix.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <div class="who">Serafino · fin de tournée</div>
+        <p>Il clôt son lot. Un <strong>mail part vers Victoria</strong> avec le détail de ce qu'il
+          a traité.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <div class="who">Victoria · à son rythme</div>
+        <p>Elle reprend les anomalies <strong>une par une</strong>, avec trois réponses possibles :
+          <strong>Fait</strong>, <strong>En cours</strong>, ou <strong>À refaire</strong> — et un
+          commentaire si elle veut. Elle peut s'arrêter et reprendre le lendemain.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <div class="who">Automatique</div>
+        <p>Quand elle a traité <strong>la dernière anomalie du lot</strong>, et seulement à ce
+          moment-là, le <strong>récapitulatif part par mail</strong>. Une tournée du 12 mars validée
+          le 19 déclenche le mail le 19.</p>
+      </div></div>
+    </div>
+    <div class="callout key">
+      <div class="t">Les deux avis sont conservés, toujours</div>
+      <p>Si Serafino a déclaré « fait » et que Victoria refuse, l'anomalie repart en « à faire » —
+        mais ce qu'il avait déclaré n'est jamais effacé. Le récapitulatif affiche les deux, côte à
+        côte, avec leurs dates. Et le matériel qu'il a utilisé reste sorti du stock : il l'a bien
+        consommé, même si le travail est à reprendre.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Le matériel</div>
+      <h2>Pourquoi le stock ne peut plus dériver</h2>
+    </div>
+    <p>Aujourd'hui, chaque produit porte un <code>Stock_Initial</code> et un <code>StockActuel</code>.
+      Dans l'export que tu m'as envoyé, <strong>249 mouvements sur 261 sont marqués « historique »</strong>,
+      donc exclus du calcul — et <code>StockActuel</code> est vide sur les 36 produits. Le chiffre
+      affiché est un stock de départ que 95 % de l'historique ne corrige jamais. C'est toute
+      l'explication.</p>
+    <p>Dans le nouveau modèle, ces trois colonnes n'existent plus :</p>
+    <div class="scroll"><table>
+      <tr><th>Ce qui entre</th><th>Ce qui sort</th><th>Ce qui recale</th><th class="num">Stock</th></tr>
+      <tr><td>Livraisons</td><td>Sorties sur intervention</td><td>Ajustements motivés</td>
+          <td class="num"><strong>la somme des trois</strong></td></tr>
+    </table></div>
+    <p>Un ajustement porte <strong>toujours un motif</strong> — inventaire, casse, perte, erreur de
+      saisie — avec sa date et son auteur. Un écart d'inventaire ne corrige pas le stock en douce :
+      il crée une ligne qu'on peut relire six mois plus tard.</p>
+    <p class="note">Les entrées gardent en plus le prix payé <em>pour cette livraison-là</em>, qui
+      n'est pas le prix de référence du produit : une facture de fournisseur peut couvrir plusieurs
+      articles d'un coup, et chacun garde son prix du jour.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Purezza</div>
+      <h2>Les bouteilles ne se consomment pas, elles circulent</h2>
+    </div>
+    <p>C'est ce que l'ancien calcul ne savait pas dire. Une bouteille emportée par un client
+      <strong>n'est pas perdue</strong> : elle peut revenir. Il faut donc suivre quatre positions,
+      et non un compteur unique.</p>
+    <div class="counters">
+      <div class="counter"><b>62</b><span>En réserve</span></div>
+      <div class="counter"><b>37</b><span>En chambre</span></div>
+      <div class="counter"><b>1</b><span>Chez les clients</span></div>
+      <div class="counter total"><b>100</b><span>Parc total</span></div>
+    </div>
+    <p>Chaque événement est un <strong>déplacement</strong> d'une position vers une autre. Seule une
+      sortie définitive fait baisser le parc :</p>
+    <div class="scroll"><table>
+      <tr><th>Ce qui se passe</th><th>Déplacement</th><th class="num">Parc</th></tr>
+      <tr><td>Une livraison arrive</td><td>hors parc → réserve</td><td class="num delta-up">+ 1</td></tr>
+      <tr><td>On dote une chambre</td><td>réserve → chambre</td><td class="num delta-none">inchangé</td></tr>
+      <tr><td>Un client l'emporte</td><td>chambre → chez le client</td><td class="num delta-none">inchangé</td></tr>
+      <tr><td>On re-dote la chambre</td><td>réserve → chambre</td><td class="num delta-none">inchangé</td></tr>
+      <tr><td>Il la rend</td><td>chez le client → <strong>réserve</strong></td><td class="num delta-none">inchangé</td></tr>
+      <tr><td>Il ne la rend pas, on facture</td><td>chez le client → hors parc</td><td class="num delta-down">− 1</td></tr>
+      <tr><td>Elle est cassée</td><td>chambre → hors parc</td><td class="num delta-down">− 1</td></tr>
+    </table></div>
+    <div class="callout key">
+      <div class="t">Ton cas rare est ici</div>
+      <p>Le client emporte la bouteille, on re-dote la chambre, puis il revient avec. Elle rejoint
+        la <strong>réserve</strong>, pas la chambre — qui a déjà la sienne. Le parc n'a jamais
+        bougé. L'ancien calcul, lui, retirait deux bouteilles pour un seul incident.</p>
+    </div>
+    <p>Le dossier suit ensuite quatre étapes : <strong>constaté</strong>, <strong>transmis</strong>,
+      <strong>client contacté</strong>, <strong>résolution</strong> — restitué, facturé 17,50 €, ou
+      non facturé. Une casse imputée à une femme de chambre ne peut pas être facturée au client :
+      la base le refuse, ce n'est pas une consigne mais une contrainte.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Les envois</div>
+      <h2>Qui reçoit quoi, et quand</h2>
+    </div>
+    <div class="scroll"><table>
+      <tr><th>Mail</th><th>Déclenché par</th><th>Vers</th></tr>
+      <tr><td>Récapitulatif technicien</td><td>La clôture d'une tournée</td><td>Victoria</td></tr>
+      <tr><td>Récapitulatif d'intervention</td><td>La <strong>dernière</strong> validation du lot</td><td>Toi, la direction</td></tr>
+      <tr><td>Bouteille manquante</td><td>Un incident signalé</td><td>Adresses paramétrées</td></tr>
+      <tr><td>Demande de devis</td><td>Un article sous son seuil</td><td>Le fournisseur</td></tr>
+      <tr><td>Récapitulatif périodique</td><td>Quotidien, hebdo ou mensuel</td><td>Au choix</td></tr>
+    </table></div>
+    <div class="callout key">
+      <div class="t">Un seul mail par fournisseur</div>
+      <p>Si trois produits du même fournisseur passent sous leur seuil le même jour, ils arrivent
+        dans <strong>une seule</strong> demande de devis, avec les trois lignes. Et une demande déjà
+        en cours n'est jamais dupliquée.</p>
+    </div>
+    <p class="note">Chaque envoi est journalisé. Les écrans de détail permettront de renvoyer un
+      mail à la main quand il faut.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Ce qui tourne derrière</div>
+      <h2>Les briques, en français</h2>
+    </div>
+    <div class="bricks">
+      <div class="brick">
+        <div class="n">Supabase</div><div class="c">0 €/mois</div>
+        <div class="d">La base de données — là où vivent les anomalies, le stock, les bouteilles.
+          C'est du PostgreSQL, la même technologie que les banques et les hôpitaux. Elle applique
+          elle-même les règles : elle <em>refuse</em> une sortie de stock positive ou une casse du
+          personnel facturée au client. Export Excel à tout moment.</div>
+      </div>
+      <div class="brick">
+        <div class="n">Microsoft 365</div><div class="c">déjà payé</div>
+        <div class="d">La connexion. Bouton « Se connecter avec Microsoft », comme dans PowerApps.
+          Aucun mot de passe à gérer. Il faudra autoriser l'application une fois dans Entra ID —
+          dix minutes, et tu as les droits.</div>
+      </div>
+      <div class="brick">
+        <div class="n">Vercel</div><div class="c">0 €/mois</div>
+        <div class="d">L'hébergement du site. C'est l'adresse que Victoria ouvre sur son téléphone.
+          Chaque modification du code s'y déploie toute seule.</div>
+      </div>
+      <div class="brick">
+        <div class="n">Resend</div><div class="c">0 € — 3 000 mails/mois</div>
+        <div class="d">L'envoi des mails. Remplace les flux Power Automate.</div>
+      </div>
+      <div class="brick">
+        <div class="n">L'application (PWA)</div><div class="c">—</div>
+        <div class="d">Un site web qui s'installe sur l'écran d'accueil du téléphone et s'ouvre en
+          plein écran, comme une vraie application — sans passer par l'App Store ni le Play Store,
+          sur iPhone comme sur Android, et sur ordinateur dans le navigateur.</div>
+      </div>
+      <div class="brick">
+        <div class="n">GitHub</div><div class="c">0 €/mois</div>
+        <div class="d">Où le code est conservé, avec l'historique de chaque modification. Si une
+          évolution casse quelque chose, on revient en arrière.</div>
+      </div>
+    </div>
+    <p class="note">Total : <strong>0 € par mois</strong>. La seule limite réelle de l'offre
+      gratuite est que la base se met en veille après une semaine sans activité — ce qui n'arrivera
+      pas en usage quotidien. Passer en payant (environ 25 €/mois, pour des sauvegardes
+      quotidiennes restaurables à la date) est un changement de formule, sans reprise du code.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Sous-sol, chaufferie, local TGBT</div>
+      <h2>Quand le réseau tombe</h2>
+    </div>
+    <p>L'application ne bloque pas. Chaque saisie part dans une <strong>file d'attente sur le
+      téléphone</strong>, un bandeau indique « 3 saisies en attente », et tout se renvoie seul au
+      retour du signal. Victoria peut cocher ses chambres en montant l'escalier sans se demander si
+      ça passe.</p>
+    <p class="note">Le hors-ligne complet — consulter toute la base sans réseau — est une étape
+      d'après, si le besoin se confirme. Ce qui est prévu ici couvre les coupures, pas une journée
+      entière sans connexion.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Le jour J</div>
+      <h2>Comment on bascule</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-b">
+        <p><strong>Comptage physique.</strong> Matériel et bouteilles comptés une fois, dans
+          l'application. C'est la première ligne de mouvement de chaque article — le point de départ
+          propre.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <p><strong>Import.</strong> Les 670 anomalies depuis 2025, les produits, les mouvements, les
+          dossiers de bouteilles. Un rapport liste tout ce qui n'a pas pu être rattaché ;
+          rien n'est écarté en silence.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <p><strong>Contrôle.</strong> On compare : autant d'anomalies actives des deux côtés,
+          autant de bouteilles. Un écran dédié liste les données douteuses — 12 anomalies datées
+          dans le futur, 4 dont la localisation reste incertaine.</p>
+      </div></div>
+      <div class="step"><div class="step-b">
+        <p><strong>Les listes SharePoint passent en lecture seule.</strong> Conservées comme
+          archive, plus alimentées. À partir de là, l'application est la seule source.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <div class="eyebrow">Avant de pouvoir basculer</div>
+      <h2>Ce qui manque encore</h2>
+    </div>
+    <div class="todo">
+      <div class="todo-item">
+        <span class="pill block">Bloquant</span>
+        <div><strong>Aucun fournisseur n'est renseigné</strong> sur les 36 produits. Sans eux, la
+          demande de devis automatique ne peut pas partir — c'est la seule fonctionnalité qui ne
+          peut pas fonctionner en l'état.</div>
+      </div>
+      <div class="todo-item">
+        <span class="pill soon">Important</span>
+        <div><strong>16 produits sur 36 n'ont pas de prix</strong> et <strong>15 pas de seuil
+          d'alerte.</strong> Sans prix, le coût d'une intervention sera annoncé comme partiel —
+          « 13,90 € + 2 articles sans prix connu » — plutôt que faux. Sans seuil, aucune alerte.</div>
+      </div>
+      <div class="todo-item">
+        <span class="pill soon">Important</span>
+        <div><strong>Les comptes et les rôles.</strong> Qui se connecte, avec quelle adresse
+          Microsoft, et en tant que quoi.</div>
+      </div>
+      <div class="todo-item">
+        <span class="pill soon">Important</span>
+        <div><strong>Les destinataires des mails.</strong> Qui reçoit l'alerte « bouteille
+          manquante », qui reçoit les récapitulatifs, à quelle fréquence.</div>
+      </div>
+      <div class="todo-item">
+        <span class="pill later">À confirmer</span>
+        <div><strong>Trois emplacements ajoutés</strong> — Ascenseur, Sous-sol divers, Parties
+          communes — absents de ta liste mais nécessaires pour placer une vingtaine de lignes de
+          l'export.</div>
+      </div>
+      <div class="todo-item">
+        <span class="pill later">Confort</span>
+        <div><strong>32 produits sur 36 n'ont pas de photo.</strong> La liste du technicien affiche
+          un visuel de remplacement en attendant.</div>
+      </div>
+    </div>
+  </section>
+
+  <hr style="margin-block-start:64px">
+  <p class="note" style="margin-block-start:20px">Application Technique — Hôtel Parisianer.
+    Le détail technique vit dans le dépôt : cahier des charges, modèle de données, procédure de
+    migration.</p>
+
+</div>

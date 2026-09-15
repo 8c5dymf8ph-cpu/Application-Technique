@@ -10,11 +10,21 @@ Remplace l'application Power Apps Canvas existante.
 | **Base** | PostgreSQL / Supabase |
 | **Connexion** | Microsoft 365 de l'hôtel |
 
-## Documentation
+## Comprendre l'application
+
+**[Le Parisianer, mode d'emploi](https://claude.ai/artifact/7b2ByPrfTyFWW6k7UT9uUx)** — qui fait
+quoi, le cycle d'une anomalie, les bouteilles, les mails, les briques techniques et leur coût.
+Source : [`docs/fonctionnement.html`](docs/fonctionnement.html).
+
+**[Maquettes des écrans](https://claude.ai/artifact/Qa89iyADqTh6eRQ55xzyN2)** — sept écrans mobiles.
+Sources dans [`maquettes/`](maquettes/).
+
+## Documentation technique
 
 - [`docs/01-cahier-des-charges.md`](docs/01-cahier-des-charges.md) — périmètre, règles métier, architecture
 - [`docs/02-modele-de-donnees.md`](docs/02-modele-de-donnees.md) — tables, vues, contraintes
 - [`docs/03-migration-sharepoint.md`](docs/03-migration-sharepoint.md) — export des 5 listes et bascule
+- [`docs/04-stock-materiel.md`](docs/04-stock-materiel.md) — ce que disent les exports produits et mouvements
 - [`CLAUDE.md`](CLAUDE.md) — conventions et règles à ne pas casser
 
 ## État
