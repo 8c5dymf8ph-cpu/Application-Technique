@@ -8,6 +8,7 @@ import {
   type StatutAnomalie,
 } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
+import Link from "next/link";
 import { Vignettes } from "@/app/composants/photos";
 import { profilActif } from "@/lib/profil";
 import { revalidatePath } from "next/cache";
@@ -25,6 +26,7 @@ type Ligne = {
 
 type Frequence = { libelle: string; nb_fois: number; derniere_fois: string };
 type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" };
+type Compte = { anomalie_id: string; nb: number };
 
 export default async function HistoriqueDuLieu({
   params,
@@ -60,6 +62,12 @@ export default async function HistoriqueDuLieu({
     order by ph.prise_le`;
   const parAnomalie = (id: string, moment: string) =>
     photos.filter((p) => p.anomalie_id === id && p.moment === moment).map((p) => p.chemin);
+
+  const commentaires = await sql<Compte[]>`
+    select f.anomalie_id, count(*)::int as nb
+    from v_fil_commentaires f join anomalies a on a.id = f.anomalie_id
+    where a.emplacement_id = ${emplacement.id} group by f.anomalie_id`;
+  const nbCommentaires = new Map(commentaires.map((c) => [c.anomalie_id, c.nb]));
 
   const profil = await profilActif();
   const supprimable = peutSupprimer(profil?.role);
@@ -109,7 +117,10 @@ export default async function HistoriqueDuLieu({
               {lignes.map((l) => (
                 <li key={l.anomalie_id} className="carte px-4 py-3 flex flex-col gap-2">
                   <div className="flex items-start gap-3">
-                    <div className="flex flex-col gap-1 grow min-w-0">
+                    <Link
+                      href={`/anomalie/${l.anomalie_id}`}
+                      className="flex flex-col gap-1 grow min-w-0"
+                    >
                       <p className="text-[14px] leading-snug text-pretty">{l.description}</p>
                       <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
                         <span
@@ -121,8 +132,18 @@ export default async function HistoriqueDuLieu({
                           {l.constate_par ? `${l.constate_par}, ` : ""}
                           {jours(l.jours_depuis)}
                         </span>
+                        {(nbCommentaires.get(l.anomalie_id) ?? 0) > 0 && (
+                          <span className="flex items-center gap-1 text-plum">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                 strokeLinejoin="round">
+                              <path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
+                            </svg>
+                            {nbCommentaires.get(l.anomalie_id)}
+                          </span>
+                        )}
                       </p>
-                    </div>
+                    </Link>
                     {supprimable && (
                       <form action={supprimer} className="shrink-0">
                         <input type="hidden" name="id" value={l.anomalie_id} />

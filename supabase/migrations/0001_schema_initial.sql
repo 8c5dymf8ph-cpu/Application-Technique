@@ -24,6 +24,10 @@ create type acteur_validation         as enum ('technicien', 'gouvernante');
 -- FAIT (validee), EN COURS, A FAIRE (a_refaire).
 create type decision_validation       as enum ('fait', 'non_fait', 'validee', 'a_refaire', 'en_cours');
 create type moment_photo              as enum ('constat', 'apres');
+-- Un commentaire écrit par quelqu'un, ou une note posée par la reprise de
+-- l'ancienne application : les deux se lisent dans le même fil, sans se
+-- confondre.
+create type origine_commentaire       as enum ('utilisateur', 'reprise');
 create type statut_facture            as enum ('a_rapprocher', 'rapprochee', 'reglee', 'litige');
 -- Prestation : une journée d'intervention facturée par un prestataire.
 -- Achat      : une livraison de matériel facturée par un fournisseur.
@@ -168,7 +172,6 @@ create table anomalies (
   catalogue_id    uuid references catalogue_anomalies (id),
   type_id         uuid references types_intervention (id),
   description     text not null,
-  commentaire     text,
   statut          statut_anomalie   not null default 'a_faire',
   priorite        priorite_anomalie not null default 'normale',
   -- Trois personnes distinctes dans les données d'origine : celle qui constate,
@@ -263,6 +266,23 @@ create table validations (
   )
 );
 create index on validations (intervention_id);
+
+-- Les commentaires ne s'empilent pas dans un champ texte : chacun garde son
+-- auteur et sa date, et rien ne peut en écraser un autre. Un commentaire
+-- s'ajoute à tout moment — à la déclaration, en cours de route, ou des mois
+-- plus tard quand le problème revient.
+create table commentaires (
+  id           uuid primary key default gen_random_uuid(),
+  anomalie_id  uuid not null references anomalies (id) on delete cascade,
+  texte        text not null check (btrim(texte) <> ''),
+  origine      origine_commentaire not null default 'utilisateur',
+  -- L'auteur du propos, et la personne qui a tenu le téléphone. Ils diffèrent
+  -- quand l'administrateur saisit pour un intervenant qui n'a pas l'application.
+  auteur_id    uuid references utilisateurs (id),
+  saisie_par   uuid references utilisateurs (id),
+  ecrit_le     timestamptz not null default now()
+);
+create index on commentaires (anomalie_id, ecrit_le);
 
 create table photos_anomalie (
   id              uuid primary key default gen_random_uuid(),

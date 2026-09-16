@@ -6,6 +6,7 @@ import { profilActif } from "@/lib/profil";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
+import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
 import { enregistrerPhoto } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -69,8 +70,12 @@ export default async function TraiterAnomalie({
     where a.id = ${id}`;
   if (!anomalie) notFound();
 
-  // Ce que la gouvernante a photographié en signalant : le technicien voit à
-  // quoi il vient.
+  // Ce que la gouvernante a écrit et photographié en signalant : le technicien
+  // voit à quoi il vient.
+  const messages = await sql<Message[]>`
+    select commentaire_id, source, auteur, texte, date_commentaire, decision::text
+    from v_fil_commentaires where anomalie_id = ${id} order by date_commentaire`;
+
   const constat = (
     await sql<{ chemin: string }[]>`
       select chemin from photos_anomalie
@@ -134,10 +139,14 @@ export default async function TraiterAnomalie({
         values (${id}, ${intervention.id}, ${chemin}, 'apres', ${profil_.id})`;
     }
 
+    // Le mot du technicien reste attaché à sa décision : la gouvernante le
+    // lira en validant, et le sien s'ajoutera dessous sans l'effacer.
+    const mot = String(donnees.get("commentaire") ?? "").trim() || null;
     await sql`
-      insert into validations (intervention_id, acteur, decision, utilisateur_id, saisie_par)
+      insert into validations (intervention_id, acteur, decision, utilisateur_id,
+                               saisie_par, commentaire)
       values (${intervention.id}, 'technicien', 'fait',
-              ${intervenant.utilisateur_id}, ${profil_.id})`;
+              ${intervenant.utilisateur_id}, ${profil_.id}, ${mot})`;
 
     redirect(`/technique/${encodeURIComponent(nom)}`);
   }
@@ -163,6 +172,13 @@ export default async function TraiterAnomalie({
         </p>
 
         <Vignettes chemins={constat} titre="Photographié au constat" ton="text-blue" />
+
+        {messages.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="etiquette">Ce qui a été dit</h2>
+            <Fil messages={messages} />
+          </section>
+        )}
 
         <section className="flex flex-col gap-2.5">
           <h2 className="etiquette">Matériel utilisé</h2>
@@ -240,6 +256,7 @@ export default async function TraiterAnomalie({
         <form action={enregistrer} className="flex flex-col gap-3">
           <input type="hidden" name="intervenant" value={par ?? profil.nom} />
           <input type="hidden" name="pris" value={pris} />
+          <ChampCommentaire libelle="Un mot sur ce que vous avez fait" lignes={2} />
           <ChampPhotos libelle="Photographier le travail fait (facultatif)" />
           <button className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
             {choisis.length === 0

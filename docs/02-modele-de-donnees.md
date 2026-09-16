@@ -28,6 +28,7 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `tournees` | Le lot d'anomalies traité en une fois — l'ancien `InterventionID` |
 | `interventions` | Le traitement d'une anomalie, par un technicien interne ou un prestataire |
 | `validations` | **Une ligne par avis**, technicien et gouvernante. Jamais écrasées, ni modifiables |
+| `commentaires` | Les commentaires libres, ajoutables à tout moment, avec auteur et date |
 | `photos_anomalie` | Photos de constat et d'après-intervention |
 | `factures`, `facture_interventions` | Prestation (une journée de prestataire, rapprochée de N interventions) ou achat (une livraison, rattachée à N entrées de stock) |
 
@@ -63,7 +64,7 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `v_cout_prestataire` | Part de facture revenant à chaque intervention |
 | `v_recap_interventions` | Les deux avis côte à côte, `non_validee_par_gouvernante`, `en_attente_gouvernante` |
 | `v_tournees` | État d'un lot : en attente, validées, à refaire, coût, `prete_pour_recap` |
-| `v_fil_commentaires` | Fil chronologique des commentaires d'une anomalie, avec auteur et rôle |
+| `v_fil_commentaires` | Le fil d'une anomalie : commentaires libres et commentaires de décision, dans l'ordre |
 | `v_recurrences_emplacement` | Chambres à problème — `recurrent` à 3 interventions sur 6 mois |
 | `v_factures_rapprochement` | Interventions candidates pour une facture (même prestataire, même date) |
 | `v_stock_bouteilles` | Réserve / chambre / chez clients / parc total / sous seuil |

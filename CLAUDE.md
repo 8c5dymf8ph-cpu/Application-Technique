@@ -49,8 +49,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    gouvernante peut valider en plusieurs sessions sans déclencher d'envoi prématuré.
 11. **La gouvernante a trois issues**, pas deux : `validee`, `en_cours`, `a_refaire`. Ne jamais
    réduire le choix à valider/refuser.
-12. **Les commentaires ne s'empilent pas dans un champ texte.** Chaque avis est une ligne de
-   `validations` avec son auteur et sa date ; `v_fil_commentaires` reconstitue le fil.
+12. **Les commentaires forment un fil, jamais un champ texte.** Un commentaire libre est une ligne
+   de `commentaires`, un commentaire attaché à une décision une ligne de `validations` ; chacun
+   garde son auteur et sa date, et `v_fil_commentaires` les présente dans l'ordre. **Rien
+   n'écrase rien** : celui de la gouvernante s'ajoute sous celui du technicien, et un commentaire
+   peut s'ajouter à tout moment — à la déclaration, en cours de route, ou des mois plus tard
+   quand le problème revient. Ne jamais réintroduire un champ `commentaire` sur `anomalies`.
 13. **Un ajustement de stock porte toujours un motif** (`inventaire`, `casse`, `perte`,
    `erreur_saisie`, `autre`). Seul le motif `inventaire` exige un comptage complet : une casse
    se corrige au fil de l'eau.

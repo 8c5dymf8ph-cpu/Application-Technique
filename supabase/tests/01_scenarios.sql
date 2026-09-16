@@ -270,6 +270,25 @@ begin
   assert v_nb = 2, format('%s commentaires dans le fil, attendu 2 (technicien + gouvernante)', v_nb);
 end $$;
 
+-- Un commentaire libre s'ajoute à tout moment et ne remplace rien
+do $$
+declare v_nb int; v_textes text[];
+begin
+  insert into commentaires (anomalie_id, texte, auteur_id)
+  values ('33333333-3333-3333-3333-333333333333', 'Le client se plaint à nouveau',
+          '22222222-2222-2222-2222-222222222222');
+
+  select count(*), array_agg(texte order by date_commentaire) into v_nb, v_textes
+  from v_fil_commentaires where anomalie_id = '33333333-3333-3333-3333-333333333333';
+  assert v_nb = 3, format('%s au fil, attendu 3', v_nb);
+  assert 'Joint changé' = any (v_textes),
+    'le commentaire du technicien doit rester lisible';
+  assert 'Fuite toujours présente' = any (v_textes),
+    'celui de la gouvernante aussi';
+  assert 'Le client se plaint à nouveau' = any (v_textes),
+    'et le commentaire ajouté après coup également';
+end $$;
+
 -- ===========================================================================
 -- SCÉNARIO 3 — Facture de prestataire : une facture couvre TOUTES les
 -- interventions faites par ce prestataire ce jour-là.

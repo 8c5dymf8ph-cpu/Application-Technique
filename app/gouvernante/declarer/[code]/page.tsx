@@ -5,6 +5,7 @@ import { profilActif } from "@/lib/profil";
 import { jours, LIBELLE_STATUT, TON_STATUT, type StatutAnomalie } from "@/lib/domaine";
 import { Entete, Vide } from "../../../composants/ui";
 import { ChampPhotos } from "../../../composants/photos";
+import { ChampCommentaire } from "../../../composants/fil";
 import { enregistrerPhoto } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +105,15 @@ export default async function Declarer({
       redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?deja=1`);
     }
 
+    // Le commentaire libre de la gouvernante : c'est ici qu'elle écrit ce que
+    // le libellé du catalogue ne dit pas.
+    const texte = String(donnees.get("commentaire") ?? "").trim();
+    if (texte) {
+      await sql`
+        insert into commentaires (anomalie_id, texte, auteur_id, saisie_par)
+        values (${anomalie_id}, ${texte}, ${profil_.id}, ${profil_.id})`;
+    }
+
     // Les photos du constat. Une déclaration sans photo reste valable : c'est
     // un plus, pas une condition.
     for (const fichier of donnees.getAll("photos")) {
@@ -148,7 +158,11 @@ export default async function Declarer({
           {enCours.length > 0 && (
             <ul className="flex flex-col gap-2">
               {enCours.map((e) => (
-                <li key={e.anomalie_id} className="carte px-4 py-3 flex flex-col gap-1.5">
+                <li key={e.anomalie_id}>
+                  <Link
+                    href={`/anomalie/${e.anomalie_id}`}
+                    className="carte px-4 py-3 flex flex-col gap-1.5 active:bg-surface-muted"
+                  >
                   <p className="text-[14.5px] leading-snug text-pretty">{e.description}</p>
                   <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
                     <span
@@ -161,6 +175,7 @@ export default async function Declarer({
                       {jours(e.jours_depuis)}
                     </span>
                   </p>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -251,6 +266,7 @@ export default async function Declarer({
             )}
             <form action={enregistrer} className="flex flex-col gap-3">
               <input type="hidden" name="catalogue_id" value={choisie.id} />
+              <ChampCommentaire />
               <ChampPhotos libelle="Photographier (facultatif)" />
               <div className="flex gap-2">
               <Link

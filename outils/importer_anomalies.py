@@ -260,13 +260,16 @@ def main(chemin: str) -> None:
         # la graphie canonique du groupe.
         canonique = canoniques.get(normaliser_libelle(libelle), libelle)
 
-        commentaire = d.get("COMMENTAIRES")
+        # Le commentaire de l'export est un vrai propos ; les notes de reprise
+        # en sont des remarques techniques. Les deux vont au fil, distingués
+        # par leur origine.
+        fil: list[tuple[str, str]] = []
+        if d.get("COMMENTAIRES") and str(d["COMMENTAIRES"]).strip():
+            fil.append(("utilisateur", " ".join(str(d["COMMENTAIRES"]).split())))
         if int(sid) in doublons:
-            note = "Annulée à la reprise : le même problème était déjà ouvert ici."
-            commentaire = f"{commentaire}\n{note}" if commentaire else note
+            fil.append(("reprise", "Annulée à la reprise : le même problème était déjà ouvert ici."))
         if code == "Parties communes" and cle(lieu_brut) != "parties communes":
-            note = f"Localisation d'origine : {lieu_brut}"
-            commentaire = f"{commentaire}\n{note}" if commentaire else note
+            fil.append(("reprise", f"Localisation d'origine : {lieu_brut}"))
 
         # Une ligne close l'a été à la vérification si elle existe, sinon le jour
         # où le technicien l'a déclarée faite.
@@ -275,9 +278,9 @@ def main(chemin: str) -> None:
 
         print(
             "insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id,"
-            " description, commentaire, statut, constate_par, saisie_par, declare_le,"
+            " description, statut, constate_par, saisie_par, declare_le,"
             " cloture_le) select "
-            f"{int(sid)}, e.id, c.id, t.id, {q(libelle)}, {q(commentaire)},"
+            f"{int(sid)}, e.id, c.id, t.id, {q(libelle)},"
             f" '{statut}', u1.id, u2.id, timestamptz '{date}',"
             f" {cloture}\n"
             f"  from emplacements e"
@@ -286,6 +289,16 @@ def main(chemin: str) -> None:
             f"\n  left join utilisateurs u1 on u1.nom = {qnom(d.get('Constate_Par'))}"
             f"\n  left join utilisateurs u2 on u2.nom = {qnom(d.get('SAISIE PAR'))}"
             f"\n  where e.code = {q(code)} on conflict (sharepoint_id) do nothing;")
+        for origine, texte in fil:
+            auteur = (qnom(d.get("Constate_Par")) if origine == "utilisateur" else "null")
+            print(
+                "insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)"
+                f"\n  select a.id, {q(texte)}, '{origine}', u.id, timestamptz '{date}'"
+                f"\n  from anomalies a left join utilisateurs u on u.nom = {auteur}"
+                f"\n  where a.sharepoint_id = {int(sid)}"
+                f"\n    and not exists (select 1 from commentaires x"
+                f" where x.anomalie_id = a.id and x.texte = {q(texte)});")
+
         retenues += 1
 
         # --- Intervention + avis du technicien -----------------------------

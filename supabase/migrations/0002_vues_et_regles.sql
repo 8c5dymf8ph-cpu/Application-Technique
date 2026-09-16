@@ -177,28 +177,6 @@ group by t.id, u.nom, p.nom;
 -- Fil chronologique des commentaires d'une anomalie. Remplace l'empilement de
 -- texte « NOM · date \n contenu » : chaque commentaire garde son auteur, sa date
 -- et son rôle, donc rien ne peut être écrasé ni mal découpé à la relecture.
-create view v_fil_commentaires as
-select
-  a.id                as anomalie_id,
-  'declaration'::text as source,
-  a.declare_le        as date_commentaire,
-  u.nom               as auteur,
-  a.commentaire       as texte
-from anomalies a
-left join utilisateurs u on u.id = coalesce(a.constate_par, a.saisie_par)
-where coalesce(btrim(a.commentaire), '') <> ''
-union all
-select
-  i.anomalie_id,
-  v.acteur::text,
-  v.decide_le,
-  u.nom,
-  v.commentaire
-from validations v
-join interventions i on i.id = v.intervention_id
-left join utilisateurs u on u.id = v.utilisateur_id
-where coalesce(btrim(v.commentaire), '') <> '';
-
 -- Interventions candidates au rapprochement d'une facture de prestation.
 -- Une facture arrive une à deux semaines après le passage et peut couvrir
 -- plusieurs journées : on ne cherche donc pas une date exacte mais une fenêtre.
@@ -351,6 +329,35 @@ left join utilisateurs u  on u.id = t.technicien_id
 left join prestataires p  on p.id = t.prestataire_id
 where v.prete_pour_recap and t.mail_recap_envoye_le is null;
 
+-- Le fil d'une anomalie : les commentaires libres et ceux attachés à une
+-- décision, dans l'ordre. Rien n'écrase rien — celui du technicien reste
+-- lisible sous celui de la gouvernante, et inversement.
+create view v_fil_commentaires as
+select
+  c.anomalie_id,
+  c.id                as commentaire_id,
+  case when c.origine = 'reprise' then 'reprise' else 'commentaire' end as source,
+  c.ecrit_le          as date_commentaire,
+  u.nom               as auteur,
+  c.texte,
+  null::decision_validation as decision
+from commentaires c
+left join utilisateurs u on u.id = c.auteur_id
+union all
+select
+  i.anomalie_id,
+  v.id,
+  v.acteur::text,
+  v.decide_le,
+  coalesce(u.nom, p.nom),
+  v.commentaire,
+  v.decision
+from validations v
+join interventions i      on i.id = v.intervention_id
+left join utilisateurs u  on u.id = v.utilisateur_id
+left join prestataires p  on p.id = i.prestataire_id
+where coalesce(btrim(v.commentaire), '') <> '';
+
 -- Ce qui a déjà été déclaré dans un lieu. La gouvernante la consulte AVANT de
 -- saisir : sans ça, la même fuite est déclarée trois fois en une semaine.
 -- Les anomalies ouvertes remontent d'abord, l'historique récent ensuite —
@@ -364,7 +371,6 @@ select
   a.reference,
   a.catalogue_id,
   a.description,
-  a.commentaire,
   a.statut,
   a.statut in ('a_faire', 'en_cours', 'attente_validation', 'a_acheter') as ouverte,
   a.declare_le,
@@ -372,7 +378,8 @@ select
   (current_date - a.declare_le::date)::int as jours_depuis,
   uc.nom                       as constate_par,
   ti.nom                       as type_intervention,
-  (select count(*) from photos_anomalie ph where ph.anomalie_id = a.id) as nb_photos
+  (select count(*) from photos_anomalie ph where ph.anomalie_id = a.id)::int as nb_photos,
+  (select count(*) from v_fil_commentaires f where f.anomalie_id = a.id)::int as nb_commentaires
 from anomalies a
 join emplacements e             on e.id = a.emplacement_id
 left join utilisateurs uc       on uc.id = a.constate_par
@@ -916,7 +923,11 @@ select
   a.reference,
   e.code,
   a.description,
-  coalesce(a.commentaire, 'Localisation d''origine inconnue')
+  coalesce(
+    (select c.texte from commentaires c
+      where c.anomalie_id = a.id and c.origine = 'reprise'
+      order by c.ecrit_le limit 1),
+    'Localisation d''origine inconnue')
 from anomalies a
 join emplacements e on e.id = a.emplacement_id
 where e.code = 'General'
