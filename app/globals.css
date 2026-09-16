@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-ground text-ink font-sans antialiased; }
+  /* L'application se manipule à une main, en marchant : aucune cible sous 44 px. */
+  button, a[role="button"], [data-cible] { min-height: 44px; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-plum; }
+}
+
+@layer components {
+  .carte { @apply bg-surface border border-line rounded-card; }
+  .etiquette { @apply text-[10px] uppercase tracking-[0.12em] text-ink-faint; }
+  .titre { @apply font-display font-semibold text-ink; }
+}

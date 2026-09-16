@@ -378,22 +378,27 @@ join emplacements e             on e.id = a.emplacement_id
 left join utilisateurs uc       on uc.id = a.constate_par
 left join types_intervention ti on ti.id = a.type_id;
 
--- Le garde-fou de la saisie : le même libellé, dans le même lieu, encore
--- ouvert ou clos il y a peu. L'application le montre avant d'enregistrer ;
--- elle ne bloque pas — parfois le problème est réellement revenu.
-create function fn_doublons_probables(
-  p_emplacement_id uuid,
-  p_catalogue_id uuid,
-  p_jours int default 120
-) returns setof v_anomalies_du_lieu
-language sql stable as $$
-  select *
-  from v_anomalies_du_lieu v
-  where v.emplacement_id = p_emplacement_id
-    and v.catalogue_id is not distinct from p_catalogue_id
-    and (v.ouverte or v.jours_depuis <= p_jours)
-  order by v.ouverte desc, v.declare_le desc;
-$$;
+-- Combien de fois un même problème est revenu à un même endroit. C'est ce que
+-- le catalogue fermé rend possible : sans libellés normalisés, ce comptage
+-- n'aurait aucun sens. Les doublons annulés n'y figurent pas — ils n'ont pas eu
+-- lieu deux fois, ils ont été saisis deux fois.
+create view v_frequence_anomalie_lieu as
+select
+  a.emplacement_id,
+  e.code               as emplacement,
+  a.catalogue_id,
+  c.libelle,
+  count(*)::int                                    as nb_fois,
+  max(a.declare_le)::date                          as derniere_fois,
+  min(a.declare_le)::date                          as premiere_fois,
+  count(*) filter (
+    where a.statut in ('a_faire','en_cours','attente_validation','a_acheter')
+  )::int                                           as ouvertes
+from anomalies a
+join emplacements e        on e.id = a.emplacement_id
+join catalogue_anomalies c on c.id = a.catalogue_id
+where a.statut <> 'annulee'
+group by a.emplacement_id, e.code, a.catalogue_id, c.libelle;
 
 -- Chambres qui reviennent trop souvent. Le drapeau reprend le seuil de la
 -- maquette : 3 interventions ou plus sur les six derniers mois.
@@ -729,7 +734,10 @@ begin
       else null
     end,
     maj_le = now()
-  where id = v_anomalie_id;
+  -- Une anomalie annulée le reste : une validation arrivée après coup ne doit
+  -- pas la ramener à la vie, sinon le même problème redeviendrait ouvert deux
+  -- fois au même endroit.
+  where id = v_anomalie_id and statut <> 'annulee';
 
   return new;
 end;
@@ -847,6 +855,42 @@ language sql stable as $$
   -- Les libellés les plus utilisés remontent en tête : sur un téléphone, la
   -- bonne réponse doit être dans les premiers résultats.
   order by c.occurrences desc, c.libelle;
+$$;
+
+-- Le catalogue vu depuis un lieu : chaque libellé porte son état ici. Celui qui
+-- est déjà ouvert n'est pas proposé à la saisie ; les autres affichent combien
+-- de fois le problème est déjà revenu, ce qui est une information, pas un
+-- obstacle.
+create function fn_catalogue_pour_lieu(
+  p_emplacement_id uuid,
+  p_terme text default null
+) returns table (
+  id              uuid,
+  libelle         text,
+  occurrences     int,
+  deja_ouverte    boolean,
+  ouverte_depuis  int,
+  nb_fois_ici     int,
+  derniere_fois   date
+)
+language sql stable as $$
+  select
+    c.id,
+    c.libelle,
+    c.occurrences,
+    coalesce(f.ouvertes, 0) > 0,
+    o.jours_depuis,
+    coalesce(f.nb_fois, 0),
+    f.derniere_fois
+  from fn_rechercher_catalogue(p_terme) c
+  left join v_frequence_anomalie_lieu f
+         on f.emplacement_id = p_emplacement_id and f.catalogue_id = c.id
+  left join lateral (
+    select v.jours_depuis from v_anomalies_du_lieu v
+    where v.emplacement_id = p_emplacement_id and v.catalogue_id = c.id and v.ouverte
+    order by v.declare_le desc limit 1
+  ) o on true
+  order by coalesce(f.ouvertes, 0) > 0, c.occurrences desc, c.libelle;
 $$;
 
 -- -----------------------------------------------------------------------------

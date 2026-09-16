@@ -72,6 +72,7 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `v_reappro_necessaire` | Articles sous seuil, produits et bouteilles, groupés par fournisseur |
 | `v_controle_donnees` | Données reprises douteuses : dates futures, localisations incertaines, stocks négatifs |
 | `v_anomalies_du_lieu` | Tout ce qui a été déclaré dans une chambre, ouvertes d'abord — consultée avant chaque saisie |
+| `v_frequence_anomalie_lieu` | Combien de fois un problème est revenu à un endroit, hors doublons annulés |
 | `v_interventions_sans_facture` | Ce qu'un prestataire a fait sans facture, avec l'ancienneté |
 | `v_envois_en_attente` | Ce que le digest du soir doit envoyer |
 
@@ -86,7 +87,7 @@ pas servir de contournement aux règles de sécurité.
 | `fn_redoter_emplacement(...)` | Re-dote une chambre depuis la réserve, hors incident |
 | `fn_preparer_demandes_devis(...)` | Prépare **une** demande par fournisseur, sans dupliquer une demande en cours |
 | `fn_creer_tournee(...)` | Ouvre une tournée et génère sa référence `INT-<NOM>-<horodatage>-<aléa>` |
-| `fn_doublons_probables(lieu, libellé, jours)` | Le même libellé déjà déclaré au même endroit : avertit, ne bloque pas |
+| `fn_catalogue_pour_lieu(lieu, terme)` | Le catalogue vu depuis un lieu : ce qui y est déjà ouvert, et combien de fois chaque problème y est revenu |
 | `fn_interventions_rapprochables(facture, jours)` | Candidates au rapprochement, sur une fenêtre et non une date exacte |
 | `fn_marquer_envois(catégorie, tournées)` | Horodate ce que le digest du soir vient d'envoyer |
 
@@ -108,6 +109,9 @@ bouteille *réellement* perdue.
 - Un montant divers exige un motif.
 - Un technicien ne peut pas enregistrer une décision de gouvernante.
 - Une anomalie hors catalogue ne peut être créée que par un admin.
+- Un même problème ne peut pas être **ouvert deux fois au même endroit** : index partiel
+  `anomalie_unique_ouverte_par_lieu`. Le comptage dans le temps reste entier.
+- Une anomalie annulée le reste : une validation arrivée après coup ne la rouvre pas.
 - Une casse imputée au personnel ne peut pas être facturée au client.
 - Une bouteille cassée ne peut pas être « restituée ».
 - Un mouvement de bouteille doit être un déplacement réel et cohérent avec son type.

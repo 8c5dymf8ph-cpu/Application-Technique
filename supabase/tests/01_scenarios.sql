@@ -625,67 +625,80 @@ begin
 end $$;
 
 -- ===========================================================================
--- SCÉNARIO 9 — Avant de saisir, on voit ce qui a déjà été déclaré dans le lieu.
+-- SCÉNARIO 9 — Un même problème ne peut pas être ouvert deux fois au même
+-- endroit. En revanche, savoir combien de fois il est revenu doit rester
+-- possible : c'est tout l'intérêt d'un catalogue fermé.
 -- ===========================================================================
 do $$
 declare
-  v_catalogue uuid; v_emplacement uuid;
+  v_catalogue uuid; v_autre uuid; v_emplacement uuid;
   v_anomalie uuid; v_intervention uuid;
-  v_nb int; v_ouvertes int;
+  v_nb int; v_ouverte boolean;
 begin
-  select id into v_catalogue from catalogue_anomalies limit 1;
+  select id into v_catalogue from catalogue_anomalies order by libelle limit 1;
+  select id into v_autre     from catalogue_anomalies order by libelle offset 1 limit 1;
   select id into v_emplacement from emplacements where code = '26';
 
-  -- Rien n'a encore été déclaré ici
-  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
-  assert v_nb = 0, format('%s doublons annoncés sur un lieu vierge, attendu 0', v_nb);
-
-  -- Une première déclaration
+  -- Première déclaration : rien ne s'y oppose
   insert into anomalies (emplacement_id, catalogue_id, description, constate_par)
-  values (v_emplacement, v_catalogue, 'Première déclaration',
+  values (v_emplacement, v_catalogue, 'Première fois',
           '22222222-2222-2222-2222-222222222222')
   returning id into v_anomalie;
 
-  -- La même, le lendemain : l'application doit la signaler
-  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
-  assert v_nb = 1, format('%s doublons annoncés, attendu 1', v_nb);
-  assert (select ouverte from fn_doublons_probables(v_emplacement, v_catalogue) limit 1),
-    'le doublon signalé doit être une anomalie ouverte';
+  -- La même, tant qu'elle est ouverte : la base refuse
+  begin
+    insert into anomalies (emplacement_id, catalogue_id, description, constate_par)
+    values (v_emplacement, v_catalogue, 'Doublon', '22222222-2222-2222-2222-222222222222');
+    raise exception 'le doublon aurait dû être refusé par la base';
+  exception when unique_violation then null;
+  end;
 
-  -- Un autre libellé dans la même chambre ne doit pas être signalé
-  select count(*) into v_nb from fn_doublons_probables(
-    v_emplacement, (select id from catalogue_anomalies offset 1 limit 1));
-  assert v_nb = 0, format('%s doublons pour un autre libellé, attendu 0', v_nb);
+  -- Un autre libellé dans la même chambre reste possible
+  insert into anomalies (emplacement_id, catalogue_id, description, constate_par)
+  values (v_emplacement, v_autre, 'Autre problème', '22222222-2222-2222-2222-222222222222');
 
-  -- Une fois l'anomalie validée, elle reste signalée quelque temps : une
-  -- réparation qui n'a pas tenu doit se voir.
+  -- Et le même libellé dans une autre chambre aussi
+  insert into anomalies (emplacement_id, catalogue_id, description, constate_par)
+  select id, v_catalogue, 'Même problème ailleurs', '22222222-2222-2222-2222-222222222222'
+  from emplacements where code = '27';
+
+  -- L'écran de déclaration marque le libellé comme déjà ouvert ici
+  select deja_ouverte, nb_fois_ici into v_ouverte, v_nb
+  from fn_catalogue_pour_lieu(v_emplacement, 'e')
+  where id = v_catalogue;
+  assert v_ouverte, 'le catalogue doit signaler le libellé déjà ouvert ici';
+  assert v_nb = 1, format('nb_fois_ici = %s, attendu 1', v_nb);
+
+  -- Une fois réparée et validée, le problème peut revenir : c'est une
+  -- récurrence, pas un doublon.
   insert into interventions (anomalie_id, technicien_id)
   values (v_anomalie, '11111111-1111-1111-1111-111111111111') returning id into v_intervention;
   insert into validations (intervention_id, acteur, decision, utilisateur_id)
   values (v_intervention, 'gouvernante', 'validee', '22222222-2222-2222-2222-222222222222');
 
-  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
-  assert v_nb = 1, format('%s doublons après clôture, attendu 1 — la réparation peut n''avoir pas tenu', v_nb);
-  assert not (select ouverte from fn_doublons_probables(v_emplacement, v_catalogue) limit 1),
-    'elle doit désormais apparaître comme close';
+  insert into anomalies (emplacement_id, catalogue_id, description, constate_par)
+  values (v_emplacement, v_catalogue, 'Le problème est revenu',
+          '22222222-2222-2222-2222-222222222222');
 
-  -- Une anomalie close il y a deux ans ne doit plus rien signaler : sinon
-  -- chaque chambre finirait par alerter sur tout son passé.
-  insert into anomalies (emplacement_id, catalogue_id, description, constate_par,
-                         declare_le, statut, cloture_le)
-  values (v_emplacement, v_catalogue, 'Déclaration ancienne',
-          '22222222-2222-2222-2222-222222222222',
-          now() - interval '2 years', 'validee', now() - interval '2 years');
+  select nb_fois, ouvertes into v_nb, v_ouverte
+  from v_frequence_anomalie_lieu
+  where emplacement_id = v_emplacement and catalogue_id = v_catalogue;
+  assert v_nb = 2, format('nb_fois = %s, attendu 2 — la récurrence doit se compter', v_nb);
+  assert v_ouverte::int = 1, 'une seule doit être ouverte';
 
-  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
-  assert v_nb = 1,
-    format('%s doublons annoncés, attendu 1 : l''ancienne est hors fenêtre', v_nb);
+  -- Une anomalie annulée ne revient jamais à la vie, même si une validation
+  -- arrive après coup : sinon le doublon renaîtrait.
+  update anomalies set statut = 'annulee' where id = v_anomalie;
+  insert into validations (intervention_id, acteur, decision, utilisateur_id)
+  values (v_intervention, 'technicien', 'fait', '11111111-1111-1111-1111-111111111111');
+  assert (select statut from anomalies where id = v_anomalie) = 'annulee',
+    'une anomalie annulée doit le rester';
 
-  -- Mais la vue du lieu, elle, montre tout l'historique de la chambre
-  select count(*), count(*) filter (where ouverte) into v_nb, v_ouvertes
-  from v_anomalies_du_lieu where emplacement_id = v_emplacement;
-  assert v_nb = 2, format('%s anomalies dans l''historique du lieu, attendu 2', v_nb);
-  assert v_ouvertes = 0, format('%s ouvertes, attendu 0 — les deux sont closes', v_ouvertes);
+  -- Et elle ne compte pas dans la fréquence : elle a été saisie deux fois,
+  -- pas vécue deux fois.
+  select nb_fois into v_nb from v_frequence_anomalie_lieu
+   where emplacement_id = v_emplacement and catalogue_id = v_catalogue;
+  assert v_nb = 1, format('nb_fois = %s, attendu 1 après annulation', v_nb);
 end $$;
 
 \echo '✅ Tous les scénarios sont passés'

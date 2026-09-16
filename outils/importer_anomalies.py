@@ -47,6 +47,21 @@ STATUTS = {
     "ACHATS": "a_acheter",
 }
 
+
+def statut_final(d, doublon: bool) -> str:
+    """Le statut tel qu'il doit être une fois la reprise terminée.
+
+    Il est calculé ici plutôt que laissé aux déclencheurs : pendant l'import,
+    une ligne terminée passerait transitoirement par « en attente de
+    validation », et deux lignes du même problème au même endroit se
+    heurteraient alors à l'unicité."""
+    if doublon:
+        return "annulee"
+    source = str(d.get("STATUT") or "").strip()
+    if source == "FAIT":
+        return "validee" if lire_date(d.get("VERIFIE_LE")) else "attente_validation"
+    return STATUTS.get(source, "a_faire")
+
 # Avant 2025, le suivi était tenu hors application et beaucoup de lignes
 # déclarées faites n'ont jamais été vérifiées. On ne les reprend pas : l'export
 # reste l'archive.
@@ -99,6 +114,41 @@ def code_emplacement(brut, rapport) -> str | None:
     return code
 
 
+def ouverte_a_la_reprise(d) -> bool:
+    """Une ligne encore ouverte une fois reprise : ce sont celles-là qui ne
+    peuvent pas coexister deux fois au même endroit. Une ligne FAIT sans
+    vérification reste ouverte — elle attend la gouvernante."""
+    statut = str(d.get("STATUT") or "").strip()
+    if statut in ("A FAIRE", "EN COURS", "ACHATS", ""):
+        return True
+    return statut == "FAIT" and not lire_date(d.get("VERIFIE_LE"))
+
+
+def doublons_ouverts(data, canoniques, rapport) -> set[int]:
+    """Identifiants des lignes à annuler : le même problème ouvert plusieurs
+    fois au même endroit. On garde la plus récente, les autres n'ont pas eu lieu
+    deux fois — elles ont été saisies deux fois."""
+    groupes = collections.defaultdict(list)
+    for d in data:
+        sid, libelle = d.get("ID"), d.get("AnomaliesCommentaires")
+        if sid is None or not libelle or not ouverte_a_la_reprise(d):
+            continue
+        cle_libelle = canoniques.get(normaliser_libelle(libelle))
+        lieu = str(d.get("LOCALISATION") or "").strip()
+        if not lieu or not cle_libelle:
+            continue
+        groupes[(lieu, cle_libelle)].append(
+            (lire_date(d.get("Date")) or datetime.date.min, int(sid)))
+
+    a_annuler = set()
+    for (lieu, libelle), lignes in groupes.items():
+        if len(lignes) > 1:
+            lignes.sort(reverse=True)
+            a_annuler.update(sid for _, sid in lignes[1:])
+            rapport["doublons_annules"][f"{lieu} — {libelle[:44]}"] += len(lignes) - 1
+    return a_annuler
+
+
 def libelles_canoniques(data) -> dict[str, str]:
     """Même regroupement que generer_catalogue.py : chaque graphie pointe vers la
     graphie retenue au catalogue, sinon le rattachement échouerait sur un accent."""
@@ -115,6 +165,7 @@ def main(chemin: str) -> None:
     rapport = collections.defaultdict(collections.Counter)
     aujourdhui = datetime.date.today()
     canoniques = libelles_canoniques(data)
+    doublons = doublons_ouverts(data, canoniques, rapport)
 
     # --- Personnes ---------------------------------------------------------
     utilisateurs, prestataires = {}, {}
@@ -136,6 +187,9 @@ def main(chemin: str) -> None:
     print("-- Import de la liste « TEST Tech 3 » vers anomalies / tournees /")
     print("-- interventions / validations. Rejouable : rien n'est inséré deux fois.")
     print("\nbegin;\n")
+    print("-- Le statut de chaque ligne est calculé par le script ; le déclencheur")
+    print("-- qui le recalcule d'ordinaire est neutralisé le temps de la reprise.")
+    print("alter table validations disable trigger tg_validation_maj_anomalie;\n")
 
     print("-- Personnes rencontrées dans l'export ---------------------------------")
     for nom in sorted(utilisateurs.values()):
@@ -196,22 +250,27 @@ def main(chemin: str) -> None:
         date = date or aujourdhui
         if date > aujourdhui:
             rapport["dates_futures"][str(date)] += 1
-        statut = STATUTS.get(str(d.get("STATUT") or "").strip(), "a_faire")
+        statut = statut_final(d, int(sid) in doublons)
         libelle = " ".join(str(libelle).split())
         # Le libellé reste celui saisi ; le rattachement au catalogue passe par
         # la graphie canonique du groupe.
         canonique = canoniques.get(normaliser_libelle(libelle), libelle)
 
         commentaire = d.get("COMMENTAIRES")
+        if int(sid) in doublons:
+            note = "Annulée à la reprise : le même problème était déjà ouvert ici."
+            commentaire = f"{commentaire}\n{note}" if commentaire else note
         if code == "Parties communes" and cle(lieu_brut) != "parties communes":
             note = f"Localisation d'origine : {lieu_brut}"
             commentaire = f"{commentaire}\n{note}" if commentaire else note
 
         print(
             "insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id,"
-            " description, commentaire, statut, constate_par, saisie_par, declare_le) select "
+            " description, commentaire, statut, constate_par, saisie_par, declare_le,"
+            " cloture_le) select "
             f"{int(sid)}, e.id, c.id, t.id, {q(libelle)}, {q(commentaire)},"
-            f" '{statut}', u1.id, u2.id, timestamptz '{date}'\n"
+            f" '{statut}', u1.id, u2.id, timestamptz '{date}',"
+            f" {q(lire_date(d.get('VERIFIE_LE'))) if statut == 'validee' else 'null'}\n"
             f"  from emplacements e"
             f"\n  left join catalogue_anomalies c on c.libelle = {q(canonique)}"
             f"\n  left join types_intervention t on t.code = {q(d.get('TYPE'))}"
@@ -261,18 +320,7 @@ def main(chemin: str) -> None:
                 f"\n    and not exists (select 1 from validations v"
                 f" where v.intervention_id = i.id and v.acteur = 'gouvernante');")
 
-    # Les déclencheurs ont recalculé le statut à partir des validations ;
-    # on rétablit celui de la source là où elle fait foi.
-    print("\n-- Statuts d'origine (la source fait foi sur les lignes non terminées) --")
-    for source, cible in STATUTS.items():
-        if cible == "validee":
-            continue
-        ids = [int(d["ID"]) for d in data
-               if d.get("ID") is not None
-               and str(d.get("STATUT") or "").strip() == source]
-        if ids:
-            print(f"update anomalies set statut = '{cible}' where sharepoint_id in "
-                  f"({', '.join(map(str, ids))});")
+    print("\nalter table validations enable trigger tg_validation_maj_anomalie;")
 
     print("\ncommit;")
 

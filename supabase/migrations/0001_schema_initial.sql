@@ -178,6 +178,15 @@ create table anomalies (
   maj_le          timestamptz not null default now()
 );
 create index on anomalies (statut);
+
+-- Un même problème ne peut pas être ouvert deux fois au même endroit. Tant que
+-- « serrer le bras liseuse côté droit » est à faire en 58, on ne peut pas le
+-- redéclarer : ce n'est pas un avertissement, c'est impossible.
+-- Le comptage dans le temps, lui, reste entier — voir v_frequence_anomalie_lieu.
+create unique index anomalie_unique_ouverte_par_lieu
+  on anomalies (emplacement_id, catalogue_id)
+  where catalogue_id is not null
+    and statut in ('a_faire', 'en_cours', 'attente_validation', 'a_acheter');
 create index on anomalies (emplacement_id);
 create index on anomalies (declare_le desc);
 

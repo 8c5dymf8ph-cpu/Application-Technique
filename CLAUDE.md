@@ -34,10 +34,13 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 7bis. **Victoria ne reçoit ni n'envoie aucun mail.** Elle consulte, valide et déclare dans
    l'application. Les récapitulatifs vont à Miguel et, selon le paramétrage, à l'intervenant ;
    l'alerte bouteille va à la réception.
-8. **On montre ce qui existe déjà avant de laisser saisir.** L'écran de déclaration affiche
-   `v_anomalies_du_lieu` pour la chambre choisie — ouvertes d'abord, historique récent ensuite —
-   et `fn_doublons_probables` signale le même libellé déjà présent. C'est un avertissement, pas
-   un blocage : une anomalie close qui réapparaît est une réparation qui n'a pas tenu.
+8. **Un même problème ne peut pas être ouvert deux fois au même endroit.** L'index
+   `anomalie_unique_ouverte_par_lieu` l'interdit en base : ce n'est pas un avertissement que
+   l'interface pourrait contourner. L'écran de déclaration montre d'abord `v_anomalies_du_lieu`,
+   et `fn_catalogue_pour_lieu` marque comme non proposable tout libellé déjà ouvert ici.
+   **Le comptage dans le temps est un autre sujet** : `v_frequence_anomalie_lieu` dit combien de
+   fois le problème est revenu, et c'est une information à montrer, pas un obstacle. C'est aussi
+   la raison d'être du catalogue fermé : sans libellés normalisés, ce comptage n'existe pas.
 9. **Une anomalie hors catalogue ne se crée que par un admin**, depuis un ordinateur. La règle est
    dans la RLS : ne pas la déplacer dans l'interface.
 10. **Le technicien rend un lot, la gouvernante valide à l'unité.** Une `tournee` regroupe les

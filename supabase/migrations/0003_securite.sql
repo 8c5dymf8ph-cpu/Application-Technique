@@ -140,7 +140,7 @@ begin
   foreach v in array array[
     'v_stock_produits','v_cout_prestataire','v_interventions_cout',
     'v_recap_interventions','v_tournees','v_fil_commentaires','v_intervenants',
-    'v_interventions_sans_facture','v_envois_en_attente','v_anomalies_du_lieu',
+    'v_interventions_sans_facture','v_envois_en_attente','v_anomalies_du_lieu','v_frequence_anomalie_lieu',
     'v_recurrences_emplacement','v_bouteilles_positions',
     'v_stock_bouteilles','v_bouteilles_par_emplacement','v_incidents_bouteille',
     'v_reappro_necessaire','v_controle_donnees'
