@@ -21,7 +21,15 @@ from referentiel_lieux import CHAMBRES_DE_TEST, EMPLACEMENTS, SYNONYMES
 PRESTATAIRES = {
     "ecoflair", "technicien avir", "technicien kone", "technicien telec",
     "technicien euprohr", "technicien europroh", "mr negroni", "mrnegroni",
-    "alain", "hedi", "juan",
+    "alain", "hedi", "juan", "serafino",
+}
+
+# Rôle dans l'application. Les personnes absentes de cette table sont créées
+# comme techniciens ; celles classées prestataires ne s'y connectent pas.
+ROLES = {
+    "miguel": "admin",
+    "victoria": "gouvernante",
+    "sarah p": "gouvernante",
 }
 
 STATUTS = {
@@ -110,7 +118,8 @@ def main(chemin: str) -> None:
 
     print("-- Personnes rencontrées dans l'export ---------------------------------")
     for nom in sorted(utilisateurs.values()):
-        print(f"insert into utilisateurs (nom, role) values ({q(nom)}, 'technicien') "
+        role = ROLES.get(cle(nom), "technicien")
+        print(f"insert into utilisateurs (nom, role) values ({q(nom)}, '{role}') "
               f"on conflict do nothing;")
     for nom in sorted(prestataires.values()):
         print(f"insert into prestataires (nom) values ({q(nom)}) on conflict do nothing;")

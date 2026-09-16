@@ -311,12 +311,40 @@ create table produits (
   prix_unitaire  numeric(10, 2) check (prix_unitaire >= 0),
   seuil_alerte   numeric(10, 2) not null default 0 check (seuil_alerte >= 0),
   quantite_reappro numeric(10, 2) check (quantite_reappro > 0),
-  fournisseur_id uuid references fournisseurs (id),
-  photo_url      text,
   actif          boolean not null default true
 );
 create index on produits (categorie);
-create index on produits (fournisseur_id);
+
+-- Un produit peut être fourni par plusieurs maisons : une demande de devis part
+-- alors vers chacune, pour comparer. Un fournisseur qui a plusieurs articles
+-- sous seuil ne reçoit toujours qu'un seul mail.
+create table article_fournisseurs (
+  id                    uuid primary key default gen_random_uuid(),
+  produit_id            uuid references produits (id) on delete cascade,
+  bouteille_type_id     uuid,   -- contrainte posée plus bas, la table n'existe pas encore
+  fournisseur_id        uuid not null references fournisseurs (id) on delete cascade,
+  reference_fournisseur text,
+  prix_indicatif        numeric(10, 2) check (prix_indicatif >= 0),
+  delai_jours           int check (delai_jours >= 0),
+  prefere               boolean not null default false,
+  constraint un_seul_article check (num_nonnulls(produit_id, bouteille_type_id) = 1)
+);
+create unique index on article_fournisseurs (produit_id, fournisseur_id) where produit_id is not null;
+create unique index on article_fournisseurs (bouteille_type_id, fournisseur_id) where bouteille_type_id is not null;
+
+-- Plusieurs photos par produit, ajoutées au fil de l'eau. La principale est
+-- celle qui s'affiche dans la liste du technicien.
+create table photos_produit (
+  id          uuid primary key default gen_random_uuid(),
+  produit_id  uuid not null references produits (id) on delete cascade,
+  chemin      text not null,
+  principale  boolean not null default false,
+  ordre       int not null default 0,
+  ajoutee_par uuid references utilisateurs (id),
+  ajoutee_le  timestamptz not null default now()
+);
+create index on photos_produit (produit_id, ordre);
+create unique index on photos_produit (produit_id) where principale;
 
 create table inventaires (
   id            uuid primary key default gen_random_uuid(),
@@ -392,9 +420,12 @@ create table bouteille_types (
   prix_achat     numeric(10, 2) not null default 0,   -- valorisation d'une casse interne
   seuil_alerte   int not null default 0,              -- porte sur la RÉSERVE
   quantite_reappro int check (quantite_reappro > 0),
-  fournisseur_id uuid references fournisseurs (id),
   couleur        text
 );
+
+alter table article_fournisseurs
+  add constraint article_fournisseurs_bouteille_fkey
+  foreign key (bouteille_type_id) references bouteille_types (id) on delete cascade;
 
 -- Dotation permanente théorique d'une chambre (1 filtrée + 1 pétillante).
 create table dotations (

@@ -11,7 +11,8 @@ SYNONYMES ramène les 86 orthographes rencontrées dans l'export vers ces codes.
 
 # étage -> codes, dans l'ordre de la liste d'origine
 LISTE_ORIGINE = {
-    "RDC":      ["01", "02", "03", "PDJ", "Réception", "Lobby", "Entrée", "Cuisine", "Bagagerie"],
+    "RDC":      ["01", "02", "03", "PDJ", "Réception", "Lobby", "Entrée", "Cuisine",
+                 "Bagagerie", "Ascenseur"],
     "1er":      ["Palier 1er", "11", "12", "14", "15", "16", "18"],
     "2eme":     ["2eme étage", "21", "22", "24", "25", "26", "27", "28"],
     "3eme":     ["3eme étage", "31", "32", "34", "35", "36", "37", "38",
@@ -19,18 +20,23 @@ LISTE_ORIGINE = {
     "4eme":     ["4eme étage", "41", "42", "44", "45", "46", "47", "48",
                  "escalier qui mène au 5ème"],
     "5eme":     ["Palier 5ème", "Office 5 ème étage", "51", "52", "54", "55", "56", "57", "58"],
-    "Sous-Sol": ["WC Clients", "WC Femmes", "Chaufferie", "Local TGBT", "Local Technique",
-                 "Lingerie", "Salle de sport"],
+    "Sous-Sol": ["Salle de sport", "Sas de sécurité", "WC Clients", "WC Femmes", "WC Hommes",
+                 "Escalier qui mène au RDC", "Salle de repos", "Vestiaire Hommes",
+                 "Vestiaire Femmes", "Lingerie", "Local TGBT", "Local Technique",
+                 "Local poubelle", "Chaufferie"],
     "Autres":   ["Toit", "COUR intèrieure"],
 }
 
 # Trois emplacements absents de la liste d'origine mais nécessaires pour placer
 # une vingtaine de lignes de l'export. À confirmer, puis à intégrer à la liste.
 AJOUTS_A_CONFIRMER = {
-    "Ascenseur":        "Autres",     # 6 lignes dans l'export
-    "Sous-sol divers":  "Sous-Sol",   # « sous sol », « Salle de repos (sous sol) »
-    "Parties communes": "Autres",     # « Divers », « GENERAL », bureau, escaliers du RDC
+    "Sous-sol divers":  "Sous-Sol",   # les 4 lignes qui disent seulement « sous sol »
+    "Parties communes": "Autres",     # « Divers », « GENERAL », « Bureau », escaliers du RDC
 }
+
+# « Vestiaire Femmes » est déduit : la liste fournie répète « Vestiaire Hommes »
+# deux fois, et le sous-sol distingue par ailleurs WC hommes et WC femmes.
+DEDUCTIONS_A_CONFIRMER = {"Vestiaire Femmes"}
 
 TYPES = {
     "PDJ": "commun", "Réception": "commun", "Lobby": "commun", "Entrée": "commun",
@@ -38,9 +44,12 @@ TYPES = {
     "Palier 1er": "commun", "2eme étage": "commun", "3eme étage": "commun",
     "4eme étage": "commun", "Palier 5ème": "commun", "Office 5 ème étage": "technique",
     "escalier qui mène au 4ème": "commun", "escalier qui mène au 5ème": "commun",
-    "WC Clients": "commun", "WC Femmes": "commun", "Salle de sport": "commun",
+    "WC Clients": "commun", "WC Femmes": "commun", "WC Hommes": "commun",
+    "Salle de sport": "commun", "Sas de sécurité": "commun", "Salle de repos": "commun",
+    "Escalier qui mène au RDC": "commun",
+    "Vestiaire Hommes": "technique", "Vestiaire Femmes": "technique",
     "Chaufferie": "technique", "Local TGBT": "technique", "Local Technique": "technique",
-    "Lingerie": "technique",
+    "Local poubelle": "technique", "Lingerie": "technique",
     "Toit": "exterieur", "COUR intèrieure": "exterieur",
     "Ascenseur": "technique", "Sous-sol divers": "commun", "Parties communes": "commun",
 }
@@ -59,7 +68,7 @@ SYNONYMES = {
     # Rez-de-chaussée
     "reception": "Réception", "mur a cote de la reception": "Réception",
     "lobby": "Lobby", "lobby devant(le pillier)": "Lobby",
-    "rdc face ascenseur": "Lobby", "rdc": "Lobby",
+    "rdc": "Lobby",
     "entree": "Entrée", "pdj": "PDJ", "buffet du petit dejeuner": "PDJ",
     "cuisine": "Cuisine", "bagagerie": "Bagagerie",
 
@@ -74,14 +83,15 @@ SYNONYMES = {
     "office 5 eme etage": "Office 5 ème étage",
 
     # Sous-sol
-    "wc clients": "WC Clients", "wc hommes": "WC Clients", "wc femmes": "WC Femmes",
+    "wc clients": "WC Clients", "wc hommes": "WC Hommes", "wc femmes": "WC Femmes",
     "salle de sport": "Salle de sport", "chaufferie": "Chaufferie",
     "local tgbt": "Local TGBT", "local technique": "Local Technique", "lingerie": "Lingerie",
-    "sous sol": "Sous-sol divers", "salle de repos (sous sol)": "Sous-sol divers",
-    "escalier qui mene au sous-sol": "Sous-sol divers",
+    "salle de repos (sous sol)": "Salle de repos",
+    "escalier qui mene au sous-sol": "Escalier qui mène au RDC",
+    "sous sol": "Sous-sol divers",
 
     # Transverses et extérieurs
-    "ascenseur": "Ascenseur",
+    "ascenseur": "Ascenseur", "rdc face ascenseur": "Ascenseur",
     "toit": "Toit",
     "cour interieure": "COUR intèrieure", "exterieur de l'hotel": "COUR intèrieure",
     "parties communes": "Parties communes", "divers": "Parties communes",

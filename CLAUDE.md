@@ -13,10 +13,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 
 1. **Rien de calculable n'est stocké.** Stock matériel, parc de bouteilles et coût d'intervention
    sont des vues dérivées des mouvements. Ne jamais ajouter une colonne `stock` matérialisée.
-2. **Une bouteille emportée n'est pas perdue.** Elle passe en position `chez_client` et peut
-   revenir. Le parc ne diminue qu'à la facturation, à la non-restitution ou à la casse. La
-   re-dotation d'une chambre est un déplacement `reserve → emplacement`, jamais une seconde
-   sortie de parc. Une bouteille restituée rejoint la **réserve**, pas la chambre.
+2. **Une bouteille emportée sort du parc détenu, sans être perdue pour autant.** `parc_detenu`
+   (réserve + chambres) est ce que l'hôtel a réellement : il baisse dès l'emport. `chez_client`
+   est une position d'attente, et `parc_theorique` ne sert qu'au rapprochement d'inventaire.
+   Ne jamais afficher le théorique comme le parc. Une bouteille restituée rejoint la **réserve**,
+   pas la chambre — celle-ci a déjà été re-dotée — et la re-dotation est un déplacement
+   `reserve → emplacement`, jamais une seconde sortie.
 3. **Les deux validations sont conservées.** Le refus d'une gouvernante renvoie l'anomalie en
    `a_faire` mais n'efface jamais l'avis du technicien : les récapitulatifs doivent pouvoir
    afficher « déclarée faite par X — non validée par la gouvernante ».
@@ -27,7 +29,11 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 6. **Un produit sans prix n'est pas compté pour zéro.** Les vues de coût exposent
    `articles_sans_prix` et `cout_incomplet` : l'interface doit le dire, pas l'ignorer.
 7. **Un seul mail par fournisseur** pour les demandes de devis, même si plusieurs articles
-   tombent sous le seuil en même temps.
+   tombent sous le seuil en même temps. Un article peut avoir plusieurs fournisseurs : la
+   consultation part alors vers chacun, pour comparer.
+7bis. **Victoria ne reçoit ni n'envoie aucun mail.** Elle consulte, valide et déclare dans
+   l'application. Les récapitulatifs vont à Miguel et, selon le paramétrage, à l'intervenant ;
+   l'alerte bouteille va à la réception.
 8. **Une anomalie hors catalogue ne se crée que par un admin**, depuis un ordinateur. La règle est
    dans la RLS : ne pas la déplacer dans l'interface.
 9. **Le technicien rend un lot, la gouvernante valide à l'unité.** Une `tournee` regroupe les

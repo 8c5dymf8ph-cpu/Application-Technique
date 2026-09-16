@@ -19,8 +19,8 @@ select
   p.prix_unitaire,
   p.prix_unitaire is null                              as prix_inconnu,
   p.seuil_alerte,
-  p.fournisseur_id,
-  p.photo_url,
+  ph.chemin                                            as photo_principale,
+  (select count(*) from photos_produit x where x.produit_id = p.id) as nb_photos,
   p.actif,
   coalesce(sum(m.quantite) filter (where m.type = 'entree'), 0)          as total_entrees,
   coalesce(-sum(m.quantite) filter (where m.type = 'sortie'), 0)         as total_sorties,
@@ -31,7 +31,11 @@ select
   max(m.date_mouvement)                                as dernier_mouvement
 from produits p
 left join mouvements_stock m on m.produit_id = p.id
-group by p.id;
+left join lateral (
+  select chemin from photos_produit x
+  where x.produit_id = p.id order by x.principale desc, x.ordre limit 1
+) ph on true
+group by p.id, ph.chemin;
 
 -- -----------------------------------------------------------------------------
 -- Coût d'une intervention
@@ -304,13 +308,18 @@ select
   bt.prix_vente,
   bt.prix_achat,
   bt.seuil_alerte,
-  bt.fournisseur_id,
   -- Le chiffre opérationnel : ce qu'il reste pour re-doter une chambre.
   coalesce(sum(p.qte) filter (where p.lieu = 'reserve'), 0)      as en_reserve,
   coalesce(sum(p.qte) filter (where p.lieu = 'emplacement'), 0)  as en_chambre,
-  -- Emportées par un client, pas encore restituées ni facturées.
+  -- Emportée par un client : elle n'est plus à nous tant qu'elle n'est pas
+  -- rendue. Elle ne compte donc PAS dans le parc détenu.
   coalesce(sum(p.qte) filter (where p.lieu = 'chez_client'), 0)  as chez_clients,
-  coalesce(sum(p.qte), 0)                                        as parc_total,
+  -- Ce que l'hôtel a réellement, réserve et chambres réunies. C'est ce chiffre
+  -- qui baisse dès qu'un client emporte une bouteille.
+  coalesce(sum(p.qte) filter (where p.lieu in ('reserve', 'emplacement')), 0) as parc_detenu,
+  -- Détenu + en attente de retour : sert au rapprochement d'inventaire, pas au
+  -- pilotage quotidien.
+  coalesce(sum(p.qte), 0)                                        as parc_theorique,
   coalesce(d.dotation_theorique, 0)                              as dotation_theorique,
   coalesce(sum(p.qte) filter (where p.lieu = 'reserve'), 0) <= bt.seuil_alerte as sous_seuil
 from bouteille_types bt
@@ -382,35 +391,43 @@ left join utilisateurs ut on ut.id = i.transmis_a;
 -- Réapprovisionnement : articles sous seuil, regroupés par fournisseur.
 -- Un seul devis, donc un seul mail, même si trois articles tombent le même jour.
 -- -----------------------------------------------------------------------------
+-- Une ligne par couple article / fournisseur : un produit qui a trois
+-- fournisseurs apparaît trois fois, et part donc en consultation chez les trois.
+-- Un article sans aucun fournisseur apparaît quand même, avec `fournisseur_id`
+-- nul : il doit rester visible dans l'écran d'alerte.
 create view v_reappro_necessaire as
 select
-  p.fournisseur_id,
+  af.fournisseur_id,
   f.nom                                as fournisseur,
   f.email                              as email_fournisseur,
   'produit'::text                      as nature,
   p.id                                 as article_id,
   p.designation                        as libelle,
+  af.reference_fournisseur,
   s.stock::numeric                     as stock_actuel,
   p.seuil_alerte::numeric              as seuil,
   coalesce(p.quantite_reappro, greatest(p.seuil_alerte * 2 - s.stock, 1))::numeric as quantite_suggeree
 from v_stock_produits s
-join produits p      on p.id = s.id
-left join fournisseurs f on f.id = p.fournisseur_id
+join produits p on p.id = s.id
+left join article_fournisseurs af on af.produit_id = p.id
+left join fournisseurs f          on f.id = af.fournisseur_id
 where p.actif and s.stock <= p.seuil_alerte
 union all
 select
-  bt.fournisseur_id,
+  af.fournisseur_id,
   f.nom,
   f.email,
   'bouteille'::text,
   bt.id,
   bt.libelle,
+  af.reference_fournisseur,
   b.en_reserve::numeric,
   bt.seuil_alerte::numeric,
   coalesce(bt.quantite_reappro, greatest(bt.seuil_alerte * 2 - b.en_reserve, 1))::numeric
 from v_stock_bouteilles b
-join bouteille_types bt  on bt.id = b.bouteille_type_id
-left join fournisseurs f on f.id = bt.fournisseur_id
+join bouteille_types bt on bt.id = b.bouteille_type_id
+left join article_fournisseurs af on af.bouteille_type_id = bt.id
+left join fournisseurs f          on f.id = af.fournisseur_id
 where b.en_reserve <= bt.seuil_alerte;
 
 -- =============================================================================
@@ -647,7 +664,7 @@ begin
     insert into demande_devis_lignes (
       demande_id, produit_id, bouteille_type_id, libelle,
       stock_actuel, seuil, quantite_demandee)
-    select
+    select distinct on (r.nature, r.article_id)
       v_demande.id,
       case when r.nature = 'produit'   then r.article_id end,
       case when r.nature = 'bouteille' then r.article_id end,

@@ -183,8 +183,8 @@
         </ul>
       </div>
       <div class="role">
-        <h3>Serafino, Miguel</h3>
-        <div class="who">Techniciens</div>
+        <h3>Les techniciens</h3>
+        <div class="who">Serafino, ALAIN, EcoFlair…</div>
         <ul>
           <li>Voient leurs anomalies, groupées par chambre</li>
           <li>Cochent ce qu'ils ont fait</li>
@@ -193,13 +193,13 @@
         </ul>
       </div>
       <div class="role">
-        <h3>Toi</h3>
-        <div class="who">Administrateur</div>
+        <h3>Miguel</h3>
+        <div class="who">Administrateur, et technicien à l'occasion</div>
         <ul>
-          <li>Tiens le catalogue d'anomalies</li>
-          <li>Saisis les factures des prestataires</li>
-          <li>Paramètres les destinataires des mails</li>
-          <li>Vois tous les coûts</li>
+          <li>Tient le catalogue d'anomalies</li>
+          <li>Saisit les factures des prestataires</li>
+          <li>Paramètre les destinataires des mails</li>
+          <li>Voit tous les coûts, et fait les interventions à sa portée</li>
         </ul>
       </div>
       <div class="role">
@@ -212,10 +212,15 @@
         </ul>
       </div>
     </div>
-    <p class="note">ALAIN, EcoFlair, AVIR, Kone, TELEC, EUROPROH, MR NEGRONI, Hedi et Juan sont des
-      intervenants extérieurs : ils apparaissent dans l'application mais ne s'y connectent pas.
-      ALAIN a une particularité — sa section ne montre que l'électrique, soit 16 anomalies au lieu
-      des 120 qu'un polyvalent voit.</p>
+    <p class="note">Serafino, ALAIN, EcoFlair, AVIR, Kone, TELEC, EUROPROH, MR NEGRONI, Hedi et
+      Juan sont des intervenants extérieurs : ils apparaissent dans l'application et facturent leurs
+      journées, mais ne s'y connectent pas. ALAIN a une particularité — sa section ne montre que
+      l'électrique, soit 16 anomalies au lieu des 120 qu'un polyvalent voit.</p>
+    <div class="callout key">
+      <div class="t">Victoria ne reçoit et n'envoie aucun mail</div>
+      <p>Elle a sa partie de l'application, où elle consulte, valide et déclare. Tout ce qu'elle a
+        à savoir est à l'écran. Les mails vont à Miguel, aux intervenants et à la réception.</p>
+    </div>
   </section>
 
   <section>
@@ -244,12 +249,14 @@
       </div></div>
       <div class="step"><div class="step-b">
         <div class="who">Serafino · fin de tournée</div>
-        <p>Il clôt son lot. Un <strong>mail part vers Victoria</strong> avec le détail de ce qu'il
-          a traité.</p>
+        <p>Il clôt son lot — tout ce qu'il a fait, et avec quel matériel. C'est ce geste qui
+          déclenche le <strong>récapitulatif technicien</strong>, envoyé à Miguel et, selon le
+          paramétrage, à l'intervenant lui-même.</p>
       </div></div>
       <div class="step"><div class="step-b">
         <div class="who">Victoria · à son rythme</div>
-        <p>Elle reprend les anomalies <strong>une par une</strong>, avec trois réponses possibles :
+        <p>Elle voit le lot dans son écran — sans mail — et reprend les anomalies
+          <strong>une par une</strong>, avec trois réponses possibles :
           <strong>Fait</strong>, <strong>En cours</strong>, ou <strong>À refaire</strong> — et un
           commentaire si elle veut. Elle peut s'arrêter et reprendre le lendemain.</p>
       </div></div>
@@ -290,7 +297,15 @@
       il crée une ligne qu'on peut relire six mois plus tard.</p>
     <p class="note">Les entrées gardent en plus le prix payé <em>pour cette livraison-là</em>, qui
       n'est pas le prix de référence du produit : une facture de fournisseur peut couvrir plusieurs
-      articles d'un coup, et chacun garde son prix du jour.</p>
+      articles d'un coup, et chacun garde son prix du jour. Un même article acheté trois fois à
+      trois prix garde ses trois prix.</p>
+    <div class="callout key">
+      <div class="t">L'historique n'est pas jeté</div>
+      <p>Les 261 mouvements sont repris tels quels — qui a pris quoi, quand, pour quelle chambre.
+        Le comptage physique du jour J ne les efface pas : il ajoute une ligne de régularisation
+        qui remet le stock à sa valeur réelle. On repart d'un chiffre juste <em>sans</em> perdre
+        ce qui s'est passé avant.</p>
+    </div>
   </section>
 
   <section>
@@ -299,31 +314,35 @@
       <h2>Les bouteilles ne se consomment pas, elles circulent</h2>
     </div>
     <p>C'est ce que l'ancien calcul ne savait pas dire. Une bouteille emportée par un client
-      <strong>n'est pas perdue</strong> : elle peut revenir. Il faut donc suivre quatre positions,
-      et non un compteur unique.</p>
+      <strong>n'est plus à l'hôtel</strong> — donc le parc baisse tout de suite — <strong>mais elle
+      n'est pas perdue pour autant</strong> : elle peut revenir, être facturée, ou disparaître. Il
+      faut donc un compteur pour ce qu'on a, et un autre pour ce qui est en attente.</p>
     <div class="counters">
       <div class="counter"><b>62</b><span>En réserve</span></div>
       <div class="counter"><b>37</b><span>En chambre</span></div>
-      <div class="counter"><b>1</b><span>Chez les clients</span></div>
-      <div class="counter total"><b>100</b><span>Parc total</span></div>
+      <div class="counter total"><b>99</b><span>Ce qu'on a</span></div>
+      <div class="counter"><b>1</b><span>Chez un client</span></div>
     </div>
-    <p>Chaque événement est un <strong>déplacement</strong> d'une position vers une autre. Seule une
-      sortie définitive fait baisser le parc :</p>
+    <p class="note">La chambre est re-dotée depuis la réserve dès l'emport : on ne laisse pas le
+      client suivant sans bouteille. C'est pour ça que « en chambre » reste à 37 et que c'est la
+      réserve qui encaisse.</p>
+    <p>Chaque événement est un <strong>déplacement</strong> d'une position vers une autre :</p>
     <div class="scroll"><table>
-      <tr><th>Ce qui se passe</th><th>Déplacement</th><th class="num">Parc</th></tr>
-      <tr><td>Une livraison arrive</td><td>hors parc → réserve</td><td class="num delta-up">+ 1</td></tr>
-      <tr><td>On dote une chambre</td><td>réserve → chambre</td><td class="num delta-none">inchangé</td></tr>
-      <tr><td>Un client l'emporte</td><td>chambre → chez le client</td><td class="num delta-none">inchangé</td></tr>
-      <tr><td>On re-dote la chambre</td><td>réserve → chambre</td><td class="num delta-none">inchangé</td></tr>
-      <tr><td>Il la rend</td><td>chez le client → <strong>réserve</strong></td><td class="num delta-none">inchangé</td></tr>
-      <tr><td>Il ne la rend pas, on facture</td><td>chez le client → hors parc</td><td class="num delta-down">− 1</td></tr>
-      <tr><td>Elle est cassée</td><td>chambre → hors parc</td><td class="num delta-down">− 1</td></tr>
+      <tr><th>Ce qui se passe</th><th>Déplacement</th><th class="num">Ce qu'on a</th><th class="num">Chez un client</th></tr>
+      <tr><td>Une livraison arrive</td><td>hors parc → réserve</td><td class="num delta-up">+ 1</td><td class="num delta-none">—</td></tr>
+      <tr><td>On dote une chambre</td><td>réserve → chambre</td><td class="num delta-none">inchangé</td><td class="num delta-none">—</td></tr>
+      <tr><td>Un client l'emporte</td><td>chambre → chez le client</td><td class="num delta-down">− 1</td><td class="num delta-up">+ 1</td></tr>
+      <tr><td>On re-dote la chambre</td><td>réserve → chambre</td><td class="num delta-none">inchangé</td><td class="num delta-none">—</td></tr>
+      <tr><td>Il la rend</td><td>chez le client → <strong>réserve</strong></td><td class="num delta-up">+ 1</td><td class="num delta-down">− 1</td></tr>
+      <tr><td>Il ne la rend pas, on facture</td><td>chez le client → hors parc</td><td class="num delta-none">inchangé</td><td class="num delta-down">− 1</td></tr>
+      <tr><td>Elle est cassée</td><td>chambre → hors parc</td><td class="num delta-down">− 1</td><td class="num delta-none">—</td></tr>
     </table></div>
     <div class="callout key">
-      <div class="t">Ton cas rare est ici</div>
+      <div class="t">Le cas rare est ici</div>
       <p>Le client emporte la bouteille, on re-dote la chambre, puis il revient avec. Elle rejoint
-        la <strong>réserve</strong>, pas la chambre — qui a déjà la sienne. Le parc n'a jamais
-        bougé. L'ancien calcul, lui, retirait deux bouteilles pour un seul incident.</p>
+        la <strong>réserve</strong>, pas la chambre — qui a déjà la sienne. Le parc remonte de 99
+        à 100. L'ancien calcul, lui, retirait deux bouteilles pour un seul incident, et ne savait
+        pas du tout gérer un retour.</p>
     </div>
     <p>Le dossier suit ensuite quatre étapes : <strong>constaté</strong>, <strong>transmis</strong>,
       <strong>client contacté</strong>, <strong>résolution</strong> — restitué, facturé 17,50 €, ou
@@ -338,20 +357,23 @@
     </div>
     <div class="scroll"><table>
       <tr><th>Mail</th><th>Déclenché par</th><th>Vers</th></tr>
-      <tr><td>Récapitulatif technicien</td><td>La clôture d'une tournée</td><td>Victoria</td></tr>
-      <tr><td>Récapitulatif d'intervention</td><td>La <strong>dernière</strong> validation du lot</td><td>Toi, la direction</td></tr>
-      <tr><td>Bouteille manquante</td><td>Un incident signalé</td><td>Adresses paramétrées</td></tr>
-      <tr><td>Demande de devis</td><td>Un article sous son seuil</td><td>Le fournisseur</td></tr>
+      <tr><td>Récapitulatif technicien</td><td>La clôture d'une tournée</td><td>Miguel, et l'intervenant si tu le paramètres</td></tr>
+      <tr><td>Récapitulatif d'intervention</td><td>La <strong>dernière</strong> validation du lot</td><td>Miguel, la direction</td></tr>
+      <tr><td>Bouteille manquante</td><td>Un incident signalé, <strong>tout de suite</strong></td><td>La réception</td></tr>
+      <tr><td>Demande de devis</td><td>Un article sous son seuil</td><td>Chacun de ses fournisseurs</td></tr>
       <tr><td>Récapitulatif périodique</td><td>Quotidien, hebdo ou mensuel</td><td>Au choix</td></tr>
     </table></div>
     <div class="callout key">
-      <div class="t">Un seul mail par fournisseur</div>
+      <div class="t">Un mail par fournisseur, et un produit peut en avoir plusieurs</div>
       <p>Si trois produits du même fournisseur passent sous leur seuil le même jour, ils arrivent
-        dans <strong>une seule</strong> demande de devis, avec les trois lignes. Et une demande déjà
-        en cours n'est jamais dupliquée.</p>
+        dans <strong>une seule</strong> demande, avec les trois lignes. Et si un produit a trois
+        fournisseurs, la consultation part chez les trois — pour comparer. Une demande déjà en
+        cours n'est jamais dupliquée.</p>
     </div>
-    <p class="note">Chaque envoi est journalisé. Les écrans de détail permettront de renvoyer un
-      mail à la main quand il faut.</p>
+    <p class="note">L'alerte bouteille reprend ce qui existe aujourd'hui : elle contient un
+      <strong>texte prêt à être transmis au client</strong>, que la réception n'a plus qu'à
+      relire et envoyer. Chaque envoi est journalisé, et les écrans de détail permettent de
+      renvoyer un mail à la main.</p>
   </section>
 
   <section>
@@ -449,37 +471,42 @@
     </div>
     <div class="todo">
       <div class="todo-item">
-        <span class="pill block">Bloquant</span>
-        <div><strong>Aucun fournisseur n'est renseigné</strong> sur les 36 produits. Sans eux, la
-          demande de devis automatique ne peut pas partir — c'est la seule fonctionnalité qui ne
-          peut pas fonctionner en l'état.</div>
+        <span class="pill block">À trancher</span>
+        <div><strong>Comment chacun se connecte.</strong> Aujourd'hui tout le monde passe par le
+          compte de Miguel et choisit son profil dans l'application, parce que les autres comptes
+          ne fonctionnaient pas. C'est le seul point qui touche la sécurité : tant qu'un seul
+          compte sert à tous, l'application ne peut pas empêcher un technicien de valider à la
+          place de la gouvernante — elle peut seulement le noter.</div>
+      </div>
+      <div class="todo-item">
+        <span class="pill soon">Quand tu veux</span>
+        <div><strong>Les fournisseurs</strong> — aucun n'est renseigné aujourd'hui. Sans eux la
+          demande de devis ne peut pas partir, mais tout le reste fonctionne ; ça s'ajoute à
+          n'importe quel moment, et un produit peut en avoir plusieurs.</div>
+      </div>
+      <div class="todo-item">
+        <span class="pill soon">Quand tu veux</span>
+        <div><strong>16 prix et 15 seuils manquants</strong> sur 36 produits. Sans prix, le coût
+          d'une intervention est annoncé comme partiel — « 13,90 € + 2 articles sans prix connu » —
+          plutôt que faux. Sans seuil, pas d'alerte sur cet article.</div>
       </div>
       <div class="todo-item">
         <span class="pill soon">Important</span>
-        <div><strong>16 produits sur 36 n'ont pas de prix</strong> et <strong>15 pas de seuil
-          d'alerte.</strong> Sans prix, le coût d'une intervention sera annoncé comme partiel —
-          « 13,90 € + 2 articles sans prix connu » — plutôt que faux. Sans seuil, aucune alerte.</div>
-      </div>
-      <div class="todo-item">
-        <span class="pill soon">Important</span>
-        <div><strong>Les comptes et les rôles.</strong> Qui se connecte, avec quelle adresse
-          Microsoft, et en tant que quoi.</div>
-      </div>
-      <div class="todo-item">
-        <span class="pill soon">Important</span>
-        <div><strong>Les destinataires des mails.</strong> Qui reçoit l'alerte « bouteille
-          manquante », qui reçoit les récapitulatifs, à quelle fréquence.</div>
+        <div><strong>Les destinataires des mails.</strong> L'adresse de la réception pour les
+          bouteilles, la tienne pour les récapitulatifs, et la fréquence des envois périodiques.</div>
       </div>
       <div class="todo-item">
         <span class="pill later">À confirmer</span>
-        <div><strong>Trois emplacements ajoutés</strong> — Ascenseur, Sous-sol divers, Parties
-          communes — absents de ta liste mais nécessaires pour placer une vingtaine de lignes de
-          l'export.</div>
+        <div><strong>« Vestiaire Femmes »</strong>, déduit : ta liste du sous-sol répète
+          « Vestiaire Hommes » deux fois. Et deux emplacements ajoutés — <strong>Sous-sol divers</strong>
+          et <strong>Parties communes</strong> — pour placer une vingtaine de lignes de l'export
+          qui disent seulement « sous sol », « Divers » ou « GENERAL ».</div>
       </div>
       <div class="todo-item">
         <span class="pill later">Confort</span>
-        <div><strong>32 produits sur 36 n'ont pas de photo.</strong> La liste du technicien affiche
-          un visuel de remplacement en attendant.</div>
+        <div><strong>Les photos.</strong> Un produit peut en porter plusieurs, ajoutées quand tu
+          veux ; une anomalie peut être déclarée avec ou sans. En attendant, la liste du technicien
+          affiche un visuel de remplacement.</div>
       </div>
     </div>
   </section>

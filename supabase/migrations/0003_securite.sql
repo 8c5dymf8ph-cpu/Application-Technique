@@ -40,7 +40,8 @@ begin
     'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
     'anomalies','tournees','interventions','validations','photos_anomalie',
     'factures','facture_interventions',
-    'produits','mouvements_stock','inventaires','inventaire_lignes_produit',
+    'produits','article_fournisseurs','photos_produit','mouvements_stock',
+    'inventaires','inventaire_lignes_produit',
     'bouteille_types','dotations','incidents_bouteille','mouvements_bouteilles',
     'inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes',
@@ -60,7 +61,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'tournees','interventions','photos_anomalie','factures','facture_interventions',
+    'tournees','interventions','photos_anomalie','photos_produit','factures','facture_interventions',
     'mouvements_stock','inventaires','inventaire_lignes_produit',
     'incidents_bouteille','mouvements_bouteilles','inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes'
@@ -114,7 +115,7 @@ begin
   foreach t in array array[
     'utilisateurs','specialites_intervenant','etages','emplacements',
     'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
-    'produits','bouteille_types','dotations',
+    'produits','article_fournisseurs','bouteille_types','dotations',
     'recap_abonnements','alertes_destinataires'
   ] loop
     execute format('grant insert, update, delete on %I to authenticated', t);

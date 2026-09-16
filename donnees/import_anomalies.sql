@@ -6,18 +6,18 @@ begin;
 
 -- Personnes rencontrées dans l'export ---------------------------------
 insert into utilisateurs (nom, role) values ('FARID', 'technicien') on conflict do nothing;
-insert into utilisateurs (nom, role) values ('MIGUEL', 'technicien') on conflict do nothing;
+insert into utilisateurs (nom, role) values ('MIGUEL', 'admin') on conflict do nothing;
 insert into utilisateurs (nom, role) values ('Mr Negroni', 'technicien') on conflict do nothing;
 insert into utilisateurs (nom, role) values ('MrNegroni', 'technicien') on conflict do nothing;
 insert into utilisateurs (nom, role) values ('Rachid', 'technicien') on conflict do nothing;
-insert into utilisateurs (nom, role) values ('SARAH P', 'technicien') on conflict do nothing;
-insert into utilisateurs (nom, role) values ('Serafino', 'technicien') on conflict do nothing;
-insert into utilisateurs (nom, role) values ('VICTORIA', 'technicien') on conflict do nothing;
+insert into utilisateurs (nom, role) values ('SARAH P', 'gouvernante') on conflict do nothing;
+insert into utilisateurs (nom, role) values ('VICTORIA', 'gouvernante') on conflict do nothing;
 insert into prestataires (nom) values ('ALAIN') on conflict do nothing;
 insert into prestataires (nom) values ('EcoFlair') on conflict do nothing;
 insert into prestataires (nom) values ('Hedi') on conflict do nothing;
 insert into prestataires (nom) values ('Juan') on conflict do nothing;
 insert into prestataires (nom) values ('MR NEGRONI') on conflict do nothing;
+insert into prestataires (nom) values ('Serafino') on conflict do nothing;
 insert into prestataires (nom) values ('Technicien AVIR') on conflict do nothing;
 insert into prestataires (nom) values ('Technicien EUROPROH') on conflict do nothing;
 insert into prestataires (nom) values ('Technicien Kone') on conflict do nothing;
@@ -39,28 +39,28 @@ insert into tournees (reference, date_tournee, technicien_id) values ('INT-Migue
 insert into tournees (reference, date_tournee, technicien_id) values ('INT-Miguel-20260616120540016', date '2026-06-16', (select id from utilisateurs where nom = 'Miguel')) on conflict (reference) do nothing;
 insert into tournees (reference, date_tournee, technicien_id) values ('INT-Miguel-20260616153517575', date '2026-06-16', (select id from utilisateurs where nom = 'Miguel')) on conflict (reference) do nothing;
 insert into tournees (reference, date_tournee, technicien_id) values ('INT-Rachid-260526123456', date '2026-05-26', (select id from utilisateurs where nom = 'Rachid')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260511103458060', date '2026-04-23', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260511114443975', date '2026-11-05', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260513173803397', date '2026-05-13', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260515181906844', date '2026-05-15', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260519145131393', date '2026-05-19', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260520160006749', date '2026-05-20', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602100648666', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602104100283', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602111132223', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602115516048', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602120212808', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602123353973', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602123616656', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602124118036', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602125318070', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602130907557', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602131132280', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260602140724598', date '2026-02-06', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260615121923728', date '2026-06-15', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260615131234028', date '2026-06-15', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260615131453958', date '2026-06-15', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
-insert into tournees (reference, date_tournee, technicien_id) values ('INT-Serafino-20260625142445177', date '2026-06-25', (select id from utilisateurs where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260511103458060', date '2026-04-23', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260511114443975', date '2026-11-05', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260513173803397', date '2026-05-13', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260515181906844', date '2026-05-15', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260519145131393', date '2026-05-19', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260520160006749', date '2026-05-20', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602100648666', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602104100283', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602111132223', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602115516048', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602120212808', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602123353973', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602123616656', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602124118036', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602125318070', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602130907557', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602131132280', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260602140724598', date '2026-02-06', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260615121923728', date '2026-06-15', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260615131234028', date '2026-06-15', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260615131453958', date '2026-06-15', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
+insert into tournees (reference, date_tournee, prestataire_id) values ('INT-Serafino-20260625142445177', date '2026-06-25', (select id from prestataires where nom = 'Serafino')) on conflict (reference) do nothing;
 
 -- Anomalies -----------------------------------------------------------
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 1262, e.id, c.id, t.id, 'porte du frigo à fixer', null, 'a_faire', u1.id, u2.id, timestamptz '2026-07-09'
@@ -432,13 +432,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-25', timestamptz '2026-06-25'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260625142445177'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1216
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-25'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1216
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-01-07'
@@ -456,13 +456,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-25', timestamptz '2026-06-25'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260625142445177'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1217
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-25'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1217
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-01-07'
@@ -480,13 +480,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-25', timestamptz '2026-06-25'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260625142445177'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1218
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-25'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1218
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-01-07'
@@ -504,13 +504,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-25', timestamptz '2026-06-25'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260625142445177'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1219
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-25'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1219
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-01-07'
@@ -528,13 +528,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1205
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1205
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -552,13 +552,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1206
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1206
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -576,13 +576,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131453958'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1207
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1207
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -600,13 +600,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131453958'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1208
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1208
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -631,13 +631,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1210
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1210
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -655,13 +655,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1211
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1211
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -679,13 +679,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1212
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1212
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -703,13 +703,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1213
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1213
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -727,13 +727,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1202
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1202
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -751,13 +751,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1203
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1203
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -782,13 +782,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602100648666'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1192
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1192
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -806,13 +806,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602100648666'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1193
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1193
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -830,13 +830,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602120212808'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1194
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1194
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -854,13 +854,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1195
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1195
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -878,13 +878,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602125318070'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1196
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1196
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -902,13 +902,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131453958'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1197
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1197
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -926,13 +926,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602115516048'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1198
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1198
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -950,13 +950,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602120212808'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1199
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1199
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -974,13 +974,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602131132280'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1200
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1200
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -998,13 +998,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602140724598'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1201
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1201
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -1156,13 +1156,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602130907557'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1185
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1185
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -1180,13 +1180,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602104100283'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1186
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1186
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -1204,13 +1204,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602104100283'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1187
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1187
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -1228,13 +1228,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602104100283'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1188
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1188
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -1252,13 +1252,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1136
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1136
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-21'
@@ -1283,13 +1283,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1138
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1138
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -1307,13 +1307,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1139
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1139
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -1331,13 +1331,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1140
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1140
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -1355,13 +1355,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1141
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1141
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -1380,13 +1380,13 @@ Joint défaillant côté mur droit', 'validee', u1.id, u2.id, timestamptz '2026-
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1142
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1142
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -1404,13 +1404,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1143
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1143
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -1428,13 +1428,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1182
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1182
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-21'
@@ -1452,13 +1452,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1183
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1183
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -2451,13 +2451,13 @@ Le 16/05/26 Serafino est de nouveau intervenu et il pense que la fuite à cause 
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-15', timestamptz '2026-05-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260515181906844'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1080
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1080
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-15'
@@ -2482,13 +2482,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1047
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1047
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -2506,13 +2506,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1048
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1048
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -2531,13 +2531,13 @@ Serafino a cassé le miroir', 'en_cours', u1.id, u2.id, timestamptz '2026-05-14'
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1049
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1049
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -2583,13 +2583,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1054
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1054
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -2607,13 +2607,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-25', timestamptz '2026-06-25'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260625142445177'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1055
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-25'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1055
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-01-07'
@@ -2631,13 +2631,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1056
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1056
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -2662,13 +2662,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1059
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1059
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-21'
@@ -2686,13 +2686,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1060
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1060
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -2710,13 +2710,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-15', timestamptz '2026-05-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260515181906844'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1061
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1061
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-15'
@@ -2734,13 +2734,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1062
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1062
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -2881,13 +2881,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615131234028'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1043
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1043
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-16'
@@ -2905,13 +2905,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-13', timestamptz '2026-05-13'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260513173803397'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1044
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1044
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -2929,13 +2929,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-13', timestamptz '2026-05-13'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260513173803397'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1045
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1045
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-19'
@@ -2960,13 +2960,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-13', timestamptz '2026-05-13'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260513173803397'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1042
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1042
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -2991,13 +2991,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1040
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1040
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-21'
@@ -3015,13 +3015,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1038
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1038
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -3046,13 +3046,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602123616656'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1037
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1037
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -3132,13 +3132,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-26', timestamptz '2026-04-26'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1029
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-26'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1029
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3156,13 +3156,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602123353973'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1030
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1030
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -3180,13 +3180,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1031
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1031
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3211,13 +3211,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1019
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1019
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3458,13 +3458,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1006
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1006
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3482,13 +3482,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1007
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1007
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3506,13 +3506,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1001
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1001
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3530,13 +3530,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1002
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1002
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3554,13 +3554,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602111132223'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 1000
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 1000
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -3578,13 +3578,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 985
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 985
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -3602,13 +3602,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 986
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 986
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -3633,13 +3633,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602125318070'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 988
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 988
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -3657,13 +3657,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 989
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 989
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -3681,13 +3681,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 990
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 990
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -3705,13 +3705,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 991
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 991
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3729,13 +3729,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 992
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 992
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -3753,13 +3753,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 993
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 993
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3777,13 +3777,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 994
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 994
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -3828,7 +3828,7 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'VICTORIA'
   left join utilisateurs u2 on u2.nom = 'VICTORIA'
-  where e.code = 'WC Clients' on conflict (sharepoint_id) do nothing;
+  where e.code = 'WC Hommes' on conflict (sharepoint_id) do nothing;
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 984, e.id, c.id, t.id, 'remplacer l''économiseur d''énergie pour éclairage principal', 'Fait par Alain le 16/04/26 mais il faut toujours deux cartes pour que ça fonctionne', 'validee', u1.id, u2.id, timestamptz '2026-03-30'
   from emplacements e
   left join catalogue_anomalies c on c.libelle = 'remplacer l''économiseur d''énergie pour éclairage principal'
@@ -3863,13 +3863,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 979
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 979
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -3887,13 +3887,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-03-24', timestamptz '2026-03-24'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 981
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-03-24'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 981
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-03-24'
@@ -3911,13 +3911,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-20', timestamptz '2026-05-20'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260520160006749'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 982
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-20'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 982
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-26'
@@ -3935,13 +3935,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-03-24', timestamptz '2026-03-24'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 980
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-03-24'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 980
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-03-24'
@@ -3983,13 +3983,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-03-17', timestamptz '2026-03-17'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 976
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-03-17'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 976
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-03-31'
@@ -4007,13 +4007,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 974
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 974
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -4074,13 +4074,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-24', timestamptz '2026-02-24'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 949
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-24'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 949
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-24'
@@ -4098,13 +4098,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-24', timestamptz '2026-02-24'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 950
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-24'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 950
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-24'
@@ -4122,13 +4122,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-23', timestamptz '2026-02-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 946
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 946
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-23'
@@ -4146,13 +4146,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-23', timestamptz '2026-02-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 947
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 947
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-24'
@@ -4170,13 +4170,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-23', timestamptz '2026-02-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 948
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 948
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-24'
@@ -4225,13 +4225,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-03-17', timestamptz '2026-03-17'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 977
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-03-17'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 977
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-03-17'
@@ -4252,7 +4252,7 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'MIGUEL'
   left join utilisateurs u2 on u2.nom = 'MIGUEL'
-  where e.code = 'Sous-sol divers' on conflict (sharepoint_id) do nothing;
+  where e.code = 'Salle de repos' on conflict (sharepoint_id) do nothing;
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 892, e.id, c.id, t.id, 'passer le produit sur le parquet ( même dessoous les bacs à plantes) - produit dans la bagagerie', 'Fait le 17/03/26 par Serafino, une deuxieme couche doit être appliquée', 'en_cours', u1.id, u2.id, timestamptz '2026-01-27'
   from emplacements e
   left join catalogue_anomalies c on c.libelle = 'passer le produit sur le parquet ( même dessoous les bacs à plantes) - produit dans la bagagerie'
@@ -4270,13 +4270,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 893
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 893
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -4294,13 +4294,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 895
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 895
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -4318,13 +4318,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 896
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 896
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -4343,13 +4343,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-06', timestamptz '2026-02-06'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260602124118036'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 898
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-06'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 898
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-06'
@@ -4386,13 +4386,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 483
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 483
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 492, e.id, c.id, t.id, 'Changement ampoule lampe bureau', '1', 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4405,13 +4405,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 492
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 492
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 504, e.id, c.id, t.id, 'Changement flexible liseuse droite', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4424,13 +4424,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 504
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 504
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 505, e.id, c.id, t.id, 'barre de pare douche à refixer', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4443,13 +4443,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 505
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 505
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 516, e.id, c.id, t.id, 'Changement flexible liseuse droite', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4462,13 +4462,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 516
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 516
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 517, e.id, c.id, t.id, 'Télérupteur appliques changé', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4500,13 +4500,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 609
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 609
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -4531,13 +4531,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 643
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 643
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 664, e.id, c.id, t.id, 'frein de chute abattant WC non fonctionnel -', 'Acheter nouvel abattant', 'a_acheter', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4557,13 +4557,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 666
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 666
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 701, e.id, c.id, t.id, 'Miroir plateau à changé', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4576,13 +4576,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 701
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 701
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -4607,13 +4607,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 703
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 703
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 704, e.id, c.id, t.id, 'Lavabo bouché', 'Petite cuillère trouvée dans le siphon', 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4626,13 +4626,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 704
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 704
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 725, e.id, c.id, t.id, 'Miroir plateau à changé', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4645,13 +4645,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 725
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 725
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -4669,13 +4669,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 726
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 726
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 762, e.id, c.id, t.id, 'Miroir plateau à changé', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4688,13 +4688,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 762
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 762
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -4712,13 +4712,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 772
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 772
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 786, e.id, c.id, t.id, 'fuite mitigeur douche', 'voir stock B pour retrouver ref - @ Sarah le 6/01 et relance le 13/01', 'a_acheter', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4738,13 +4738,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 787
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 787
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 789, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4776,13 +4776,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 798
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 798
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 799, e.id, c.id, t.id, 'poignée porte principale à resserrer', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4795,13 +4795,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 799
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 799
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 815, e.id, c.id, t.id, 'liseuse gauche à resserer', null, 'validee', u1.id, u2.id, timestamptz '2026-01-13'
@@ -4814,13 +4814,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 815
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 815
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 775, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', null, 'validee', u1.id, u2.id, timestamptz '2026-12-01'
@@ -4852,13 +4852,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-03-17', timestamptz '2026-03-17'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 845
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-03-17'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 845
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-03-17'
@@ -4990,13 +4990,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 470
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 470
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -5090,13 +5090,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 623
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 623
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -5323,13 +5323,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 882
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 882
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 398, e.id, c.id, t.id, 'Lavabo bouché', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5342,13 +5342,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 398
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 398
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 456, e.id, c.id, t.id, 'Lavabo bouché', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5361,13 +5361,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 456
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 456
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 471, e.id, c.id, t.id, 'Lavabo bouché', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5380,13 +5380,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 471
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 471
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 472, e.id, c.id, t.id, 'Resserrer la poignée de la porte d''entrée', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5399,13 +5399,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 472
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 472
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 525, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5437,13 +5437,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 589
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 589
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 595, e.id, c.id, t.id, 'flexible liseuse côté droit à resserer', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5456,13 +5456,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 595
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 595
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 667, e.id, c.id, t.id, 'La poignée de la fenêtre s''enlève', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5475,13 +5475,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 667
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 667
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 801, e.id, c.id, t.id, 'Lavabo bouché', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5494,13 +5494,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 801
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 801
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 802, e.id, c.id, t.id, 'Serrer le bras liseuse côté droit', null, 'validee', u1.id, u2.id, timestamptz '2025-12-23'
@@ -5513,13 +5513,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 802
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 802
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 518, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', null, 'validee', u1.id, u2.id, timestamptz '2025-12-22'
@@ -5817,13 +5817,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 876
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 876
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 370, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', null, 'validee', u1.id, u2.id, timestamptz '2025-09-12'
@@ -5855,13 +5855,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 379
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 379
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 412, e.id, c.id, t.id, 'Spot à changer', null, 'validee', u1.id, u2.id, timestamptz '2025-09-12'
@@ -6014,13 +6014,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 788
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 788
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 459, e.id, c.id, t.id, 'La poignée de la fenêtre s''enlève', null, 'validee', u1.id, u2.id, timestamptz '2025-02-12'
@@ -6033,13 +6033,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 459
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 459
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 462, e.id, c.id, t.id, 'Porte placard du haut à remettre / se trouve dans le local technique', null, 'a_faire', u1.id, u2.id, timestamptz '2025-02-12'
@@ -6059,13 +6059,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 716
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 716
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 744, e.id, c.id, t.id, 'lit côté droit cassé - à agrafer', 'Au lieu de les agrafer ensemble, Mr Serafino les a viser', 'validee', u1.id, u2.id, timestamptz '2025-02-12'
@@ -6078,13 +6078,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 744
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 744
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 576, e.id, c.id, t.id, 'Changement du séche cheveux', null, 'validee', u1.id, u2.id, timestamptz '2025-11-25'
@@ -6154,13 +6154,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 399
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 399
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 447, e.id, c.id, t.id, 'La poignée de la fenêtre s''enlève', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6173,13 +6173,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 447
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 447
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 473, e.id, c.id, t.id, 'Télérupteur à changer - appliques murales sautent', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6211,13 +6211,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-25', timestamptz '2026-02-25'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 493
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-25'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 493
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-25'
@@ -6235,13 +6235,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 494
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 494
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 534, e.id, c.id, t.id, 'Plinthe de la fenêtre à recoller', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6254,13 +6254,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 534
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 534
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 548, e.id, c.id, t.id, 'Cache pile du coffre manquant', null, 'a_faire', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6280,13 +6280,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 574
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 574
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 610, e.id, c.id, t.id, 'Serrer le bras liseuse côté gauche', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6299,13 +6299,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 610
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 610
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 626, e.id, c.id, t.id, 'Cale porte à refixer (la piece est encore dans la chambre)', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6318,13 +6318,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 626
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 626
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 634, e.id, c.id, t.id, 'Refixer le miroir grossissant', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6337,13 +6337,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 634
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 634
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 641, e.id, c.id, t.id, 'Bac de douche à changer - URGENT', null, 'en_cours', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6363,13 +6363,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 642
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 642
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 689, e.id, c.id, t.id, 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)', null, 'a_faire', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6389,13 +6389,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 700
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 700
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -6413,13 +6413,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 705
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 705
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 729, e.id, c.id, t.id, 'Il faut changer la bouilloire', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6451,13 +6451,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-23', timestamptz '2026-02-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 743
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 743
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-23'
@@ -6475,13 +6475,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 745
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 745
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 763, e.id, c.id, t.id, 'Spot à changer - côté du miroir', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6494,13 +6494,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 763
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 763
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 800, e.id, c.id, t.id, 'Serrer le bras liseuse côté droit', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6513,13 +6513,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 800
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 800
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 820, e.id, c.id, t.id, 'Spot noir à changer - en face de la chambre 38', null, 'validee', u1.id, u2.id, timestamptz '2025-11-11'
@@ -6532,13 +6532,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 820
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 820
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 825, e.id, c.id, t.id, 'Batterie du bloc secours à changer (celui en face de la chambre 48)', null, 'a_faire', u1.id, u2.id, timestamptz '2025-11-11'
@@ -7570,13 +7570,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 686
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 686
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -8386,13 +8386,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 395
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 395
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -9191,13 +9191,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 847
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 847
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, commentaire, statut, constate_par, saisie_par, declare_le) select 482, e.id, c.id, t.id, 'Fissure constaté au plafond', null, 'a_faire', u1.id, u2.id, timestamptz '2025-04-15'
@@ -9599,13 +9599,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 699
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 699
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -9751,13 +9751,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 978
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 978
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-27'
@@ -10281,13 +10281,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 608
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 608
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -10499,13 +10499,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 785
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 785
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
@@ -10936,13 +10936,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 742
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 742
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -11133,13 +11133,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 564
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 564
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -11214,13 +11214,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 620
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 620
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
@@ -11238,13 +11238,13 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Serafino'
-  left join prestataires p on p.nom = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
   where a.sharepoint_id = 812
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Serafino'
+  left join utilisateurs u on u.nom = null
   where a.sharepoint_id = 812
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
@@ -11258,7 +11258,7 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'VICTORIA'
   left join utilisateurs u2 on u2.nom = 'MIGUEL'
-  where e.code = 'Sous-sol divers' on conflict (sharepoint_id) do nothing;
+  where e.code = 'Salle de repos' on conflict (sharepoint_id) do nothing;
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-20', timestamptz '2025-03-20'
   from anomalies a
   left join tournees t on t.reference = null
@@ -11740,7 +11740,7 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'SARAH P'
   left join utilisateurs u2 on u2.nom = 'SARAH P'
-  where e.code = 'Lobby' on conflict (sharepoint_id) do nothing;
+  where e.code = 'Ascenseur' on conflict (sharepoint_id) do nothing;
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
   from anomalies a
   left join tournees t on t.reference = null

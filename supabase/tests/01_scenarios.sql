@@ -30,9 +30,9 @@ do $$
 declare v record;
 begin
   select * into v from v_stock_bouteilles where code = 'filtree';
-  assert v.en_reserve = 63 and v.en_chambre = 37 and v.chez_clients = 0 and v.parc_total = 100,
-    format('après dotation : réserve %s, chambre %s, clients %s, parc %s',
-           v.en_reserve, v.en_chambre, v.chez_clients, v.parc_total);
+  assert v.en_reserve = 63 and v.en_chambre = 37 and v.chez_clients = 0 and v.parc_detenu = 100,
+    format('après dotation : réserve %s, chambre %s, clients %s, détenu %s',
+           v.en_reserve, v.en_chambre, v.chez_clients, v.parc_detenu);
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -52,7 +52,9 @@ begin
   assert v.en_reserve = 62,   format('réserve = %s, attendu 62 (une bouteille sortie pour re-doter)', v.en_reserve);
   assert v.en_chambre = 37,   format('chambre = %s, attendu 37 (la 32 est re-dotée)', v.en_chambre);
   assert v.chez_clients = 1,  format('chez clients = %s, attendu 1', v.chez_clients);
-  assert v.parc_total = 100,  format('parc = %s, attendu 100 : un emport ne perd rien', v.parc_total);
+  -- La bouteille est partie : on ne l'a plus, même si elle peut revenir.
+  assert v.parc_detenu = 99,  format('détenu = %s, attendu 99 : la bouteille n''est plus à nous', v.parc_detenu);
+  assert v.parc_theorique = 100, format('théorique = %s, attendu 100 : rien n''est encore perdu', v.parc_theorique);
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -70,7 +72,7 @@ begin
   assert v.en_reserve = 63,  format('réserve = %s, attendu 63 (la bouteille rendue revient en stock)', v.en_reserve);
   assert v.en_chambre = 37,  format('chambre = %s, attendu 37 (inchangée)', v.en_chambre);
   assert v.chez_clients = 0, format('chez clients = %s, attendu 0', v.chez_clients);
-  assert v.parc_total = 100, format('parc = %s, attendu 100 : rien n''a été perdu', v.parc_total);
+  assert v.parc_detenu = 100, format('détenu = %s, attendu 100 : on la récupère', v.parc_detenu);
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -86,8 +88,9 @@ do $$
 declare v record;
 begin
   select * into v from v_stock_bouteilles where code = 'petillante';
-  assert v.parc_total = 100 and v.chez_clients = 1,
-    format('en attente : parc %s, chez clients %s', v.parc_total, v.chez_clients);
+  assert v.parc_detenu = 99 and v.chez_clients = 1 and v.parc_theorique = 100,
+    format('en attente : détenu %s, chez clients %s, théorique %s',
+           v.parc_detenu, v.chez_clients, v.parc_theorique);
 end $$;
 
 update incidents_bouteille
@@ -99,7 +102,9 @@ do $$
 declare v record;
 begin
   select * into v from v_stock_bouteilles where code = 'petillante';
-  assert v.parc_total = 99,   format('parc = %s, attendu 99 après facturation', v.parc_total);
+  assert v.parc_detenu = 99 and v.parc_theorique = 99,
+    format('après facturation : détenu %s, théorique %s — la perte est actée',
+           v.parc_detenu, v.parc_theorique);
   assert v.en_reserve = 62,   format('réserve = %s, attendu 62', v.en_reserve);
   assert v.en_chambre = 37,   format('chambre = %s, attendu 37', v.en_chambre);
   assert v.chez_clients = 0,  format('chez clients = %s, attendu 0', v.chez_clients);
@@ -118,7 +123,8 @@ do $$
 declare v record; v_incident record;
 begin
   select * into v from v_stock_bouteilles where code = 'filtree';
-  assert v.parc_total = 99,  format('parc = %s, attendu 99 : une casse sort du parc tout de suite', v.parc_total);
+  assert v.parc_detenu = 99 and v.parc_theorique = 99,
+    format('casse : détenu %s, théorique %s — sortie immédiate', v.parc_detenu, v.parc_theorique);
   assert v.en_reserve = 62,  format('réserve = %s, attendu 62 (chambre re-dotée)', v.en_reserve);
   assert v.en_chambre = 37,  format('chambre = %s, attendu 37', v.en_chambre);
 
@@ -161,11 +167,14 @@ end $$;
 insert into fournisseurs (id, nom, email) values
   ('88888888-8888-8888-8888-888888888888', 'Quincaillerie Martin', 'contact@martin.test');
 
-insert into produits (code, designation, prix_unitaire, seuil_alerte, fournisseur_id) values
-  ('JNT-12', 'Joint 12mm',    2.50, 10, '88888888-8888-8888-8888-888888888888'),
-  ('FLX-40', 'Flexible 40cm', 8.90,  5, '88888888-8888-8888-8888-888888888888'),
+insert into produits (code, designation, prix_unitaire, seuil_alerte) values
+  ('JNT-12', 'Joint 12mm',    2.50, 10),
+  ('FLX-40', 'Flexible 40cm', 8.90,  5),
   -- Prix inconnu : l'article ne doit pas être compté pour zéro en silence
-  ('DIV-01', 'Pièce diverse', null,  2, '88888888-8888-8888-8888-888888888888');
+  ('DIV-01', 'Pièce diverse', null,  2);
+
+insert into article_fournisseurs (produit_id, fournisseur_id)
+select id, '88888888-8888-8888-8888-888888888888' from produits;
 
 -- Comptage physique initial : le stock ne part pas d'un chiffre figé
 insert into mouvements_stock (produit_id, type, quantite, commentaire)

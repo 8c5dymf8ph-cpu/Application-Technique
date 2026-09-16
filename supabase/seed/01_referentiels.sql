@@ -15,12 +15,12 @@ insert into etages (code, nom, ordre) values
   ('Autres',    'Extérieurs',      7)
 on conflict (code) do nothing;
 
--- Emplacements : reprise exacte de la liste de l'application d'origine. Le code
--- est la chaîne employée dans son Switch, pour que rien ne se perde à la
--- traduction — un escalier est donc rangé à l'étage d'où l'on part.
--- Les trois derniers (ordre 90) ne figuraient pas dans cette liste mais sont
--- nécessaires pour placer une vingtaine de lignes de l'export : à confirmer.
--- Seules les chambres, aux codes numériques, reçoivent la dotation Purezza.
+-- Emplacements : reprise de la liste fournie, codes compris, y compris sa
+-- convention — un escalier appartient à l'étage d'où l'on part. Seules les
+-- chambres, aux codes numériques, reçoivent la dotation Purezza.
+-- « Vestiaire Femmes » est déduit : la liste répète « Vestiaire Hommes ».
+-- Les deux entrées d'ordre 90 ne figuraient pas dans la liste mais recueillent
+-- une vingtaine de lignes de l'export : à confirmer.
 with source (etage, code, type, rang) as (values
   ('RDC','01','chambre',0),
   ('RDC','02','chambre',1),
@@ -31,6 +31,7 @@ with source (etage, code, type, rang) as (values
   ('RDC','Entrée','commun',6),
   ('RDC','Cuisine','technique',7),
   ('RDC','Bagagerie','technique',8),
+  ('RDC','Ascenseur','technique',9),
   ('1er','Palier 1er','commun',0),
   ('1er','11','chambre',1),
   ('1er','12','chambre',2),
@@ -73,23 +74,28 @@ with source (etage, code, type, rang) as (values
   ('5eme','56','chambre',6),
   ('5eme','57','chambre',7),
   ('5eme','58','chambre',8),
-  ('Sous-Sol','WC Clients','commun',0),
-  ('Sous-Sol','WC Femmes','commun',1),
-  ('Sous-Sol','Chaufferie','technique',2),
-  ('Sous-Sol','Local TGBT','technique',3),
-  ('Sous-Sol','Local Technique','technique',4),
-  ('Sous-Sol','Lingerie','technique',5),
-  ('Sous-Sol','Salle de sport','commun',6),
+  ('Sous-Sol','Salle de sport','commun',0),
+  ('Sous-Sol','Sas de sécurité','commun',1),
+  ('Sous-Sol','WC Clients','commun',2),
+  ('Sous-Sol','WC Femmes','commun',3),
+  ('Sous-Sol','WC Hommes','commun',4),
+  ('Sous-Sol','Escalier qui mène au RDC','commun',5),
+  ('Sous-Sol','Salle de repos','commun',6),
+  ('Sous-Sol','Vestiaire Hommes','technique',7),
+  ('Sous-Sol','Vestiaire Femmes','technique',8),
+  ('Sous-Sol','Lingerie','technique',9),
+  ('Sous-Sol','Local TGBT','technique',10),
+  ('Sous-Sol','Local Technique','technique',11),
+  ('Sous-Sol','Local poubelle','technique',12),
+  ('Sous-Sol','Chaufferie','technique',13),
   ('Autres','Toit','exterieur',0),
   ('Autres','COUR intèrieure','exterieur',1),
-  ('Autres','Ascenseur','technique',90),
   ('Sous-Sol','Sous-sol divers','commun',90),
   ('Autres','Parties communes','commun',90)
 )
 insert into emplacements (code, nom, etage_id, type, dote_bouteilles, ordre)
 select s.code, s.code, e.id, s.type::type_emplacement, s.type = 'chambre', s.rang
-from source s
-join etages e on e.code = s.etage
+from source s join etages e on e.code = s.etage
 on conflict (code) do nothing;
 
 -- Les quatre types réellement utilisés dans la liste d'origine.
@@ -108,14 +114,17 @@ on conflict (nom) do nothing;
 -- Bouteilles Purezza : 17,50 € facturés au client, 8 € de coût d'achat.
 -- `seuil_alerte` porte sur la RÉSERVE — le nombre de bouteilles encore
 -- disponibles pour re-doter une chambre. Valeurs à ajuster à l'usage.
-insert into bouteille_types (code, libelle, prix_vente, prix_achat, seuil_alerte, quantite_reappro, fournisseur_id, couleur)
-select v.code, v.libelle, v.prix_vente, v.prix_achat, v.seuil, v.reappro, f.id, v.couleur
-from (values
-  ('filtree',    'Eau filtrée',    17.50, 8.00, 10, 24, '#2D7FF9'),
-  ('petillante', 'Eau pétillante', 17.50, 8.00, 10, 24, '#E5484D')
-) as v (code, libelle, prix_vente, prix_achat, seuil, reappro, couleur)
-left join fournisseurs f on f.nom = 'Purezza'
+insert into bouteille_types (code, libelle, prix_vente, prix_achat, seuil_alerte, quantite_reappro, couleur) values
+  ('filtree',    'Eau filtrée',    17.50, 8.00, 10, 24, '#3A6499'),
+  ('petillante', 'Eau pétillante', 17.50, 8.00, 10, 24, '#9E3538')
 on conflict (code) do nothing;
+
+-- Purezza fournit les deux types. D'autres fournisseurs peuvent être ajoutés
+-- sur le même article : la demande de devis partira alors vers chacun.
+insert into article_fournisseurs (bouteille_type_id, fournisseur_id, prefere)
+select bt.id, f.id, true
+from bouteille_types bt, fournisseurs f where f.nom = 'Purezza'
+on conflict do nothing;
 
 -- Dotation permanente : 1 filtrée + 1 pétillante dans chaque chambre.
 insert into dotations (emplacement_id, bouteille_type_id, quantite)
@@ -126,8 +135,8 @@ where e.dote_bouteilles
 on conflict (emplacement_id, bouteille_type_id) do nothing;
 
 -- Destinataires des alertes automatiques. À compléter depuis l'écran
--- d'administration : ce sont ces adresses qui reçoivent le mail lorsqu'une
--- bouteille est signalée manquante ou qu'un stock passe sous son seuil.
+-- d'administration. L'alerte bouteille est destinée à la réception, qui
+-- recontacte le client ; la gouvernante, elle, ne reçoit aucun mail.
 insert into alertes_destinataires (evenement, destinataires, actif) values
   ('incident_bouteille', '{}', false),
   ('seuil_stock',        '{}', false)
