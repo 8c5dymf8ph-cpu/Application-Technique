@@ -4,6 +4,8 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { jours, LIBELLE_STATUT, TON_STATUT, type StatutAnomalie } from "@/lib/domaine";
 import { Entete, Vide } from "../../../composants/ui";
+import { ChampPhotos } from "../../../composants/photos";
+import { enregistrerPhoto } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
@@ -89,15 +91,30 @@ export default async function Declarer({
 
     // La base refuse un problème déjà ouvert ici ; on le dit plutôt que de
     // laisser remonter une erreur technique.
+    let anomalie_id: string;
     try {
-      await sql`
+      const [creee] = await sql<{ id: string }[]>`
         insert into anomalies (emplacement_id, catalogue_id, type_id, description,
                                constate_par, saisie_par)
         select ${emp.id}, c.id, c.type_id, c.libelle, ${profil_.id}, ${profil_.id}
-        from catalogue_anomalies c where c.id = ${catalogue_id}`;
+        from catalogue_anomalies c where c.id = ${catalogue_id}
+        returning id`;
+      anomalie_id = creee.id;
     } catch {
       redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?deja=1`);
     }
+
+    // Les photos du constat. Une déclaration sans photo reste valable : c'est
+    // un plus, pas une condition.
+    for (const fichier of donnees.getAll("photos")) {
+      if (!(fichier instanceof File)) continue;
+      const chemin = await enregistrerPhoto(fichier);
+      if (!chemin) continue;
+      await sql`
+        insert into photos_anomalie (anomalie_id, chemin, moment, prise_par)
+        values (${anomalie_id}, ${chemin}, 'constat', ${profil_.id})`;
+    }
+
     redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?fait=1`);
   }
 
@@ -232,8 +249,10 @@ export default async function Declarer({
                 </p>
               </div>
             )}
-            <form action={enregistrer} className="flex gap-2">
+            <form action={enregistrer} className="flex flex-col gap-3">
               <input type="hidden" name="catalogue_id" value={choisie.id} />
+              <ChampPhotos libelle="Photographier (facultatif)" />
+              <div className="flex gap-2">
               <Link
                 href={`?q=${encodeURIComponent(q)}`}
                 className="carte px-5 grid place-items-center text-[15px] text-ink-soft"
@@ -243,6 +262,7 @@ export default async function Declarer({
               <button className="grow h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
                 Déclarer en {emplacement.code}
               </button>
+              </div>
             </form>
           </section>
         )}

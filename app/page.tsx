@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { peutValider } from "@/lib/domaine";
 import { Compteur, Tuile } from "./composants/ui";
 
 export const dynamic = "force-dynamic";
@@ -35,8 +36,8 @@ export default async function Accueil() {
   if (!profil) redirect("/profil");
   const c = await chiffres();
 
-  const gouvernante = profil.role === "gouvernante" || profil.role === "admin";
-  const admin = profil.role === "admin";
+  const gouvernante = peutValider(profil.role);
+  const admin = profil.role === "admin" || profil.role === "operations";
 
   return (
     <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">

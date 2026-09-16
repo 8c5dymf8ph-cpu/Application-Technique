@@ -5,8 +5,38 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { Entete } from "@/app/composants/ui";
+import { ChampPhotos, Vignettes } from "@/app/composants/photos";
+import { enregistrerPhoto } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
+
+/** La photo du produit, ou un repère tant qu'elle n'a pas été chargée. */
+function VignetteProduit({ photo, taille = 44 }: { photo: string | null; taille?: number }) {
+  if (photo) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={`/photo/${photo}`}
+        alt=""
+        style={{ width: taille, height: taille }}
+        className="shrink-0 rounded-[11px] object-cover border border-line bg-surface-muted"
+      />
+    );
+  }
+  return (
+    <span
+      style={{ width: taille, height: taille }}
+      className="shrink-0 rounded-[11px] bg-plum-soft grid place-items-center"
+    >
+      <svg width={taille * 0.45} height={taille * 0.45} viewBox="0 0 24 24" fill="none"
+           stroke="#8B86A8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <circle cx="9" cy="10.5" r="1.8" />
+        <path d="M3 16l4.5-4 4 3.5L15.5 11l5.5 5" />
+      </svg>
+    </span>
+  );
+}
 
 type Anomalie = {
   id: string;
@@ -38,6 +68,14 @@ export default async function TraiterAnomalie({
     join etages et      on et.id = e.etage_id
     where a.id = ${id}`;
   if (!anomalie) notFound();
+
+  // Ce que la gouvernante a photographié en signalant : le technicien voit à
+  // quoi il vient.
+  const constat = (
+    await sql<{ chemin: string }[]>`
+      select chemin from photos_anomalie
+      where anomalie_id = ${id} and moment = 'constat' order by prise_le`
+  ).map((p) => p.chemin);
 
   // Le matériel déjà coché, transmis d'un écran à l'autre : rien n'est écrit
   // en base tant que le technicien n'a pas confirmé.
@@ -87,6 +125,15 @@ export default async function TraiterAnomalie({
         from anomalies a where a.id = ${id}`;
     }
 
+    for (const fichier of donnees.getAll("photos")) {
+      if (!(fichier instanceof File)) continue;
+      const chemin = await enregistrerPhoto(fichier);
+      if (!chemin) continue;
+      await sql`
+        insert into photos_anomalie (anomalie_id, intervention_id, chemin, moment, prise_par)
+        values (${id}, ${intervention.id}, ${chemin}, 'apres', ${profil_.id})`;
+    }
+
     await sql`
       insert into validations (intervention_id, acteur, decision, utilisateur_id, saisie_par)
       values (${intervention.id}, 'technicien', 'fait',
@@ -115,6 +162,8 @@ export default async function TraiterAnomalie({
           {anomalie.description}
         </p>
 
+        <Vignettes chemins={constat} titre="Photographié au constat" ton="text-blue" />
+
         <section className="flex flex-col gap-2.5">
           <h2 className="etiquette">Matériel utilisé</h2>
 
@@ -122,13 +171,7 @@ export default async function TraiterAnomalie({
             <ul className="flex flex-col gap-2">
               {retenus.map((p) => (
                 <li key={p.id} className="carte px-3.5 py-3 flex items-center gap-3">
-                  <span className="w-11 h-11 shrink-0 rounded-[11px] bg-plum-soft grid place-items-center">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
-                         strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 8c0-1.7 1.3-3 3-3h2v3H8v8h2v3H8a3 3 0 0 1-3-3z" />
-                      <path d="M14 5h2a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-2" />
-                    </svg>
-                  </span>
+                  <VignetteProduit photo={p.photo} />
                   <span className="flex flex-col grow min-w-0">
                     <span className="text-[14.5px] leading-snug text-pretty">{p.designation}</span>
                     <span className="text-[11.5px] text-ink-faint">
@@ -173,8 +216,9 @@ export default async function TraiterAnomalie({
                 <li key={p.id}>
                   <Link
                     href={lien({ pris: [...choisis, p.id].join(",") })}
-                    className="px-3.5 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 active:bg-plum-soft"
+                    className="px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 active:bg-plum-soft"
                   >
+                    <VignetteProduit photo={p.photo} taille={40} />
                     <span className="flex flex-col grow min-w-0">
                       <span className="text-[14px] leading-snug text-pretty">{p.designation}</span>
                       <span className="text-[11.5px] text-ink-faint">
@@ -193,9 +237,10 @@ export default async function TraiterAnomalie({
       </div>
 
       <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
-        <form action={enregistrer}>
+        <form action={enregistrer} className="flex flex-col gap-3">
           <input type="hidden" name="intervenant" value={par ?? profil.nom} />
           <input type="hidden" name="pris" value={pris} />
+          <ChampPhotos libelle="Photographier le travail fait (facultatif)" />
           <button className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
             {choisis.length === 0
               ? "C’est fait, sans matériel"

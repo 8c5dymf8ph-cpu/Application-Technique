@@ -27,14 +27,30 @@ export const TON_STATUT: Record<StatutAnomalie, { fond: string; texte: string }>
   annulee: { fond: "bg-surface-muted", texte: "text-ink-faint" },
 };
 
-export type RoleUtilisateur = "technicien" | "gouvernante" | "admin" | "lecture";
+export type RoleUtilisateur =
+  | "technicien"
+  | "gouvernante"
+  | "operations"
+  | "admin"
+  | "lecture";
 
 export const LIBELLE_ROLE: Record<RoleUtilisateur, string> = {
   technicien: "Technicien",
   gouvernante: "Gouvernante",
+  operations: "Chargée des opérations",
   admin: "Administrateur",
   lecture: "Lecture seule",
 };
+
+/** Déclarer une anomalie, et la valider au nom d'un intervenant. */
+export function peutValider(role?: RoleUtilisateur): boolean {
+  return role === "gouvernante" || role === "operations" || role === "admin";
+}
+
+/** Supprimer une anomalie efface une trace : deux personnes seulement. */
+export function peutSupprimer(role?: RoleUtilisateur): boolean {
+  return role === "operations" || role === "admin";
+}
 
 export function jours(n: number): string {
   if (n <= 0) return "aujourd'hui";

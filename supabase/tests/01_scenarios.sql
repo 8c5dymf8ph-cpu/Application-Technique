@@ -6,12 +6,14 @@
 \set ON_ERROR_STOP on
 begin;
 
+-- Des noms qui ne peuvent pas entrer en collision avec le personnel réel :
+-- les scénarios doivent passer sur une base vierge comme sur la base reprise.
 insert into utilisateurs (id, nom, role) values
-  ('11111111-1111-1111-1111-111111111111', 'Miguel',   'technicien'),
-  ('22222222-2222-2222-2222-222222222222', 'Victoria', 'gouvernante');
+  ('11111111-1111-1111-1111-111111111111', 'Technicien de test',  'technicien'),
+  ('22222222-2222-2222-2222-222222222222', 'Gouvernante de test', 'gouvernante');
 
 insert into prestataires (id, nom, specialite) values
-  ('99999999-9999-9999-9999-999999999999', 'Plomberie Dupont', 'Plomberie');
+  ('99999999-9999-9999-9999-999999999999', 'Prestataire de test', 'Plomberie');
 
 -- ===========================================================================
 -- SCÉNARIO 1 — Bouteilles : les quatre situations réelles de l'hôtel.
@@ -165,7 +167,7 @@ end $$;
 -- matériel reste consommé même si la gouvernante refuse l'intervention.
 -- ===========================================================================
 insert into fournisseurs (id, nom, email) values
-  ('88888888-8888-8888-8888-888888888888', 'Quincaillerie Martin', 'contact@martin.test');
+  ('88888888-8888-8888-8888-888888888888', 'Fournisseur de test', 'contact@test.invalid');
 
 insert into produits (code, designation, prix_unitaire, seuil_alerte) values
   ('JNT-12', 'Joint 12mm',    2.50, 10),
@@ -194,7 +196,7 @@ do $$
 declare v_tournee tournees;
 begin
   v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111');
-  assert v_tournee.reference like 'INT-MIGUEL-%',
+  assert v_tournee.reference like 'INT-TECHNICIEN-%',
     format('référence de tournée inattendue : %s', v_tournee.reference);
 end $$;
 
@@ -253,7 +255,8 @@ begin
   assert v.decision_technicien  = 'fait',    'l''avis du technicien doit être conservé';
   assert v.decision_gouvernante = 'a_refaire', 'l''avis de la gouvernante doit être conservé';
   assert v.non_validee_par_gouvernante,        'le récapitulatif doit signaler la non-validation';
-  assert v.intervenant = 'Miguel' and v.gouvernante = 'Victoria', 'les deux noms doivent apparaître';
+  assert v.intervenant = 'Technicien de test' and v.gouvernante = 'Gouvernante de test',
+    'les deux noms doivent apparaître';
   assert v.tournee is not null,                'l''intervention doit porter sa tournée';
 end $$;
 
@@ -305,7 +308,7 @@ begin
 
   -- Et tant que rien n'est rapproché, elles apparaissent dans le filet.
   select count(*) into v_nb from v_interventions_sans_facture
-   where prestataire = 'Plomberie Dupont';
+   where prestataire = 'Prestataire de test';
   assert v_nb = 3, format('%s interventions sans facture, attendu 3', v_nb);
 end $$;
 
@@ -321,7 +324,7 @@ do $$
 declare v_nb int;
 begin
   select count(*) into v_nb from v_interventions_sans_facture
-   where prestataire = 'Plomberie Dupont';
+   where prestataire = 'Prestataire de test';
   assert v_nb = 0, format('%s interventions encore sans facture, attendu 0', v_nb);
 end $$;
 
@@ -378,7 +381,7 @@ do $$
 declare v_nb int;
 begin
   select count(*) into v_nb from v_reappro_necessaire
-   where fournisseur = 'Quincaillerie Martin';
+   where fournisseur = 'Fournisseur de test';
   -- JNT-12 (7 <= 10), FLX-40 (3 <= 5) et DIV-01 (19 > 2, donc absent)
   assert v_nb = 2, format('%s articles sous seuil, attendu 2', v_nb);
 end $$;
@@ -390,13 +393,13 @@ begin
 
   select count(*) into v_demandes from demandes_devis d
    join fournisseurs f on f.id = d.fournisseur_id
-   where f.nom = 'Quincaillerie Martin';
+   where f.nom = 'Fournisseur de test';
   assert v_demandes = 1, format('%s demandes de devis, attendu 1 seule pour ce fournisseur', v_demandes);
 
   select count(*) into v_lignes from demande_devis_lignes l
    join demandes_devis d on d.id = l.demande_id
    join fournisseurs f on f.id = d.fournisseur_id
-   where f.nom = 'Quincaillerie Martin';
+   where f.nom = 'Fournisseur de test';
   assert v_lignes = 2, format('%s lignes dans le devis, attendu 2', v_lignes);
 end $$;
 
@@ -407,7 +410,7 @@ begin
   perform fn_preparer_demandes_devis('22222222-2222-2222-2222-222222222222');
   select count(*) into v_demandes from demandes_devis d
    join fournisseurs f on f.id = d.fournisseur_id
-   where f.nom = 'Quincaillerie Martin';
+   where f.nom = 'Fournisseur de test';
   assert v_demandes = 1, format('%s demandes après second appel, attendu 1', v_demandes);
 end $$;
 

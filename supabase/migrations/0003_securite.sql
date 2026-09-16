@@ -21,10 +21,17 @@ create function fn_est_connecte() returns boolean
 language sql stable as $$ select fn_role_courant() is not null; $$;
 
 create function fn_peut_ecrire() returns boolean
-language sql stable as $$ select fn_role_courant() in ('technicien','gouvernante','admin'); $$;
+language sql stable as $$
+  select fn_role_courant() in ('technicien','gouvernante','operations','admin');
+$$;
 
 create function fn_peut_valider() returns boolean
-language sql stable as $$ select fn_role_courant() in ('gouvernante','admin'); $$;
+language sql stable as $$ select fn_role_courant() in ('gouvernante','operations','admin'); $$;
+
+-- Supprimer une anomalie efface une trace : réservé à la chargée des
+-- opérations et à l'administrateur.
+create function fn_peut_supprimer() returns boolean
+language sql stable as $$ select fn_role_courant() in ('operations','admin'); $$;
 
 create function fn_est_admin() returns boolean
 language sql stable as $$ select fn_role_courant() = 'admin'; $$;
@@ -91,7 +98,7 @@ create policy modification_anomalies on anomalies
 
 create policy suppression_anomalies on anomalies
   for delete to authenticated
-  using (fn_est_admin());
+  using (fn_peut_supprimer());
 
 -- -----------------------------------------------------------------------------
 -- Validations : un technicien ne peut pas signer à la place de la gouvernante.

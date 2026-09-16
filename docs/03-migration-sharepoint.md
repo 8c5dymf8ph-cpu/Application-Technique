@@ -90,10 +90,13 @@ Le SQL produit est **rejouable** : chaque insertion est conditionnée, un second
 
 ## Décisions prises
 
-**Intervenants extérieurs** (ils facturent une journée, ne se connectent pas) : EcoFlair,
-Technicien AVIR, Technicien Kone, Technicien TELEC, Technicien EUROPROH, MR NEGRONI, ALAIN, Hedi,
-Juan. **Utilisateurs de l'application** : Miguel, Victoria, Serafino, Sarah P, Taibi, FARID, Rachid.
-Le classement se corrige dans la constante `PRESTATAIRES` du script d'import.
+**Intervenants extérieurs** (ils facturent une journée, ne se connectent pas) : Serafino, ALAIN,
+EcoFlair, Technicien AVIR, Technicien Kone, Technicien TELEC, Technicien EUROPROH, MR NEGRONI,
+Hedi, Juan. **Utilisateurs de l'application** : Miguel (administrateur), Victoria (gouvernante),
+Sarah P (chargée des opérations), FARID et Rachid (techniciens). Le classement se corrige dans les
+constantes `PRESTATAIRES` et `ROLES` du script d'import.
+
+**La cour intérieure et les parties communes sont au rez-de-chaussée**, pas dans « Extérieurs ».
 
 **Référentiel des localisations** : reprise exacte de la liste de l'application d'origine, codes
 compris — un escalier est rangé à l'étage d'où l'on part. Trois emplacements ont dû être ajoutés pour

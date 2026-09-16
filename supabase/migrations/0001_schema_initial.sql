@@ -9,7 +9,11 @@ create extension if not exists pg_trgm;
 -- -----------------------------------------------------------------------------
 -- Types énumérés
 -- -----------------------------------------------------------------------------
-create type role_utilisateur          as enum ('technicien', 'gouvernante', 'admin', 'lecture');
+-- « operations » : la chargée des opérations. Elle fait tout ce que fait la
+-- gouvernante, et peut en plus supprimer une anomalie — sans toucher aux
+-- référentiels ni au paramétrage, qui restent à l'administrateur.
+create type role_utilisateur          as enum ('technicien', 'gouvernante', 'operations',
+                                              'admin', 'lecture');
 create type type_emplacement          as enum ('chambre', 'commun', 'technique', 'exterieur');
 -- « a_acheter » existe dans les données d'origine : une ligne qui attend un
 -- achat avant de pouvoir être traitée.
@@ -55,7 +59,7 @@ create table utilisateurs (
   id          uuid primary key default gen_random_uuid(),
   auth_id     uuid unique references auth.users (id) on delete set null,
   email       text unique,
-  nom         text not null,
+  nom         text not null unique,
   role        role_utilisateur not null default 'technicien',
   actif       boolean not null default true,
   cree_le     timestamptz not null default now()
@@ -92,7 +96,7 @@ create table types_intervention (
 -- une journée d'intervention, pas une anomalie : voir la table `factures`.
 create table prestataires (
   id          uuid primary key default gen_random_uuid(),
-  nom         text not null,
+  nom         text not null unique,
   specialite  text,
   email       text,
   telephone   text,

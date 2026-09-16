@@ -18,9 +18,8 @@ on conflict (code) do nothing;
 -- Emplacements : reprise de la liste fournie, codes compris, y compris sa
 -- convention — un escalier appartient à l'étage d'où l'on part. Seules les
 -- chambres, aux codes numériques, reçoivent la dotation Purezza.
--- « Vestiaire Femmes » est déduit : la liste répète « Vestiaire Hommes ».
--- Les deux entrées d'ordre 90 ne figuraient pas dans la liste mais recueillent
--- une vingtaine de lignes de l'export : à confirmer.
+-- L'entrée d'ordre 90 ne figurait pas dans la liste mais recueille les lignes
+-- de l'export qui disent seulement « sous sol » : à confirmer.
 with source (etage, code, type, rang) as (values
   ('RDC','01','chambre',0),
   ('RDC','02','chambre',1),
@@ -32,6 +31,8 @@ with source (etage, code, type, rang) as (values
   ('RDC','Cuisine','technique',7),
   ('RDC','Bagagerie','technique',8),
   ('RDC','Ascenseur','technique',9),
+  ('RDC','COUR intèrieure','exterieur',10),
+  ('RDC','Parties communes','commun',11),
   ('1er','Palier 1er','commun',0),
   ('1er','11','chambre',1),
   ('1er','12','chambre',2),
@@ -89,9 +90,7 @@ with source (etage, code, type, rang) as (values
   ('Sous-Sol','Local poubelle','technique',12),
   ('Sous-Sol','Chaufferie','technique',13),
   ('Autres','Toit','exterieur',0),
-  ('Autres','COUR intèrieure','exterieur',1),
-  ('Sous-Sol','Sous-sol divers','commun',90),
-  ('Autres','Parties communes','commun',90)
+  ('Sous-Sol','Sous-sol divers','commun',90)
 )
 insert into emplacements (code, nom, etage_id, type, dote_bouteilles, ordre)
 select s.code, s.code, e.id, s.type::type_emplacement, s.type = 'chambre', s.rang

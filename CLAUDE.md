@@ -86,6 +86,27 @@ done
 psql -h /tmp -p 55432 -U postgres -d valid -q -f supabase/tests/01_scenarios.sql
 ```
 
+## Rôles
+
+| Rôle | En plus du précédent |
+|---|---|
+| `technicien` | Traite ses anomalies, dit s'il a pris du matériel |
+| `gouvernante` | Déclare, valide, déclare au nom d'un intervenant |
+| `operations` | Supprime une anomalie (Sarah P, chargée des opérations) |
+| `admin` | Référentiels, catalogue, paramétrage (Miguel) |
+
+Supprimer une anomalie efface une trace : réservé à `operations` et `admin`, jamais à la
+gouvernante. La règle est dans `fn_peut_supprimer` et dans la politique de suppression.
+
+## Photos
+
+Une anomalie porte deux séries : **au constat**, prises par qui déclare, et **après
+intervention**, prises par le technicien. Les deux sont facultatives et les deux s'affichent
+dans l'historique du lieu. Le technicien voit les photos du constat avant d'intervenir.
+
+Le stockage passe par `lib/stockage.ts` : disque en développement, Supabase Storage en
+production. Rien d'autre dans l'application ne connaît autre chose qu'un nom de fichier.
+
 ## Écrans
 
 - **En déclarant, la gouvernante ne voit que ce qui reste à traiter** dans le lieu — à faire, en

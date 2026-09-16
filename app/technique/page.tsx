@@ -32,10 +32,24 @@ export default async function ChoixIntervenant() {
           const dedans = liste.filter((i) => i.origine === origine);
           if (dedans.length === 0) return null;
           return (
-            <section key={origine} className="flex flex-col gap-2">
-              <h2 className="etiquette">
-                {origine === "interne" ? "L’équipe" : "Intervenants extérieurs"}
-              </h2>
+            // Onze intervenants tiennent mal sur un écran de téléphone : la
+            // liste se replie, l'équipe interne ouverte par défaut.
+            <details key={origine} open={origine === "interne"} className="group flex flex-col gap-2">
+              <summary
+                data-cible
+                className="flex items-center gap-2.5 cursor-pointer list-none select-none py-1"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8AA3"
+                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                     className="shrink-0 transition-transform group-open:rotate-90">
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="etiquette grow">
+                  {origine === "interne" ? "L’équipe" : "Intervenants extérieurs"}
+                </span>
+                <span className="text-[12px] text-ink-faint tabular-nums">{dedans.length}</span>
+              </summary>
+              <div className="flex flex-col gap-2 pt-2">
               {dedans.map((i) => {
                 const c = charge.get(i.nom);
                 const cle = i.utilisateur_id ?? i.prestataire_id ?? "";
@@ -66,7 +80,8 @@ export default async function ChoixIntervenant() {
                   </Link>
                 );
               })}
-            </section>
+              </div>
+            </details>
           );
         })}
       </div>

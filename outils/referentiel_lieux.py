@@ -12,7 +12,7 @@ SYNONYMES ramène les 86 orthographes rencontrées dans l'export vers ces codes.
 # étage -> codes, dans l'ordre de la liste d'origine
 LISTE_ORIGINE = {
     "RDC":      ["01", "02", "03", "PDJ", "Réception", "Lobby", "Entrée", "Cuisine",
-                 "Bagagerie", "Ascenseur"],
+                 "Bagagerie", "Ascenseur", "COUR intèrieure", "Parties communes"],
     "1er":      ["Palier 1er", "11", "12", "14", "15", "16", "18"],
     "2eme":     ["2eme étage", "21", "22", "24", "25", "26", "27", "28"],
     "3eme":     ["3eme étage", "31", "32", "34", "35", "36", "37", "38",
@@ -24,14 +24,13 @@ LISTE_ORIGINE = {
                  "Escalier qui mène au RDC", "Salle de repos", "Vestiaire Hommes",
                  "Vestiaire Femmes", "Lingerie", "Local TGBT", "Local Technique",
                  "Local poubelle", "Chaufferie"],
-    "Autres":   ["Toit", "COUR intèrieure"],
+    "Autres":   ["Toit"],
 }
 
 # Trois emplacements absents de la liste d'origine mais nécessaires pour placer
 # une vingtaine de lignes de l'export. À confirmer, puis à intégrer à la liste.
 AJOUTS_A_CONFIRMER = {
-    "Sous-sol divers":  "Sous-Sol",   # les 4 lignes qui disent seulement « sous sol »
-    "Parties communes": "Autres",     # « Divers », « GENERAL », « Bureau », escaliers du RDC
+    "Sous-sol divers": "Sous-Sol",    # les 4 lignes qui disent seulement « sous sol »
 }
 
 # « Vestiaire Femmes » est déduit : la liste fournie répète « Vestiaire Hommes »
@@ -50,8 +49,8 @@ TYPES = {
     "Vestiaire Hommes": "technique", "Vestiaire Femmes": "technique",
     "Chaufferie": "technique", "Local TGBT": "technique", "Local Technique": "technique",
     "Local poubelle": "technique", "Lingerie": "technique",
-    "Toit": "exterieur", "COUR intèrieure": "exterieur",
-    "Ascenseur": "technique", "Sous-sol divers": "commun", "Parties communes": "commun",
+    "Toit": "exterieur", "COUR intèrieure": "exterieur", "Parties communes": "commun",
+    "Ascenseur": "technique", "Sous-sol divers": "commun",
 }
 
 # code -> (étage, type). Un code purement numérique est une chambre.

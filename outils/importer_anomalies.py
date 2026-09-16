@@ -39,7 +39,7 @@ NOMS_CANONIQUES = {
 ROLES = {
     "miguel": "admin",
     "victoria": "gouvernante",
-    "sarah p": "gouvernante",
+    "sarah p": "operations",   # chargée des opérations
 }
 
 STATUTS = {
@@ -176,8 +176,10 @@ def main(chemin: str) -> None:
             nom = str(d.get(col) or "").strip()
             if not nom:
                 continue
+            # La forme canonique d'abord : « Mr Negroni » et « MrNegroni »
+            # donnaient deux clés différentes, donc deux personnes.
+            nom = NOMS_CANONIQUES.get(cle(nom), nom)
             k = cle(nom)
-            nom = NOMS_CANONIQUES.get(k, nom)
             # Un intervenant extérieur n'est jamais créé comme utilisateur, quelle
             # que soit la colonne où son nom apparaît.
             if k in PRESTATAIRES:
