@@ -33,6 +33,46 @@ mouvements, c'est un chiffre de départ que 95 % de l'historique ne corrige jama
 Dans le nouveau modèle, `EstHistorique`, `Stock_Initial` et `StockActuel` disparaissent : les 261
 mouvements sont repris tels quels et le stock est leur somme.
 
+## Ce que fait l'import
+
+Les 261 mouvements sont repris **tels quels** : qui a pris quoi, quand, pour quelle chambre, et pour
+quelle anomalie — la colonne `Intervention_ID` pointe sur l'identifiant SharePoint de l'anomalie, ce
+qui donne les coûts matériel réels par intervention.
+
+Leur somme ne redonne pas le stock affiché aujourd'hui, puisque l'ancienne application en ignorait
+249. Une **ligne de régularisation par produit**, datée de la reprise et rattachée à un inventaire
+« Reprise de l'ancienne application », recale l'écart. L'historique est conservé sans que le stock
+mente.
+
+```
+stock visé = Stock_Initial + les seuls mouvements non marqués « historique »
+           = ce que l'ancienne application affiche
+
+régularisation = stock visé − somme des 261 mouvements
+```
+
+Le comptage physique du jour J produira une seconde régularisation, qui fera foi.
+
+### Résultat
+
+| | |
+|---|---|
+| Produits | 36 |
+| Mouvements | 257 repris + 26 régularisations de reprise |
+| Sorties rattachées à une intervention | 139 |
+| Produits sous leur seuil | 20 |
+| Valeur du stock | ~3 900 € HT |
+
+### Signalé par le rapport d'import
+
+| Constat | Traitement |
+|---|---|
+| Deux produits portent le code `Inconnu` | Le second est suffixé `Inconnu-2` plutôt que perdu |
+| 2 mouvements sans date, 1 sans quantité | Écartés, comptés dans le rapport |
+| 1 mouvement daté du 20/01/2000 | Importé, signalé comme aberrant |
+| 1 produit au stock négatif (−42) | Importé tel quel, listé dans `v_controle_donnees` |
+| 4 photos | Références SharePoint (`Reserved_ImageAttachment_…`), **non récupérables** : à recharger |
+
 ## À compléter avant la bascule
 
 1. **Les fournisseurs** — sans eux, pas de demande de devis groupée. C'est le seul manque bloquant.

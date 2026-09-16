@@ -45,7 +45,7 @@ begin
     'bouteille_types','dotations','incidents_bouteille','mouvements_bouteilles',
     'inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes',
-    'recap_abonnements','alertes_destinataires','emails_envoyes','journal'
+    'recap_abonnements','alertes_destinataires','emails_envoyes','parametres','journal'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format('grant select on %I to authenticated', t);
@@ -116,7 +116,7 @@ begin
     'utilisateurs','specialites_intervenant','etages','emplacements',
     'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
     'produits','article_fournisseurs','bouteille_types','dotations',
-    'recap_abonnements','alertes_destinataires'
+    'recap_abonnements','alertes_destinataires','parametres'
   ] loop
     execute format('grant insert, update, delete on %I to authenticated', t);
     execute format(
@@ -140,7 +140,7 @@ begin
   foreach v in array array[
     'v_stock_produits','v_cout_prestataire','v_interventions_cout',
     'v_recap_interventions','v_tournees','v_fil_commentaires','v_intervenants',
-    'v_factures_rapprochement','v_recurrences_emplacement','v_bouteilles_positions',
+    'v_interventions_sans_facture','v_envois_en_attente','v_recurrences_emplacement','v_bouteilles_positions',
     'v_stock_bouteilles','v_bouteilles_par_emplacement','v_incidents_bouteille',
     'v_reappro_necessaire','v_controle_donnees'
   ] loop

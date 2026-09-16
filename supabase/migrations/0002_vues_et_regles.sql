@@ -15,6 +15,7 @@ select
   p.code,
   p.designation,
   p.categorie,
+  p.categorie_lieu,
   p.unite,
   p.prix_unitaire,
   p.prix_unitaire is null                              as prix_inconnu,
@@ -198,28 +199,75 @@ join interventions i on i.id = v.intervention_id
 left join utilisateurs u on u.id = v.utilisateur_id
 where coalesce(btrim(v.commentaire), '') <> '';
 
--- Interventions candidates au rapprochement d'une facture de prestation : même
--- prestataire, même date. C'est ce que l'écran de rapprochement propose à cocher.
-create view v_factures_rapprochement as
+-- Interventions candidates au rapprochement d'une facture de prestation.
+-- Une facture arrive une à deux semaines après le passage et peut couvrir
+-- plusieurs journées : on ne cherche donc pas une date exacte mais une fenêtre.
+-- Quand la facture porte une période, c'est elle qui fait foi ; sinon on
+-- remonte `p_jours` en arrière depuis sa date, puisque la facture suit toujours
+-- l'intervention. Une intervention déjà rattachée à une AUTRE facture n'est
+-- jamais proposée.
+create function fn_interventions_rapprochables(
+  p_facture_id uuid,
+  p_jours int default 30
+) returns table (
+  intervention_id    uuid,
+  anomalie_reference bigint,
+  emplacement        text,
+  description        text,
+  date_intervention  date,
+  ecart_jours        int,
+  cout_materiel      numeric,
+  deja_rapprochee    boolean
+)
+language sql stable as $$
+  select
+    i.id,
+    a.reference,
+    e.code,
+    a.description,
+    i.date_intervention,
+    (f.date_reference - i.date_intervention)::int,
+    c.cout_materiel,
+    fi.facture_id is not null
+  from factures f
+  join interventions i on i.prestataire_id = f.prestataire_id
+  join anomalies a     on a.id = i.anomalie_id
+  join emplacements e  on e.id = a.emplacement_id
+  left join v_interventions_cout c  on c.intervention_id = i.id
+  left join facture_interventions fi on fi.facture_id = f.id and fi.intervention_id = i.id
+  where f.id = p_facture_id
+    and f.type = 'prestation'
+    and case
+          when f.periode_debut is not null and f.periode_fin is not null
+            then i.date_intervention between f.periode_debut and f.periode_fin
+          else i.date_intervention between f.date_reference - p_jours and f.date_reference
+        end
+    -- pas déjà pris par une autre facture
+    and not exists (
+      select 1 from facture_interventions x
+      where x.intervention_id = i.id and x.facture_id <> f.id)
+  order by i.date_intervention desc, a.reference;
+$$;
+
+-- Le filet de sécurité : ce qu'un prestataire a fait et qu'aucune facture ne
+-- couvre encore. Une intervention qui vieillit ici est une facture qu'on
+-- attend, ou qu'on a oublié de rapprocher.
+create view v_interventions_sans_facture as
 select
-  f.id              as facture_id,
-  f.reference       as facture_reference,
-  f.date_reference,
-  f.montant_ht,
-  p.nom             as prestataire,
-  i.id              as intervention_id,
-  a.reference       as anomalie_reference,
-  e.code            as emplacement,
+  pr.id                                as prestataire_id,
+  pr.nom                               as prestataire,
+  i.id                                 as intervention_id,
+  a.reference                          as anomalie_reference,
+  e.code                               as emplacement,
   a.description,
-  (fi.facture_id is not null) as deja_rapprochee
-from factures f
-join prestataires p  on p.id = f.prestataire_id
-join interventions i on i.prestataire_id = f.prestataire_id
-                    and i.date_intervention = f.date_reference
+  i.date_intervention,
+  (current_date - i.date_intervention)::int as jours_ecoules
+from interventions i
+join prestataires pr on pr.id = i.prestataire_id
 join anomalies a     on a.id = i.anomalie_id
 join emplacements e  on e.id = a.emplacement_id
-left join facture_interventions fi on fi.facture_id = f.id and fi.intervention_id = i.id
-where f.type = 'prestation';
+where not exists (
+  select 1 from facture_interventions fi where fi.intervention_id = i.id);
 
 -- Liste des intervenants pour le filtre à avatars de l'écran technicien.
 -- `specialites` vide = polyvalent : on lui propose toutes les anomalies.
@@ -264,6 +312,44 @@ language sql stable as $$
     and (cardinality(i.specialites) = 0 or t.code = any (i.specialites))
   order by a.emplacement_id, a.declare_le;
 $$;
+
+-- Ce que le digest du soir doit envoyer. Rien ne part à la validation : les
+-- lignes s'accumulent ici et un seul envoi les reprend à l'heure dite, pour
+-- éviter un mail par anomalie validée.
+create view v_envois_en_attente as
+select
+  'recap_technicien'::text as categorie,
+  t.id                     as tournee_id,
+  t.reference,
+  t.date_tournee,
+  coalesce(u.nom, p.nom)   as intervenant,
+  v.nb_interventions,
+  v.nb_validees,
+  v.nb_a_refaire,
+  v.cout_total,
+  t.cloturee_le            as pret_depuis
+from tournees t
+join v_tournees v         on v.id = t.id
+left join utilisateurs u  on u.id = t.technicien_id
+left join prestataires p  on p.id = t.prestataire_id
+where t.cloturee_le is not null and t.mail_technicien_envoye_le is null
+union all
+select
+  'recap_intervention',
+  t.id,
+  t.reference,
+  t.date_tournee,
+  coalesce(u.nom, p.nom),
+  v.nb_interventions,
+  v.nb_validees,
+  v.nb_a_refaire,
+  v.cout_total,
+  t.cloturee_le
+from tournees t
+join v_tournees v         on v.id = t.id
+left join utilisateurs u  on u.id = t.technicien_id
+left join prestataires p  on p.id = t.prestataire_id
+where v.prete_pour_recap and t.mail_recap_envoye_le is null;
 
 -- Chambres qui reviennent trop souvent. Le drapeau reprend le seuil de la
 -- maquette : 3 interventions ou plus sur les six derniers mois.
@@ -677,7 +763,27 @@ begin
 end;
 $$;
 
--- 8. Recherche du catalogue par mots-clés, depuis le téléphone de la gouvernante.
+-- 8. Le digest du soir a envoyé : on horodate, pour ne pas renvoyer demain.
+create function fn_marquer_envois(p_categorie text, p_tournees uuid[])
+returns int
+language plpgsql as $$
+declare v_nb int;
+begin
+  if p_categorie = 'recap_technicien' then
+    update tournees set mail_technicien_envoye_le = now()
+     where id = any (p_tournees) and mail_technicien_envoye_le is null;
+  elsif p_categorie = 'recap_intervention' then
+    update tournees set mail_recap_envoye_le = now()
+     where id = any (p_tournees) and mail_recap_envoye_le is null;
+  else
+    raise exception 'catégorie d''envoi inconnue : %', p_categorie;
+  end if;
+  get diagnostics v_nb = row_count;
+  return v_nb;
+end;
+$$;
+
+-- 9. Recherche du catalogue par mots-clés, depuis le téléphone de la gouvernante.
 --    Tolérante : elle ne lève jamais d'erreur de syntaxe quel que soit le texte
 --    saisi, contrairement à une requête plein-texte construite à la volée.
 create function fn_rechercher_catalogue(p_terme text default null)
@@ -726,6 +832,16 @@ select
 from anomalies a
 join emplacements e on e.id = a.emplacement_id
 where e.code = 'General'
+union all
+select
+  'stock_negatif',
+  null::uuid,
+  null::bigint,
+  sp.code,
+  sp.designation,
+  'Stock calculé à ' || sp.stock || ' : à recaler au comptage physique'
+from v_stock_produits sp
+where sp.stock < 0
 union all
 select
   'intervention_future',

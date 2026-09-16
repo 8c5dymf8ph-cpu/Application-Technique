@@ -173,8 +173,11 @@ insert into produits (code, designation, prix_unitaire, seuil_alerte) values
   -- Prix inconnu : l'article ne doit pas être compté pour zéro en silence
   ('DIV-01', 'Pièce diverse', null,  2);
 
+-- Uniquement les produits de ce scénario : les tests doivent passer aussi sur
+-- une base contenant déjà les données reprises.
 insert into article_fournisseurs (produit_id, fournisseur_id)
-select id, '88888888-8888-8888-8888-888888888888' from produits;
+select id, '88888888-8888-8888-8888-888888888888'
+from produits where code in ('JNT-12', 'FLX-40', 'DIV-01');
 
 -- Comptage physique initial : le stock ne part pas d'un chiffre figé
 insert into mouvements_stock (produit_id, type, quantite, commentaire)
@@ -280,17 +283,30 @@ select ('66666666-0000-0000-0000-00000000000' || n)::uuid,
        '99999999-9999-9999-9999-999999999999', date '2026-05-17'
 from generate_series(1, 3) n;
 
+-- La facture arrive douze jours après le passage, comme dans la vraie vie.
 insert into factures (id, type, prestataire_id, reference, date_reference, montant_ht, statut)
 values ('77777777-7777-7777-7777-777777777777', 'prestation',
         '99999999-9999-9999-9999-999999999999',
-        'FA-2026-0512', date '2026-05-17', 450.00, 'a_rapprocher');
+        'FA-2026-0512', date '2026-05-29', 450.00, 'a_rapprocher');
 
 do $$
-declare v_nb int;
+declare v_nb int; v_ecart int;
 begin
-  select count(*) into v_nb from v_factures_rapprochement
-   where facture_id = '77777777-7777-7777-7777-777777777777' and not deja_rapprochee;
-  assert v_nb = 3, format('%s interventions proposées au rapprochement, attendu 3', v_nb);
+  select count(*), max(ecart_jours) into v_nb, v_ecart
+  from fn_interventions_rapprochables('77777777-7777-7777-7777-777777777777')
+  where not deja_rapprochee;
+  assert v_nb = 3, format('%s interventions proposées, attendu 3 malgré les 12 jours d''écart', v_nb);
+  assert v_ecart = 12, format('écart annoncé = %s jours, attendu 12', v_ecart);
+
+  -- Une fenêtre trop courte ne doit rien proposer : c'est le garde-fou.
+  select count(*) into v_nb
+  from fn_interventions_rapprochables('77777777-7777-7777-7777-777777777777', 5);
+  assert v_nb = 0, format('%s interventions proposées sur 5 jours, attendu 0', v_nb);
+
+  -- Et tant que rien n'est rapproché, elles apparaissent dans le filet.
+  select count(*) into v_nb from v_interventions_sans_facture
+   where prestataire = 'Plomberie Dupont';
+  assert v_nb = 3, format('%s interventions sans facture, attendu 3', v_nb);
 end $$;
 
 -- Rapprochement des trois interventions : 450 € répartis à parts égales
@@ -300,6 +316,14 @@ select '77777777-7777-7777-7777-777777777777',
 from generate_series(1, 3) n;
 
 update factures set statut = 'rapprochee' where id = '77777777-7777-7777-7777-777777777777';
+
+do $$
+declare v_nb int;
+begin
+  select count(*) into v_nb from v_interventions_sans_facture
+   where prestataire = 'Plomberie Dupont';
+  assert v_nb = 0, format('%s interventions encore sans facture, attendu 0', v_nb);
+end $$;
 
 do $$
 declare v record; v_total numeric;
@@ -539,6 +563,65 @@ begin
     raise exception 'une prestation facturée par un fournisseur aurait dû être refusée';
   exception when check_violation then null;
   end;
+end $$;
+
+-- ===========================================================================
+-- SCÉNARIO 8 — Les mails ne partent pas à la validation. Ils attendent le
+-- digest du soir, pour qu'une après-midi de validations fasse un seul envoi.
+-- ===========================================================================
+do $$
+declare
+  v_tournee tournees;
+  v_anomalie uuid; v_intervention uuid; n int;
+  v_attente int;
+begin
+  v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111');
+  for n in 1..3 loop
+    insert into anomalies (emplacement_id, description) select id, 'Digest ' || n
+      from emplacements where code = '57' returning id into v_anomalie;
+    insert into interventions (anomalie_id, tournee_id, technicien_id)
+      values (v_anomalie, v_tournee.id, '11111111-1111-1111-1111-111111111111')
+      returning id into v_intervention;
+    insert into validations (intervention_id, acteur, decision, utilisateur_id)
+      values (v_intervention, 'technicien', 'fait', '11111111-1111-1111-1111-111111111111');
+  end loop;
+  update tournees set cloturee_le = now() where id = v_tournee.id;
+
+  -- Le lot est clos : le récapitulatif technicien attend, il n'est pas parti.
+  select count(*) into v_attente from v_envois_en_attente
+   where tournee_id = v_tournee.id and categorie = 'recap_technicien';
+  assert v_attente = 1, 'le récapitulatif technicien doit attendre le digest';
+
+  -- Victoria valide les trois, une par une : toujours aucun envoi déclenché.
+  insert into validations (intervention_id, acteur, decision, utilisateur_id, saisie_par)
+  select i.id, 'gouvernante', 'validee', '22222222-2222-2222-2222-222222222222',
+         '11111111-1111-1111-1111-111111111111'
+  from interventions i where i.tournee_id = v_tournee.id;
+
+  select count(*) into v_attente from v_envois_en_attente where tournee_id = v_tournee.id;
+  assert v_attente = 2,
+    format('%s envois en attente, attendu 2 — un par catégorie, pas un par anomalie', v_attente);
+
+  -- Le digest de 21 h passe et horodate.
+  perform fn_marquer_envois('recap_technicien',   array[v_tournee.id]);
+  perform fn_marquer_envois('recap_intervention', array[v_tournee.id]);
+
+  select count(*) into v_attente from v_envois_en_attente where tournee_id = v_tournee.id;
+  assert v_attente = 0, format('%s envois encore en attente après le digest, attendu 0', v_attente);
+
+  -- Le lendemain, le digest ne renvoie rien.
+  assert fn_marquer_envois('recap_technicien', array[v_tournee.id]) = 0,
+    'un second passage du digest ne doit rien renvoyer';
+end $$;
+
+-- La saisie pour le compte d'un autre est tracée des deux côtés
+do $$
+declare v record;
+begin
+  select v2.utilisateur_id, v2.saisie_par into v
+  from validations v2 where v2.acteur = 'gouvernante' and v2.saisie_par is not null limit 1;
+  assert v.utilisateur_id <> v.saisie_par,
+    'l''avis et la personne qui l''a saisi doivent rester distincts';
 end $$;
 
 \echo '✅ Tous les scénarios sont passés'

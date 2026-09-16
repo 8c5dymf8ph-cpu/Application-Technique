@@ -208,6 +208,10 @@ create table interventions (
   tournee_id         uuid references tournees (id) on delete set null,
   technicien_id      uuid references utilisateurs (id),
   prestataire_id     uuid references prestataires (id),
+  -- Qui a réellement saisi la ligne. Deux ou trois intervenants ont
+  -- l'application ; pour les autres c'est l'administrateur qui saisit à leur
+  -- place, et la trace doit distinguer les deux.
+  saisie_par         uuid references utilisateurs (id),
   date_intervention  date not null default current_date,
   debut              timestamptz,
   fin                timestamptz,
@@ -233,7 +237,11 @@ create table validations (
   intervention_id uuid not null references interventions (id) on delete cascade,
   acteur          acteur_validation not null,
   decision        decision_validation not null,
+  -- La personne dont c'est l'avis…
   utilisateur_id  uuid references utilisateurs (id),
+  -- …et celle qui a tenu le téléphone. Les deux diffèrent quand
+  -- l'administrateur saisit pour un intervenant qui n'a pas l'application.
+  saisie_par      uuid references utilisateurs (id),
   commentaire     text,
   decide_le       timestamptz not null default now(),
   constraint decision_coherente_avec_acteur check (
@@ -270,6 +278,11 @@ create table factures (
   reference         text,
   -- Date d'intervention pour une prestation, date de livraison pour un achat.
   date_reference    date not null,
+  -- Une facture de prestataire arrive une à deux semaines après, et peut
+  -- couvrir plusieurs passages. Quand la période est renseignée, c'est elle qui
+  -- sert au rapprochement plutôt que la date seule.
+  periode_debut     date,
+  periode_fin       date,
   date_facture      date,
   montant_ht        numeric(10, 2) check (montant_ht >= 0),
   montant_ttc       numeric(10, 2) check (montant_ttc >= 0),
@@ -278,6 +291,8 @@ create table factures (
   saisie_par        uuid references utilisateurs (id),
   cree_le           timestamptz not null default now(),
   commentaire       text,
+  constraint periode_coherente check (
+    periode_debut is null or periode_fin is null or periode_debut <= periode_fin),
   constraint emetteur_coherent_avec_type check (
     (type = 'prestation' and prestataire_id is not null and fournisseur_id is null) or
     (type = 'achat'      and fournisseur_id is not null and prestataire_id is null)
@@ -304,7 +319,8 @@ create table produits (
   id             uuid primary key default gen_random_uuid(),
   code           text not null unique,       -- ex-colonne Name / CodeArticle
   designation    text not null,
-  categorie      text,
+  categorie      text,          -- le métier : Électricité, Plomberie…
+  categorie_lieu text,          -- le lieu : Chambre, Salle de bain, Général
   unite          text not null default 'unité',
   -- Nul = prix inconnu. Le coût d'une intervention le signale au lieu de
   -- compter l'article pour zéro.
@@ -314,6 +330,7 @@ create table produits (
   actif          boolean not null default true
 );
 create index on produits (categorie);
+create index on produits (categorie_lieu);
 
 -- Un produit peut être fourni par plusieurs maisons : une demande de devis part
 -- alors vers chacune, pour comparer. Un fournisseur qui a plusieurs articles
@@ -371,6 +388,7 @@ create table mouvements_stock (
   motif           motif_regularisation,
   date_mouvement  timestamptz not null default now(),
   utilisateur_id  uuid references utilisateurs (id),
+  prestataire_id  uuid references prestataires (id),
   emplacement_id  uuid references emplacements (id),
   intervention_id uuid references interventions (id) on delete set null,
   inventaire_id   uuid references inventaires (id) on delete cascade,
@@ -599,6 +617,19 @@ create table emails_envoyes (
   erreur         text
 );
 create index on emails_envoyes (categorie, envoye_le desc);
+
+-- -----------------------------------------------------------------------------
+-- Paramètres généraux — une seule ligne.
+-- -----------------------------------------------------------------------------
+create table parametres (
+  id            boolean primary key default true check (id),
+  -- Les mails ne partent pas à chaque validation : ils s'accumulent et sont
+  -- envoyés en un seul envoi à cette heure-là.
+  heure_digest  time not null default '21:00',
+  fuseau        text not null default 'Europe/Paris',
+  maj_le        timestamptz not null default now()
+);
+insert into parametres (id) values (true) on conflict do nothing;
 
 -- -----------------------------------------------------------------------------
 -- Journal d'audit
