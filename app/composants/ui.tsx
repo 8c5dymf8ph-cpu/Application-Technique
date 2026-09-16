@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { Route } from "next";
 
+/** Une adresse construite à partir d'un segment dynamique. */
+type Adresse = Route | (string & {});
+
 export function Entete({
   titre,
   sous_titre,
@@ -8,13 +11,13 @@ export function Entete({
 }: {
   titre: string;
   sous_titre?: string;
-  retour?: Route;
+  retour?: Adresse;
 }) {
   return (
     <header className="bg-plum px-5 pb-[18px] pt-5 flex items-center gap-3">
       {retour && (
         <Link
-          href={retour}
+          href={retour as Route}
           aria-label="Retour"
           className="w-11 h-11 shrink-0 rounded-[13px] bg-white/15 grid place-items-center"
         >
@@ -58,7 +61,7 @@ export function Tuile({
   badge,
   ton = "bg-plum-soft",
 }: {
-  href: Route;
+  href: Adresse;
   titre: string;
   detail: string;
   badge?: string | number;
@@ -66,7 +69,7 @@ export function Tuile({
 }) {
   return (
     <Link
-      href={href}
+      href={href as Route}
       className={`${ton} rounded-tile px-5 py-[22px] flex items-center gap-4 min-h-[96px]`}
     >
       <div className="flex flex-col gap-[3px] grow min-w-0">

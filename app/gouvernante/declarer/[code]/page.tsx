@@ -54,18 +54,19 @@ export default async function Declarer({
 
   // Les totaux sont comptés à part : la liste affichée est tronquée, et un
   // compteur qui refléterait la troncature mentirait.
-  const [total] = await sql<{ ouvertes: number; closes: number }[]>`
-    select count(*) filter (where ouverte)::int     as ouvertes,
-           count(*) filter (where not ouverte)::int as closes
-    from v_anomalies_du_lieu
-    where emplacement_id = ${emplacement.id} and statut <> 'annulee'`;
+  // En déclarant, elle n'a besoin que de ce qui est encore à traiter. Le reste
+  // est de l'historique : consultable d'un geste, mais pas dans le chemin.
+  const [total] = await sql<{ en_cours: number; passees: number }[]>`
+    select count(*) filter (where statut in ('a_faire','en_cours','a_acheter'))::int as en_cours,
+           count(*) filter (where statut in ('validee','attente_validation'))::int   as passees
+    from v_anomalies_du_lieu where emplacement_id = ${emplacement.id}`;
 
-  const existantes = await sql<Existante[]>`
+  const enCours = await sql<Existante[]>`
     select anomalie_id, description, statut, ouverte, jours_depuis, constate_par
     from v_anomalies_du_lieu
-    where emplacement_id = ${emplacement.id} and statut <> 'annulee'
-    order by ouverte desc, declare_le desc
-    limit 20`;
+    where emplacement_id = ${emplacement.id}
+      and statut in ('a_faire','en_cours','a_acheter')
+    order by declare_le desc`;
 
   // Le catalogue vu depuis ce lieu : chaque libellé sait s'il y est déjà ouvert.
   const resultats = q.trim()
@@ -100,10 +101,6 @@ export default async function Declarer({
     redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?fait=1`);
   }
 
-  const ouvertes = existantes.filter((e) => e.ouverte);
-  const passees = existantes.filter((e) => !e.ouverte);
-  const reste = total.ouvertes - ouvertes.length;
-
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
@@ -113,17 +110,27 @@ export default async function Declarer({
       />
 
       <div className="px-5 py-5 flex flex-col gap-6">
-        {/* Ce qui est déjà signalé ici, avant toute saisie */}
+        {/* Ce qui reste à traiter ici — rien d'autre */}
         <section className="flex flex-col gap-2.5">
-          <h2 className="etiquette">
-            Déjà signalé ici {total.ouvertes > 0 && `· ${total.ouvertes} en cours`}
-          </h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="etiquette">
+              {total.en_cours === 0
+                ? "Rien en cours ici"
+                : `${total.en_cours} en cours ici`}
+            </h2>
+            {total.passees > 0 && (
+              <Link
+                href={`/gouvernante/historique/${encodeURIComponent(emplacement.code)}`}
+                className="text-[12.5px] text-plum underline underline-offset-4"
+              >
+                Historique ({total.passees})
+              </Link>
+            )}
+          </div>
 
-          {existantes.length === 0 ? (
-            <Vide>Rien n’a encore été signalé dans ce lieu.</Vide>
-          ) : (
+          {enCours.length > 0 && (
             <ul className="flex flex-col gap-2">
-              {ouvertes.map((e) => (
+              {enCours.map((e) => (
                 <li key={e.anomalie_id} className="carte px-4 py-3 flex flex-col gap-1.5">
                   <p className="text-[14.5px] leading-snug text-pretty">{e.description}</p>
                   <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
@@ -139,36 +146,6 @@ export default async function Declarer({
                   </p>
                 </li>
               ))}
-              {reste > 0 && (
-                <li className="text-[13px] text-ink-faint px-1">
-                  et {reste} autre{reste > 1 ? "s" : ""} en cours
-                </li>
-              )}
-              {passees.length > 0 && (
-                <li className="pt-1">
-                  <details>
-                    <summary className="text-[13px] text-ink-faint cursor-pointer py-2">
-                      {total.closes} déjà traitée{total.closes > 1 ? "s" : ""} — voir
-                      l’historique
-                    </summary>
-                    <ul className="flex flex-col gap-1.5 pt-2">
-                      {passees.map((e) => (
-                        <li
-                          key={e.anomalie_id}
-                          className="px-4 py-2.5 rounded-card bg-surface-muted flex flex-col gap-0.5"
-                        >
-                          <p className="text-[13.5px] text-ink-soft leading-snug text-pretty">
-                            {e.description}
-                          </p>
-                          <p className="text-[11.5px] text-ink-faint">
-                            {LIBELLE_STATUT[e.statut]} · {jours(e.jours_depuis)}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                </li>
-              )}
             </ul>
           )}
         </section>

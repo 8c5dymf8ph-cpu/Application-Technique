@@ -86,6 +86,14 @@ done
 psql -h /tmp -p 55432 -U postgres -d valid -q -f supabase/tests/01_scenarios.sql
 ```
 
+## Écrans
+
+- **En déclarant, la gouvernante ne voit que ce qui reste à traiter** dans le lieu — à faire, en
+  cours, achat à faire. L'historique complet est derrière un lien, jamais dans le chemin de saisie.
+  Il a toute sa place ailleurs : historique du lieu, rapports.
+- **Les listes longues se replient.** Les étages, les sections d'un écran : sur un téléphone tenu
+  d'une main, faire défiler trois écrans avant d'atteindre le cinquième étage est un défaut.
+
 ## Contraintes d'usage
 
 - Utilisée sur téléphone, en déplacement dans l'hôtel : chaque écran doit rester utilisable

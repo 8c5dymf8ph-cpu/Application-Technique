@@ -7,12 +7,12 @@ export const dynamic = "force-dynamic";
 type Lieu = { code: string; etage: string; ordre_etage: number; ouvertes: number };
 
 export default async function ChoixLieu() {
-  // Le nombre d'anomalies déjà ouvertes s'affiche dès le choix du lieu :
-  // c'est le premier signal contre les doublons, avant même d'entrer.
+  // Le nombre d'anomalies encore ouvertes s'affiche dès le choix du lieu :
+  // c'est le premier signal, avant même d'entrer dans la chambre.
   const lieux = await sql<Lieu[]>`
     select e.code, et.nom as etage, et.ordre as ordre_etage,
            count(a.id) filter (
-             where a.statut in ('a_faire','en_cours','attente_validation','a_acheter')
+             where a.statut in ('a_faire','en_cours','a_acheter')
            )::int as ouvertes
     from emplacements e
     join etages et on et.id = e.etage_id
@@ -21,39 +21,63 @@ export default async function ChoixLieu() {
     group by e.id, et.nom, et.ordre, e.ordre
     order by et.ordre, e.ordre, e.code`;
 
-  const etages = [...new Map(lieux.map((l) => [l.etage, l.ordre_etage])).keys()];
+  const etages = [...new Set(lieux.map((l) => l.etage))];
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="Déclarer" sous_titre="Choisir le lieu" retour="/gouvernante" />
-      <div className="px-5 py-5 flex flex-col gap-6">
-        {etages.map((etage) => (
-          <section key={etage} className="flex flex-col gap-2.5">
-            <h2 className="etiquette">{etage}</h2>
-            <div className="flex flex-wrap gap-2">
-              {lieux
-                .filter((l) => l.etage === etage)
-                .map((l) => (
+      <div className="px-5 py-4 flex flex-col gap-2">
+        {etages.map((etage) => {
+          const dedans = lieux.filter((l) => l.etage === etage);
+          const ouvertes = dedans.reduce((n, l) => n + l.ouvertes, 0);
+          return (
+            // Un étage par ligne, replié : la liste complète faisait défiler
+            // sur trois écrans avant d'atteindre le cinquième.
+            <details key={etage} className="carte overflow-hidden group">
+              <summary
+                data-cible
+                className="px-4 flex items-center gap-3 cursor-pointer list-none select-none"
+              >
+                <svg
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8AA3"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className="shrink-0 transition-transform group-open:rotate-90"
+                >
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="font-display font-semibold text-[17px] grow">{etage}</span>
+                <span className="text-[12.5px] text-ink-faint tabular-nums">
+                  {dedans.length} lieux
+                </span>
+                {ouvertes > 0 && (
+                  <span className="min-w-[26px] h-[26px] px-1.5 rounded-lg bg-amber-soft text-amber text-[13px] grid place-items-center tabular-nums">
+                    {ouvertes}
+                  </span>
+                )}
+              </summary>
+              <div className="flex flex-wrap gap-2 px-4 pb-4 pt-1">
+                {dedans.map((l) => (
                   <Link
                     key={l.code}
                     href={`/gouvernante/declarer/${encodeURIComponent(l.code)}`}
                     data-cible
-                    className="carte relative px-3.5 flex items-center justify-center min-w-[54px] text-[15px] active:bg-surface-muted"
+                    className="relative px-3.5 flex items-center justify-center min-w-[54px] rounded-pill border border-line bg-surface-muted text-[15px] active:bg-plum-soft"
                   >
                     {l.code}
                     {l.ouvertes > 0 && (
                       <span
                         className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-amber text-white text-[11px] grid place-items-center tabular-nums"
-                        aria-label={`${l.ouvertes} déjà déclarées`}
+                        aria-label={`${l.ouvertes} en cours`}
                       >
                         {l.ouvertes}
                       </span>
                     )}
                   </Link>
                 ))}
-            </div>
-          </section>
-        ))}
+              </div>
+            </details>
+          );
+        })}
       </div>
     </main>
   );

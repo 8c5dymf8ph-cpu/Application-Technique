@@ -51,16 +51,21 @@ STATUTS = {
 def statut_final(d, doublon: bool) -> str:
     """Le statut tel qu'il doit être une fois la reprise terminée.
 
-    Il est calculé ici plutôt que laissé aux déclencheurs : pendant l'import,
-    une ligne terminée passerait transitoirement par « en attente de
+    « FAIT » veut dire fait, et rien d'autre. La colonne de vérification n'a
+    été tenue qu'à partir de 2026 — vingt-trois lignes sur trois cent
+    cinquante-trois en 2025 — et la traiter comme une étape obligatoire
+    inventerait à la gouvernante un arriéré de plusieurs centaines
+    d'anomalies à valider qui n'a jamais existé. Quand la vérification est
+    renseignée, elle est reprise comme un vrai avis ; quand elle ne l'est pas,
+    la ligne est close sans avis, et le récapitulatif le montrera.
+
+    Le statut est calculé ici plutôt que laissé aux déclencheurs : pendant
+    l'import, une ligne terminée passerait transitoirement par « en attente de
     validation », et deux lignes du même problème au même endroit se
     heurteraient alors à l'unicité."""
     if doublon:
         return "annulee"
-    source = str(d.get("STATUT") or "").strip()
-    if source == "FAIT":
-        return "validee" if lire_date(d.get("VERIFIE_LE")) else "attente_validation"
-    return STATUTS.get(source, "a_faire")
+    return STATUTS.get(str(d.get("STATUT") or "").strip(), "a_faire")
 
 # Avant 2025, le suivi était tenu hors application et beaucoup de lignes
 # déclarées faites n'ont jamais été vérifiées. On ne les reprend pas : l'export
@@ -118,10 +123,7 @@ def ouverte_a_la_reprise(d) -> bool:
     """Une ligne encore ouverte une fois reprise : ce sont celles-là qui ne
     peuvent pas coexister deux fois au même endroit. Une ligne FAIT sans
     vérification reste ouverte — elle attend la gouvernante."""
-    statut = str(d.get("STATUT") or "").strip()
-    if statut in ("A FAIRE", "EN COURS", "ACHATS", ""):
-        return True
-    return statut == "FAIT" and not lire_date(d.get("VERIFIE_LE"))
+    return str(d.get("STATUT") or "").strip() in ("A FAIRE", "EN COURS", "ACHATS", "")
 
 
 def doublons_ouverts(data, canoniques, rapport) -> set[int]:
@@ -264,13 +266,18 @@ def main(chemin: str) -> None:
             note = f"Localisation d'origine : {lieu_brut}"
             commentaire = f"{commentaire}\n{note}" if commentaire else note
 
+        # Une ligne close l'a été à la vérification si elle existe, sinon le jour
+        # où le technicien l'a déclarée faite.
+        cloture = (q(lire_date(d.get("VERIFIE_LE")) or lire_date(d.get("FAIT_LE")))
+                   if statut == "validee" else "null")
+
         print(
             "insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id,"
             " description, commentaire, statut, constate_par, saisie_par, declare_le,"
             " cloture_le) select "
             f"{int(sid)}, e.id, c.id, t.id, {q(libelle)}, {q(commentaire)},"
             f" '{statut}', u1.id, u2.id, timestamptz '{date}',"
-            f" {q(lire_date(d.get('VERIFIE_LE'))) if statut == 'validee' else 'null'}\n"
+            f" {cloture}\n"
             f"  from emplacements e"
             f"\n  left join catalogue_anomalies c on c.libelle = {q(canonique)}"
             f"\n  left join types_intervention t on t.code = {q(d.get('TYPE'))}"

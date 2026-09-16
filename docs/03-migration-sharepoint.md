@@ -18,6 +18,14 @@
 (qui a vérifié). Le modèle porte les quatre : `anomalies.constate_par`, `anomalies.saisie_par`,
 `interventions.technicien_id` / `prestataire_id`, et la ligne de `validations` de la gouvernante.
 
+### « FAIT » veut dire fait
+
+La colonne de vérification n'a été tenue qu'à partir de 2026 : vingt-trois lignes sur trois cent
+cinquante-trois en 2025, cent cinquante-quatre sur cent quatre-vingt-huit en 2026. En traiter
+l'absence comme une étape manquante inventerait à la gouvernante un arriéré de trois cent cinquante
+anomalies à valider qui n'a jamais existé. Une ligne `FAIT` est donc close ; quand la vérification
+est renseignée, elle est reprise comme un vrai avis de gouvernante.
+
 ### Un statut de plus
 
 `ACHATS` (9 lignes) est un état d'attente : la ligne ne peut pas avancer tant que l'achat n'est pas
@@ -57,12 +65,11 @@ bascule sur « Général » plutôt que d'écarter une anomalie mal localisée.
 
 ```
 795 lignes  −  36 vides  −  87 antérieures à 2025  −  2 lignes de test  =  670 anomalies
-541 FAIT      → 338 en attente de vérification + 203 validées
-110 A FAIRE   → 110        12 EN COURS → 10        9 ACHATS → 9
-528 interventions · 29 tournées · 8 utilisateurs · 9 prestataires · 63 emplacements
+541 validées · 109 à faire · 10 en cours · 9 achats à faire · 1 annulée (doublon)
+528 interventions · 29 tournées · 70 emplacements
 ```
 
-Les deux `EN COURS` manquantes sont les deux lignes sans localisation, signalées par le rapport.
+Rien n'est en attente de validation : c'est l'état réel de l'hôtel au jour de la reprise.
 
 ## Mode d'emploi
 
