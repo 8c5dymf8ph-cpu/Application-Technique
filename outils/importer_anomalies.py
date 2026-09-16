@@ -24,6 +24,16 @@ PRESTATAIRES = {
     "alain", "hedi", "juan", "serafino",
 }
 
+# Orthographes rencontrées pour une même personne, ramenées à une seule.
+NOMS_CANONIQUES = {
+    "mr negroni": "MR NEGRONI",
+    "mrnegroni": "MR NEGRONI",
+    "victoria": "Victoria",
+    "miguel": "Miguel",
+    "sarah p": "Sarah P",
+    "farid": "FARID",
+}
+
 # Rôle dans l'application. Les personnes absentes de cette table sont créées
 # comme techniciens ; celles classées prestataires ne s'y connectent pas.
 ROLES = {
@@ -57,6 +67,13 @@ def q(t) -> str:
     if t is None or (isinstance(t, str) and not t.strip()):
         return "null"
     return "'" + str(t).strip().replace("'", "''") + "'"
+
+
+def qnom(t) -> str:
+    """Comme q(), mais ramène le nom à son orthographe canonique."""
+    if t is None or not str(t).strip():
+        return "null"
+    return q(NOMS_CANONIQUES.get(cle(t), str(t).strip()))
 
 
 def code_emplacement(brut, rapport) -> str | None:
@@ -106,10 +123,14 @@ def main(chemin: str) -> None:
             nom = str(d.get(col) or "").strip()
             if not nom:
                 continue
-            if col == "PAR" and cle(nom) in PRESTATAIRES:
-                prestataires.setdefault(cle(nom), nom)
+            k = cle(nom)
+            nom = NOMS_CANONIQUES.get(k, nom)
+            # Un intervenant extérieur n'est jamais créé comme utilisateur, quelle
+            # que soit la colonne où son nom apparaît.
+            if k in PRESTATAIRES:
+                prestataires.setdefault(k, nom)
             else:
-                utilisateurs.setdefault(cle(nom), nom)
+                utilisateurs.setdefault(k, nom)
 
     print("-- Généré par outils/importer_anomalies.py — ne pas modifier à la main.")
     print("-- Import de la liste « TEST Tech 3 » vers anomalies / tournees /")
@@ -145,9 +166,9 @@ def main(chemin: str) -> None:
     for ref, d in sorted(tournees.items()):
         nom = str(d.get("PAR") or "").strip()
         date = lire_date(d.get("FAIT_LE")) or lire_date(d.get("Date")) or aujourdhui
-        cible = ("technicien_id, (select id from utilisateurs where nom = %s)" % q(nom)
+        cible = ("technicien_id, (select id from utilisateurs where nom = %s)" % qnom(nom)
                  if cle(nom) not in PRESTATAIRES else
-                 "prestataire_id, (select id from prestataires where nom = %s)" % q(nom))
+                 "prestataire_id, (select id from prestataires where nom = %s)" % qnom(nom))
         colonne, valeur = cible.split(", ", 1)
         print(f"insert into tournees (reference, date_tournee, {colonne}) "
               f"values ({q(ref)}, date '{date}', {valeur}) on conflict (reference) do nothing;")
@@ -194,8 +215,8 @@ def main(chemin: str) -> None:
             f"  from emplacements e"
             f"\n  left join catalogue_anomalies c on c.libelle = {q(canonique)}"
             f"\n  left join types_intervention t on t.code = {q(d.get('TYPE'))}"
-            f"\n  left join utilisateurs u1 on u1.nom = {q(d.get('Constate_Par'))}"
-            f"\n  left join utilisateurs u2 on u2.nom = {q(d.get('SAISIE PAR'))}"
+            f"\n  left join utilisateurs u1 on u1.nom = {qnom(d.get('Constate_Par'))}"
+            f"\n  left join utilisateurs u2 on u2.nom = {qnom(d.get('SAISIE PAR'))}"
             f"\n  where e.code = {q(code)} on conflict (sharepoint_id) do nothing;")
         retenues += 1
 
@@ -211,8 +232,8 @@ def main(chemin: str) -> None:
             f" date '{fait_le or date}', timestamptz '{fait_le or date}'"
             f"\n  from anomalies a"
             f"\n  left join tournees t on t.reference = {q(ref)}"
-            f"\n  left join utilisateurs u on u.nom = {q('' if externe else par)}"
-            f"\n  left join prestataires p on p.nom = {q(par if externe else '')}"
+            f"\n  left join utilisateurs u on u.nom = {qnom('' if externe else par)}"
+            f"\n  left join prestataires p on p.nom = {qnom(par if externe else '')}"
             f"\n  where a.sharepoint_id = {int(sid)}"
             f"\n    and not exists (select 1 from interventions i where i.anomalie_id = a.id);")
 
@@ -222,7 +243,7 @@ def main(chemin: str) -> None:
                 " decide_le) select i.id, 'technicien', 'fait', u.id,"
                 f" timestamptz '{fait_le}'"
                 f"\n  from interventions i join anomalies a on a.id = i.anomalie_id"
-                f"\n  left join utilisateurs u on u.nom = {q('' if externe else par)}"
+                f"\n  left join utilisateurs u on u.nom = {qnom('' if externe else par)}"
                 f"\n  where a.sharepoint_id = {int(sid)}"
                 f"\n    and not exists (select 1 from validations v"
                 f" where v.intervention_id = i.id and v.acteur = 'technicien');")
@@ -235,7 +256,7 @@ def main(chemin: str) -> None:
                 " decide_le) select i.id, 'gouvernante', 'validee', u.id,"
                 f" timestamptz '{verifie_le}'"
                 f"\n  from interventions i join anomalies a on a.id = i.anomalie_id"
-                f"\n  left join utilisateurs u on u.nom = {q(d.get('VERIFIE_PAR'))}"
+                f"\n  left join utilisateurs u on u.nom = {qnom(d.get('VERIFIE_PAR'))}"
                 f"\n  where a.sharepoint_id = {int(sid)}"
                 f"\n    and not exists (select 1 from validations v"
                 f" where v.intervention_id = i.id and v.acteur = 'gouvernante');")
