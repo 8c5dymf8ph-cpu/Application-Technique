@@ -351,6 +351,50 @@ left join utilisateurs u  on u.id = t.technicien_id
 left join prestataires p  on p.id = t.prestataire_id
 where v.prete_pour_recap and t.mail_recap_envoye_le is null;
 
+-- Ce qui a déjà été déclaré dans un lieu. La gouvernante la consulte AVANT de
+-- saisir : sans ça, la même fuite est déclarée trois fois en une semaine.
+-- Les anomalies ouvertes remontent d'abord, l'historique récent ensuite —
+-- une anomalie close il y a peu qui réapparaît n'est pas un doublon, c'est une
+-- réparation qui n'a pas tenu, et cela se voit ici.
+create view v_anomalies_du_lieu as
+select
+  a.emplacement_id,
+  e.code                       as emplacement,
+  a.id                         as anomalie_id,
+  a.reference,
+  a.catalogue_id,
+  a.description,
+  a.commentaire,
+  a.statut,
+  a.statut in ('a_faire', 'en_cours', 'attente_validation', 'a_acheter') as ouverte,
+  a.declare_le,
+  a.cloture_le,
+  (current_date - a.declare_le::date)::int as jours_depuis,
+  uc.nom                       as constate_par,
+  ti.nom                       as type_intervention,
+  (select count(*) from photos_anomalie ph where ph.anomalie_id = a.id) as nb_photos
+from anomalies a
+join emplacements e             on e.id = a.emplacement_id
+left join utilisateurs uc       on uc.id = a.constate_par
+left join types_intervention ti on ti.id = a.type_id;
+
+-- Le garde-fou de la saisie : le même libellé, dans le même lieu, encore
+-- ouvert ou clos il y a peu. L'application le montre avant d'enregistrer ;
+-- elle ne bloque pas — parfois le problème est réellement revenu.
+create function fn_doublons_probables(
+  p_emplacement_id uuid,
+  p_catalogue_id uuid,
+  p_jours int default 120
+) returns setof v_anomalies_du_lieu
+language sql stable as $$
+  select *
+  from v_anomalies_du_lieu v
+  where v.emplacement_id = p_emplacement_id
+    and v.catalogue_id is not distinct from p_catalogue_id
+    and (v.ouverte or v.jours_depuis <= p_jours)
+  order by v.ouverte desc, v.declare_le desc;
+$$;
+
 -- Chambres qui reviennent trop souvent. Le drapeau reprend le seuil de la
 -- maquette : 3 interventions ou plus sur les six derniers mois.
 create view v_recurrences_emplacement as

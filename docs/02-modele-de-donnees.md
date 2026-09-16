@@ -70,7 +70,10 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `v_bouteilles_par_emplacement` | Théorique vs réel, chambre par chambre |
 | `v_incidents_bouteille` | Dossiers avec montant retenu ou théorique, et caractère facturable |
 | `v_reappro_necessaire` | Articles sous seuil, produits et bouteilles, groupés par fournisseur |
-| `v_controle_donnees` | Données reprises douteuses : dates futures, localisations incertaines |
+| `v_controle_donnees` | Données reprises douteuses : dates futures, localisations incertaines, stocks négatifs |
+| `v_anomalies_du_lieu` | Tout ce qui a été déclaré dans une chambre, ouvertes d'abord — consultée avant chaque saisie |
+| `v_interventions_sans_facture` | Ce qu'un prestataire a fait sans facture, avec l'ancienneté |
+| `v_envois_en_attente` | Ce que le digest du soir doit envoyer |
 
 Toutes sont en `security_invoker = on` : elles appliquent les droits de l'appelant, et ne peuvent donc
 pas servir de contournement aux règles de sécurité.
@@ -83,6 +86,9 @@ pas servir de contournement aux règles de sécurité.
 | `fn_redoter_emplacement(...)` | Re-dote une chambre depuis la réserve, hors incident |
 | `fn_preparer_demandes_devis(...)` | Prépare **une** demande par fournisseur, sans dupliquer une demande en cours |
 | `fn_creer_tournee(...)` | Ouvre une tournée et génère sa référence `INT-<NOM>-<horodatage>-<aléa>` |
+| `fn_doublons_probables(lieu, libellé, jours)` | Le même libellé déjà déclaré au même endroit : avertit, ne bloque pas |
+| `fn_interventions_rapprochables(facture, jours)` | Candidates au rapprochement, sur une fenêtre et non une date exacte |
+| `fn_marquer_envois(catégorie, tournées)` | Horodate ce que le digest du soir vient d'envoyer |
 
 ## Pourquoi un registre de déplacements pour les bouteilles
 

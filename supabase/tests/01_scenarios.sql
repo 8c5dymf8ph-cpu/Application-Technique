@@ -624,5 +624,69 @@ begin
     'l''avis et la personne qui l''a saisi doivent rester distincts';
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 9 — Avant de saisir, on voit ce qui a déjà été déclaré dans le lieu.
+-- ===========================================================================
+do $$
+declare
+  v_catalogue uuid; v_emplacement uuid;
+  v_anomalie uuid; v_intervention uuid;
+  v_nb int; v_ouvertes int;
+begin
+  select id into v_catalogue from catalogue_anomalies limit 1;
+  select id into v_emplacement from emplacements where code = '26';
+
+  -- Rien n'a encore été déclaré ici
+  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
+  assert v_nb = 0, format('%s doublons annoncés sur un lieu vierge, attendu 0', v_nb);
+
+  -- Une première déclaration
+  insert into anomalies (emplacement_id, catalogue_id, description, constate_par)
+  values (v_emplacement, v_catalogue, 'Première déclaration',
+          '22222222-2222-2222-2222-222222222222')
+  returning id into v_anomalie;
+
+  -- La même, le lendemain : l'application doit la signaler
+  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
+  assert v_nb = 1, format('%s doublons annoncés, attendu 1', v_nb);
+  assert (select ouverte from fn_doublons_probables(v_emplacement, v_catalogue) limit 1),
+    'le doublon signalé doit être une anomalie ouverte';
+
+  -- Un autre libellé dans la même chambre ne doit pas être signalé
+  select count(*) into v_nb from fn_doublons_probables(
+    v_emplacement, (select id from catalogue_anomalies offset 1 limit 1));
+  assert v_nb = 0, format('%s doublons pour un autre libellé, attendu 0', v_nb);
+
+  -- Une fois l'anomalie validée, elle reste signalée quelque temps : une
+  -- réparation qui n'a pas tenu doit se voir.
+  insert into interventions (anomalie_id, technicien_id)
+  values (v_anomalie, '11111111-1111-1111-1111-111111111111') returning id into v_intervention;
+  insert into validations (intervention_id, acteur, decision, utilisateur_id)
+  values (v_intervention, 'gouvernante', 'validee', '22222222-2222-2222-2222-222222222222');
+
+  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
+  assert v_nb = 1, format('%s doublons après clôture, attendu 1 — la réparation peut n''avoir pas tenu', v_nb);
+  assert not (select ouverte from fn_doublons_probables(v_emplacement, v_catalogue) limit 1),
+    'elle doit désormais apparaître comme close';
+
+  -- Une anomalie close il y a deux ans ne doit plus rien signaler : sinon
+  -- chaque chambre finirait par alerter sur tout son passé.
+  insert into anomalies (emplacement_id, catalogue_id, description, constate_par,
+                         declare_le, statut, cloture_le)
+  values (v_emplacement, v_catalogue, 'Déclaration ancienne',
+          '22222222-2222-2222-2222-222222222222',
+          now() - interval '2 years', 'validee', now() - interval '2 years');
+
+  select count(*) into v_nb from fn_doublons_probables(v_emplacement, v_catalogue);
+  assert v_nb = 1,
+    format('%s doublons annoncés, attendu 1 : l''ancienne est hors fenêtre', v_nb);
+
+  -- Mais la vue du lieu, elle, montre tout l'historique de la chambre
+  select count(*), count(*) filter (where ouverte) into v_nb, v_ouvertes
+  from v_anomalies_du_lieu where emplacement_id = v_emplacement;
+  assert v_nb = 2, format('%s anomalies dans l''historique du lieu, attendu 2', v_nb);
+  assert v_ouvertes = 0, format('%s ouvertes, attendu 0 — les deux sont closes', v_ouvertes);
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;
