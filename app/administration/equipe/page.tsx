@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { peutValider, type RoleUtilisateur } from "@/lib/domaine";
+import { LIBELLE_ROLE, peutValider, type RoleUtilisateur } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,13 @@ type Personne = {
   role: RoleUtilisateur;
   actif: boolean;
   citations: number;
+};
+
+type Intervenant = {
+  id: string;
+  nom: string;
+  role: RoleUtilisateur;
+  interventions: number;
 };
 
 /** Les deux listes qui bougent souvent : l'étage et la réception. */
@@ -46,6 +53,51 @@ export default async function Equipe() {
     from utilisateurs u
     where u.role in ('menage', 'reception')
     order by u.actif desc, u.role, u.nom`;
+
+  // Qui figure dans la liste des intervenants techniques. Elle ne se déduit pas
+  // d'un rôle : la chargée des opérations n'intervient pas, le réceptionniste
+  // qui donne un coup de main, si.
+  const intervenants = await sql<Intervenant[]>`
+    select u.id, u.nom, u.role,
+           (select count(*) from interventions i where i.technicien_id = u.id)::int
+             as interventions
+    from utilisateurs u
+    where u.actif and u.intervient_technique
+    order by u.nom`;
+
+  const disponibles = await sql<Intervenant[]>`
+    select u.id, u.nom, u.role, 0::int as interventions
+    from utilisateurs u
+    where u.actif and not u.intervient_technique
+    order by u.nom`;
+
+  async function basculerIntervenant(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/");
+    // Retirer quelqu'un de la liste ne touche pas aux tournées qu'il a faites :
+    // elles gardent son nom.
+    await sql`
+      update utilisateurs
+         set intervient_technique = not intervient_technique
+       where id = ${String(donnees.get("personne"))}`;
+    revalidatePath("/administration/equipe");
+  }
+
+  async function ajouterIntervenant(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/");
+    const nom = String(donnees.get("nom") ?? "").trim();
+    if (!nom) return;
+    // Un renfort ponctuel : il existe, il intervient, et il se retire d'un
+    // appui quand il repart. Rien de ce qu'il a fait ne disparaît avec lui.
+    await sql`
+      insert into utilisateurs (nom, role, intervient_technique, actif)
+      values (${nom}, 'technicien', true, true)
+      on conflict (nom) do update set intervient_technique = true, actif = true`;
+    revalidatePath("/administration/equipe");
+  }
 
   async function ajouter(donnees: FormData) {
     "use server";
@@ -144,6 +196,77 @@ export default async function Equipe() {
             </section>
           );
         })}
+
+        {/* Les intervenants techniques */}
+        <section className="flex flex-col gap-2">
+          <h2 className="etiquette">Intervenants techniques</h2>
+          <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1">
+            Ceux qui apparaissent dans l’écran technique. Retirer quelqu’un ne touche pas aux
+            tournées qu’il a faites : elles gardent son nom.
+          </p>
+
+          <ul className="carte divide-y divide-line">
+            {intervenants.map((i) => (
+              <li key={i.id} className="px-3.5 py-2.5 flex items-center gap-3">
+                <span className="grow min-w-0">
+                  <span className="block text-[15px]">{i.nom}</span>
+                  <span className="block text-[11.5px] text-ink-faint">
+                    {LIBELLE_ROLE[i.role]}
+                    {i.interventions > 0 &&
+                      ` · ${i.interventions} intervention${i.interventions > 1 ? "s" : ""}`}
+                  </span>
+                </span>
+                <form action={basculerIntervenant}>
+                  <input type="hidden" name="personne" value={i.id} />
+                  <button className="h-[38px] px-3 rounded-[10px] bg-surface-muted border border-line text-[12.5px] text-ink-soft">
+                    Retirer
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+
+          {disponibles.length > 0 && (
+            <details className="carte px-3.5 py-3">
+              <summary className="text-[12.5px] text-plum underline underline-offset-4 cursor-pointer list-none">
+                Ajouter quelqu’un qui existe déjà
+              </summary>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {disponibles.map((d) => (
+                  <li key={d.id} className="flex items-center gap-3">
+                    <span className="grow min-w-0">
+                      <span className="block text-[14px]">{d.nom}</span>
+                      <span className="block text-[11px] text-ink-faint">
+                        {LIBELLE_ROLE[d.role]}
+                      </span>
+                    </span>
+                    <form action={basculerIntervenant}>
+                      <input type="hidden" name="personne" value={d.id} />
+                      <button className="h-[36px] px-3 rounded-[10px] bg-plum-soft text-plum text-[12.5px]">
+                        Ajouter
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          <form action={ajouterIntervenant} className="flex gap-2">
+            <input
+              name="nom"
+              autoComplete="off"
+              placeholder="Un renfort, un nouveau nom…"
+              className="carte grow min-w-0 px-4 h-[46px] text-[16px] placeholder:text-ink-faint"
+            />
+            <button className="px-4 rounded-card bg-plum text-white text-[14.5px]">Ajouter</button>
+          </form>
+          <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+            Un renfort ponctuel s’ajoute ici et se retire d’un appui quand il repart. Pour une
+            entreprise extérieure qui reviendra, c’est un prestataire — dites-le moi et je
+            l’ajoute au référentiel.
+          </p>
+        </section>
 
         <Link
           href={"/bouteilles" as Route}

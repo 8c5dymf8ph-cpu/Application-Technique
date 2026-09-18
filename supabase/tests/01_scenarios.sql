@@ -969,5 +969,67 @@ begin
   assert v_nb = 1, 'la trace de l''envoi doit rester';
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 13 — Le récapitulatif est un mail par LOT, pas un mail par anomalie.
+-- Deux moments : la clôture du lot, puis la dernière validation.
+-- ===========================================================================
+do $$
+declare
+  v_tournee uuid;
+  v_anomalie uuid;
+  v_intervention uuid;
+  v_emplacement uuid;
+  v_n int;
+  v_prete boolean;
+begin
+  select id into v_emplacement from emplacements where code = '35';
+  select id into v_tournee from fn_creer_tournee(
+    '11111111-1111-1111-1111-111111111111', null);
+
+  -- Trois anomalies traitées dans le même passage.
+  for v_n in 1..3 loop
+    insert into anomalies (emplacement_id, description, constate_par)
+    values (v_emplacement, 'Anomalie de lot ' || v_n,
+            '22222222-2222-2222-2222-222222222222')
+    returning id into v_anomalie;
+
+    insert into interventions (anomalie_id, tournee_id, technicien_id)
+    values (v_anomalie, v_tournee, '11111111-1111-1111-1111-111111111111')
+    returning id into v_intervention;
+
+    insert into validations (intervention_id, acteur, decision, utilisateur_id)
+    values (v_intervention, 'technicien', 'fait',
+            '11111111-1111-1111-1111-111111111111');
+  end loop;
+
+  -- Trois anomalies, une seule tournée : c'est elle l'unité d'envoi.
+  select nb_interventions, prete_pour_recap into v_n, v_prete
+  from v_tournees where id = v_tournee;
+  assert v_n = 3, format('%s interventions dans le lot, attendu 3', v_n);
+  assert not v_prete, 'le lot ne peut pas être prêt : la gouvernante n''a rien tranché';
+
+  -- La gouvernante valide deux lignes et en refuse une.
+  update validations set id = id where false;  -- no-op, garde la lisibilité
+  insert into validations (intervention_id, acteur, decision, utilisateur_id)
+  select i.id, 'gouvernante',
+         case when row_number() over (order by i.cree_le) = 1
+              then 'a_refaire' else 'validee' end::decision_validation,
+         '22222222-2222-2222-2222-222222222222'
+  from interventions i where i.tournee_id = v_tournee;
+
+  select prete_pour_recap, nb_a_refaire into v_prete, v_n
+  from v_tournees where id = v_tournee;
+  assert v_prete, 'toutes les lignes ont un avis : le lot est prêt';
+  assert v_n = 1, format('%s ligne à refaire, attendu 1', v_n);
+
+  -- Le récapitulatif doit pouvoir dire ce qui n'a PAS été validé : c'est
+  -- l'information qui manquait à l'ancienne application.
+  select count(*) into v_n from v_recap_interventions
+   where tournee = (select reference from tournees where id = v_tournee)
+     and non_validee_par_gouvernante;
+  assert v_n = 1,
+    format('%s ligne déclarée faite mais non validée, attendu 1', v_n);
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

@@ -136,9 +136,10 @@ export default async function Signaler({
         values (${dossier.id}, ${l.id}, ${l.quantite})`;
     }
 
-    // Transmise d'emblée, l'alerte se rédige et part en file. Le message n'est
-    // jamais montré : il est le même pour tous les dossiers.
-    if (remonte_a && nature === "emport" && responsable === "client") {
+    // L'alerte part dès le constat, sans attendre que quelqu'un la transmette :
+    // la réception doit pouvoir écrire au client pendant qu'il est encore là.
+    // Le message n'est jamais montré, il est le même pour tous les dossiers.
+    if (nature === "emport" && responsable === "client") {
       const [alerte] = await sql<{ destinataires: string[]; actif: boolean }[]>`
         select destinataires, actif from alertes_destinataires
         where evenement = 'incident_bouteille'`;

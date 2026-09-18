@@ -795,6 +795,7 @@ select
   p.prix_unitaire,
   p.prix_unitaire is null                              as prix_inconnu,
   p.seuil_alerte,
+  p.quantite_reappro,
   ph.chemin                                            as photo_principale,
   (select count(*) from photos_produit x where x.produit_id = p.id) as nb_photos,
   p.actif,

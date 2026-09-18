@@ -39,7 +39,8 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    l'application. Les récapitulatifs vont à Miguel et, selon le paramétrage, à l'intervenant ;
    l'alerte bouteille va à la réception.
 7ter. **L'application n'écrit jamais à un client.** Le mail de bouteille manquante part à la
-   **réception**, rédigé prêt à être transféré, en français puis en anglais. C'est la réception
+   **réception dès le constat**, sans attendre que quelqu'un le transmette : le client est
+   peut-être encore là. Il est rédigé prêt à être transféré, en français puis en anglais. C'est la réception
    qui décide de l'envoyer et qui parle au client. Ne jamais mettre une adresse de client dans
    un destinataire.
 7quater. **Le mail ne s'affiche jamais : c'est une action.** Il est standardisé, il n'y a rien à
@@ -55,9 +56,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 9. **Une anomalie hors catalogue ne se crée que par un admin**, depuis un ordinateur. La règle est
    dans la RLS : ne pas la déplacer dans l'interface.
 10. **Le technicien rend un lot, la gouvernante valide à l'unité.** Une `tournee` regroupe les
-   anomalies traitées ensemble (l'ancien `InterventionID`). Le mail récapitulatif ne part que
-   lorsque `v_tournees.prete_pour_recap` est vrai et que `mail_recap_envoye_le` est nul : la
-   gouvernante peut valider en plusieurs sessions sans déclencher d'envoi prématuré.
+   anomalies traitées ensemble (l'ancien `InterventionID`). **Le lot est l'unité d'envoi** : un
+   mail par anomalie validée en produirait dix pour un passage. Deux messages, deux moments —
+   à la clôture, ce que le technicien déclare avoir fait ; à la dernière validation, les deux
+   avis côte à côte, avec ce qu'elle n'a PAS validé dit en clair. `deposerRecap()` les rédige et
+   les dépose dans la file ; `prete_pour_recap` et `mail_recap_envoye_le` empêchent l'envoi
+   prématuré et le doublon. Pas d'heure fixe : le message part quand l'événement a lieu.
 11. **La gouvernante a trois issues**, pas deux : `validee`, `en_cours`, `a_refaire`. Ne jamais
    réduire le choix à valider/refuser.
 12. **Les commentaires forment un fil, jamais un champ texte.** Un commentaire libre est une ligne
@@ -141,6 +145,9 @@ elle qui voit la bouteille manquante, et ce n'est jamais elle qui écrit au clie
 prénoms se choisissent en un appui, en clair, jamais dans un menu déroulant. Le remplacement,
 lui, est décidé par la gouvernante : il n'a besoin que de sa trace, pas d'un prénom de plus.
 
+**La liste des intervenants se tient depuis l'application.** Un renfort ponctuel s'ajoute et se
+retire d'un appui dans `/administration/equipe` ; ce qu'il a fait reste attaché à son nom.
+
 **On ne supprime jamais une personne, on la désactive.** L'étage change souvent ; `actif` la
 retire des listes de saisie et son prénom reste sur les dossiers qu'elle a constatés, des années
 après son départ. `/administration/equipe` tient les deux listes à jour, et la gouvernante peut
@@ -156,7 +163,8 @@ intervention**, prises par le technicien. Les deux sont facultatives et les deux
 dans l'historique du lieu. Le technicien voit les photos du constat avant d'intervenir.
 
 **Miguel ajoute lui-même les photos** : celles des bouteilles depuis `/administration/bouteilles`,
-celles des produits depuis la fiche produit. Sans photo, l'écran dessine la bouteille à sa
+celles des produits depuis leur fiche — plusieurs par produit, dont une mise en avant, qui est
+celle que le technicien voit en choisissant son matériel. Sans photo, l'écran dessine la bouteille à sa
 couleur — il n'attend jamais une image pour fonctionner.
 
 Une facture se range au même endroit qu'une photo — PDF compris. Le stockage passe par

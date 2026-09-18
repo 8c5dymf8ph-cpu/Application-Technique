@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 import { Vignettes } from "@/app/composants/photos";
+import { deposerRecapSiComplet } from "@/lib/recap";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,9 @@ export default async function ValiderLot({
       values (${intervention}, 'gouvernante', ${decision}::decision_validation,
               ${profil_.id}, ${profil_.id}, ${mot})`;
 
+    // Dès que plus rien n'attend son avis, le récapitulatif complet est rédigé
+    // et déposé — avec ce qu'elle n'a pas validé, dit en clair.
+    await deposerRecapSiComplet(tournee);
     revalidatePath(`/gouvernante/valider/${tournee}`);
   }
 

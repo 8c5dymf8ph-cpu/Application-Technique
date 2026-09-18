@@ -3,6 +3,7 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
+import { deposerRecap } from "@/lib/recap";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,9 @@ export default async function Tournee({
   async function cloturer() {
     "use server";
     await sql`update tournees set cloturee_le = now() where id = ${tournee.id}`;
+    // Le lot est rendu : le récapitulatif de ce que le technicien déclare part
+    // maintenant, pas à une heure fixe. Un mail par anomalie en aurait fait dix.
+    await deposerRecap(tournee.id, false);
     redirect("/technique");
   }
 

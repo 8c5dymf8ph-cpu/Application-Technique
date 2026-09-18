@@ -93,3 +93,109 @@ A secure payment link will be sent to you shortly to settle this balance.
 Kind regards,
 The Parisianer Team`;
 }
+
+export type LigneRecap = {
+  emplacement: string;
+  description: string;
+  decision_technicien: string | null;
+  commentaire_technicien: string | null;
+  decision_gouvernante: string | null;
+  commentaire_gouvernante: string | null;
+  materiel: string | null;
+  cout_total: number | null;
+  cout_incomplet: boolean;
+};
+
+export type Recap = {
+  reference: string;
+  intervenant: string | null;
+  date_tournee: string;
+  lignes: LigneRecap[];
+  cout_total: number;
+  cout_incomplet: boolean;
+};
+
+const DECISION_G: Record<string, string> = {
+  validee: "validée",
+  en_cours: "remise en cours",
+  a_refaire: "à refaire",
+};
+
+/**
+ * Le récapitulatif d'une tournée.
+ *
+ * Un mail par anomalie validée noierait Miguel : un technicien qui coche dix
+ * lignes enverrait dix mails. Le lot est donc l'unité d'envoi — c'est déjà ce
+ * que le technicien rend d'un coup.
+ *
+ * Deux moments, deux messages : à la clôture, ce que le technicien déclare
+ * avoir fait ; quand la gouvernante a tout tranché, les deux avis côte à côte.
+ * Le second dit explicitement ce qu'elle n'a PAS validé — c'est l'information
+ * qui manquait à l'ancienne application.
+ */
+export function objetRecapTournee(r: Recap, complet: boolean): string {
+  const quoi = complet ? "Récapitulatif" : "Intervention rendue";
+  return `[${quoi}] ${r.intervenant ?? "Intervenant"} — ${r.lignes.length} anomalie${
+    r.lignes.length > 1 ? "s" : ""
+  } le ${jour(r.date_tournee)}`;
+}
+
+export function corpsRecapTournee(r: Recap, complet: boolean): string {
+  const ligne = (l: LigneRecap) => {
+    const bouts = [`• ${l.emplacement} — ${l.description}`];
+    bouts.push(`  ${l.materiel ?? "Aucun matériel"}`);
+    if (l.commentaire_technicien) bouts.push(`  « ${l.commentaire_technicien} »`);
+    if (complet) {
+      bouts.push(
+        l.decision_gouvernante
+          ? `  Gouvernante : ${DECISION_G[l.decision_gouvernante] ?? l.decision_gouvernante}`
+          : "  Gouvernante : pas encore vue",
+      );
+      if (l.commentaire_gouvernante) bouts.push(`  « ${l.commentaire_gouvernante} »`);
+    }
+    if (l.cout_total !== null && Number(l.cout_total) > 0) {
+      bouts.push(`  ${eur(Number(l.cout_total))}${l.cout_incomplet ? " (incomplet)" : ""}`);
+    }
+    return bouts.join("\n");
+  };
+
+  const refusees = r.lignes.filter(
+    (l) => l.decision_gouvernante && l.decision_gouvernante !== "validee",
+  );
+  const attente = r.lignes.filter((l) => !l.decision_gouvernante);
+
+  const tete = complet
+    ? `${r.intervenant ?? "L'intervenant"} est passé le ${jour(r.date_tournee)}. La gouvernante a revu ce qui suit.`
+    : `${r.intervenant ?? "L'intervenant"} vient de rendre son intervention du ${jour(r.date_tournee)}. La gouvernante n'a pas encore revu ces lignes.`;
+
+  const alerte =
+    complet && refusees.length > 0
+      ? `\n⚠ ${refusees.length} déclarée${refusees.length > 1 ? "s" : ""} faite${
+          refusees.length > 1 ? "s" : ""
+        } mais non validée${refusees.length > 1 ? "s" : ""} par la gouvernante :\n` +
+        refusees
+          .map(
+            (l) =>
+              `• ${l.emplacement} — ${l.description} (${
+                DECISION_G[l.decision_gouvernante!] ?? l.decision_gouvernante
+              })`,
+          )
+          .join("\n")
+      : "";
+
+  const reste =
+    attente.length > 0 && complet
+      ? `\n${attente.length} ligne${attente.length > 1 ? "s" : ""} sans avis de la gouvernante.`
+      : "";
+
+  return `${tete}
+
+${r.lignes.map(ligne).join("\n\n")}
+${alerte}${reste}
+
+Coût du lot : ${eur(r.cout_total)}${
+    r.cout_incomplet ? "\n(incomplet : au moins un article n'a pas de prix renseigné)" : ""
+  }
+
+Référence : ${r.reference}`;
+}
