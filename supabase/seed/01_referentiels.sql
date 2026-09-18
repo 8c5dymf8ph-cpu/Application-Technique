@@ -105,9 +105,11 @@ insert into types_intervention (code, nom) values
   ('ACHATS',      'Achats')
 on conflict (code) do nothing;
 
--- Fournisseur des bouteilles. Les autres fournisseurs seront créés à l'import
--- des produits, ou saisis depuis l'écran d'administration.
-insert into fournisseurs (nom, delai_livraison_jours) values ('Purezza', 7)
+-- Fournisseur des bouteilles. Purezza est la marque des bouteilles ; le
+-- fournisseur, celui qui facture et à qui l'on commande, est Culligan. Le
+-- contact y change souvent : c'est pour cela que le nom de la personne est un
+-- champ libre, révisable, et non un référentiel à part.
+insert into fournisseurs (nom, delai_livraison_jours) values ('Culligan', 7)
 on conflict (nom) do nothing;
 
 -- Bouteilles Purezza : 17,50 € facturés au client, 8 € de coût d'achat.
@@ -115,17 +117,21 @@ on conflict (nom) do nothing;
 -- disponibles pour re-doter une chambre. Valeurs à ajuster à l'usage.
 insert into bouteille_types (code, libelle, prix_vente, prix_achat, seuil_alerte, quantite_reappro, couleur) values
   ('filtree',    'Eau filtrée',    17.50, 8.00, 10, 24, '#3A6499'),
-  ('petillante', 'Eau pétillante', 17.50, 8.00, 10, 24, '#9E3538')
+  ('petillante', 'Eau gazeuse',    17.50, 8.00, 10, 24, '#9E3538')
 on conflict (code) do nothing;
 
--- Purezza fournit les deux types. D'autres fournisseurs peuvent être ajoutés
+-- Culligan fournit les deux types. D'autres fournisseurs peuvent être ajoutés
 -- sur le même article : la demande de devis partira alors vers chacun.
 insert into article_fournisseurs (bouteille_type_id, fournisseur_id, prefere)
 select bt.id, f.id, true
-from bouteille_types bt, fournisseurs f where f.nom = 'Purezza'
+from bouteille_types bt, fournisseurs f where f.nom = 'Culligan'
 on conflict do nothing;
 
--- Dotation permanente : 1 filtrée + 1 pétillante dans chaque chambre.
+-- Le libellé a changé après coup : sur une base déjà installée, on le corrige
+-- plutôt que de créer un doublon. « Gazeuse » est le mot employé dans l'hôtel.
+update bouteille_types set libelle = 'Eau gazeuse' where code = 'petillante';
+
+-- Dotation permanente : 1 filtrée + 1 gazeuse dans chaque chambre.
 insert into dotations (emplacement_id, bouteille_type_id, quantite)
 select e.id, bt.id, 1
 from emplacements e

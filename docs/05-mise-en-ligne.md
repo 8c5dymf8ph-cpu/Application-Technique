@@ -20,6 +20,7 @@ connexion : tout se saisit directement dans Supabase et dans Vercel.
 | `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés | 121 Ko |
 | `2-anomalies.sql` | 670 anomalies, 528 interventions, 29 tournées | 1 010 Ko |
 | `3-stock.sql` | 36 produits, 257 mouvements | 164 Ko |
+| `4-bouteilles.sql` | 17 dossiers de bouteille, la livraison du 31/03, le parc constaté | 29 Ko |
 
 > Ces trois fichiers sont produits par `outils/preparer_installation.sh` : ils ne
 > s'éditent pas à la main, ils se regénèrent après toute modification du schéma.

@@ -60,10 +60,13 @@ end $$;
 -- signale, la chambre est re-dotée. Rien n'est encore perdu : la bouteille est
 -- « chez le client » et peut revenir.
 -- ---------------------------------------------------------------------------
-insert into incidents_bouteille (id, emplacement_id, bouteille_type_id, nature, responsable, constate_par)
-select 'aaaaaaaa-0000-0000-0000-000000000001', e.id, bt.id, 'emport', 'client',
+insert into incidents_bouteille (id, emplacement_id, nature, responsable, constate_par)
+select 'aaaaaaaa-0000-0000-0000-000000000001', e.id, 'emport', 'client',
        '22222222-2222-2222-2222-222222222222'
-from emplacements e, bouteille_types bt where e.code = '32' and bt.code = 'filtree';
+from emplacements e where e.code = '32';
+insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+select 'aaaaaaaa-0000-0000-0000-000000000001', bt.id, 1
+from bouteille_types bt where bt.code = 'filtree';
 
 do $$
 declare v record;
@@ -99,10 +102,13 @@ end $$;
 -- Cas B — Un client emporte la pétillante de la 14 et ne la rend pas : on la
 -- lui facture. C'est seulement à cet instant qu'elle sort du parc.
 -- ---------------------------------------------------------------------------
-insert into incidents_bouteille (id, emplacement_id, bouteille_type_id, nature, responsable, constate_par)
-select 'aaaaaaaa-0000-0000-0000-000000000002', e.id, bt.id, 'emport', 'client',
+insert into incidents_bouteille (id, emplacement_id, nature, responsable, constate_par)
+select 'aaaaaaaa-0000-0000-0000-000000000002', e.id, 'emport', 'client',
        '22222222-2222-2222-2222-222222222222'
-from emplacements e, bouteille_types bt where e.code = '14' and bt.code = 'petillante';
+from emplacements e where e.code = '14';
+insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+select 'aaaaaaaa-0000-0000-0000-000000000002', bt.id, 1
+from bouteille_types bt where bt.code = 'petillante';
 
 do $$
 declare v record;
@@ -134,10 +140,13 @@ end $$;
 -- Cas C — Une femme de chambre casse la filtrée de la 21. Perte immédiate,
 -- jamais facturée au client, valorisée au prix d'achat.
 -- ---------------------------------------------------------------------------
-insert into incidents_bouteille (id, emplacement_id, bouteille_type_id, nature, responsable, constate_par)
-select 'aaaaaaaa-0000-0000-0000-000000000003', e.id, bt.id, 'casse', 'personnel',
+insert into incidents_bouteille (id, emplacement_id, nature, responsable, constate_par)
+select 'aaaaaaaa-0000-0000-0000-000000000003', e.id, 'casse', 'personnel',
        '22222222-2222-2222-2222-222222222222'
-from emplacements e, bouteille_types bt where e.code = '21' and bt.code = 'filtree';
+from emplacements e where e.code = '21';
+insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+select 'aaaaaaaa-0000-0000-0000-000000000003', bt.id, 1
+from bouteille_types bt where bt.code = 'filtree';
 
 do $$
 declare v record; v_incident record;
@@ -164,6 +173,48 @@ begin
   exception when check_violation then
     null;  -- comportement attendu
   end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Cas C bis — Une chambre perd les DEUX bouteilles d'un coup. C'est un seul
+-- dossier, un seul montant, un seul mail — et deux lignes.
+-- ---------------------------------------------------------------------------
+insert into incidents_bouteille (id, emplacement_id, nature, responsable, client_nom, constate_par)
+select 'aaaaaaaa-0000-0000-0000-000000000004', e.id, 'emport', 'client', 'Client de test',
+       '22222222-2222-2222-2222-222222222222'
+from emplacements e where e.code = '46';
+insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+select 'aaaaaaaa-0000-0000-0000-000000000004', bt.id, 1 from bouteille_types bt;
+
+do $$
+declare v record; f record; g record;
+begin
+  select * into v from v_incidents_bouteille where id = 'aaaaaaaa-0000-0000-0000-000000000004';
+  assert v.quantite = 2, format('quantité = %s, attendu 2', v.quantite);
+  assert v.montant = 35.00, format('montant = %s, attendu 35.00 (2 × 17,50)', v.montant);
+  assert jsonb_array_length(v.lignes) = 2,
+    format('%s ligne(s) détaillée(s), attendu 2', jsonb_array_length(v.lignes));
+
+  -- Les deux types ont bougé, chacun pour son compte.
+  select * into f from ecart_bouteilles('filtree');
+  select * into g from ecart_bouteilles('petillante');
+  assert f.chez_clients = 1 and g.chez_clients = 1,
+    format('chez clients : filtrée %s, gazeuse %s — attendu 1 et 1', f.chez_clients, g.chez_clients);
+end $$;
+
+-- Restitution : les deux reviennent, en une seule décision.
+update incidents_bouteille
+   set statut = 'restitue', resolu_le = now(), resolu_par = '22222222-2222-2222-2222-222222222222'
+ where id = 'aaaaaaaa-0000-0000-0000-000000000004';
+
+do $$
+declare f record; g record;
+begin
+  select * into f from ecart_bouteilles('filtree');
+  select * into g from ecart_bouteilles('petillante');
+  assert f.chez_clients = 0 and g.chez_clients = 0,
+    format('après restitution : filtrée %s, gazeuse %s chez clients — attendu 0',
+           f.chez_clients, g.chez_clients);
 end $$;
 
 -- ---------------------------------------------------------------------------

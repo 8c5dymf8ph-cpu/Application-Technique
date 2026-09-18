@@ -69,7 +69,8 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `v_factures_rapprochement` | Interventions candidates pour une facture (même prestataire, même date) |
 | `v_stock_bouteilles` | Réserve / chambre / chez clients / parc total / sous seuil |
 | `v_bouteilles_par_emplacement` | Théorique vs réel, chambre par chambre |
-| `v_incidents_bouteille` | Dossiers avec montant retenu ou théorique, et caractère facturable |
+| `v_incidents_bouteille` | Dossiers avec leurs lignes agrégées, montant retenu ou théorique, caractère facturable |
+| `incident_lignes_bouteille` | Un type de bouteille et sa quantité dans un dossier — c'est la ligne qui déplace les bouteilles |
 | `v_reappro_necessaire` | Articles sous seuil, produits et bouteilles, groupés par fournisseur |
 | `v_controle_donnees` | Données reprises douteuses : dates futures, localisations incertaines, stocks négatifs |
 | `v_anomalies_du_lieu` | Tout ce qui a été déclaré dans une chambre, ouvertes d'abord — consultée avant chaque saisie |

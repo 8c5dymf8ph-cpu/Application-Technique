@@ -503,12 +503,14 @@ create table dotations (
 -- Un incident couvre les deux cas réels : la bouteille est EMPORTÉE (elle peut
 -- encore revenir) ou CASSÉE (elle est perdue immédiatement). Dans les deux cas
 -- la chambre est re-dotée depuis la réserve, ce qui ne diminue pas le parc.
+-- Un dossier porte UNE chambre, UNE date, UN client — et autant de lignes que de
+-- types de bouteilles concernés. C'est le grain de la déclaration réelle : une
+-- chambre peut perdre la filtrée ET la gazeuse d'un coup, et c'est un seul
+-- dossier, un seul montant, un seul mail. Les types sont dans les lignes.
 create table incidents_bouteille (
   id                 uuid primary key default gen_random_uuid(),
   reference          bigint generated always as identity,
   emplacement_id     uuid not null references emplacements (id),
-  bouteille_type_id  uuid not null references bouteille_types (id),
-  quantite           int not null default 1 check (quantite > 0),
   nature             nature_incident_bouteille not null,
   responsable        responsable_incident not null default 'client',
   -- Nom du client occupant la chambre : c'est lui qu'on recontacte, et c'est
@@ -537,6 +539,17 @@ create table incidents_bouteille (
 );
 create index on incidents_bouteille (statut);
 create index on incidents_bouteille (constate_le desc);
+
+-- Une ligne par type de bouteille concerné par le dossier. C'est elle qui
+-- déclenche les mouvements physiques : un dossier sans ligne n'a rien déplacé.
+create table incident_lignes_bouteille (
+  id                uuid primary key default gen_random_uuid(),
+  incident_id       uuid not null references incidents_bouteille (id) on delete cascade,
+  bouteille_type_id uuid not null references bouteille_types (id),
+  quantite          int not null default 1 check (quantite > 0),
+  unique (incident_id, bouteille_type_id)
+);
+create index on incident_lignes_bouteille (incident_id);
 
 -- Registre de DÉPLACEMENTS, pas de soustractions : chaque ligne dit d'où part la
 -- bouteille et où elle arrive. Un emport suivi d'une re-dotation produit deux
@@ -1273,14 +1286,17 @@ where e.dote_bouteilles
 group by e.id, bt.id, d.quantite;
 
 -- Dossiers en cours et clos, avec le montant retenu ou, à défaut, le montant
--- théorique selon qui est responsable.
+-- théorique selon qui est responsable. Les lignes sont agrégées : un dossier qui
+-- porte la filtrée ET la gazeuse reste UN dossier, un montant, un mail.
 create view v_incidents_bouteille as
 select
   i.id,
   i.reference,
+  i.emplacement_id,
   e.code                                   as emplacement,
-  bt.libelle                               as bouteille,
-  i.quantite,
+  l.libelles                               as bouteille,
+  coalesce(l.quantite, 0)                  as quantite,
+  coalesce(l.detail, '[]'::jsonb)          as lignes,
   i.nature,
   i.responsable,
   i.client_nom,
@@ -1292,26 +1308,34 @@ select
   i.transmis_le,
   i.client_contacte_le,
   i.resolu_le,
-  -- Les quatre étapes du dossier, pour la frise de l'écran de facturation.
+  -- Les quatre étapes du dossier, pour la frise de l'écran de suivi.
   i.constate_le is not null                as etape_constate,
   i.transmis_le is not null                as etape_transmis,
   i.client_contacte_le is not null         as etape_client_contacte,
   i.statut in ('restitue', 'facture', 'non_facture', 'clos') as etape_resolue,
-  coalesce(
-    i.montant,
-    case
-      when i.responsable = 'client' then i.quantite * bt.prix_vente
-      else i.quantite * bt.prix_achat
-    end
-  )                                        as montant,
+  -- Le montant retenu s'il a été saisi ; sinon le prix du barème, ligne à ligne.
+  coalesce(i.montant, l.montant_theorique, 0) as montant,
   i.responsable = 'client'                 as facturable_client,
   i.statut in ('signale', 'transmis', 'client_contacte') as dossier_ouvert,
   i.commentaire
 from incidents_bouteille i
 join emplacements e     on e.id = i.emplacement_id
-join bouteille_types bt on bt.id = i.bouteille_type_id
 left join utilisateurs uc on uc.id = i.constate_par
-left join utilisateurs ut on ut.id = i.transmis_a;
+left join utilisateurs ut on ut.id = i.transmis_a
+left join lateral (
+  select
+    string_agg(bt.libelle, ' + ' order by bt.libelle)                as libelles,
+    sum(li.quantite)::int                                            as quantite,
+    sum(li.quantite * case when i.responsable = 'client'
+                           then bt.prix_vente else bt.prix_achat end) as montant_theorique,
+    jsonb_agg(jsonb_build_object(
+      'code', bt.code, 'libelle', bt.libelle, 'quantite', li.quantite,
+      'prix', case when i.responsable = 'client' then bt.prix_vente else bt.prix_achat end)
+      order by bt.libelle)                                           as detail
+  from incident_lignes_bouteille li
+  join bouteille_types bt on bt.id = li.bouteille_type_id
+  where li.incident_id = i.id
+) l on true;
 
 -- -----------------------------------------------------------------------------
 -- Réapprovisionnement : articles sous seuil, regroupés par fournisseur.
@@ -1424,7 +1448,7 @@ select
     and (current_date - i.constate_le::date) >= 7  as urgent,
   -- De quoi chercher sans se soucier de la casse ni des accents.
   lower(coalesce(i.client_nom, '') || ' ' || i.emplacement || ' ' ||
-        i.bouteille || ' ' || coalesce(i.commentaire, '') || ' ' ||
+        coalesce(i.bouteille, '') || ' ' || coalesce(i.commentaire, '') || ' ' ||
         i.reference::text)                         as recherche
 from v_incidents_bouteille i;
 
@@ -1491,40 +1515,39 @@ begin
 end;
 $$;
 
--- 2. Un incident enregistre AUTOMATIQUEMENT les mouvements physiques.
+-- 2. Une LIGNE de dossier enregistre les mouvements physiques de son type.
 --    Emport : la bouteille part « chez le client », d'où elle peut revenir.
 --    Casse  : la bouteille sort définitivement du parc.
 --    Dans les deux cas la chambre est re-dotée depuis la réserve, ce qui déplace
 --    une bouteille sans en retirer une seconde du parc.
+--    Le déclencheur est sur la ligne, pas sur le dossier : c'est la ligne qui
+--    dit quel type et combien, et elle arrive toujours après l'en-tête.
 create function fn_incident_bouteille_mouvements() returns trigger
 language plpgsql as $$
+declare
+  d incidents_bouteille%rowtype;
 begin
-  if new.nature = 'emport' then
-    insert into mouvements_bouteilles (
-      type, bouteille_type_id, quantite, de_lieu, de_emplacement_id, vers_lieu,
-      date_mouvement, utilisateur_id, incident_id, commentaire)
-    values (
-      'emport', new.bouteille_type_id, new.quantite, 'emplacement', new.emplacement_id, 'chez_client',
-      new.constate_le, new.constate_par, new.id,
-      'Bouteille emportée — incident #' || new.reference);
-  else
-    insert into mouvements_bouteilles (
-      type, bouteille_type_id, quantite, de_lieu, de_emplacement_id, vers_lieu,
-      date_mouvement, utilisateur_id, incident_id, commentaire)
-    values (
-      'casse', new.bouteille_type_id, new.quantite, 'emplacement', new.emplacement_id, 'hors_parc',
-      new.constate_le, new.constate_par, new.id,
-      'Bouteille cassée — incident #' || new.reference);
-  end if;
+  select * into d from incidents_bouteille where id = new.incident_id;
 
-  if new.redoter then
+  insert into mouvements_bouteilles (
+    type, bouteille_type_id, quantite, de_lieu, de_emplacement_id, vers_lieu,
+    date_mouvement, utilisateur_id, incident_id, commentaire)
+  values (
+    case when d.nature = 'emport' then 'emport' else 'casse' end::type_mouvement_bouteille,
+    new.bouteille_type_id, new.quantite, 'emplacement', d.emplacement_id,
+    case when d.nature = 'emport' then 'chez_client' else 'hors_parc' end::lieu_bouteille,
+    d.constate_le, d.constate_par, d.id,
+    case when d.nature = 'emport' then 'Bouteille emportée — dossier n° '
+         else 'Bouteille cassée — dossier n° ' end || d.reference);
+
+  if d.redoter then
     insert into mouvements_bouteilles (
       type, bouteille_type_id, quantite, de_lieu, vers_lieu, vers_emplacement_id,
       date_mouvement, utilisateur_id, incident_id, commentaire)
     values (
-      'dotation', new.bouteille_type_id, new.quantite, 'reserve', 'emplacement', new.emplacement_id,
-      new.constate_le, new.constate_par, new.id,
-      'Re-dotation de la chambre — incident #' || new.reference);
+      'dotation', new.bouteille_type_id, new.quantite, 'reserve', 'emplacement', d.emplacement_id,
+      d.constate_le, d.constate_par, d.id,
+      'Re-dotation de la chambre — dossier n° ' || d.reference);
   end if;
 
   return new;
@@ -1532,13 +1555,13 @@ end;
 $$;
 
 create trigger tg_incident_bouteille_mouvements
-after insert on incidents_bouteille
+after insert on incident_lignes_bouteille
 for each row execute function fn_incident_bouteille_mouvements();
 
--- 3. La résolution d'un emport décide du sort de la bouteille en attente.
---    Restituée  => elle rejoint la RÉSERVE (la chambre a déjà été re-dotée).
---    Facturée   => sortie définitive du parc.
---    Le garde-fou empêche de compter deux fois une bouteille déjà tranchée.
+-- 3. La résolution d'un emport décide du sort des bouteilles en attente.
+--    Restituées => elles rejoignent la RÉSERVE (la chambre a déjà été re-dotée).
+--    Facturées  => sortie définitive du parc.
+--    Le garde-fou empêche de compter deux fois un dossier déjà tranché.
 create function fn_incident_bouteille_resolution() returns trigger
 language plpgsql as $$
 begin
@@ -1557,19 +1580,19 @@ begin
     insert into mouvements_bouteilles (
       type, bouteille_type_id, quantite, de_lieu, vers_lieu,
       date_mouvement, utilisateur_id, incident_id, commentaire)
-    values (
-      'retour', new.bouteille_type_id, new.quantite, 'chez_client', 'reserve',
-      coalesce(new.resolu_le, now()), new.resolu_par, new.id,
-      'Bouteille restituée, remise en réserve — incident #' || new.reference);
+    select 'retour', l.bouteille_type_id, l.quantite, 'chez_client', 'reserve',
+           coalesce(new.resolu_le, now()), new.resolu_par, new.id,
+           'Bouteille restituée, remise en réserve — dossier n° ' || new.reference
+    from incident_lignes_bouteille l where l.incident_id = new.id;
 
   elsif new.statut in ('facture', 'non_facture') then
     insert into mouvements_bouteilles (
       type, bouteille_type_id, quantite, de_lieu, vers_lieu,
       date_mouvement, utilisateur_id, incident_id, commentaire)
-    values (
-      'perte', new.bouteille_type_id, new.quantite, 'chez_client', 'hors_parc',
-      coalesce(new.resolu_le, now()), new.resolu_par, new.id,
-      'Bouteille non restituée — incident #' || new.reference);
+    select 'perte', l.bouteille_type_id, l.quantite, 'chez_client', 'hors_parc',
+           coalesce(new.resolu_le, now()), new.resolu_par, new.id,
+           'Bouteille non restituée — dossier n° ' || new.reference
+    from incident_lignes_bouteille l where l.incident_id = new.id;
   end if;
 
   return new;
@@ -1929,7 +1952,8 @@ begin
     'factures','facture_interventions','commandes','commande_lignes',
     'produits','article_fournisseurs','photos_produit','mouvements_stock',
     'inventaires','inventaire_lignes_produit',
-    'bouteille_types','dotations','incidents_bouteille','mouvements_bouteilles',
+    'bouteille_types','dotations','incidents_bouteille','incident_lignes_bouteille',
+    'mouvements_bouteilles',
     'inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes',
     'recap_abonnements','alertes_destinataires','emails_envoyes','parametres','journal'
@@ -1951,7 +1975,8 @@ begin
     'tournees','interventions','commentaires','photos_anomalie','photos_produit',
     'factures','facture_interventions','commandes','commande_lignes',
     'mouvements_stock','inventaires','inventaire_lignes_produit',
-    'incidents_bouteille','mouvements_bouteilles','inventaire_lignes_bouteille',
+    'incidents_bouteille','incident_lignes_bouteille',
+    'mouvements_bouteilles','inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes'
   ] loop
     execute format('grant insert, update, delete on %I to authenticated', t);
@@ -2146,9 +2171,11 @@ insert into types_intervention (code, nom) values
   ('ACHATS',      'Achats')
 on conflict (code) do nothing;
 
--- Fournisseur des bouteilles. Les autres fournisseurs seront créés à l'import
--- des produits, ou saisis depuis l'écran d'administration.
-insert into fournisseurs (nom, delai_livraison_jours) values ('Purezza', 7)
+-- Fournisseur des bouteilles. Purezza est la marque des bouteilles ; le
+-- fournisseur, celui qui facture et à qui l'on commande, est Culligan. Le
+-- contact y change souvent : c'est pour cela que le nom de la personne est un
+-- champ libre, révisable, et non un référentiel à part.
+insert into fournisseurs (nom, delai_livraison_jours) values ('Culligan', 7)
 on conflict (nom) do nothing;
 
 -- Bouteilles Purezza : 17,50 € facturés au client, 8 € de coût d'achat.
@@ -2156,17 +2183,21 @@ on conflict (nom) do nothing;
 -- disponibles pour re-doter une chambre. Valeurs à ajuster à l'usage.
 insert into bouteille_types (code, libelle, prix_vente, prix_achat, seuil_alerte, quantite_reappro, couleur) values
   ('filtree',    'Eau filtrée',    17.50, 8.00, 10, 24, '#3A6499'),
-  ('petillante', 'Eau pétillante', 17.50, 8.00, 10, 24, '#9E3538')
+  ('petillante', 'Eau gazeuse',    17.50, 8.00, 10, 24, '#9E3538')
 on conflict (code) do nothing;
 
--- Purezza fournit les deux types. D'autres fournisseurs peuvent être ajoutés
+-- Culligan fournit les deux types. D'autres fournisseurs peuvent être ajoutés
 -- sur le même article : la demande de devis partira alors vers chacun.
 insert into article_fournisseurs (bouteille_type_id, fournisseur_id, prefere)
 select bt.id, f.id, true
-from bouteille_types bt, fournisseurs f where f.nom = 'Purezza'
+from bouteille_types bt, fournisseurs f where f.nom = 'Culligan'
 on conflict do nothing;
 
--- Dotation permanente : 1 filtrée + 1 pétillante dans chaque chambre.
+-- Le libellé a changé après coup : sur une base déjà installée, on le corrige
+-- plutôt que de créer un doublon. « Gazeuse » est le mot employé dans l'hôtel.
+update bouteille_types set libelle = 'Eau gazeuse' where code = 'petillante';
+
+-- Dotation permanente : 1 filtrée + 1 gazeuse dans chaque chambre.
 insert into dotations (emplacement_id, bouteille_type_id, quantite)
 select e.id, bt.id, 1
 from emplacements e

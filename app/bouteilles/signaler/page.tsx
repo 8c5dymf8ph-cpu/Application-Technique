@@ -6,12 +6,14 @@ import { profilActif } from "@/lib/profil";
 import { euros } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampCommentaire } from "@/app/composants/fil";
+import { TotalBouteilles } from "@/app/composants/total-bouteilles";
 
 export const dynamic = "force-dynamic";
 
 type Chambre = { id: string; code: string; etage: string; en_place: number; dotation: number };
 type Type = {
   id: string;
+  code: string;
   libelle: string;
   couleur: string | null;
   prix_vente: number;
@@ -22,11 +24,12 @@ type Type = {
 export default async function Signaler({
   searchParams,
 }: {
-  searchParams: Promise<{ lieu?: string; type?: string }>;
+  searchParams: Promise<{ lieu?: string; mode?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { lieu, type } = await searchParams;
+  const { lieu, mode = "perte" } = await searchParams;
+  const remplacement = mode === "remplacement";
 
   const chambres = await sql<Chambre[]>`
     select e.id, e.code, et.nom as etage,
@@ -40,12 +43,11 @@ export default async function Signaler({
     order by et.ordre, e.ordre, e.code`;
 
   const types = await sql<Type[]>`
-    select bouteille_type_id as id, libelle, couleur, prix_vente, prix_achat,
+    select bouteille_type_id as id, code, libelle, couleur, prix_vente, prix_achat,
            en_reserve::int
     from v_stock_bouteilles order by libelle`;
 
   const chambre = chambres.find((c) => c.code === lieu);
-  const choisi = types.find((t) => t.id === type);
 
   async function enregistrer(donnees: FormData) {
     "use server";
@@ -53,53 +55,109 @@ export default async function Signaler({
     if (!profil_) redirect("/profil");
 
     const emplacement = String(donnees.get("emplacement"));
-    const bouteille = String(donnees.get("bouteille"));
+    const estRemplacement = donnees.get("mode") === "remplacement";
+
+    // Combien de chaque type — zéro veut dire « pas celle-là ».
+    const choisies = types
+      .map((t) => ({ id: t.id, quantite: Number(donnees.get(`qte-${t.id}`) ?? 0) }))
+      .filter((l) => l.quantite > 0);
+    if (choisies.length === 0) return;
+
+    // Une date passée est permise : tout n'a pas été déclaré depuis l'application,
+    // et les reprises à la main doivent porter leur vraie date.
+    const saisie = String(donnees.get("date") ?? "").trim();
+    const quand = saisie ? `${saisie} 11:00` : null;
+
+    if (estRemplacement) {
+      // Re-doter la chambre depuis la réserve : un déplacement, jamais une
+      // seconde sortie de parc.
+      for (const l of choisies) {
+        await sql`
+          insert into mouvements_bouteilles (type, bouteille_type_id, quantite,
+                                             de_lieu, vers_lieu, vers_emplacement_id,
+                                             date_mouvement, utilisateur_id, commentaire)
+          values ('dotation', ${l.id}, ${l.quantite}, 'reserve', 'emplacement',
+                  ${emplacement}, ${quand ?? new Date().toISOString()}, ${profil_.id},
+                  'Remplacement en chambre')`;
+      }
+      redirect("/bouteilles?fait=remplacement" as Route);
+    }
+
     const nature = String(donnees.get("nature"));
     const responsable = String(donnees.get("responsable"));
     const client = String(donnees.get("client") ?? "").trim() || null;
     const mot = String(donnees.get("commentaire") ?? "").trim() || null;
-    const quantite = Math.max(1, Number(donnees.get("quantite") ?? 1));
 
     // La chambre n'est re-dotée que s'il reste de quoi la re-doter : sinon on
-    // l'enregistre sans re-dotation plutôt que de créer une réserve négative.
-    const [stock] = await sql<{ en_reserve: number }[]>`
-      select en_reserve::int from v_stock_bouteilles where bouteille_type_id = ${bouteille}`;
+    // enregistre le dossier sans re-dotation plutôt que de créer une réserve
+    // négative. Le remplacement se déclarera plus tard, après livraison.
+    const stock = await sql<{ bouteille_type_id: string; en_reserve: number }[]>`
+      select bouteille_type_id, en_reserve::int from v_stock_bouteilles`;
+    const redoter = choisies.every(
+      (l) => (stock.find((s) => s.bouteille_type_id === l.id)?.en_reserve ?? 0) >= l.quantite,
+    );
 
-    // Le trigger `tg_incident_bouteille_mouvements` écrit les déplacements :
-    // ici on ne décrit que le fait constaté.
-    await sql`
-      insert into incidents_bouteille (emplacement_id, bouteille_type_id, quantite,
-                                       nature, responsable, client_nom, constate_par,
-                                       redoter, commentaire)
-      values (${emplacement}, ${bouteille}, ${quantite}, ${nature}::nature_incident_bouteille,
+    const [dossier] = await sql<{ id: string }[]>`
+      insert into incidents_bouteille (emplacement_id, nature, responsable, client_nom,
+                                       constate_par, constate_le, redoter, commentaire)
+      values (${emplacement}, ${nature}::nature_incident_bouteille,
               ${responsable}::responsable_incident, ${client}, ${profil_.id},
-              ${stock.en_reserve >= quantite}, ${mot})`;
+              ${quand ?? new Date().toISOString()}, ${redoter}, ${mot})
+      returning id`;
 
-    redirect("/bouteilles/dossiers?fait=1" as Route);
+    // Les lignes déclenchent les mouvements, une fois l'en-tête posé.
+    for (const l of choisies) {
+      await sql`
+        insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+        values (${dossier.id}, ${l.id}, ${l.quantite})`;
+    }
+
+    redirect(`/bouteilles/dossier/${dossier.id}` as Route);
   }
 
   const etages = [...new Set(chambres.map((c) => c.etage))];
   const lien = (extra: Record<string, string>) =>
     `/bouteilles/signaler?${new URLSearchParams({
       ...(lieu ? { lieu } : {}),
-      ...(type ? { type } : {}),
+      mode,
       ...extra,
     })}` as Route;
+
+  const aujourdhui = new Date().toISOString().slice(0, 10);
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
-        titre="Signaler"
+        titre={remplacement ? "Remplacer" : "Signaler"}
         sous_titre={chambre ? `${chambre.code} · ${chambre.etage}` : "Choisir la chambre"}
         retour="/bouteilles"
       />
 
       <div className="px-5 py-4 flex flex-col gap-5">
-        {/* 1. Où */}
+        {/* Perte ou remplacement — le même écran, deux intentions */}
+        <div className="flex gap-2">
+          {[
+            { v: "perte", l: "Perte ou casse", d: "La bouteille n’est plus là" },
+            { v: "remplacement", l: "Remplacement", d: "Re-doter la chambre" },
+          ].map((m) => (
+            <Link
+              key={m.v}
+              href={lien({ mode: m.v })}
+              className={`flex-1 rounded-card border px-3 py-2.5 flex flex-col gap-0.5 ${
+                mode === m.v ? "border-plum bg-plum-soft" : "border-line bg-surface"
+              }`}
+            >
+              <span className="text-[13.5px] font-medium leading-tight">{m.l}</span>
+              <span className="text-[11px] text-ink-faint leading-tight">{m.d}</span>
+            </Link>
+          ))}
+        </div>
+
         {!chambre ? (
           <div className="flex flex-col gap-2">
             {etages.map((etage) => {
               const dedans = chambres.filter((c) => c.etage === etage);
+              const incompletes = dedans.filter((c) => c.en_place < c.dotation).length;
               return (
                 <details key={etage} className="carte overflow-hidden group">
                   <summary
@@ -112,8 +170,13 @@ export default async function Signaler({
                       <path d="M9 5l7 7-7 7" />
                     </svg>
                     <span className="font-display font-semibold text-[17px] grow">{etage}</span>
+                    {incompletes > 0 && (
+                      <span className="min-w-[26px] h-[26px] px-1.5 rounded-lg bg-amber-soft text-amber text-[12.5px] grid place-items-center tabular-nums">
+                        {incompletes}
+                      </span>
+                    )}
                     <span className="text-[12.5px] text-ink-faint tabular-nums">
-                      {dedans.length} chambres
+                      {dedans.length}
                     </span>
                   </summary>
                   <div className="flex flex-wrap gap-2 px-4 pb-4 pt-1">
@@ -136,75 +199,68 @@ export default async function Signaler({
               );
             })}
             <p className="text-[11.5px] text-ink-faint text-pretty px-1">
-              En ambre : une chambre dont la dotation n’est pas complète.
+              En ambre : une chambre dont la dotation n’est pas complète — il y manque une
+              bouteille, elle attend son remplacement.
             </p>
           </div>
         ) : (
-          <>
-            {/* 2. Quelle bouteille */}
+          <form action={enregistrer} className="flex flex-col gap-5">
+            <input type="hidden" name="emplacement" value={chambre.id} />
+            <input type="hidden" name="mode" value={mode} />
+
+            {/* Les deux bouteilles, ensemble : une chambre peut perdre les deux */}
             <section className="flex flex-col gap-2">
-              <h2 className="etiquette">Quelle bouteille&nbsp;?</h2>
-              <div className="flex gap-2">
-                {types.map((t) => (
-                  <Link
-                    key={t.id}
-                    href={lien({ type: t.id })}
-                    className={`flex-1 rounded-card border px-3 py-3 flex flex-col gap-1 ${
-                      t.id === type ? "border-plum bg-plum-soft" : "border-line bg-surface"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ background: t.couleur ?? "#8E8AA3" }}
-                      />
-                      <span className="text-[14px] leading-tight">{t.libelle}</span>
-                    </span>
-                    <span className="text-[11px] text-ink-faint">
-                      {t.en_reserve} en réserve
-                    </span>
-                  </Link>
-                ))}
+              <div className="flex items-baseline justify-between">
+                <h2 className="etiquette">Quelles bouteilles&nbsp;?</h2>
+                <Link
+                  href={lien({ lieu: "" })}
+                  className="text-[12.5px] text-plum underline underline-offset-4"
+                >
+                  Changer de chambre
+                </Link>
               </div>
-              <Link
-                href={"/bouteilles/signaler" as Route}
-                className="self-start text-[12.5px] text-plum underline underline-offset-4"
-              >
-                Changer de chambre
-              </Link>
+              <TotalBouteilles
+                libelle={
+                  remplacement
+                    ? `Coût du remplacement · chambre ${chambre.code}`
+                    : `Total à facturer · chambre ${chambre.code}`
+                }
+                types={types.map((t) => ({
+                  id: t.id,
+                  libelle: `${t.libelle} · ${t.en_reserve} en réserve`,
+                  prix: Number(remplacement ? t.prix_achat : t.prix_vente),
+                }))}
+              />
+              <p className="text-[11.5px] text-ink-faint text-pretty">
+                Laisser à zéro la bouteille qui n’est pas concernée. Les deux peuvent l’être
+                dans la même déclaration : c’est un seul dossier, un seul montant.
+              </p>
             </section>
 
-            {/* 3. Ce qui s'est passé */}
-            {choisi && (
-              <form action={enregistrer} className="flex flex-col gap-4">
-                <input type="hidden" name="emplacement" value={chambre.id} />
-                <input type="hidden" name="bouteille" value={choisi.id} />
-
+            {!remplacement && (
+              <>
                 <fieldset className="flex flex-col gap-2">
                   <legend className="etiquette mb-2">Que s’est-il passé&nbsp;?</legend>
-                  <div className="flex flex-col gap-2">
-                    <label className="carte px-4 py-3 flex items-start gap-3 cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
-                      <input type="radio" name="nature" value="emport" defaultChecked
-                             className="mt-1 accent-[#453A6E]" />
-                      <span className="flex flex-col gap-0.5">
-                        <span className="text-[15px]">Le client l’a emportée</span>
-                        <span className="text-[11.5px] text-ink-faint text-pretty">
-                          Elle peut encore revenir : le dossier reste ouvert jusqu’à sa
-                          restitution ou sa facturation.
-                        </span>
+                  <label className="carte px-4 py-3 flex items-start gap-3 cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
+                    <input type="radio" name="nature" value="emport" defaultChecked
+                           className="mt-1 accent-[#453A6E]" />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-[15px]">Le client l’a emportée</span>
+                      <span className="text-[11.5px] text-ink-faint text-pretty">
+                        Elle peut encore revenir : le dossier reste ouvert jusqu’à sa
+                        restitution ou sa facturation.
                       </span>
-                    </label>
-                    <label className="carte px-4 py-3 flex items-start gap-3 cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
-                      <input type="radio" name="nature" value="casse"
-                             className="mt-1 accent-[#453A6E]" />
-                      <span className="flex flex-col gap-0.5">
-                        <span className="text-[15px]">Elle est cassée</span>
-                        <span className="text-[11.5px] text-ink-faint text-pretty">
-                          Elle sort du parc immédiatement, elle ne reviendra pas.
-                        </span>
+                    </span>
+                  </label>
+                  <label className="carte px-4 py-3 flex items-start gap-3 cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
+                    <input type="radio" name="nature" value="casse" className="mt-1 accent-[#453A6E]" />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-[15px]">Elle est cassée</span>
+                      <span className="text-[11.5px] text-ink-faint text-pretty">
+                        Elle sort du parc immédiatement, elle ne reviendra pas.
                       </span>
-                    </label>
-                  </div>
+                    </span>
+                  </label>
                 </fieldset>
 
                 <fieldset className="flex flex-col gap-2">
@@ -227,8 +283,8 @@ export default async function Signaler({
                   </div>
                   <p className="text-[11.5px] text-ink-faint text-pretty">
                     Une casse du personnel n’est jamais facturée : elle est valorisée au prix
-                    d’achat, {euros(choisi.prix_achat)}. Au client, c’est{" "}
-                    {euros(choisi.prix_vente)}.
+                    d’achat, {euros(types[0]?.prix_achat ?? 0)}. Au client, c’est{" "}
+                    {euros(types[0]?.prix_vente ?? 0)} l’unité.
                   </p>
                 </fieldset>
 
@@ -238,41 +294,38 @@ export default async function Signaler({
                     name="client"
                     autoComplete="off"
                     placeholder="Il pourra être ajouté plus tard"
-                    className="carte px-4 h-[48px] text-[16px] placeholder:text-ink-faint"
+                    className="w-full carte px-4 h-[48px] text-[16px] placeholder:text-ink-faint"
                   />
                 </label>
-
-                <label className="flex flex-col gap-1.5">
-                  <span className="etiquette">Combien</span>
-                  <input
-                    name="quantite"
-                    type="number"
-                    min={1}
-                    max={20}
-                    defaultValue={1}
-                    inputMode="numeric"
-                    className="carte px-4 h-[48px] w-[100px] text-[16px] tabular-nums"
-                  />
-                </label>
-
-                <ChampCommentaire libelle="Précision (facultatif)" lignes={2} />
-
-                {choisi.en_reserve < 1 && (
-                  <p className="rounded-card bg-red-soft px-4 py-3 text-[12.5px] text-red text-pretty">
-                    Plus rien en réserve : la chambre ne sera pas re-dotée. Le dossier est
-                    enregistré quand même, mais il faut recommander.
-                  </p>
-                )}
-
-                <button className="h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
-                  Enregistrer le dossier
-                </button>
-                <p className="text-[11.5px] text-ink-faint text-pretty text-center">
-                  La réception est prévenue, et la chambre re-dotée depuis la réserve.
-                </p>
-              </form>
+              </>
             )}
-          </>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="etiquette">Date du constat</span>
+              <input
+                name="date"
+                type="date"
+                max={aujourdhui}
+                defaultValue={aujourdhui}
+                className="w-full carte px-4 h-[48px] text-[16px]"
+              />
+              <span className="text-[11.5px] text-ink-faint text-pretty">
+                Une date passée est acceptée : c’est ainsi qu’on rattrape une déclaration qui
+                n’avait pas été faite dans l’application.
+              </span>
+            </label>
+
+            {!remplacement && <ChampCommentaire libelle="Précision (facultatif)" lignes={2} />}
+
+            <button className="h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
+              {remplacement ? "Enregistrer le remplacement" : "Enregistrer le dossier"}
+            </button>
+            <p className="text-[11.5px] text-ink-faint text-pretty text-center -mt-2">
+              {remplacement
+                ? "Les bouteilles sortent de la réserve et rejoignent la chambre."
+                : "La chambre est re-dotée depuis la réserve, et le mail pour la réception est préparé."}
+            </p>
+          </form>
         )}
       </div>
     </main>

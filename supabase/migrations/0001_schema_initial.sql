@@ -497,12 +497,14 @@ create table dotations (
 -- Un incident couvre les deux cas réels : la bouteille est EMPORTÉE (elle peut
 -- encore revenir) ou CASSÉE (elle est perdue immédiatement). Dans les deux cas
 -- la chambre est re-dotée depuis la réserve, ce qui ne diminue pas le parc.
+-- Un dossier porte UNE chambre, UNE date, UN client — et autant de lignes que de
+-- types de bouteilles concernés. C'est le grain de la déclaration réelle : une
+-- chambre peut perdre la filtrée ET la gazeuse d'un coup, et c'est un seul
+-- dossier, un seul montant, un seul mail. Les types sont dans les lignes.
 create table incidents_bouteille (
   id                 uuid primary key default gen_random_uuid(),
   reference          bigint generated always as identity,
   emplacement_id     uuid not null references emplacements (id),
-  bouteille_type_id  uuid not null references bouteille_types (id),
-  quantite           int not null default 1 check (quantite > 0),
   nature             nature_incident_bouteille not null,
   responsable        responsable_incident not null default 'client',
   -- Nom du client occupant la chambre : c'est lui qu'on recontacte, et c'est
@@ -531,6 +533,17 @@ create table incidents_bouteille (
 );
 create index on incidents_bouteille (statut);
 create index on incidents_bouteille (constate_le desc);
+
+-- Une ligne par type de bouteille concerné par le dossier. C'est elle qui
+-- déclenche les mouvements physiques : un dossier sans ligne n'a rien déplacé.
+create table incident_lignes_bouteille (
+  id                uuid primary key default gen_random_uuid(),
+  incident_id       uuid not null references incidents_bouteille (id) on delete cascade,
+  bouteille_type_id uuid not null references bouteille_types (id),
+  quantite          int not null default 1 check (quantite > 0),
+  unique (incident_id, bouteille_type_id)
+);
+create index on incident_lignes_bouteille (incident_id);
 
 -- Registre de DÉPLACEMENTS, pas de soustractions : chaque ligne dit d'où part la
 -- bouteille et où elle arrive. Un emport suivi d'une re-dotation produit deux

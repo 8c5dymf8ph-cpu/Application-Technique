@@ -18,7 +18,8 @@ mkdir -p "$sortie"
   done
 } > "$sortie/1-schema-et-referentiels.sql"
 
-cp donnees/import_anomalies.sql "$sortie/2-anomalies.sql"
-cp donnees/import_stock.sql     "$sortie/3-stock.sql"
+cp donnees/import_anomalies.sql  "$sortie/2-anomalies.sql"
+cp donnees/import_stock.sql      "$sortie/3-stock.sql"
+cp donnees/import_bouteilles.sql "$sortie/4-bouteilles.sql"
 
 wc -c "$sortie"/*.sql

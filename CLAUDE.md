@@ -13,7 +13,11 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 
 1. **Rien de calculable n'est stocké.** Stock matériel, parc de bouteilles et coût d'intervention
    sont des vues dérivées des mouvements. Ne jamais ajouter une colonne `stock` matérialisée.
-2. **Une bouteille emportée sort du parc détenu, sans être perdue pour autant.** `parc_detenu`
+2. **Un dossier bouteille porte une chambre, une date, un client — et plusieurs types.**
+   Une chambre peut perdre la filtrée ET la gazeuse d'un coup : c'est **un** dossier, un
+   montant, un mail. Les types sont des lignes (`incident_lignes_bouteille`), et ce sont elles
+   qui déclenchent les mouvements. Ne jamais remettre un `bouteille_type_id` sur l'en-tête.
+2bis. **Une bouteille emportée sort du parc détenu, sans être perdue pour autant.** `parc_detenu`
    (réserve + chambres) est ce que l'hôtel a réellement : il baisse dès l'emport. `chez_client`
    est une position d'attente, et `parc_theorique` ne sert qu'au rapprochement d'inventaire.
    Ne jamais afficher le théorique comme le parc. Une bouteille restituée rejoint la **réserve**,
@@ -34,6 +38,10 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 7bis. **Victoria ne reçoit ni n'envoie aucun mail.** Elle consulte, valide et déclare dans
    l'application. Les récapitulatifs vont à Miguel et, selon le paramétrage, à l'intervenant ;
    l'alerte bouteille va à la réception.
+7ter. **L'application n'écrit jamais à un client.** Le mail de bouteille manquante part à la
+   **réception**, rédigé prêt à être transféré, en français puis en anglais. C'est la réception
+   qui décide de l'envoyer et qui parle au client. Ne jamais mettre une adresse de client dans
+   un destinataire.
 8. **Un même problème ne peut pas être ouvert deux fois au même endroit.** L'index
    `anomalie_unique_ouverte_par_lieu` l'interdit en base : ce n'est pas un avertissement que
    l'interface pourrait contourner. L'écran de déclaration montre d'abord `v_anomalies_du_lieu`,
@@ -120,7 +128,8 @@ Une anomalie porte deux séries : **au constat**, prises par qui déclare, et **
 intervention**, prises par le technicien. Les deux sont facultatives et les deux s'affichent
 dans l'historique du lieu. Le technicien voit les photos du constat avant d'intervenir.
 
-Le stockage passe par `lib/stockage.ts` : disque en développement, Supabase Storage en
+Une facture se range au même endroit qu'une photo — PDF compris. Le stockage passe par
+`lib/stockage.ts` : disque en développement, Supabase Storage en
 production. Rien d'autre dans l'application ne connaît autre chose qu'un nom de fichier.
 
 ## Écrans

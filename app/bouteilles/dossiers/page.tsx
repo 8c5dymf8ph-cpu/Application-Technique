@@ -185,7 +185,10 @@ export default async function Dossiers({
               return (
                 <li key={d.id} className="carte overflow-hidden">
                   <div className={`h-[3px] ${d.urgent ? "bg-red" : ton.barre}`} />
-                  <div className="px-4 pt-3 pb-2.5 flex flex-col gap-2.5">
+                  <Link
+                    href={`/bouteilles/dossier/${d.id}` as Route}
+                    className="px-4 pt-3 pb-2.5 flex flex-col gap-2.5 active:bg-surface-muted"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="grow min-w-0">
                         <p className="flex items-center gap-2">
@@ -236,7 +239,7 @@ export default async function Dossiers({
                         {d.commentaire}
                       </p>
                     )}
-                  </div>
+                  </Link>
 
                   {ouvert && (
                     <div className="bg-surface-muted border-t border-line px-3 py-2.5 flex flex-col gap-2">
