@@ -90,3 +90,50 @@ export function Vide({ children }: { children: React.ReactNode }) {
     <p className="text-[14px] text-ink-faint text-center py-8 px-4 text-pretty">{children}</p>
   );
 }
+
+/**
+ * Ce qui accompagne une anomalie : une photo du constat, un commentaire.
+ * Le technicien doit le voir depuis la liste, sans ouvrir : une photo lui dit
+ * ce qu'il va trouver, un commentaire lui dit ce qu'on attend de lui.
+ */
+export function Indices({
+  photos = 0,
+  commentaires = 0,
+  eteint = false,
+}: {
+  photos?: number;
+  commentaires?: number;
+  eteint?: boolean;
+}) {
+  if (photos === 0 && commentaires === 0) return null;
+  const ton = eteint ? "text-ink-faint bg-surface-muted" : "text-plum bg-plum-soft";
+  return (
+    <span className="flex items-center gap-1.5 shrink-0">
+      {photos > 0 && (
+        <span
+          className={`${ton} h-[22px] pl-1.5 pr-2 rounded-md flex items-center gap-1 text-[11.5px] font-medium tabular-nums`}
+          aria-label={`${photos} photo${photos > 1 ? "s" : ""}`}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 8.5A1.5 1.5 0 014.5 7h2L8 4.8h8L17.5 7h2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
+            <circle cx="12" cy="12.7" r="3.3" />
+          </svg>
+          {photos}
+        </span>
+      )}
+      {commentaires > 0 && (
+        <span
+          className={`${ton} h-[22px] pl-1.5 pr-2 rounded-md flex items-center gap-1 text-[11.5px] font-medium tabular-nums`}
+          aria-label={`${commentaires} commentaire${commentaires > 1 ? "s" : ""}`}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M20 12.5c0 3.9-3.6 7-8 7a9.3 9.3 0 01-2.7-.4L4.5 20.5l1.2-3.4A6.7 6.7 0 014 12.5c0-3.9 3.6-7 8-7s8 3.1 8 7z" />
+          </svg>
+          {commentaires}
+        </span>
+      )}
+    </span>
+  );
+}

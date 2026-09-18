@@ -3,7 +3,7 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
-import { Entete, Vide } from "@/app/composants/ui";
+import { Entete, Indices, Vide } from "@/app/composants/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,8 @@ type Ligne = {
   statut: string;
   traitee: boolean;
   materiel: string | null;
+  photos: number;
+  commentaires: number;
 };
 
 export default async function Tournee({
@@ -34,25 +36,37 @@ export default async function Tournee({
   // Ce qu'il a à traiter — filtré par sa spécialité — plus ce qu'il a déjà
   // coché dans cette tournée, pour qu'il voie son avancement.
   const lignes = await sql<Ligne[]>`
+    with accompagnement as (
+      select a.id,
+             (select count(*) from photos_anomalie ph
+               where ph.anomalie_id = a.id and ph.moment = 'constat')::int as photos,
+             (select count(*) from v_fil_commentaires f
+               where f.anomalie_id = a.id)::int as commentaires
+        from anomalies a
+    )
     select a.id as anomalie_id, e.code as emplacement, et.nom as etage,
            a.description, a.statut::text,
            (i.id is not null) as traitee,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
-             where m.intervention_id = i.id and m.type = 'sortie') as materiel
+             where m.intervention_id = i.id and m.type = 'sortie') as materiel,
+           ac.photos, ac.commentaires
     from fn_anomalies_pour_intervenant(${nom}) a
     join emplacements e on e.id = a.emplacement_id
     join etages et      on et.id = e.etage_id
+    join accompagnement ac on ac.id = a.id
     left join interventions i on i.anomalie_id = a.id and i.tournee_id = ${tournee.id}
     union all
     select a.id, e.code, et.nom, a.description, a.statut::text, true,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
-             where m.intervention_id = i.id and m.type = 'sortie')
+             where m.intervention_id = i.id and m.type = 'sortie'),
+           ac.photos, ac.commentaires
     from interventions i
     join anomalies a    on a.id = i.anomalie_id
     join emplacements e on e.id = a.emplacement_id
     join etages et      on et.id = e.etage_id
+    join accompagnement ac on ac.id = a.id
     where i.tournee_id = ${tournee.id}
       and a.statut not in ('a_faire','en_cours')
     order by 2, 1`;
@@ -109,12 +123,21 @@ export default async function Tournee({
                           )}
                         </span>
                         <span className="flex flex-col gap-1 grow min-w-0">
-                          <span
-                            className={`text-[14px] leading-snug text-pretty ${
-                              l.traitee ? "text-ink-faint line-through" : ""
-                            }`}
-                          >
-                            {l.description}
+                          <span className="flex items-start gap-2">
+                            <span
+                              className={`grow min-w-0 text-[14px] leading-snug text-pretty ${
+                                l.traitee ? "text-ink-faint line-through" : ""
+                              }`}
+                            >
+                              {l.description}
+                            </span>
+                            <span className="mt-[1px]">
+                              <Indices
+                                photos={l.photos}
+                                commentaires={l.commentaires}
+                                eteint={l.traitee}
+                              />
+                            </span>
                           </span>
                           {l.traitee && (
                             <span className="self-start px-2 py-0.5 rounded-md bg-plum-soft text-plum text-[11.5px]">

@@ -1,3 +1,9 @@
+-- Application Technique — Hôtel Parisianer
+-- Schéma, vues, règles, sécurité et référentiels.
+-- Fichier produit par outils/preparer_installation.sh — ne pas éditer.
+
+
+-- ===== supabase/migrations/0001_schema_initial.sql =====
 -- =============================================================================
 -- Application Technique — Hôtel Parisianer
 -- Migration 0001 : schéma initial
@@ -9,7 +15,11 @@ create extension if not exists pg_trgm;
 -- -----------------------------------------------------------------------------
 -- Types énumérés
 -- -----------------------------------------------------------------------------
-create type role_utilisateur          as enum ('technicien', 'gouvernante', 'admin', 'lecture');
+-- « operations » : la chargée des opérations. Elle fait tout ce que fait la
+-- gouvernante, et peut en plus supprimer une anomalie — sans toucher aux
+-- référentiels ni au paramétrage, qui restent à l'administrateur.
+create type role_utilisateur          as enum ('technicien', 'gouvernante', 'operations',
+                                              'admin', 'lecture');
 create type type_emplacement          as enum ('chambre', 'commun', 'technique', 'exterieur');
 -- « a_acheter » existe dans les données d'origine : une ligne qui attend un
 -- achat avant de pouvoir être traitée.
@@ -20,6 +30,10 @@ create type acteur_validation         as enum ('technicien', 'gouvernante');
 -- FAIT (validee), EN COURS, A FAIRE (a_refaire).
 create type decision_validation       as enum ('fait', 'non_fait', 'validee', 'a_refaire', 'en_cours');
 create type moment_photo              as enum ('constat', 'apres');
+-- Un commentaire écrit par quelqu'un, ou une note posée par la reprise de
+-- l'ancienne application : les deux se lisent dans le même fil, sans se
+-- confondre.
+create type origine_commentaire       as enum ('utilisateur', 'reprise');
 create type statut_facture            as enum ('a_rapprocher', 'rapprochee', 'reglee', 'litige');
 -- Prestation : une journée d'intervention facturée par un prestataire.
 -- Achat      : une livraison de matériel facturée par un fournisseur.
@@ -55,7 +69,7 @@ create table utilisateurs (
   id          uuid primary key default gen_random_uuid(),
   auth_id     uuid unique references auth.users (id) on delete set null,
   email       text unique,
-  nom         text not null,
+  nom         text not null unique,
   role        role_utilisateur not null default 'technicien',
   actif       boolean not null default true,
   cree_le     timestamptz not null default now()
@@ -92,7 +106,7 @@ create table types_intervention (
 -- une journée d'intervention, pas une anomalie : voir la table `factures`.
 create table prestataires (
   id          uuid primary key default gen_random_uuid(),
-  nom         text not null,
+  nom         text not null unique,
   specialite  text,
   email       text,
   telephone   text,
@@ -164,7 +178,6 @@ create table anomalies (
   catalogue_id    uuid references catalogue_anomalies (id),
   type_id         uuid references types_intervention (id),
   description     text not null,
-  commentaire     text,
   statut          statut_anomalie   not null default 'a_faire',
   priorite        priorite_anomalie not null default 'normale',
   -- Trois personnes distinctes dans les données d'origine : celle qui constate,
@@ -203,6 +216,10 @@ create table tournees (
   cloturee_le               timestamptz,            -- le technicien a rendu son lot
   mail_technicien_envoye_le timestamptz,
   mail_recap_envoye_le      timestamptz,
+  -- Une tournée reprise de l'ancienne application : le travail a eu lieu, il
+  -- garde sa trace, mais plus aucun récapitulatif ne part pour elle. Sans ce
+  -- drapeau, le premier envoi déverserait des années d'historique.
+  reprise                   boolean not null default false,
   commentaire               text,
   cree_le                   timestamptz not null default now()
 );
@@ -259,6 +276,23 @@ create table validations (
   )
 );
 create index on validations (intervention_id);
+
+-- Les commentaires ne s'empilent pas dans un champ texte : chacun garde son
+-- auteur et sa date, et rien ne peut en écraser un autre. Un commentaire
+-- s'ajoute à tout moment — à la déclaration, en cours de route, ou des mois
+-- plus tard quand le problème revient.
+create table commentaires (
+  id           uuid primary key default gen_random_uuid(),
+  anomalie_id  uuid not null references anomalies (id) on delete cascade,
+  texte        text not null check (btrim(texte) <> ''),
+  origine      origine_commentaire not null default 'utilisateur',
+  -- L'auteur du propos, et la personne qui a tenu le téléphone. Ils diffèrent
+  -- quand l'administrateur saisit pour un intervenant qui n'a pas l'application.
+  auteur_id    uuid references utilisateurs (id),
+  saisie_par   uuid references utilisateurs (id),
+  ecrit_le     timestamptz not null default now()
+);
+create index on commentaires (anomalie_id, ecrit_le);
 
 create table photos_anomalie (
   id              uuid primary key default gen_random_uuid(),
@@ -654,6 +688,8 @@ create table journal (
   date_action     timestamptz not null default now()
 );
 create index on journal (table_cible, ligne_id);
+
+-- ===== supabase/migrations/0002_vues_et_regles.sql =====
 -- =============================================================================
 -- Migration 0002 : vues de calcul et règles métier
 -- Tout ce qui se calcule est calculé ici. Aucune valeur de stock n'est stockée
@@ -811,6 +847,7 @@ select
   t.date_tournee,
   coalesce(u.nom, p.nom)                   as intervenant,
   t.cloturee_le,
+  t.reprise,
   t.mail_technicien_envoye_le,
   t.mail_recap_envoye_le,
   count(r.intervention_id)                                                  as nb_interventions,
@@ -833,28 +870,6 @@ group by t.id, u.nom, p.nom;
 -- Fil chronologique des commentaires d'une anomalie. Remplace l'empilement de
 -- texte « NOM · date \n contenu » : chaque commentaire garde son auteur, sa date
 -- et son rôle, donc rien ne peut être écrasé ni mal découpé à la relecture.
-create view v_fil_commentaires as
-select
-  a.id                as anomalie_id,
-  'declaration'::text as source,
-  a.declare_le        as date_commentaire,
-  u.nom               as auteur,
-  a.commentaire       as texte
-from anomalies a
-left join utilisateurs u on u.id = coalesce(a.constate_par, a.saisie_par)
-where coalesce(btrim(a.commentaire), '') <> ''
-union all
-select
-  i.anomalie_id,
-  v.acteur::text,
-  v.decide_le,
-  u.nom,
-  v.commentaire
-from validations v
-join interventions i on i.id = v.intervention_id
-left join utilisateurs u on u.id = v.utilisateur_id
-where coalesce(btrim(v.commentaire), '') <> '';
-
 -- Interventions candidates au rapprochement d'une facture de prestation.
 -- Une facture arrive une à deux semaines après le passage et peut couvrir
 -- plusieurs journées : on ne cherche donc pas une date exacte mais une fenêtre.
@@ -988,7 +1003,8 @@ from tournees t
 join v_tournees v         on v.id = t.id
 left join utilisateurs u  on u.id = t.technicien_id
 left join prestataires p  on p.id = t.prestataire_id
-where t.cloturee_le is not null and t.mail_technicien_envoye_le is null
+where not t.reprise
+  and t.cloturee_le is not null and t.mail_technicien_envoye_le is null
 union all
 select
   'recap_intervention',
@@ -1005,7 +1021,37 @@ from tournees t
 join v_tournees v         on v.id = t.id
 left join utilisateurs u  on u.id = t.technicien_id
 left join prestataires p  on p.id = t.prestataire_id
-where v.prete_pour_recap and t.mail_recap_envoye_le is null;
+where not t.reprise
+  and v.prete_pour_recap and t.mail_recap_envoye_le is null;
+
+-- Le fil d'une anomalie : les commentaires libres et ceux attachés à une
+-- décision, dans l'ordre. Rien n'écrase rien — celui du technicien reste
+-- lisible sous celui de la gouvernante, et inversement.
+create view v_fil_commentaires as
+select
+  c.anomalie_id,
+  c.id                as commentaire_id,
+  case when c.origine = 'reprise' then 'reprise' else 'commentaire' end as source,
+  c.ecrit_le          as date_commentaire,
+  u.nom               as auteur,
+  c.texte,
+  null::decision_validation as decision
+from commentaires c
+left join utilisateurs u on u.id = c.auteur_id
+union all
+select
+  i.anomalie_id,
+  v.id,
+  v.acteur::text,
+  v.decide_le,
+  coalesce(u.nom, p.nom),
+  v.commentaire,
+  v.decision
+from validations v
+join interventions i      on i.id = v.intervention_id
+left join utilisateurs u  on u.id = v.utilisateur_id
+left join prestataires p  on p.id = i.prestataire_id
+where coalesce(btrim(v.commentaire), '') <> '';
 
 -- Ce qui a déjà été déclaré dans un lieu. La gouvernante la consulte AVANT de
 -- saisir : sans ça, la même fuite est déclarée trois fois en une semaine.
@@ -1020,7 +1066,6 @@ select
   a.reference,
   a.catalogue_id,
   a.description,
-  a.commentaire,
   a.statut,
   a.statut in ('a_faire', 'en_cours', 'attente_validation', 'a_acheter') as ouverte,
   a.declare_le,
@@ -1028,7 +1073,8 @@ select
   (current_date - a.declare_le::date)::int as jours_depuis,
   uc.nom                       as constate_par,
   ti.nom                       as type_intervention,
-  (select count(*) from photos_anomalie ph where ph.anomalie_id = a.id) as nb_photos
+  (select count(*) from photos_anomalie ph where ph.anomalie_id = a.id)::int as nb_photos,
+  (select count(*) from v_fil_commentaires f where f.anomalie_id = a.id)::int as nb_commentaires
 from anomalies a
 join emplacements e             on e.id = a.emplacement_id
 left join utilisateurs uc       on uc.id = a.constate_par
@@ -1572,7 +1618,11 @@ select
   a.reference,
   e.code,
   a.description,
-  coalesce(a.commentaire, 'Localisation d''origine inconnue')
+  coalesce(
+    (select c.texte from commentaires c
+      where c.anomalie_id = a.id and c.origine = 'reprise'
+      order by c.ecrit_le limit 1),
+    'Localisation d''origine inconnue')
 from anomalies a
 join emplacements e on e.id = a.emplacement_id
 where e.code = 'General'
@@ -1598,6 +1648,8 @@ from interventions i
 join anomalies a    on a.id = i.anomalie_id
 join emplacements e on e.id = a.emplacement_id
 where i.date_intervention > current_date;
+
+-- ===== supabase/migrations/0003_securite.sql =====
 -- =============================================================================
 -- Migration 0003 : sécurité au niveau des lignes (RLS)
 -- Toute lecture/écriture passe par ces règles, y compris depuis le navigateur.
@@ -1621,10 +1673,17 @@ create function fn_est_connecte() returns boolean
 language sql stable as $$ select fn_role_courant() is not null; $$;
 
 create function fn_peut_ecrire() returns boolean
-language sql stable as $$ select fn_role_courant() in ('technicien','gouvernante','admin'); $$;
+language sql stable as $$
+  select fn_role_courant() in ('technicien','gouvernante','operations','admin');
+$$;
 
 create function fn_peut_valider() returns boolean
-language sql stable as $$ select fn_role_courant() in ('gouvernante','admin'); $$;
+language sql stable as $$ select fn_role_courant() in ('gouvernante','operations','admin'); $$;
+
+-- Supprimer une anomalie efface une trace : réservé à la chargée des
+-- opérations et à l'administrateur.
+create function fn_peut_supprimer() returns boolean
+language sql stable as $$ select fn_role_courant() in ('operations','admin'); $$;
 
 create function fn_est_admin() returns boolean
 language sql stable as $$ select fn_role_courant() = 'admin'; $$;
@@ -1638,7 +1697,7 @@ begin
   foreach t in array array[
     'utilisateurs','specialites_intervenant','etages','emplacements',
     'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
-    'anomalies','tournees','interventions','validations','photos_anomalie',
+    'anomalies','tournees','interventions','validations','commentaires','photos_anomalie',
     'factures','facture_interventions',
     'produits','article_fournisseurs','photos_produit','mouvements_stock',
     'inventaires','inventaire_lignes_produit',
@@ -1661,7 +1720,8 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'tournees','interventions','photos_anomalie','photos_produit','factures','facture_interventions',
+    'tournees','interventions','commentaires','photos_anomalie','photos_produit',
+    'factures','facture_interventions',
     'mouvements_stock','inventaires','inventaire_lignes_produit',
     'incidents_bouteille','mouvements_bouteilles','inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes'
@@ -1691,7 +1751,7 @@ create policy modification_anomalies on anomalies
 
 create policy suppression_anomalies on anomalies
   for delete to authenticated
-  using (fn_est_admin());
+  using (fn_peut_supprimer());
 
 -- -----------------------------------------------------------------------------
 -- Validations : un technicien ne peut pas signer à la place de la gouvernante.
@@ -1749,6 +1809,8 @@ begin
     execute format('grant select on %I to authenticated', v);
   end loop;
 end $$;
+
+-- ===== supabase/seed/01_referentiels.sql =====
 -- =============================================================================
 -- Référentiels de départ — Hôtel Parisianer
 -- Repris de App.OnStart / colChambres de l'application Power Apps.
@@ -1769,9 +1831,8 @@ on conflict (code) do nothing;
 -- Emplacements : reprise de la liste fournie, codes compris, y compris sa
 -- convention — un escalier appartient à l'étage d'où l'on part. Seules les
 -- chambres, aux codes numériques, reçoivent la dotation Purezza.
--- « Vestiaire Femmes » est déduit : la liste répète « Vestiaire Hommes ».
--- Les deux entrées d'ordre 90 ne figuraient pas dans la liste mais recueillent
--- une vingtaine de lignes de l'export : à confirmer.
+-- L'entrée d'ordre 90 ne figurait pas dans la liste mais recueille les lignes
+-- de l'export qui disent seulement « sous sol » : à confirmer.
 with source (etage, code, type, rang) as (values
   ('RDC','01','chambre',0),
   ('RDC','02','chambre',1),
@@ -1783,6 +1844,8 @@ with source (etage, code, type, rang) as (values
   ('RDC','Cuisine','technique',7),
   ('RDC','Bagagerie','technique',8),
   ('RDC','Ascenseur','technique',9),
+  ('RDC','COUR intèrieure','exterieur',10),
+  ('RDC','Parties communes','commun',11),
   ('1er','Palier 1er','commun',0),
   ('1er','11','chambre',1),
   ('1er','12','chambre',2),
@@ -1840,9 +1903,7 @@ with source (etage, code, type, rang) as (values
   ('Sous-Sol','Local poubelle','technique',12),
   ('Sous-Sol','Chaufferie','technique',13),
   ('Autres','Toit','exterieur',0),
-  ('Autres','COUR intèrieure','exterieur',1),
-  ('Sous-Sol','Sous-sol divers','commun',90),
-  ('Autres','Parties communes','commun',90)
+  ('Sous-Sol','Sous-sol divers','commun',90)
 )
 insert into emplacements (code, nom, etage_id, type, dote_bouteilles, ordre)
 select s.code, s.code, e.id, s.type::type_emplacement, s.type = 'chambre', s.rang
@@ -1892,6 +1953,8 @@ insert into alertes_destinataires (evenement, destinataires, actif) values
   ('incident_bouteille', '{}', false),
   ('seuil_stock',        '{}', false)
 on conflict (evenement) do nothing;
+
+-- ===== supabase/seed/02_catalogue_anomalies.sql =====
 -- =============================================================================
 -- Catalogue d'anomalies — généré depuis l'export de « TEST Tech 3 »
 --   795 lignes  ->  268 libellés distincts

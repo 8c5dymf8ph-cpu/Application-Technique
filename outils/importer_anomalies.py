@@ -228,8 +228,11 @@ def main(chemin: str) -> None:
                  if cle(nom) not in PRESTATAIRES else
                  "prestataire_id, (select id from prestataires where nom = %s)" % qnom(nom))
         colonne, valeur = cible.split(", ", 1)
-        print(f"insert into tournees (reference, date_tournee, {colonne}) "
-              f"values ({q(ref)}, date '{date}', {valeur}) on conflict (reference) do nothing;")
+        # Ces lots ont été rendus dans l'ancienne application : ils sont clos,
+        # et marqués `reprise` pour qu'aucun récapitulatif ne parte a posteriori.
+        print(f"insert into tournees (reference, date_tournee, cloturee_le, reprise, {colonne}) "
+              f"values ({q(ref)}, date '{date}', date '{date}', true, {valeur}) "
+              f"on conflict (reference) do nothing;")
 
     # --- Anomalies ---------------------------------------------------------
     print("\n-- Anomalies -----------------------------------------------------------")

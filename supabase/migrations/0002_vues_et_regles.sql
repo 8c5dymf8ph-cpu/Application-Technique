@@ -155,6 +155,7 @@ select
   t.date_tournee,
   coalesce(u.nom, p.nom)                   as intervenant,
   t.cloturee_le,
+  t.reprise,
   t.mail_technicien_envoye_le,
   t.mail_recap_envoye_le,
   count(r.intervention_id)                                                  as nb_interventions,
@@ -310,7 +311,8 @@ from tournees t
 join v_tournees v         on v.id = t.id
 left join utilisateurs u  on u.id = t.technicien_id
 left join prestataires p  on p.id = t.prestataire_id
-where t.cloturee_le is not null and t.mail_technicien_envoye_le is null
+where not t.reprise
+  and t.cloturee_le is not null and t.mail_technicien_envoye_le is null
 union all
 select
   'recap_intervention',
@@ -327,7 +329,8 @@ from tournees t
 join v_tournees v         on v.id = t.id
 left join utilisateurs u  on u.id = t.technicien_id
 left join prestataires p  on p.id = t.prestataire_id
-where v.prete_pour_recap and t.mail_recap_envoye_le is null;
+where not t.reprise
+  and v.prete_pour_recap and t.mail_recap_envoye_le is null;
 
 -- Le fil d'une anomalie : les commentaires libres et ceux attachés à une
 -- décision, dans l'ordre. Rien n'écrase rien — celui du technicien reste

@@ -71,6 +71,10 @@ bascule sur « Général » plutôt que d'écarter une anomalie mal localisée.
 
 Rien n'est en attente de validation : c'est l'état réel de l'hôtel au jour de la reprise.
 
+Les 29 tournées reprises sont closes et marquées `reprise` : le travail garde sa trace, mais
+aucun récapitulatif ne part pour elles. Sans ce drapeau, le premier envoi déverserait deux ans
+d'historique dans la boîte de Miguel et des intervenants.
+
 ## Mode d'emploi
 
 ```bash

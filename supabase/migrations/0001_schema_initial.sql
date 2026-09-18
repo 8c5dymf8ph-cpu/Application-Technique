@@ -210,6 +210,10 @@ create table tournees (
   cloturee_le               timestamptz,            -- le technicien a rendu son lot
   mail_technicien_envoye_le timestamptz,
   mail_recap_envoye_le      timestamptz,
+  -- Une tournée reprise de l'ancienne application : le travail a eu lieu, il
+  -- garde sa trace, mais plus aucun récapitulatif ne part pour elle. Sans ce
+  -- drapeau, le premier envoi déverserait des années d'historique.
+  reprise                   boolean not null default false,
   commentaire               text,
   cree_le                   timestamptz not null default now()
 );

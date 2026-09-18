@@ -3,7 +3,7 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { jours, LIBELLE_STATUT, TON_STATUT, type StatutAnomalie } from "@/lib/domaine";
-import { Entete, Vide } from "../../../composants/ui";
+import { Entete, Indices, Vide } from "../../../composants/ui";
 import { ChampPhotos } from "../../../composants/photos";
 import { ChampCommentaire } from "../../../composants/fil";
 import { enregistrerPhoto } from "@/lib/stockage";
@@ -17,6 +17,8 @@ type Existante = {
   ouverte: boolean;
   jours_depuis: number;
   constate_par: string | null;
+  nb_photos: number;
+  nb_commentaires: number;
 };
 
 type Entree = {
@@ -65,7 +67,8 @@ export default async function Declarer({
     from v_anomalies_du_lieu where emplacement_id = ${emplacement.id}`;
 
   const enCours = await sql<Existante[]>`
-    select anomalie_id, description, statut, ouverte, jours_depuis, constate_par
+    select anomalie_id, description, statut, ouverte, jours_depuis, constate_par,
+           nb_photos, nb_commentaires
     from v_anomalies_du_lieu
     where emplacement_id = ${emplacement.id}
       and statut in ('a_faire','en_cours','a_acheter')
@@ -163,7 +166,14 @@ export default async function Declarer({
                     href={`/anomalie/${e.anomalie_id}`}
                     className="carte px-4 py-3 flex flex-col gap-1.5 active:bg-surface-muted"
                   >
-                  <p className="text-[14.5px] leading-snug text-pretty">{e.description}</p>
+                  <div className="flex items-start gap-2">
+                    <p className="grow min-w-0 text-[14.5px] leading-snug text-pretty">
+                      {e.description}
+                    </p>
+                    <span className="mt-[1px]">
+                      <Indices photos={e.nb_photos} commentaires={e.nb_commentaires} />
+                    </span>
+                  </div>
                   <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
                     <span
                       className={`px-2 py-0.5 rounded-md ${TON_STATUT[e.statut].fond} ${TON_STATUT[e.statut].texte}`}
