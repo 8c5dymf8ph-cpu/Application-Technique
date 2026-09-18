@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
-import { profilActif } from "@/lib/profil";
-import { euros } from "@/lib/domaine";
+import { personnes, profilActif } from "@/lib/profil";
+import { euros, suitLesDossiers } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampCommentaire } from "@/app/composants/fil";
 import { TotalBouteilles } from "@/app/composants/total-bouteilles";
+import { ChoixPrenom } from "@/app/composants/prenom";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,18 @@ export default async function Signaler({
   if (!profil) redirect("/profil");
   const { lieu, mode = "perte" } = await searchParams;
   const remplacement = mode === "remplacement";
+  const casse = mode === "casse";
+
+  // Qui a vu, et à qui c'est remonté. Ce n'est presque jamais la gouvernante
+  // qui constate, et ce n'est jamais elle qui écrit au client.
+  // Celles qui constatent : les femmes de chambre et la gouvernante. Plus, le
+  // cas échéant, la personne connectée — Miguel peut avoir vu lui-même.
+  const equipe = await personnes(["menage", "gouvernante"]);
+  const constatants = equipe.some((p) => p.id === profil.id)
+    ? equipe
+    : [...equipe, { id: profil.id, nom: profil.nom, role: profil.role }];
+  // Ceux à qui l'on transmet : la réception, et l'administration.
+  const destinataires = await personnes(["reception", "admin"]);
 
   const chambres = await sql<Chambre[]>`
     select e.id, e.code, et.nom as etage,
@@ -77,7 +90,8 @@ export default async function Signaler({
                                              de_lieu, vers_lieu, vers_emplacement_id,
                                              date_mouvement, utilisateur_id, commentaire)
           values ('dotation', ${l.id}, ${l.quantite}, 'reserve', 'emplacement',
-                  ${emplacement}, ${quand ?? new Date().toISOString()}, ${profil_.id},
+                  ${emplacement}, ${quand ?? new Date().toISOString()},
+                  ${String(donnees.get("constate_par") ?? "") || profil_.id},
                   'Remplacement en chambre')`;
       }
       redirect("/bouteilles?fait=remplacement" as Route);
@@ -86,6 +100,8 @@ export default async function Signaler({
     const nature = String(donnees.get("nature"));
     const responsable = String(donnees.get("responsable"));
     const client = String(donnees.get("client") ?? "").trim() || null;
+    const vu_par = String(donnees.get("constate_par") ?? "") || profil_.id;
+    const remonte_a = String(donnees.get("transmis_a") ?? "") || null;
     const mot = String(donnees.get("commentaire") ?? "").trim() || null;
 
     // La chambre n'est re-dotée que s'il reste de quoi la re-doter : sinon on
@@ -97,12 +113,19 @@ export default async function Signaler({
       (l) => (stock.find((s) => s.bouteille_type_id === l.id)?.en_reserve ?? 0) >= l.quantite,
     );
 
+    // `constate_par` est la personne qui a vu ; `saisie_par` reste implicite —
+    // c'est le profil actif, et la trace en base le dit déjà.
     const [dossier] = await sql<{ id: string }[]>`
       insert into incidents_bouteille (emplacement_id, nature, responsable, client_nom,
-                                       constate_par, constate_le, redoter, commentaire)
+                                       constate_par, constate_le, redoter, commentaire,
+                                       transmis_a, transmis_le, statut, notifie_le)
       values (${emplacement}, ${nature}::nature_incident_bouteille,
-              ${responsable}::responsable_incident, ${client}, ${profil_.id},
-              ${quand ?? new Date().toISOString()}, ${redoter}, ${mot})
+              ${responsable}::responsable_incident, ${client}, ${vu_par},
+              ${quand ?? new Date().toISOString()}, ${redoter}, ${mot},
+              ${remonte_a},
+              ${remonte_a ? (quand ?? new Date().toISOString()) : null},
+              ${remonte_a ? "transmis" : "signale"}::statut_incident_bouteille,
+              ${remonte_a ? new Date().toISOString() : null})
       returning id`;
 
     // Les lignes déclenchent les mouvements, une fois l'en-tête posé.
@@ -112,7 +135,13 @@ export default async function Signaler({
         values (${dossier.id}, ${l.id}, ${l.quantite})`;
     }
 
-    redirect(`/bouteilles/dossier/${dossier.id}` as Route);
+    // Le suivi du dossier est le travail de l'administration : la gouvernante
+    // revient à ses gestes, elle n'a rien à faire sur cet écran-là.
+    redirect(
+      (suitLesDossiers(profil_.role)
+        ? `/bouteilles/dossier/${dossier.id}`
+        : "/bouteilles?fait=perte") as Route,
+    );
   }
 
   const etages = [...new Set(chambres.map((c) => c.etage))];
@@ -128,7 +157,7 @@ export default async function Signaler({
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
-        titre={remplacement ? "Remplacer" : "Signaler"}
+        titre={remplacement ? "Remplacer" : casse ? "Casse" : "Perte"}
         sous_titre={chambre ? `${chambre.code} · ${chambre.etage}` : "Choisir la chambre"}
         retour="/bouteilles"
       />
@@ -137,18 +166,19 @@ export default async function Signaler({
         {/* Perte ou remplacement — le même écran, deux intentions */}
         <div className="flex gap-2">
           {[
-            { v: "perte", l: "Perte ou casse", d: "La bouteille n’est plus là" },
-            { v: "remplacement", l: "Remplacement", d: "Re-doter la chambre" },
+            { v: "perte", l: "Perte", d: "Emportée par le client" },
+            { v: "casse", l: "Casse", d: "Cassée, elle sort du parc" },
+            { v: "remplacement", l: "Remplacer", d: "Re-doter la chambre" },
           ].map((m) => (
             <Link
               key={m.v}
               href={lien({ mode: m.v })}
-              className={`flex-1 rounded-card border px-3 py-2.5 flex flex-col gap-0.5 ${
+              className={`flex-1 min-w-0 rounded-card border px-2.5 py-2.5 flex flex-col gap-0.5 ${
                 mode === m.v ? "border-plum bg-plum-soft" : "border-line bg-surface"
               }`}
             >
               <span className="text-[13.5px] font-medium leading-tight">{m.l}</span>
-              <span className="text-[11px] text-ink-faint leading-tight">{m.d}</span>
+              <span className="text-[10.5px] text-ink-faint leading-tight text-pretty">{m.d}</span>
             </Link>
           ))}
         </div>
@@ -223,12 +253,14 @@ export default async function Signaler({
                 libelle={
                   remplacement
                     ? `Coût du remplacement · chambre ${chambre.code}`
-                    : `Total à facturer · chambre ${chambre.code}`
+                    : casse
+                      ? `Valeur au prix d’achat · chambre ${chambre.code}`
+                      : `Total à facturer · chambre ${chambre.code}`
                 }
                 types={types.map((t) => ({
                   id: t.id,
                   libelle: `${t.libelle} · ${t.en_reserve} en réserve`,
-                  prix: Number(remplacement ? t.prix_achat : t.prix_vente),
+                  prix: Number(remplacement || casse ? t.prix_achat : t.prix_vente),
                 }))}
               />
               <p className="text-[11.5px] text-ink-faint text-pretty">
@@ -239,32 +271,26 @@ export default async function Signaler({
 
             {!remplacement && (
               <>
-                <fieldset className="flex flex-col gap-2">
-                  <legend className="etiquette mb-2">Que s’est-il passé&nbsp;?</legend>
-                  <label className="carte px-4 py-3 flex items-start gap-3 cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
-                    <input type="radio" name="nature" value="emport" defaultChecked
-                           className="mt-1 accent-[#453A6E]" />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-[15px]">Le client l’a emportée</span>
-                      <span className="text-[11.5px] text-ink-faint text-pretty">
-                        Elle peut encore revenir : le dossier reste ouvert jusqu’à sa
-                        restitution ou sa facturation.
-                      </span>
-                    </span>
-                  </label>
-                  <label className="carte px-4 py-3 flex items-start gap-3 cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
-                    <input type="radio" name="nature" value="casse" className="mt-1 accent-[#453A6E]" />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-[15px]">Elle est cassée</span>
-                      <span className="text-[11.5px] text-ink-faint text-pretty">
-                        Elle sort du parc immédiatement, elle ne reviendra pas.
-                      </span>
-                    </span>
-                  </label>
-                </fieldset>
+                <input type="hidden" name="nature" value={casse ? "casse" : "emport"} />
+
+                <ChoixPrenom
+                  nom="constate_par"
+                  libelle="Qui l’a constaté ?"
+                  personnes={constatants}
+                  defaut={profil.id}
+                  aide="Le nom reste attaché au dossier, et figure dans le mail de la réception."
+                />
+
+                <ChoixPrenom
+                  nom="transmis_a"
+                  libelle="À qui l’avez-vous dit ?"
+                  personnes={destinataires}
+                  facultatif
+                  aide="Renseigné, le dossier passe directement en « transmis » — sinon il reste signalé."
+                />
 
                 <fieldset className="flex flex-col gap-2">
-                  <legend className="etiquette mb-2">Qui&nbsp;?</legend>
+                  <legend className="etiquette mb-2">Qui en est la cause&nbsp;?</legend>
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { v: "client", l: "Le client" },
@@ -276,15 +302,16 @@ export default async function Signaler({
                         className="rounded-card border border-line bg-surface h-[46px] grid place-items-center text-[13px] cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft"
                       >
                         <input type="radio" name="responsable" value={r.v}
-                               defaultChecked={r.v === "client"} className="sr-only" />
+                               defaultChecked={r.v === (casse ? "personnel" : "client")}
+                               className="sr-only" />
                         {r.l}
                       </label>
                     ))}
                   </div>
                   <p className="text-[11.5px] text-ink-faint text-pretty">
-                    Une casse du personnel n’est jamais facturée : elle est valorisée au prix
-                    d’achat, {euros(types[0]?.prix_achat ?? 0)}. Au client, c’est{" "}
-                    {euros(types[0]?.prix_vente ?? 0)} l’unité.
+                    {casse
+                      ? `Une casse du personnel n’est jamais facturée : elle est valorisée au prix d’achat, ${euros(types[0]?.prix_achat ?? 0)}. Imputée au client, c’est ${euros(types[0]?.prix_vente ?? 0)} l’unité.`
+                      : `Facturée au client, la bouteille vaut ${euros(types[0]?.prix_vente ?? 0)}. Imputée au personnel, elle est valorisée au prix d’achat, ${euros(types[0]?.prix_achat ?? 0)}.`}
                   </p>
                 </fieldset>
 
@@ -300,8 +327,19 @@ export default async function Signaler({
               </>
             )}
 
+            {remplacement && (
+              <ChoixPrenom
+                nom="constate_par"
+                libelle="Qui a remplacé ?"
+                personnes={constatants}
+                defaut={profil.id}
+              />
+            )}
+
             <label className="flex flex-col gap-1.5">
-              <span className="etiquette">Date du constat</span>
+              <span className="etiquette">
+                {remplacement ? "Date du remplacement" : "Date du constat"}
+              </span>
               <input
                 name="date"
                 type="date"
@@ -323,7 +361,9 @@ export default async function Signaler({
             <p className="text-[11.5px] text-ink-faint text-pretty text-center -mt-2">
               {remplacement
                 ? "Les bouteilles sortent de la réserve et rejoignent la chambre."
-                : "La chambre est re-dotée depuis la réserve, et le mail pour la réception est préparé."}
+                : casse
+                  ? "La bouteille sort du parc, et la chambre est re-dotée depuis la réserve."
+                  : "La chambre est re-dotée depuis la réserve, et le mail pour la réception est préparé."}
             </p>
           </form>
         )}

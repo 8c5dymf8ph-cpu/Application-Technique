@@ -32,7 +32,9 @@ export type RoleUtilisateur =
   | "gouvernante"
   | "operations"
   | "admin"
-  | "lecture";
+  | "lecture"
+  | "menage"
+  | "reception";
 
 export const LIBELLE_ROLE: Record<RoleUtilisateur, string> = {
   technicien: "Technicien",
@@ -40,7 +42,18 @@ export const LIBELLE_ROLE: Record<RoleUtilisateur, string> = {
   operations: "Chargée des opérations",
   admin: "Administrateur",
   lecture: "Lecture seule",
+  menage: "Femme de chambre",
+  reception: "Réception",
 };
+
+/**
+ * Le suivi des dossiers, les commandes et les rapports sont le travail de
+ * l'administration. La gouvernante déclare, remplace et compte : ce sont ses
+ * écrans, et ils ne doivent pas se noyer dans les autres.
+ */
+export function suitLesDossiers(role?: RoleUtilisateur): boolean {
+  return role === "operations" || role === "admin";
+}
 
 /** Déclarer une anomalie, et la valider au nom d'un intervenant. */
 export function peutValider(role?: RoleUtilisateur): boolean {

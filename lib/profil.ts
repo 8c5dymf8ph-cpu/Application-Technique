@@ -25,11 +25,26 @@ export async function profilActif(): Promise<Profil | null> {
   return p ?? null;
 }
 
+/**
+ * Les profils que l'on peut endosser.
+ *
+ * Les femmes de chambre et la réception sont citées dans les déclarations —
+ * qui a constaté, à qui c'est remonté — mais elles n'utilisent pas
+ * l'application : elles n'apparaissent donc pas ici.
+ */
 export async function profilsDisponibles(): Promise<Profil[]> {
   return sql<Profil[]>`
     select id, nom, role from utilisateurs
-    where actif order by
+    where actif and role not in ('menage', 'reception')
+    order by
       case role when 'admin' then 0 when 'gouvernante' then 1 else 2 end, nom`;
+}
+
+/** Qui peut être désigné comme ayant constaté, et à qui l'on transmet. */
+export async function personnes(roles: RoleUtilisateur[]): Promise<Profil[]> {
+  return sql<Profil[]>`
+    select id, nom, role from utilisateurs
+    where actif and role = any(${roles}) order by nom`;
 }
 
 export async function choisirProfil(id: string) {

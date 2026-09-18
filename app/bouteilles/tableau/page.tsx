@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros } from "@/lib/domaine";
+import { euros, suitLesDossiers } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import {
   Barres,
@@ -51,6 +51,9 @@ function evolution(courant: number, precedent: number, suffixe = ""): string | u
 export default async function TableauDeBord() {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
+  // Le suivi des dossiers, les commandes et les rapports sont le travail de
+  // l'administration ; la gouvernante déclare, remplace et compte.
+  if (!suitLesDossiers(profil.role)) redirect("/bouteilles");
 
   // Douze mois pleins, trous compris : un mois sans dossier est une information,
   // pas une absence de colonne.

@@ -12,8 +12,13 @@ create extension if not exists pg_trgm;
 -- « operations » : la chargée des opérations. Elle fait tout ce que fait la
 -- gouvernante, et peut en plus supprimer une anomalie — sans toucher aux
 -- référentiels ni au paramétrage, qui restent à l'administrateur.
+-- `menage` et `reception` ne se connectent pas : ce sont des personnes citées
+-- dans les déclarations. La femme de chambre constate la bouteille manquante, la
+-- gouvernante la déclare, la réception reçoit le dossier et écrit au client.
+-- Elles doivent exister pour être nommées ; elles n'écrivent rien elles-mêmes
+-- (voir `fn_peut_ecrire`, qui ne les cite pas).
 create type role_utilisateur          as enum ('technicien', 'gouvernante', 'operations',
-                                              'admin', 'lecture');
+                                              'admin', 'lecture', 'menage', 'reception');
 create type type_emplacement          as enum ('chambre', 'commun', 'technique', 'exterieur');
 -- « a_acheter » existe dans les données d'origine : une ligne qui attend un
 -- achat avant de pouvoir être traitée.

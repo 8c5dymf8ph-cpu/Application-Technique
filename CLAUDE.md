@@ -112,12 +112,23 @@ psql -h /tmp -p 55432 -U postgres -d valid -q -f supabase/tests/01_scenarios.sql
 
 ## Rôles
 
-| Rôle | En plus du précédent |
+| Rôle | Ce qu'il fait |
 |---|---|
+| `menage` | Constate. **Ne se connecte pas** : existe pour être nommée (Daria, Ira, Cristina, Rodica) |
+| `reception` | Reçoit le dossier bouteille et écrit au client. **Ne se connecte pas** (Taibi, Luca) |
 | `technicien` | Traite ses anomalies, dit s'il a pris du matériel |
-| `gouvernante` | Déclare, valide, déclare au nom d'un intervenant |
+| `gouvernante` | Déclare, valide, déclare au nom d'un intervenant (Victoria) |
 | `operations` | Supprime une anomalie (Sarah P, chargée des opérations) |
-| `admin` | Référentiels, catalogue, paramétrage (Miguel) |
+| `admin` | Référentiels, catalogue, paramétrage, suivi des dossiers (Miguel) |
+
+**La gouvernante déclare, remplace et compte — elle ne gère pas les dossiers.** Le suivi des
+dossiers, les commandes, les factures et les rapports sont le travail de l'administration :
+`suitLesDossiers()` les masque sur son écran, et les pages concernées la renvoient au hub. Elle
+intervient en revanche dans l'inventaire, donc dans le stock.
+
+**Elle doit toujours pouvoir dire qui a constaté et à qui elle l'a dit.** Ce n'est presque jamais
+elle qui voit la bouteille manquante, et ce n'est jamais elle qui écrit au client. Les deux
+prénoms se choisissent en un appui, en clair, jamais dans un menu déroulant.
 
 Supprimer une anomalie efface une trace : réservé à `operations` et `admin`, jamais à la
 gouvernante. La règle est dans `fn_peut_supprimer` et dans la politique de suppression.

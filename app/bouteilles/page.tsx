@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros } from "@/lib/domaine";
+import { euros, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +23,14 @@ type Parc = {
   sous_seuil: boolean;
 };
 
-export default async function Bouteilles() {
+export default async function Bouteilles({
+  searchParams,
+}: {
+  searchParams: Promise<{ fait?: string }>;
+}) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
+  const { fait } = await searchParams;
 
   const parc = await sql<Parc[]>`
     select bouteille_type_id, code, libelle, couleur,
@@ -33,6 +38,11 @@ export default async function Bouteilles() {
            parc_detenu::int, parc_theorique::int, dotation_theorique::int,
            seuil_alerte::int, sous_seuil
     from v_stock_bouteilles order by libelle`;
+
+  // La gouvernante déclare, remplace et compte. Le suivi des dossiers, les
+  // commandes et les rapports sont le travail de l'administration : les lui
+  // montrer noierait ses trois gestes dans des écrans qui ne la concernent pas.
+  const administration = suitLesDossiers(profil.role);
 
   const [c] = await sql<
     { ouverts: number; urgents: number; du_mois: number; en_jeu: number; commandes: number }[]
@@ -51,6 +61,14 @@ export default async function Bouteilles() {
       <Entete titre="Bouteilles" sous_titre="Purezza" retour="/" />
 
       <div className="px-5 py-5 flex flex-col gap-5">
+        {fait && (
+          <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
+            {fait === "remplacement"
+              ? "Remplacement enregistré : les bouteilles ont quitté la réserve pour la chambre."
+              : "Dossier enregistré. La chambre est re-dotée, et la réception a ce qu’il lui faut."}
+          </p>
+        )}
+
         {/* Le parc, tel qu'il est vraiment */}
         <section className="flex flex-col gap-2.5">
           <h2 className="etiquette">Le parc</h2>
@@ -118,37 +136,61 @@ export default async function Bouteilles() {
         <div className="flex flex-col gap-3">
           <Tuile
             href="/bouteilles/signaler"
-            titre="Signaler"
-            detail="Une bouteille emportée ou cassée"
+            titre="Perte"
+            detail="Une bouteille emportée par le client"
             ton="bg-amber-soft"
           />
           <Tuile
-            href="/bouteilles/dossiers"
-            titre="Dossiers"
-            detail={
-              c.ouverts === 0
-                ? "Rien en cours"
-                : `${c.ouverts} en cours · ${euros(c.en_jeu)} en jeu`
-            }
-            badge={c.ouverts}
-            ton="bg-plum-soft"
+            href="/bouteilles/signaler?mode=casse"
+            titre="Casse"
+            detail="Une bouteille cassée, elle sort du parc"
+            ton="bg-red-soft"
           />
           <Tuile
-            href="/bouteilles/commandes"
-            titre="Commandes"
-            detail="Entrées, prix, factures"
-            badge={c.commandes}
+            href="/bouteilles/signaler?mode=remplacement"
+            titre="Remplacement"
+            detail="Re-doter une chambre depuis la réserve"
+            badge={parc.reduce((n, b) => n + Math.max(0, b.dotation_theorique - b.en_chambre), 0)}
             ton="bg-blue-soft"
           />
           <Tuile
-            href="/bouteilles/tableau"
-            titre="Tableau de bord"
-            detail={`${c.du_mois} dossier${c.du_mois > 1 ? "s" : ""} ce mois-ci`}
+            href="/bouteilles/inventaire"
+            titre="Inventaire"
+            detail="Compter la réserve et les chambres"
             ton="bg-green-soft"
           />
+
+          {administration && (
+            <>
+              <Tuile
+                href="/bouteilles/dossiers"
+                titre="Dossiers"
+                detail={
+                  c.ouverts === 0
+                    ? "Rien en cours"
+                    : `${c.ouverts} en cours · ${euros(c.en_jeu)} en jeu`
+                }
+                badge={c.ouverts}
+                ton="bg-plum-soft"
+              />
+              <Tuile
+                href="/bouteilles/commandes"
+                titre="Commandes"
+                detail="Livraisons, prix, factures"
+                badge={c.commandes}
+                ton="bg-blue-soft"
+              />
+              <Tuile
+                href="/bouteilles/tableau"
+                titre="Tableau de bord"
+                detail={`${c.du_mois} dossier${c.du_mois > 1 ? "s" : ""} ce mois-ci`}
+                ton="bg-surface"
+              />
+            </>
+          )}
         </div>
 
-        {c.urgents > 0 && (
+        {administration && c.urgents > 0 && (
           <Link
             href={"/bouteilles/dossiers?filtre=urgent" as Route}
             className="rounded-card bg-red-soft border border-red/20 px-4 py-3 flex items-center gap-3"

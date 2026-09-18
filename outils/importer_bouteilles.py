@@ -34,11 +34,19 @@ STATUTS = {
     "Perte": "non_facture",
 }
 
-# Qui constate (gouvernantes et femmes de chambre) et qui reçoit le dossier.
+# Qui est qui, d'après Miguel. Les femmes de chambre constatent, la gouvernante
+# déclare, la réception reçoit le dossier et écrit au client. Aucune des deux
+# premières catégories ne se connecte : elles existent pour être nommées.
 ROLES = {
     "miguel": "admin",
-    "victoria": "gouvernante",
     "sarah p": "operations",
+    "victoria": "gouvernante",
+    "daria": "menage",
+    "ira": "menage",
+    "cristina": "menage",
+    "rodica": "menage",
+    "taibi": "reception",
+    "luca": "reception",
 }
 
 
@@ -151,6 +159,7 @@ def main(chemin):
     data = [dict(zip(entetes, r)) for r in lignes[1:] if any(r)]
 
     rapport = defaultdict(list)
+    rapport_roles = rapport["role_deduit"]
     compte = Counter()
 
     print("-- ==========================================================================")
@@ -168,9 +177,14 @@ def main(chemin):
                 personnes.add(nom)
     print("\n-- Personnes citées dans l'export des bouteilles ------------------------")
     for nom in sorted(personnes):
-        role = ROLES.get(nom.lower(), "gouvernante" if nom.lower() != "taibi" else "technicien")
+        role = ROLES.get(nom.lower())
+        if role is None:
+            rapport_roles.append(nom)
+            role = "lecture"
+        # Le rôle est aussi corrigé sur une base déjà installée : ces personnes
+        # existent peut-être déjà, créées par l'import des anomalies.
         print(f"insert into utilisateurs (nom, role) values ({q(nom)}, {q(role)}) "
-              f"on conflict (nom) do nothing;")
+              f"on conflict (nom) do update set role = excluded.role;")
 
     # --- Le parc constaté à la reprise ----------------------------------------
     print("\n-- Parc constaté à la reprise : chaque chambre dotée avait ses bouteilles.")

@@ -866,5 +866,60 @@ begin
     'la réception doit laisser un mouvement d''entrée tracé';
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 11 — Inventaire des bouteilles : un écart ne se corrige jamais par
+-- une écriture directe. Il produit une régularisation, datée et signée.
+-- ===========================================================================
+do $$
+declare
+  v_inv      uuid;
+  v_type     uuid;
+  v_chambre  uuid;
+  v_reserve_av int; v_reserve_ap int;
+  v_chambre_av int; v_chambre_ap int;
+  v_mouvements int;
+begin
+  select id into v_type    from bouteille_types where code = 'filtree';
+  select id into v_chambre from emplacements where code = '11';
+  select en_reserve into v_reserve_av from v_stock_bouteilles where bouteille_type_id = v_type;
+  select coalesce(sum(qte), 0)::int into v_chambre_av from v_bouteilles_positions
+   where bouteille_type_id = v_type and emplacement_id = v_chambre and lieu = 'emplacement';
+
+  insert into inventaires (type, libelle, ouvert_par)
+  values ('bouteilles', 'Comptage de test', '22222222-2222-2222-2222-222222222222')
+  returning id into v_inv;
+
+  -- La réserve en compte trois de moins que prévu ; la chambre 11 en a une de trop.
+  insert into inventaire_lignes_bouteille (inventaire_id, bouteille_type_id, emplacement_id,
+                                           quantite_theorique, quantite_comptee)
+  values (v_inv, v_type, null,      v_reserve_av, v_reserve_av - 3),
+         (v_inv, v_type, v_chambre, v_chambre_av, v_chambre_av + 1);
+
+  -- Tant que l'inventaire est en brouillon, rien n'a bougé.
+  select en_reserve into v_reserve_ap from v_stock_bouteilles where bouteille_type_id = v_type;
+  assert v_reserve_ap = v_reserve_av,
+    format('la réserve a bougé (%s → %s) avant validation', v_reserve_av, v_reserve_ap);
+
+  update inventaires
+     set statut = 'valide', valide_le = now(),
+         valide_par = '22222222-2222-2222-2222-222222222222'
+   where id = v_inv;
+
+  select en_reserve into v_reserve_ap from v_stock_bouteilles where bouteille_type_id = v_type;
+  assert v_reserve_ap = v_reserve_av - 3,
+    format('réserve = %s, attendu %s après régularisation', v_reserve_ap, v_reserve_av - 3);
+
+  select coalesce(sum(qte), 0)::int into v_chambre_ap from v_bouteilles_positions
+   where bouteille_type_id = v_type and emplacement_id = v_chambre and lieu = 'emplacement';
+  assert v_chambre_ap = v_chambre_av + 1,
+    format('chambre 11 = %s, attendu %s', v_chambre_ap, v_chambre_av + 1);
+
+  -- Et tout est tracé : deux mouvements rattachés à cet inventaire, pas une
+  -- écriture anonyme dans un stock.
+  select count(*) into v_mouvements from mouvements_bouteilles
+   where inventaire_id = v_inv and type = 'regularisation';
+  assert v_mouvements = 2, format('%s régularisations écrites, attendu 2', v_mouvements);
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

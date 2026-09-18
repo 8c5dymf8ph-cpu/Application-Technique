@@ -143,6 +143,8 @@ on conflict (emplacement_id, bouteille_type_id) do nothing;
 -- d'administration. L'alerte bouteille est destinée à la réception, qui
 -- recontacte le client ; la gouvernante, elle, ne reçoit aucun mail.
 insert into alertes_destinataires (evenement, destinataires, actif) values
-  ('incident_bouteille', '{}', false),
+  ('incident_bouteille', '{fom@contacthotelparisianer.com}', true),
   ('seuil_stock',        '{}', false)
-on conflict (evenement) do nothing;
+on conflict (evenement) do update
+  set destinataires = excluded.destinataires, actif = excluded.actif
+  where alertes_destinataires.evenement = 'incident_bouteille';

@@ -18,8 +18,13 @@ create extension if not exists pg_trgm;
 -- « operations » : la chargée des opérations. Elle fait tout ce que fait la
 -- gouvernante, et peut en plus supprimer une anomalie — sans toucher aux
 -- référentiels ni au paramétrage, qui restent à l'administrateur.
+-- `menage` et `reception` ne se connectent pas : ce sont des personnes citées
+-- dans les déclarations. La femme de chambre constate la bouteille manquante, la
+-- gouvernante la déclare, la réception reçoit le dossier et écrit au client.
+-- Elles doivent exister pour être nommées ; elles n'écrivent rien elles-mêmes
+-- (voir `fn_peut_ecrire`, qui ne les cite pas).
 create type role_utilisateur          as enum ('technicien', 'gouvernante', 'operations',
-                                              'admin', 'lecture');
+                                              'admin', 'lecture', 'menage', 'reception');
 create type type_emplacement          as enum ('chambre', 'commun', 'technique', 'exterieur');
 -- « a_acheter » existe dans les données d'origine : une ligne qui attend un
 -- achat avant de pouvoir être traitée.
@@ -1725,6 +1730,43 @@ create trigger tg_valider_inventaire_materiel
 after update on inventaires
 for each row execute function fn_valider_inventaire_materiel();
 
+-- 7bis. Valider un inventaire de bouteilles écrit les régularisations.
+--       Un écart ne se corrige jamais par une écriture directe : il produit un
+--       mouvement, daté, signé, et annulable. Une bouteille trouvée en trop
+--       entre dans le parc ; une bouteille manquante en sort.
+create function fn_valider_inventaire_bouteilles() returns trigger
+language plpgsql as $$
+begin
+  if new.statut = 'valide' and old.statut = 'brouillon' and new.type = 'bouteilles' then
+    insert into mouvements_bouteilles (
+      type, bouteille_type_id, quantite, de_lieu, de_emplacement_id,
+      vers_lieu, vers_emplacement_id, date_mouvement, utilisateur_id,
+      inventaire_id, commentaire)
+    select
+      'regularisation', l.bouteille_type_id, abs(l.ecart),
+      -- Un écart positif vient de nulle part ; un écart négatif y retourne.
+      case when l.ecart > 0 then 'hors_parc'
+           when l.emplacement_id is null then 'reserve'
+           else 'emplacement' end::lieu_bouteille,
+      case when l.ecart < 0 then l.emplacement_id end,
+      case when l.ecart < 0 then 'hors_parc'
+           when l.emplacement_id is null then 'reserve'
+           else 'emplacement' end::lieu_bouteille,
+      case when l.ecart > 0 then l.emplacement_id end,
+      new.valide_le, new.valide_par, new.id,
+      'Régularisation d''inventaire (théorique ' || l.quantite_theorique ||
+      ', compté ' || l.quantite_comptee || ')'
+    from inventaire_lignes_bouteille l
+    where l.inventaire_id = new.id and l.ecart <> 0;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger tg_valider_inventaire_bouteilles
+after update on inventaires
+for each row execute function fn_valider_inventaire_bouteilles();
+
 -- 8. Préparer une demande de devis par fournisseur, regroupant tous ses articles
 --    sous le seuil. Une seule demande par fournisseur, donc un seul mail.
 create function fn_preparer_demandes_devis(p_utilisateur_id uuid default null)
@@ -2209,9 +2251,11 @@ on conflict (emplacement_id, bouteille_type_id) do nothing;
 -- d'administration. L'alerte bouteille est destinée à la réception, qui
 -- recontacte le client ; la gouvernante, elle, ne reçoit aucun mail.
 insert into alertes_destinataires (evenement, destinataires, actif) values
-  ('incident_bouteille', '{}', false),
+  ('incident_bouteille', '{fom@contacthotelparisianer.com}', true),
   ('seuil_stock',        '{}', false)
-on conflict (evenement) do nothing;
+on conflict (evenement) do update
+  set destinataires = excluded.destinataires, actif = excluded.actif
+  where alertes_destinataires.evenement = 'incident_bouteille';
 
 -- ===== supabase/seed/02_catalogue_anomalies.sql =====
 -- =============================================================================

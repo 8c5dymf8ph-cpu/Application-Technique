@@ -5,14 +5,14 @@
 begin;
 
 -- Personnes citées dans l'export des bouteilles ------------------------
-insert into utilisateurs (nom, role) values ('Cristina', 'gouvernante') on conflict (nom) do nothing;
-insert into utilisateurs (nom, role) values ('Daria', 'gouvernante') on conflict (nom) do nothing;
-insert into utilisateurs (nom, role) values ('Ira', 'gouvernante') on conflict (nom) do nothing;
-insert into utilisateurs (nom, role) values ('Luca', 'gouvernante') on conflict (nom) do nothing;
-insert into utilisateurs (nom, role) values ('Miguel', 'admin') on conflict (nom) do nothing;
-insert into utilisateurs (nom, role) values ('Rodica', 'gouvernante') on conflict (nom) do nothing;
-insert into utilisateurs (nom, role) values ('Taibi', 'technicien') on conflict (nom) do nothing;
-insert into utilisateurs (nom, role) values ('Victoria', 'gouvernante') on conflict (nom) do nothing;
+insert into utilisateurs (nom, role) values ('Cristina', 'menage') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role) values ('Daria', 'menage') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role) values ('Ira', 'menage') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role) values ('Luca', 'reception') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role) values ('Miguel', 'admin') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role) values ('Rodica', 'menage') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role) values ('Taibi', 'reception') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role) values ('Victoria', 'gouvernante') on conflict (nom) do update set role = excluded.role;
 
 -- Parc constaté à la reprise : chaque chambre dotée avait ses bouteilles.
 -- Écrit comme une régularisation tracée, jamais comme un stock posé.
