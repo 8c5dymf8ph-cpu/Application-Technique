@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { LIBELLE_ROLE, peutValider, type RoleUtilisateur } from "@/lib/domaine";
+import { peutValider, type RoleUtilisateur } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,6 @@ type Personne = {
   id: string;
   nom: string;
   role: RoleUtilisateur;
-  intervient_technique: boolean;
   actif: boolean;
   citations: number;
 };
@@ -40,7 +39,7 @@ export default async function Equipe() {
   if (!peutValider(profil.role)) redirect("/");
 
   const personnes = await sql<Personne[]>`
-    select u.id, u.nom, u.role, u.intervient_technique, u.actif,
+    select u.id, u.nom, u.role, u.actif,
            ((select count(*) from incidents_bouteille i where i.constate_par = u.id)
           + (select count(*) from incidents_bouteille i where i.transmis_a = u.id))::int
              as citations
@@ -77,17 +76,6 @@ export default async function Equipe() {
     revalidatePath("/administration/equipe");
   }
 
-  async function technique(donnees: FormData) {
-    "use server";
-    const profil_ = await profilActif();
-    if (!profil_ || !peutValider(profil_.role)) redirect("/");
-    await sql`
-      update utilisateurs
-         set intervient_technique = not intervient_technique
-       where id = ${String(donnees.get("personne"))}`;
-    revalidatePath("/administration/equipe");
-  }
-
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="L’équipe" sous_titre="Qui constate, à qui l’on transmet" retour="/bouteilles" />
@@ -120,7 +108,6 @@ export default async function Equipe() {
                         {p.citations === 0
                           ? "aucun dossier"
                           : `${p.citations} dossier${p.citations > 1 ? "s" : ""}`}
-                        {p.intervient_technique && " · fait aussi de la technique"}
                       </span>
                     </span>
                     <form action={basculer}>
@@ -157,41 +144,6 @@ export default async function Equipe() {
             </section>
           );
         })}
-
-        {/* Qui donne aussi un coup de main en technique */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Coup de main en technique</h2>
-          <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1">
-            Un rôle principal n’épuise pas ce qu’une personne fait. Coché, le prénom apparaît
-            aussi dans la liste des intervenants techniques.
-          </p>
-          <ul className="carte divide-y divide-line">
-            {personnes
-              .filter((p) => p.actif)
-              .map((p) => (
-                <li key={p.id} className="px-3.5 py-2.5 flex items-center gap-3">
-                  <span className="grow min-w-0">
-                    <span className="block text-[15px]">{p.nom}</span>
-                    <span className="block text-[11.5px] text-ink-faint">
-                      {LIBELLE_ROLE[p.role]}
-                    </span>
-                  </span>
-                  <form action={technique}>
-                    <input type="hidden" name="personne" value={p.id} />
-                    <button
-                      className={`h-[38px] px-3 rounded-[10px] text-[12.5px] ${
-                        p.intervient_technique
-                          ? "bg-green-soft text-green"
-                          : "bg-surface-muted border border-line text-ink-soft"
-                      }`}
-                    >
-                      {p.intervient_technique ? "Oui" : "Non"}
-                    </button>
-                  </form>
-                </li>
-              ))}
-          </ul>
-        </section>
 
         <Link
           href={"/bouteilles" as Route}

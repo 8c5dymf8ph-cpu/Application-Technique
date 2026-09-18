@@ -8,6 +8,8 @@ export type TypeBouteille = {
   detail: string;
   prix: number;
   couleur: string;
+  /** La photo ajoutée depuis le paramétrage. À défaut, la bouteille est dessinée. */
+  photo: string | null;
 };
 
 /** La bouteille, dessinée à sa couleur. Bleue pour la filtrée, rouge pour la gazeuse. */
@@ -86,7 +88,17 @@ export function TotalBouteilles({
                 aria-label={`${t.libelle} — ${n > 0 ? "retirer" : "ajouter"}`}
                 className="flex flex-col items-center gap-1.5 w-full"
               >
-                <Bouteille couleur={t.couleur} choisie={n > 0} />
+                {t.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/photo/${t.photo}`}
+                    alt=""
+                    className="h-[92px] w-auto max-w-full object-contain"
+                    style={{ opacity: n > 0 ? 1 : 0.55 }}
+                  />
+                ) : (
+                  <Bouteille couleur={t.couleur} choisie={n > 0} />
+                )}
                 <span className="flex items-center gap-1.5">
                   <span
                     aria-hidden

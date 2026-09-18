@@ -301,11 +301,10 @@ select
 from utilisateurs u
 left join specialites_intervenant s on s.utilisateur_id = u.id
 left join types_intervention t      on t.id = s.type_intervention_id
--- Les femmes de chambre et la réception ne sont pas des intervenants : elles
--- sont nommées dans les déclarations, pas dans les tournées. Sauf celles et
--- ceux qui font aussi de la technique — le drapeau le dit, pas le rôle.
-where u.role in ('technicien', 'gouvernante', 'operations', 'admin')
-   or u.intervient_technique
+-- Qui intervient ne se déduit pas d'un rôle : la chargée des opérations
+-- n'intervient pas, et le réceptionniste qui donne un coup de main, si. La
+-- liste est donnée par l'hôtel et posée par `outils/equipe.py`.
+where u.intervient_technique
 group by u.id
 union all
 select
@@ -494,6 +493,7 @@ select
   bt.code,
   bt.libelle,
   bt.couleur,
+  bt.photo,
   bt.prix_vente,
   bt.prix_achat,
   bt.seuil_alerte,
@@ -731,6 +731,14 @@ select
   max(i.constate_le)     as dernier_dossier
 from v_incidents_bouteille i
 group by i.emplacement;
+
+-- Ce qui est rédigé et attend de partir. Le service d'envoi lit cette vue,
+-- envoie, puis horodate `envoye_le`.
+create view v_courriels_en_attente as
+select id, categorie, reference_id, destinataires, sujet, corps, cree_le
+from emails_envoyes
+where envoye_le is null
+order by cree_le;
 
 -- =============================================================================
 -- Règles métier

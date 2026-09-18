@@ -136,7 +136,15 @@ begin
 end $$;
 
 -- -----------------------------------------------------------------------------
--- Le journal d'audit et l'historique d'envoi ne sont jamais écrits depuis l'app.
+-- La file des courriels : l'application y DÉPOSE un message rédigé, mais ne le
+-- modifie ni ne l'efface. C'est le service d'envoi qui horodate le départ.
+-- -----------------------------------------------------------------------------
+grant insert on emails_envoyes to authenticated;
+create policy depot_courriels on emails_envoyes for insert to authenticated
+  with check (fn_peut_ecrire() and envoye_le is null);
+
+-- -----------------------------------------------------------------------------
+-- Le journal d'audit n'est jamais écrit depuis l'application.
 -- -----------------------------------------------------------------------------
 revoke insert, update, delete on journal, emails_envoyes from authenticated;
 

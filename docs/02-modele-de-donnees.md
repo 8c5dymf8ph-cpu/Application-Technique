@@ -78,6 +78,7 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `v_interventions_sans_facture` | Ce qu'un prestataire a fait sans facture, avec l'ancienneté |
 | `v_envois_en_attente` | Ce que le digest du soir doit envoyer — hors tournées reprises |
 | `v_commandes` | Commandes fournisseur : HT, TTC, TVA déduite, facture jointe, articles |
+| `v_courriels_en_attente` | Les messages rédigés qui n'ont pas encore été envoyés |
 | `v_dossiers_bouteille` | Les dossiers rangés pour l'écran de suivi : famille, ancienneté, urgence, texte de recherche |
 | `v_bouteilles_par_mois` | Dossiers, montants en jeu, facturés et perdus, mois par mois |
 | `v_bouteilles_par_emplacement_couts` | Ce que chaque emplacement coûte en bouteilles |

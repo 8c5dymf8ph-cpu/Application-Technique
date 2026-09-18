@@ -16,6 +16,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type DossierCourriel = {
+  reference: number;
+  emplacement: string;
+  client_nom: string | null;
+  constate_par: string | null;
+  transmis_a: string | null;
+  constate_le: string;
+  lignes: LigneBouteille[];
+  montant: number;
+  facturable_client: boolean;
+  nature: string;
+};
+
 type Dossier = {
   id: string;
   reference: number;
@@ -78,9 +91,6 @@ export default async function DetailDossier({
     select destinataires, actif from alertes_destinataires
     where evenement = 'incident_bouteille'`;
 
-  const objet = objetAlerteBouteille(d);
-  const corps = corpsAlerteBouteille(d);
-
   async function avancer(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -93,6 +103,7 @@ export default async function DetailDossier({
            set statut = 'transmis', transmis_le = now(), transmis_a = ${profil_.id},
                notifie_le = coalesce(notifie_le, now())
          where id = ${id} and statut = 'signale'`;
+      await mettreEnFile(id);
     } else if (etape === "contacte") {
       await sql`
         update incidents_bouteille
@@ -107,6 +118,34 @@ export default async function DetailDossier({
          where id = ${id} and statut in ('signale', 'transmis', 'client_contacte')`;
     }
     revalidatePath(`/bouteilles/dossier/${id}`);
+  }
+
+  /**
+   * Rédiger le message et le mettre en file. Il n'est jamais montré : il est
+   * standardisé, il n'y a rien à y relire ni à y corriger.
+   */
+  async function mettreEnFile(dossier: string) {
+    "use server";
+    const [alerte_] = await sql<{ destinataires: string[]; actif: boolean }[]>`
+      select destinataires, actif from alertes_destinataires
+      where evenement = 'incident_bouteille'`;
+    if (!alerte_?.actif || alerte_.destinataires.length === 0) return;
+
+    const [d_] = await sql<DossierCourriel[]>`
+      select reference, emplacement, client_nom, constate_par, transmis_a,
+             constate_le, lignes, montant, facturable_client, nature::text
+      from v_dossiers_bouteille where id = ${dossier}`;
+    if (!d_ || !d_.facturable_client || d_.nature !== "emport") return;
+
+    // Une seule mise en file par dossier : on ne renvoie pas le même message
+    // parce que quelqu'un a rouvert l'écran.
+    await sql`
+      insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
+      select 'alerte_bouteille', ${dossier}::uuid, ${alerte_.destinataires},
+             ${objetAlerteBouteille(d_)}, ${corpsAlerteBouteille(d_)}
+      where not exists (
+        select 1 from emails_envoyes e
+        where e.reference_id = ${dossier}::uuid and e.categorie = 'alerte_bouteille')`;
   }
 
   async function modifier(donnees: FormData) {
@@ -205,58 +244,37 @@ export default async function DetailDossier({
           )}
         </section>
 
-        {/* Le mail, prêt à partir — vers la réception, jamais vers le client.
-            Un dossier déjà réglé le garde replié : c'est une trace, plus une action. */}
-        {d.facturable_client && d.nature === "emport" && (
-          <section className="flex flex-col gap-2">
-            <h2 className="etiquette">
-              {d.dossier_ouvert ? "Mail pour la réception" : "Le mail qui avait été préparé"}
-            </h2>
-            <p className="text-[12px] text-ink-soft text-pretty leading-snug">
-              Ce texte part à la réception, qui l’envoie au client. L’application n’écrit jamais
-              directement à un client.
-              {alerte?.actif && alerte.destinataires.length > 0
-                ? ` Destinataires enregistrés : ${alerte.destinataires.join(", ")}.`
-                : " Aucun destinataire n’est encore enregistré : à renseigner dans le paramétrage."}
-            </p>
-            <details open={d.dossier_ouvert} className="carte px-4 py-3 flex flex-col gap-2">
-              <summary className="text-[12.5px] text-plum underline underline-offset-4 cursor-pointer list-none mb-2">
-                {d.dossier_ouvert ? "Masquer le texte" : "Relire le texte"}
-              </summary>
-              <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint">Objet</p>
-              <p className="text-[13px] leading-snug text-pretty font-medium">{objet}</p>
-              <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint mt-1">
-                Message
-              </p>
-              <pre className="text-[12.5px] leading-[1.5] whitespace-pre-wrap font-sans text-ink">
-                {corps}
-              </pre>
-            </details>
-            {d.dossier_ouvert && (
-            <a
-              href={`mailto:${(alerte?.destinataires ?? []).join(",")}?subject=${encodeURIComponent(
-                objet,
-              )}&body=${encodeURIComponent(corps)}`}
-              className="h-[48px] rounded-[13px] bg-plum-soft text-plum font-display font-semibold text-[14.5px] grid place-items-center"
-            >
-              Ouvrir dans le logiciel de messagerie
-            </a>
-            )}
-          </section>
-        )}
-
+        {/* Le mail ne s'affiche pas : il est standardisé, il n'y a rien à y
+            relire. C'est une action — « transmettre » — et le texte se
+            construit tout seul au moment de l'envoi. */}
         {/* Ce qui reste à décider */}
         {d.dossier_ouvert && (
           <section className="flex flex-col gap-2">
             <h2 className="etiquette">Faire avancer le dossier</h2>
+            {d.notifie_le && (
+              <p className="text-[11.5px] text-green text-pretty leading-snug">
+                La réception a reçu le message le{" "}
+                {new Date(d.notifie_le).toLocaleDateString("fr-FR")}.
+              </p>
+            )}
+            {d.statut === "signale" && d.facturable_client && d.nature === "emport" && (
+              <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+                Transmettre envoie le message à{" "}
+                {alerte?.actif && alerte.destinataires.length > 0
+                  ? alerte.destinataires.join(", ")
+                  : "la réception"}
+                , rédigé et prêt à être transféré au client. Le texte est le même pour tous les
+                dossiers : il n’y a rien à relire ni à corriger.
+              </p>
+            )}
             <form action={avancer} className="flex flex-wrap gap-2">
               {d.statut === "signale" && (
                 <button
                   name="etape"
                   value="transmis"
-                  className="grow h-[46px] px-3 rounded-[12px] bg-plum-soft text-plum text-[13.5px] font-medium"
+                  className="grow h-[46px] px-3 rounded-[12px] bg-plum text-white text-[13.5px] font-medium"
                 >
-                  Transmis à la réception
+                  Transmettre à la réception
                 </button>
               )}
               {d.statut !== "client_contacte" && d.nature === "emport" && (

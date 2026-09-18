@@ -42,6 +42,9 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    **réception**, rédigé prêt à être transféré, en français puis en anglais. C'est la réception
    qui décide de l'envoyer et qui parle au client. Ne jamais mettre une adresse de client dans
    un destinataire.
+7quater. **Le mail ne s'affiche jamais : c'est une action.** Il est standardisé, il n'y a rien à
+   y relire ni à y corriger. « Transmettre » le rédige et le dépose dans `emails_envoyes` avec
+   `envoye_le` nul ; le service d'envoi vide la file. Ne jamais remettre le texte à l'écran.
 8. **Un même problème ne peut pas être ouvert deux fois au même endroit.** L'index
    `anomalie_unique_ouverte_par_lieu` l'interdit en base : ce n'est pas un avertissement que
    l'interface pourrait contourner. L'écran de déclaration montre d'abord `v_anomalies_du_lieu`,
@@ -121,9 +124,11 @@ psql -h /tmp -p 55432 -U postgres -d valid -q -f supabase/tests/01_scenarios.sql
 | `operations` | Supprime une anomalie (Sarah P, chargée des opérations) |
 | `admin` | Référentiels, catalogue, paramétrage, suivi des dossiers (Miguel) |
 
-**Un rôle principal n'épuise pas ce qu'une personne fait.** Taibi est réceptionniste et donne
-un coup de main en technique : `utilisateurs.intervient_technique` le fait apparaître dans
-`v_intervenants` sans lui retirer son rôle. Le drapeau le dit, pas le rôle.
+**Qui intervient ne se déduit pas d'un rôle.** La chargée des opérations n'intervient pas ; le
+réceptionniste qui donne un coup de main, si. La liste est donnée par l'hôtel et posée par
+`outils/equipe.py`, qui corrige aussi l'orthographe des noms repris des exports. Quinze
+intervenants : Alain, EcoFlair, Hedi, Juan, Mr Negroni, Serafino, Technicien Avir / EUROPROH /
+Kone / Telec côté extérieur ; Farid, Miguel, Rachid, Taibi, Victoria côté interne.
 
 **Aucun écran n'est caché.** La gouvernante voit tout ; ce qui change, c'est l'ordre : ses gestes
 d'abord, le suivi et l'analyse ensuite. Elle n'est pas dans l'analyse — ce qu'il lui faut, c'est
@@ -149,6 +154,10 @@ gouvernante. La règle est dans `fn_peut_supprimer` et dans la politique de supp
 Une anomalie porte deux séries : **au constat**, prises par qui déclare, et **après
 intervention**, prises par le technicien. Les deux sont facultatives et les deux s'affichent
 dans l'historique du lieu. Le technicien voit les photos du constat avant d'intervenir.
+
+**Miguel ajoute lui-même les photos** : celles des bouteilles depuis `/administration/bouteilles`,
+celles des produits depuis la fiche produit. Sans photo, l'écran dessine la bouteille à sa
+couleur — il n'attend jamais une image pour fonctionner.
 
 Une facture se range au même endroit qu'une photo — PDF compris. Le stockage passe par
 `lib/stockage.ts` : disque en développement, Supabase Storage en

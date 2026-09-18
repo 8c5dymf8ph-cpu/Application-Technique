@@ -21,5 +21,6 @@ mkdir -p "$sortie"
 cp donnees/import_anomalies.sql  "$sortie/2-anomalies.sql"
 cp donnees/import_stock.sql      "$sortie/3-stock.sql"
 cp donnees/import_bouteilles.sql "$sortie/4-bouteilles.sql"
+python3 outils/equipe.py            > "$sortie/5-equipe.sql"
 
 wc -c "$sortie"/*.sql

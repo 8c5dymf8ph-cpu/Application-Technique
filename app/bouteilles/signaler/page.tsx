@@ -8,6 +8,7 @@ import { Entete } from "@/app/composants/ui";
 import { ChampCommentaire } from "@/app/composants/fil";
 import { TotalBouteilles } from "@/app/composants/total-bouteilles";
 import { ChoixPrenom } from "@/app/composants/prenom";
+import { corpsAlerteBouteille, objetAlerteBouteille, type LigneBouteille } from "@/lib/courriel";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ type Type = {
   code: string;
   libelle: string;
   couleur: string | null;
+  photo: string | null;
   prix_vente: number;
   prix_achat: number;
   en_reserve: number;
@@ -56,8 +58,8 @@ export default async function Signaler({
     order by et.ordre, e.ordre, e.code`;
 
   const types = await sql<Type[]>`
-    select bouteille_type_id as id, code, libelle, couleur, prix_vente, prix_achat,
-           en_reserve::int
+    select bouteille_type_id as id, code, libelle, couleur, photo,
+           prix_vente, prix_achat, en_reserve::int
     from v_stock_bouteilles order by libelle`;
 
   const chambre = chambres.find((c) => c.code === lieu);
@@ -132,6 +134,30 @@ export default async function Signaler({
       await sql`
         insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
         values (${dossier.id}, ${l.id}, ${l.quantite})`;
+    }
+
+    // Transmise d'emblée, l'alerte se rédige et part en file. Le message n'est
+    // jamais montré : il est le même pour tous les dossiers.
+    if (remonte_a && nature === "emport" && responsable === "client") {
+      const [alerte] = await sql<{ destinataires: string[]; actif: boolean }[]>`
+        select destinataires, actif from alertes_destinataires
+        where evenement = 'incident_bouteille'`;
+      if (alerte?.actif && alerte.destinataires.length > 0) {
+        const [d] = await sql<
+          {
+            reference: number; emplacement: string; client_nom: string | null;
+            constate_par: string | null; transmis_a: string | null;
+            constate_le: string; lignes: LigneBouteille[]; montant: number;
+          }[]
+        >`
+          select reference, emplacement, client_nom, constate_par, transmis_a,
+                 constate_le, lignes, montant
+          from v_dossiers_bouteille where id = ${dossier.id}`;
+        await sql`
+          insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
+          values ('alerte_bouteille', ${dossier.id}, ${alerte.destinataires},
+                  ${objetAlerteBouteille(d)}, ${corpsAlerteBouteille(d)})`;
+      }
     }
 
     redirect(`/bouteilles/dossier/${dossier.id}` as Route);
@@ -256,6 +282,7 @@ export default async function Signaler({
                   detail: `${t.en_reserve} en réserve`,
                   prix: Number(remplacement || casse ? t.prix_achat : t.prix_vente),
                   couleur: t.couleur ?? "#453A6E",
+                  photo: t.photo,
                 }))}
               />
               <p className="text-[11.5px] text-ink-faint text-pretty">

@@ -494,7 +494,11 @@ create table bouteille_types (
   prix_achat     numeric(10, 2) not null default 0,   -- valorisation d'une casse interne
   seuil_alerte   int not null default 0,              -- porte sur la RÉSERVE
   quantite_reappro int check (quantite_reappro > 0),
-  couleur        text
+  couleur        text,
+  -- La photo de la bouteille, ajoutée depuis l'application. Le reste du code ne
+  -- connaît qu'un nom de fichier — disque en développement, Supabase Storage
+  -- en production. Sans photo, l'écran dessine la bouteille à sa couleur.
+  photo          text
 );
 
 alter table article_fournisseurs
@@ -721,16 +725,23 @@ create table alertes_destinataires (
     check (not actif or cardinality(destinataires) > 0)
 );
 
+-- La file d'attente des courriels, et leur trace une fois partis. Une ligne
+-- dont `envoye_le` est nul attend son tour : le message est déjà rédigé, il n'a
+-- plus qu'à partir. C'est ce qui permet à une action de l'interface d'être
+-- immédiate sans mentir sur l'envoi.
 create table emails_envoyes (
   id             bigint generated always as identity primary key,
   categorie      text not null,             -- recap | alerte | devis
   reference_id   uuid,
   destinataires  text[] not null,
   sujet          text not null,
-  envoye_le      timestamptz not null default now(),
-  succes         boolean not null default true,
+  corps          text,
+  cree_le        timestamptz not null default now(),
+  envoye_le      timestamptz,
+  succes         boolean,
   erreur         text
 );
+create index on emails_envoyes (categorie) where envoye_le is null;
 create index on emails_envoyes (categorie, envoye_le desc);
 
 -- -----------------------------------------------------------------------------
@@ -1065,11 +1076,10 @@ select
 from utilisateurs u
 left join specialites_intervenant s on s.utilisateur_id = u.id
 left join types_intervention t      on t.id = s.type_intervention_id
--- Les femmes de chambre et la réception ne sont pas des intervenants : elles
--- sont nommées dans les déclarations, pas dans les tournées. Sauf celles et
--- ceux qui font aussi de la technique — le drapeau le dit, pas le rôle.
-where u.role in ('technicien', 'gouvernante', 'operations', 'admin')
-   or u.intervient_technique
+-- Qui intervient ne se déduit pas d'un rôle : la chargée des opérations
+-- n'intervient pas, et le réceptionniste qui donne un coup de main, si. La
+-- liste est donnée par l'hôtel et posée par `outils/equipe.py`.
+where u.intervient_technique
 group by u.id
 union all
 select
@@ -1258,6 +1268,7 @@ select
   bt.code,
   bt.libelle,
   bt.couleur,
+  bt.photo,
   bt.prix_vente,
   bt.prix_achat,
   bt.seuil_alerte,
@@ -1495,6 +1506,14 @@ select
   max(i.constate_le)     as dernier_dossier
 from v_incidents_bouteille i
 group by i.emplacement;
+
+-- Ce qui est rédigé et attend de partir. Le service d'envoi lit cette vue,
+-- envoie, puis horodate `envoye_le`.
+create view v_courriels_en_attente as
+select id, categorie, reference_id, destinataires, sujet, corps, cree_le
+from emails_envoyes
+where envoye_le is null
+order by cree_le;
 
 -- =============================================================================
 -- Règles métier
@@ -2090,7 +2109,15 @@ begin
 end $$;
 
 -- -----------------------------------------------------------------------------
--- Le journal d'audit et l'historique d'envoi ne sont jamais écrits depuis l'app.
+-- La file des courriels : l'application y DÉPOSE un message rédigé, mais ne le
+-- modifie ni ne l'efface. C'est le service d'envoi qui horodate le départ.
+-- -----------------------------------------------------------------------------
+grant insert on emails_envoyes to authenticated;
+create policy depot_courriels on emails_envoyes for insert to authenticated
+  with check (fn_peut_ecrire() and envoye_le is null);
+
+-- -----------------------------------------------------------------------------
+-- Le journal d'audit n'est jamais écrit depuis l'application.
 -- -----------------------------------------------------------------------------
 revoke insert, update, delete on journal, emails_envoyes from authenticated;
 

@@ -921,5 +921,53 @@ begin
   assert v_mouvements = 2, format('%s régularisations écrites, attendu 2', v_mouvements);
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 12 — Le mail de bouteille est une action, pas un texte à relire :
+-- il se rédige tout seul et attend son tour dans la file.
+-- ===========================================================================
+do $$
+declare
+  v_dossier uuid;
+  v_sujet   text;
+  v_corps   text;
+  v_nb      int;
+begin
+  insert into incidents_bouteille (emplacement_id, nature, responsable, client_nom,
+                                   constate_par, statut)
+  select e.id, 'emport', 'client', 'Famille Lindqvist',
+         '22222222-2222-2222-2222-222222222222', 'signale'
+  from emplacements e where e.code = '52'
+  returning id into v_dossier;
+  insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+  select v_dossier, bt.id, 1 from bouteille_types bt;
+
+  -- Ce que l'interface dépose dans la file, avec les mêmes données que l'écran.
+  insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
+  select 'alerte_bouteille', d.id,
+         (select destinataires from alertes_destinataires
+           where evenement = 'incident_bouteille'),
+         '[A ENVOYER CLIENT] Bouteille(s) Purezza manquante(s) — Chambre ' || d.emplacement,
+         'Montant total : ' || d.montant
+  from v_dossiers_bouteille d where d.id = v_dossier;
+
+  select sujet, corps into v_sujet, v_corps
+  from v_courriels_en_attente where reference_id = v_dossier;
+  assert v_sujet like '%Chambre 52%',
+    format('sujet inattendu : %s', v_sujet);
+  assert v_corps like '%35.00%', format('montant absent du corps : %s', v_corps);
+
+  -- Tant qu'il n'est pas parti, il reste dans la file — et il n'y est qu'une fois.
+  select count(*) into v_nb from v_courriels_en_attente where reference_id = v_dossier;
+  assert v_nb = 1, format('%s messages en attente pour ce dossier, attendu 1', v_nb);
+
+  -- Une fois envoyé, il quitte la file sans disparaître : la trace reste.
+  update emails_envoyes set envoye_le = now(), succes = true
+   where reference_id = v_dossier;
+  select count(*) into v_nb from v_courriels_en_attente where reference_id = v_dossier;
+  assert v_nb = 0, 'un message envoyé ne doit plus attendre';
+  select count(*) into v_nb from emails_envoyes where reference_id = v_dossier;
+  assert v_nb = 1, 'la trace de l''envoi doit rester';
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

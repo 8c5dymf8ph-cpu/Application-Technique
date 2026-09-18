@@ -488,7 +488,11 @@ create table bouteille_types (
   prix_achat     numeric(10, 2) not null default 0,   -- valorisation d'une casse interne
   seuil_alerte   int not null default 0,              -- porte sur la RÉSERVE
   quantite_reappro int check (quantite_reappro > 0),
-  couleur        text
+  couleur        text,
+  -- La photo de la bouteille, ajoutée depuis l'application. Le reste du code ne
+  -- connaît qu'un nom de fichier — disque en développement, Supabase Storage
+  -- en production. Sans photo, l'écran dessine la bouteille à sa couleur.
+  photo          text
 );
 
 alter table article_fournisseurs
@@ -715,16 +719,23 @@ create table alertes_destinataires (
     check (not actif or cardinality(destinataires) > 0)
 );
 
+-- La file d'attente des courriels, et leur trace une fois partis. Une ligne
+-- dont `envoye_le` est nul attend son tour : le message est déjà rédigé, il n'a
+-- plus qu'à partir. C'est ce qui permet à une action de l'interface d'être
+-- immédiate sans mentir sur l'envoi.
 create table emails_envoyes (
   id             bigint generated always as identity primary key,
   categorie      text not null,             -- recap | alerte | devis
   reference_id   uuid,
   destinataires  text[] not null,
   sujet          text not null,
-  envoye_le      timestamptz not null default now(),
-  succes         boolean not null default true,
+  corps          text,
+  cree_le        timestamptz not null default now(),
+  envoye_le      timestamptz,
+  succes         boolean,
   erreur         text
 );
+create index on emails_envoyes (categorie) where envoye_le is null;
 create index on emails_envoyes (categorie, envoye_le desc);
 
 -- -----------------------------------------------------------------------------
