@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros, suitLesDossiers } from "@/lib/domaine";
+import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 
 export const dynamic = "force-dynamic";
@@ -39,10 +39,8 @@ export default async function Bouteilles({
            seuil_alerte::int, sous_seuil
     from v_stock_bouteilles order by libelle`;
 
-  // La gouvernante déclare, remplace et compte. Le suivi des dossiers, les
-  // commandes et les rapports sont le travail de l'administration : les lui
-  // montrer noierait ses trois gestes dans des écrans qui ne la concernent pas.
-  const administration = suitLesDossiers(profil.role);
+  // Tout le monde voit tout : ce qui change, c'est l'ordre. Les trois gestes de
+  // la gouvernante viennent d'abord, le suivi et l'analyse ensuite.
 
   const [c] = await sql<
     { ouverts: number; urgents: number; du_mois: number; en_jeu: number; commandes: number }[]
@@ -160,8 +158,7 @@ export default async function Bouteilles({
             ton="bg-green-soft"
           />
 
-          {administration && (
-            <>
+          <>
               <Tuile
                 href="/bouteilles/dossiers"
                 titre="Dossiers"
@@ -186,11 +183,19 @@ export default async function Bouteilles({
                 detail={`${c.du_mois} dossier${c.du_mois > 1 ? "s" : ""} ce mois-ci`}
                 ton="bg-surface"
               />
-            </>
-          )}
+          </>
         </div>
 
-        {administration && c.urgents > 0 && (
+        {peutValider(profil.role) && (
+          <Link
+            href={"/administration/equipe" as Route}
+            className="text-[12.5px] text-plum underline underline-offset-4 self-start"
+          >
+            Gérer les prénoms — l’étage et la réception
+          </Link>
+        )}
+
+        {c.urgents > 0 && (
           <Link
             href={"/bouteilles/dossiers?filtre=urgent" as Route}
             className="rounded-card bg-red-soft border border-red/20 px-4 py-3 flex items-center gap-3"

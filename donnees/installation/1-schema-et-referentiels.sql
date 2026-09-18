@@ -80,6 +80,10 @@ create table utilisateurs (
   email       text unique,
   nom         text not null unique,
   role        role_utilisateur not null default 'technicien',
+  -- Un rôle principal n'épuise pas ce qu'une personne fait. Taibi est
+  -- réceptionniste, et il sait faire un peu de technique : il doit apparaître
+  -- dans la liste des intervenants sans cesser d'être la réception.
+  intervient_technique boolean not null default false,
   actif       boolean not null default true,
   cree_le     timestamptz not null default now()
 );
@@ -1061,6 +1065,11 @@ select
 from utilisateurs u
 left join specialites_intervenant s on s.utilisateur_id = u.id
 left join types_intervention t      on t.id = s.type_intervention_id
+-- Les femmes de chambre et la réception ne sont pas des intervenants : elles
+-- sont nommées dans les déclarations, pas dans les tournées. Sauf celles et
+-- ceux qui font aussi de la technique — le drapeau le dit, pas le rôle.
+where u.role in ('technicien', 'gouvernante', 'operations', 'admin')
+   or u.intervient_technique
 group by u.id
 union all
 select

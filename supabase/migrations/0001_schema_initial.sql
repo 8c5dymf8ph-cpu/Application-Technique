@@ -74,6 +74,10 @@ create table utilisateurs (
   email       text unique,
   nom         text not null unique,
   role        role_utilisateur not null default 'technicien',
+  -- Un rôle principal n'épuise pas ce qu'une personne fait. Taibi est
+  -- réceptionniste, et il sait faire un peu de technique : il doit apparaître
+  -- dans la liste des intervenants sans cesser d'être la réception.
+  intervient_technique boolean not null default false,
   actif       boolean not null default true,
   cree_le     timestamptz not null default now()
 );

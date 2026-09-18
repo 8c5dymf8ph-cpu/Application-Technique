@@ -121,14 +121,25 @@ psql -h /tmp -p 55432 -U postgres -d valid -q -f supabase/tests/01_scenarios.sql
 | `operations` | Supprime une anomalie (Sarah P, chargée des opérations) |
 | `admin` | Référentiels, catalogue, paramétrage, suivi des dossiers (Miguel) |
 
-**La gouvernante déclare, remplace et compte — elle ne gère pas les dossiers.** Le suivi des
-dossiers, les commandes, les factures et les rapports sont le travail de l'administration :
-`suitLesDossiers()` les masque sur son écran, et les pages concernées la renvoient au hub. Elle
-intervient en revanche dans l'inventaire, donc dans le stock.
+**Un rôle principal n'épuise pas ce qu'une personne fait.** Taibi est réceptionniste et donne
+un coup de main en technique : `utilisateurs.intervient_technique` le fait apparaître dans
+`v_intervenants` sans lui retirer son rôle. Le drapeau le dit, pas le rôle.
+
+**Aucun écran n'est caché.** La gouvernante voit tout ; ce qui change, c'est l'ordre : ses gestes
+d'abord, le suivi et l'analyse ensuite. Elle n'est pas dans l'analyse — ce qu'il lui faut, c'est
+que ce soit **visuellement évident** : la bouteille dessinée à sa couleur, bleue pour la filtrée,
+rouge pour la gazeuse, et le contour qui prend cette couleur quand elle est choisie. On reconnaît
+une bouteille à sa couleur en chambre, pas à son nom.
 
 **Elle doit toujours pouvoir dire qui a constaté et à qui elle l'a dit.** Ce n'est presque jamais
 elle qui voit la bouteille manquante, et ce n'est jamais elle qui écrit au client. Les deux
-prénoms se choisissent en un appui, en clair, jamais dans un menu déroulant.
+prénoms se choisissent en un appui, en clair, jamais dans un menu déroulant. Le remplacement,
+lui, est décidé par la gouvernante : il n'a besoin que de sa trace, pas d'un prénom de plus.
+
+**On ne supprime jamais une personne, on la désactive.** L'étage change souvent ; `actif` la
+retire des listes de saisie et son prénom reste sur les dossiers qu'elle a constatés, des années
+après son départ. `/administration/equipe` tient les deux listes à jour, et la gouvernante peut
+s'en servir : elle n'a pas à attendre l'administrateur pour enregistrer une arrivée.
 
 Supprimer une anomalie efface une trace : réservé à `operations` et `admin`, jamais à la
 gouvernante. La règle est dans `fn_peut_supprimer` et dans la politique de suppression.

@@ -301,6 +301,11 @@ select
 from utilisateurs u
 left join specialites_intervenant s on s.utilisateur_id = u.id
 left join types_intervention t      on t.id = s.type_intervention_id
+-- Les femmes de chambre et la réception ne sont pas des intervenants : elles
+-- sont nommées dans les déclarations, pas dans les tournées. Sauf celles et
+-- ceux qui font aussi de la technique — le drapeau le dit, pas le rôle.
+where u.role in ('technicien', 'gouvernante', 'operations', 'admin')
+   or u.intervient_technique
 group by u.id
 union all
 select

@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { personnes, profilActif } from "@/lib/profil";
-import { euros, suitLesDossiers } from "@/lib/domaine";
+import { euros } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampCommentaire } from "@/app/composants/fil";
 import { TotalBouteilles } from "@/app/composants/total-bouteilles";
@@ -91,8 +91,7 @@ export default async function Signaler({
                                              date_mouvement, utilisateur_id, commentaire)
           values ('dotation', ${l.id}, ${l.quantite}, 'reserve', 'emplacement',
                   ${emplacement}, ${quand ?? new Date().toISOString()},
-                  ${String(donnees.get("constate_par") ?? "") || profil_.id},
-                  'Remplacement en chambre')`;
+                  ${profil_.id}, 'Remplacement en chambre')`;
       }
       redirect("/bouteilles?fait=remplacement" as Route);
     }
@@ -135,13 +134,7 @@ export default async function Signaler({
         values (${dossier.id}, ${l.id}, ${l.quantite})`;
     }
 
-    // Le suivi du dossier est le travail de l'administration : la gouvernante
-    // revient à ses gestes, elle n'a rien à faire sur cet écran-là.
-    redirect(
-      (suitLesDossiers(profil_.role)
-        ? `/bouteilles/dossier/${dossier.id}`
-        : "/bouteilles?fait=perte") as Route,
-    );
+    redirect(`/bouteilles/dossier/${dossier.id}` as Route);
   }
 
   const etages = [...new Set(chambres.map((c) => c.etage))];
@@ -259,13 +252,16 @@ export default async function Signaler({
                 }
                 types={types.map((t) => ({
                   id: t.id,
-                  libelle: `${t.libelle} · ${t.en_reserve} en réserve`,
+                  libelle: t.libelle,
+                  detail: `${t.en_reserve} en réserve`,
                   prix: Number(remplacement || casse ? t.prix_achat : t.prix_vente),
+                  couleur: t.couleur ?? "#453A6E",
                 }))}
               />
               <p className="text-[11.5px] text-ink-faint text-pretty">
-                Laisser à zéro la bouteille qui n’est pas concernée. Les deux peuvent l’être
-                dans la même déclaration : c’est un seul dossier, un seul montant.
+                {remplacement
+                  ? "Appuyez sur la bouteille à remettre en chambre. Les deux peuvent l’être."
+                  : "Appuyez sur la bouteille concernée. Les deux peuvent l’être dans la même déclaration : c’est un seul dossier, un seul montant."}
               </p>
             </section>
 
@@ -325,15 +321,6 @@ export default async function Signaler({
                   />
                 </label>
               </>
-            )}
-
-            {remplacement && (
-              <ChoixPrenom
-                nom="constate_par"
-                libelle="Qui a remplacé ?"
-                personnes={constatants}
-                defaut={profil.id}
-              />
             )}
 
             <label className="flex flex-col gap-1.5">

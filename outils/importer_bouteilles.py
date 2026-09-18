@@ -183,8 +183,12 @@ def main(chemin):
             role = "lecture"
         # Le rôle est aussi corrigé sur une base déjà installée : ces personnes
         # existent peut-être déjà, créées par l'import des anomalies.
-        print(f"insert into utilisateurs (nom, role) values ({q(nom)}, {q(role)}) "
-              f"on conflict (nom) do update set role = excluded.role;")
+        # Taibi est réceptionniste, et il donne un coup de main en technique.
+        technique = "true" if nom.lower() == "taibi" else "false"
+        print(f"insert into utilisateurs (nom, role, intervient_technique) "
+              f"values ({q(nom)}, {q(role)}, {technique}) "
+              f"on conflict (nom) do update set role = excluded.role, "
+              f"intervient_technique = excluded.intervient_technique;")
 
     # --- Le parc constaté à la reprise ----------------------------------------
     print("\n-- Parc constaté à la reprise : chaque chambre dotée avait ses bouteilles.")

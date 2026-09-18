@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros, jours, suitLesDossiers } from "@/lib/domaine";
+import { euros, jours } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Frise, Recherche, Stat } from "@/app/composants/suivi";
 
@@ -61,9 +61,6 @@ export default async function Dossiers({
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  // Le suivi des dossiers, les commandes et les rapports sont le travail de
-  // l'administration ; la gouvernante déclare, remplace et compte.
-  if (!suitLesDossiers(profil.role)) redirect("/bouteilles");
   const { q = "", filtre = "ouvert" } = await searchParams;
 
   const [c] = await sql<

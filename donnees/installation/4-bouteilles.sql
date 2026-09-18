@@ -5,14 +5,14 @@
 begin;
 
 -- Personnes citées dans l'export des bouteilles ------------------------
-insert into utilisateurs (nom, role) values ('Cristina', 'menage') on conflict (nom) do update set role = excluded.role;
-insert into utilisateurs (nom, role) values ('Daria', 'menage') on conflict (nom) do update set role = excluded.role;
-insert into utilisateurs (nom, role) values ('Ira', 'menage') on conflict (nom) do update set role = excluded.role;
-insert into utilisateurs (nom, role) values ('Luca', 'reception') on conflict (nom) do update set role = excluded.role;
-insert into utilisateurs (nom, role) values ('Miguel', 'admin') on conflict (nom) do update set role = excluded.role;
-insert into utilisateurs (nom, role) values ('Rodica', 'menage') on conflict (nom) do update set role = excluded.role;
-insert into utilisateurs (nom, role) values ('Taibi', 'reception') on conflict (nom) do update set role = excluded.role;
-insert into utilisateurs (nom, role) values ('Victoria', 'gouvernante') on conflict (nom) do update set role = excluded.role;
+insert into utilisateurs (nom, role, intervient_technique) values ('Cristina', 'menage', false) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
+insert into utilisateurs (nom, role, intervient_technique) values ('Daria', 'menage', false) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
+insert into utilisateurs (nom, role, intervient_technique) values ('Ira', 'menage', false) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
+insert into utilisateurs (nom, role, intervient_technique) values ('Luca', 'reception', false) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
+insert into utilisateurs (nom, role, intervient_technique) values ('Miguel', 'admin', false) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
+insert into utilisateurs (nom, role, intervient_technique) values ('Rodica', 'menage', false) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
+insert into utilisateurs (nom, role, intervient_technique) values ('Taibi', 'reception', true) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
+insert into utilisateurs (nom, role, intervient_technique) values ('Victoria', 'gouvernante', false) on conflict (nom) do update set role = excluded.role, intervient_technique = excluded.intervient_technique;
 
 -- Parc constaté à la reprise : chaque chambre dotée avait ses bouteilles.
 -- Écrit comme une régularisation tracée, jamais comme un stock posé.
