@@ -75,7 +75,11 @@ jamais diverger de ce qui l'explique — c'est exactement ce qui manquait à l'a
 | `v_anomalies_du_lieu` | Tout ce qui a été déclaré dans une chambre, ouvertes d'abord — consultée avant chaque saisie |
 | `v_frequence_anomalie_lieu` | Combien de fois un problème est revenu à un endroit, hors doublons annulés |
 | `v_interventions_sans_facture` | Ce qu'un prestataire a fait sans facture, avec l'ancienneté |
-| `v_envois_en_attente` | Ce que le digest du soir doit envoyer |
+| `v_envois_en_attente` | Ce que le digest du soir doit envoyer — hors tournées reprises |
+| `v_commandes` | Commandes fournisseur : HT, TTC, TVA déduite, facture jointe, articles |
+| `v_dossiers_bouteille` | Les dossiers rangés pour l'écran de suivi : famille, ancienneté, urgence, texte de recherche |
+| `v_bouteilles_par_mois` | Dossiers, montants en jeu, facturés et perdus, mois par mois |
+| `v_bouteilles_par_emplacement_couts` | Ce que chaque emplacement coûte en bouteilles |
 
 Toutes sont en `security_invoker = on` : elles appliquent les droits de l'appelant, et ne peuvent donc
 pas servir de contournement aux règles de sécurité.
@@ -89,8 +93,14 @@ pas servir de contournement aux règles de sécurité.
 | `fn_preparer_demandes_devis(...)` | Prépare **une** demande par fournisseur, sans dupliquer une demande en cours |
 | `fn_creer_tournee(...)` | Ouvre une tournée et génère sa référence `INT-<NOM>-<horodatage>-<aléa>` |
 | `fn_catalogue_pour_lieu(lieu, terme)` | Le catalogue vu depuis un lieu : ce qui y est déjà ouvert, et combien de fois chaque problème y est revenu |
-| `fn_interventions_rapprochables(facture, jours)` | Candidates au rapprochement, sur une fenêtre et non une date exacte |
+| `fn_journees_rapprochables(facture, jours)` | Journées d'intervenant candidates au rapprochement — jamais des tournées |
+| `fn_anomalies_de_la_journee(prestataire, date)` | Le détail d'une journée avant de la rattacher |
 | `fn_marquer_envois(catégorie, tournées)` | Horodate ce que le digest du soir vient d'envoyer |
+
+Une **commande** ne touche jamais au stock à la saisie : c'est sa réception qui écrit les
+mouvements d'entrée, et ce sont les quantités **reçues** qui comptent, pas les quantités
+commandées. Le montant TTC et le montant HT sont tous deux saisis ; la TVA est la
+soustraction des deux, elle n'est stockée nulle part.
 
 ## Pourquoi un registre de déplacements pour les bouteilles
 

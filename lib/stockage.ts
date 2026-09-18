@@ -16,12 +16,15 @@ const EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
   "image/heic": "heic",
+  // Une facture arrive en PDF aussi souvent qu'en photo : les deux se rangent
+  // au même endroit et se relisent par le même chemin.
+  "application/pdf": "pdf",
 };
 
 /** 12 Mo : une photo de téléphone non redimensionnée tient largement dedans. */
 export const TAILLE_MAX = 12 * 1024 * 1024;
 
-export async function enregistrerPhoto(fichier: File): Promise<string | null> {
+export async function enregistrerFichier(fichier: File): Promise<string | null> {
   if (!fichier || fichier.size === 0) return null;
   if (fichier.size > TAILLE_MAX) return null;
   const extension = EXTENSIONS[fichier.type];
@@ -33,7 +36,7 @@ export async function enregistrerPhoto(fichier: File): Promise<string | null> {
   return nom;
 }
 
-export async function lirePhoto(nom: string): Promise<Buffer | null> {
+export async function lireFichier(nom: string): Promise<Buffer | null> {
   // Un nom de fichier, jamais un chemin : rien ne doit pouvoir remonter
   // au-dessus du dossier des photos.
   if (nom !== path.basename(nom)) return null;
@@ -51,3 +54,7 @@ export function typeMime(nom: string): string {
     "application/octet-stream"
   );
 }
+
+/** Les deux noms d'origine, conservés là où l'on ne manipule que des photos. */
+export const enregistrerPhoto = enregistrerFichier;
+export const lirePhoto = lireFichier;

@@ -19,6 +19,24 @@ insert into prestataires (id, nom, specialite) values
 -- SCÉNARIO 1 — Bouteilles : les quatre situations réelles de l'hôtel.
 -- ===========================================================================
 
+-- Ces scénarios doivent pouvoir se rejouer sur N'IMPORTE QUELLE base, y compris
+-- celle de l'hôtel avec son parc réel. On prend donc un repère avant de toucher
+-- à quoi que ce soit, et tout ce qui suit se mesure en ÉCART par rapport à lui.
+create temporary table repere_bouteilles on commit drop as
+select code, en_reserve, en_chambre, chez_clients, parc_detenu, parc_theorique
+from v_stock_bouteilles;
+
+create or replace function ecart_bouteilles(p_code text)
+returns table (en_reserve int, en_chambre int, chez_clients int,
+               parc_detenu int, parc_theorique int)
+language sql as $f$
+  select (v.en_reserve - r.en_reserve)::int, (v.en_chambre - r.en_chambre)::int,
+         (v.chez_clients - r.chez_clients)::int, (v.parc_detenu - r.parc_detenu)::int,
+         (v.parc_theorique - r.parc_theorique)::int
+  from v_stock_bouteilles v join repere_bouteilles r on r.code = v.code
+  where v.code = p_code;
+$f$;
+
 -- Livraison de 100 bouteilles de chaque type en réserve
 insert into mouvements_bouteilles (type, bouteille_type_id, quantite, de_lieu, vers_lieu)
 select 'entree', id, 100, 'hors_parc', 'reserve' from bouteille_types;
@@ -31,9 +49,9 @@ from dotations d;
 do $$
 declare v record;
 begin
-  select * into v from v_stock_bouteilles where code = 'filtree';
+  select * into v from ecart_bouteilles('filtree');
   assert v.en_reserve = 63 and v.en_chambre = 37 and v.chez_clients = 0 and v.parc_detenu = 100,
-    format('après dotation : réserve %s, chambre %s, clients %s, détenu %s',
+    format('après dotation : réserve %s, chambre %s, clients %s, détenu %s (en écart)',
            v.en_reserve, v.en_chambre, v.chez_clients, v.parc_detenu);
 end $$;
 
@@ -50,7 +68,7 @@ from emplacements e, bouteille_types bt where e.code = '32' and bt.code = 'filtr
 do $$
 declare v record;
 begin
-  select * into v from v_stock_bouteilles where code = 'filtree';
+  select * into v from ecart_bouteilles('filtree');
   assert v.en_reserve = 62,   format('réserve = %s, attendu 62 (une bouteille sortie pour re-doter)', v.en_reserve);
   assert v.en_chambre = 37,   format('chambre = %s, attendu 37 (la 32 est re-dotée)', v.en_chambre);
   assert v.chez_clients = 1,  format('chez clients = %s, attendu 1', v.chez_clients);
@@ -70,7 +88,7 @@ update incidents_bouteille
 do $$
 declare v record;
 begin
-  select * into v from v_stock_bouteilles where code = 'filtree';
+  select * into v from ecart_bouteilles('filtree');
   assert v.en_reserve = 63,  format('réserve = %s, attendu 63 (la bouteille rendue revient en stock)', v.en_reserve);
   assert v.en_chambre = 37,  format('chambre = %s, attendu 37 (inchangée)', v.en_chambre);
   assert v.chez_clients = 0, format('chez clients = %s, attendu 0', v.chez_clients);
@@ -89,7 +107,7 @@ from emplacements e, bouteille_types bt where e.code = '14' and bt.code = 'petil
 do $$
 declare v record;
 begin
-  select * into v from v_stock_bouteilles where code = 'petillante';
+  select * into v from ecart_bouteilles('petillante');
   assert v.parc_detenu = 99 and v.chez_clients = 1 and v.parc_theorique = 100,
     format('en attente : détenu %s, chez clients %s, théorique %s',
            v.parc_detenu, v.chez_clients, v.parc_theorique);
@@ -103,7 +121,7 @@ update incidents_bouteille
 do $$
 declare v record;
 begin
-  select * into v from v_stock_bouteilles where code = 'petillante';
+  select * into v from ecart_bouteilles('petillante');
   assert v.parc_detenu = 99 and v.parc_theorique = 99,
     format('après facturation : détenu %s, théorique %s — la perte est actée',
            v.parc_detenu, v.parc_theorique);
@@ -124,7 +142,7 @@ from emplacements e, bouteille_types bt where e.code = '21' and bt.code = 'filtr
 do $$
 declare v record; v_incident record;
 begin
-  select * into v from v_stock_bouteilles where code = 'filtree';
+  select * into v from ecart_bouteilles('filtree');
   assert v.parc_detenu = 99 and v.parc_theorique = 99,
     format('casse : détenu %s, théorique %s — sortie immédiate', v.parc_detenu, v.parc_theorique);
   assert v.en_reserve = 62,  format('réserve = %s, attendu 62 (chambre re-dotée)', v.en_reserve);
@@ -312,18 +330,29 @@ values ('77777777-7777-7777-7777-777777777777', 'prestation',
         'FA-2026-0512', date '2026-05-29', 450.00, 'a_rapprocher');
 
 do $$
-declare v_nb int; v_ecart int;
+declare v_nb int; v_ecart int; v_journees int; v_intervenant text;
 begin
-  select count(*), max(ecart_jours) into v_nb, v_ecart
-  from fn_interventions_rapprochables('77777777-7777-7777-7777-777777777777')
+  -- Le rapprochement se fait par journée d'intervenant, pas par tournée : les
+  -- trois anomalies du 17 mai ne forment qu'UNE proposition.
+  select count(*), max(ecart_jours), max(nb_anomalies), max(intervenant)
+    into v_journees, v_ecart, v_nb, v_intervenant
+  from fn_journees_rapprochables('77777777-7777-7777-7777-777777777777')
   where not deja_rapprochee;
-  assert v_nb = 3, format('%s interventions proposées, attendu 3 malgré les 12 jours d''écart', v_nb);
+  assert v_journees = 1, format('%s journées proposées, attendu 1', v_journees);
+  assert v_nb = 3, format('%s anomalies dans la journée, attendu 3', v_nb);
+  assert v_intervenant = 'Prestataire de test',
+         format('journée attribuée à %s, attendu Prestataire de test', v_intervenant);
   assert v_ecart = 12, format('écart annoncé = %s jours, attendu 12', v_ecart);
 
   -- Une fenêtre trop courte ne doit rien proposer : c'est le garde-fou.
-  select count(*) into v_nb
-  from fn_interventions_rapprochables('77777777-7777-7777-7777-777777777777', 5);
-  assert v_nb = 0, format('%s interventions proposées sur 5 jours, attendu 0', v_nb);
+  select count(*) into v_journees
+  from fn_journees_rapprochables('77777777-7777-7777-7777-777777777777', 5);
+  assert v_journees = 0, format('%s journées proposées sur 5 jours, attendu 0', v_journees);
+
+  -- Le détail de la journée retrouve bien les trois lignes.
+  select count(*) into v_nb from fn_anomalies_de_la_journee(
+    '99999999-9999-9999-9999-999999999999', date '2026-05-17');
+  assert v_nb = 3, format('%s anomalies dans le détail de la journée, attendu 3', v_nb);
 
   -- Et tant que rien n'est rapproché, elles apparaissent dans le filet.
   select count(*) into v_nb from v_interventions_sans_facture
@@ -721,6 +750,69 @@ begin
   select nb_fois into v_nb from v_frequence_anomalie_lieu
    where emplacement_id = v_emplacement and catalogue_id = v_catalogue;
   assert v_nb = 1, format('nb_fois = %s, attendu 1 après annulation', v_nb);
+end $$;
+
+-- ===========================================================================
+-- SCÉNARIO 10 — Une commande n'entre en stock qu'à la réception, et c'est ce
+-- qui est ARRIVÉ qui compte, pas ce qui avait été commandé. Le prix garde son
+-- hors taxes et son toutes taxes.
+-- ===========================================================================
+do $$
+declare
+  v_commande   uuid;
+  v_fournisseur uuid;
+  v_produit    uuid;
+  v_bouteille  uuid;
+  v_avant      int;
+  v_apres      int;
+  v_reserve_av int;
+  v_reserve_ap int;
+  v_tva        numeric;
+begin
+  select id into v_fournisseur from fournisseurs where nom = 'Fournisseur de test';
+  select id into v_produit     from produits where code = 'JNT-12';
+  select id into v_bouteille   from bouteille_types where code = 'filtree';
+  select stock into v_avant from v_stock_produits where id = v_produit;
+  select en_reserve into v_reserve_av from v_stock_bouteilles where bouteille_type_id = v_bouteille;
+
+  insert into commandes (fournisseur_id, montant_ht, montant_ttc, saisie_par)
+  values (v_fournisseur, 100.00, 120.00, '22222222-2222-2222-2222-222222222222')
+  returning id into v_commande;
+
+  insert into commande_lignes (commande_id, produit_id, quantite, prix_unitaire_ht)
+  values (v_commande, v_produit, 20, 3.50);
+  insert into commande_lignes (commande_id, bouteille_type_id, quantite, prix_unitaire_ht)
+  values (v_commande, v_bouteille, 12, 4.00);
+
+  -- Tant qu'elle n'est pas reçue, elle n'a rien ajouté.
+  select stock into v_apres from v_stock_produits where id = v_produit;
+  assert v_apres = v_avant,
+    format('le stock a bougé (%s → %s) alors que la commande n''est pas reçue', v_avant, v_apres);
+
+  -- La TVA est une soustraction, jamais une colonne.
+  select montant_tva into v_tva from v_commandes where id = v_commande;
+  assert v_tva = 20.00, format('TVA = %s, attendu 20.00', v_tva);
+
+  -- Réception partielle sur le produit : 18 arrivés sur 20 commandés.
+  update commande_lignes set quantite_recue = 18
+   where commande_id = v_commande and produit_id = v_produit;
+  update commandes set statut = 'recue', recue_le = now() where id = v_commande;
+
+  select stock into v_apres from v_stock_produits where id = v_produit;
+  assert v_apres = v_avant + 18,
+    format('stock = %s, attendu %s : c''est ce qui est arrivé qui compte', v_apres, v_avant + 18);
+
+  -- Les bouteilles sans quantité reçue prennent la quantité commandée, et
+  -- entrent en RÉSERVE : une bouteille neuve ne va pas directement en chambre.
+  select en_reserve into v_reserve_ap from v_stock_bouteilles where bouteille_type_id = v_bouteille;
+  assert v_reserve_ap = v_reserve_av + 12,
+    format('réserve = %s, attendu %s', v_reserve_ap, v_reserve_av + 12);
+
+  -- Rien n'est stocké : l'entrée est un mouvement, traçable et annulable.
+  assert (select count(*) from mouvements_stock
+           where produit_id = v_produit and type = 'entree'
+             and commentaire like 'Commande n° %') = 1,
+    'la réception doit laisser un mouvement d''entrée tracé';
 end $$;
 
 \echo '✅ Tous les scénarios sont passés'

@@ -29,6 +29,10 @@ create type moment_photo              as enum ('constat', 'apres');
 -- confondre.
 create type origine_commentaire       as enum ('utilisateur', 'reprise');
 create type statut_facture            as enum ('a_rapprocher', 'rapprochee', 'reglee', 'litige');
+-- Une commande passe chez un fournisseur, puis arrive. Tant qu'elle n'est pas
+-- reçue, elle n'a rien ajouté au stock : c'est la réception qui écrit les
+-- mouvements, jamais la saisie de la commande.
+create type statut_commande            as enum ('brouillon', 'envoyee', 'recue', 'annulee');
 -- Prestation : une journée d'intervention facturée par un prestataire.
 -- Achat      : une livraison de matériel facturée par un fournisseur.
 create type type_facture              as enum ('prestation', 'achat');
@@ -632,6 +636,52 @@ create table recap_abonnements (
 
 -- Destinataires des alertes immédiates : incident de bouteille, franchissement
 -- de seuil de stock.
+-- -----------------------------------------------------------------------------
+-- Commandes fournisseur
+--
+-- Une commande porte son prix hors taxes ET toutes taxes : c'est le TTC qui est
+-- décaissé, c'est le HT qui se compare d'une année sur l'autre. La facture du
+-- fournisseur s'y rattache, et reste consultable depuis la commande.
+-- Rien n'entre en stock à la saisie : la réception écrit les mouvements.
+-- -----------------------------------------------------------------------------
+create table commandes (
+  id             uuid primary key default gen_random_uuid(),
+  reference      bigint generated always as identity,
+  fournisseur_id uuid not null references fournisseurs (id),
+  date_commande  date not null default current_date,
+  date_livraison date,
+  statut         statut_commande not null default 'brouillon',
+  montant_ht     numeric(10, 2) check (montant_ht  >= 0),
+  montant_ttc    numeric(10, 2) check (montant_ttc >= 0),
+  -- La facture du fournisseur, quand elle arrive : un PDF ou une photo.
+  facture_id     uuid references factures (id) on delete set null,
+  commentaire    text,
+  saisie_par     uuid references utilisateurs (id),
+  cree_le        timestamptz not null default now(),
+  recue_le       timestamptz,
+  -- Une TVA ne peut pas être négative : le TTC ne descend jamais sous le HT.
+  constraint ttc_au_moins_egal_au_ht
+    check (montant_ht is null or montant_ttc is null or montant_ttc >= montant_ht),
+  constraint reception_datee
+    check ((statut = 'recue') = (recue_le is not null))
+);
+create index on commandes (statut);
+create index on commandes (date_commande desc);
+
+create table commande_lignes (
+  id                uuid primary key default gen_random_uuid(),
+  commande_id       uuid not null references commandes (id) on delete cascade,
+  produit_id        uuid references produits (id),
+  bouteille_type_id uuid references bouteille_types (id),
+  quantite          int not null check (quantite > 0),
+  prix_unitaire_ht  numeric(10, 2) check (prix_unitaire_ht >= 0),
+  -- Ce qui est réellement arrivé, qui n'est pas toujours ce qui a été commandé.
+  quantite_recue    int check (quantite_recue >= 0),
+  constraint un_seul_article_commande
+    check (num_nonnulls(produit_id, bouteille_type_id) = 1)
+);
+create index on commande_lignes (commande_id);
+
 create table alertes_destinataires (
   id            uuid primary key default gen_random_uuid(),
   evenement     text not null,              -- incident_bouteille | seuil_stock

@@ -64,7 +64,13 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 15. **Une section spécialisée ne montre que son métier.** Sans ligne dans
    `specialites_intervenant`, un intervenant est polyvalent ; avec, il ne voit que ses types.
    La règle vaut pour les salariés comme pour les entreprises extérieures.
-16. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
+16. **Une facture de prestataire se rapproche par la journée et l'intervenant**, jamais par le
+   numéro de tournée. L'ancien `InterventionID` changeait à chaque anomalie validée : il fallait
+   le corriger à la main, et il reste des coquilles dans les données reprises. Ce qui identifie
+   un passage, c'est **qui** est venu et **quel jour** — `FAIT LE` et `PAR` dans l'ancienne
+   application. `fn_interventions_rapprochables` propose donc des journées d'intervenant, pas des
+   tournées, et une facture peut en couvrir plusieurs.
+17. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
    Ne jamais réintroduire `Stock_Initial`, `StockActuel` ni `EstHistorique`.
 
 ## Base de données
@@ -73,7 +79,13 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 supabase/migrations/   schéma, vues, règles, sécurité — jouées dans l'ordre
 supabase/seed/         référentiels (étages, emplacements, types, dotations)
 supabase/tests/        scénarios métier, à rejouer après toute modification du schéma
+donnees/installation/  les trois fichiers à jouer en production, produits par
+                       outils/preparer_installation.sh — jamais édités à la main
+donnees/demo_*.sql     données inventées, pour regarder les écrans. Jamais en production.
 ```
+
+Les scénarios se mesurent en **écarts**, pas en valeurs absolues : ils doivent pouvoir se
+rejouer sur la base de l'hôtel, avec son parc réel, sans être réécrits.
 
 Valider une modification de schéma en local :
 
@@ -123,6 +135,6 @@ production. Rien d'autre dans l'application ne connaît autre chose qu'un nom de
 
 - Utilisée sur téléphone, en déplacement dans l'hôtel : chaque écran doit rester utilisable
   à une main, et la saisie d'une sortie de matériel ne doit pas dépasser quelques appuis.
-- Le réseau peut sauter (sous-sol, chaufferie) : toute écriture passe par la file d'attente
-  locale, jamais par un appel direct bloquant.
+- **Le wifi couvre tout l'hôtel** : aucun écran n'a besoin d'un mode hors ligne ni d'une file
+  d'attente locale. Ne pas réintroduire de couche de synchronisation différée.
 - Budget 0 € : rester dans les offres gratuites Supabase / Vercel / Resend.

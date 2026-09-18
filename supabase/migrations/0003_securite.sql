@@ -46,7 +46,7 @@ begin
     'utilisateurs','specialites_intervenant','etages','emplacements',
     'types_intervention','prestataires','fournisseurs','catalogue_anomalies',
     'anomalies','tournees','interventions','validations','commentaires','photos_anomalie',
-    'factures','facture_interventions',
+    'factures','facture_interventions','commandes','commande_lignes',
     'produits','article_fournisseurs','photos_produit','mouvements_stock',
     'inventaires','inventaire_lignes_produit',
     'bouteille_types','dotations','incidents_bouteille','mouvements_bouteilles',
@@ -69,7 +69,7 @@ declare t text;
 begin
   foreach t in array array[
     'tournees','interventions','commentaires','photos_anomalie','photos_produit',
-    'factures','facture_interventions',
+    'factures','facture_interventions','commandes','commande_lignes',
     'mouvements_stock','inventaires','inventaire_lignes_produit',
     'incidents_bouteille','mouvements_bouteilles','inventaire_lignes_bouteille',
     'demandes_devis','demande_devis_lignes'

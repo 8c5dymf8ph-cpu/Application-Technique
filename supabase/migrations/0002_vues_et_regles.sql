@@ -178,41 +178,53 @@ group by t.id, u.nom, p.nom;
 -- Fil chronologique des commentaires d'une anomalie. Remplace l'empilement de
 -- texte « NOM · date \n contenu » : chaque commentaire garde son auteur, sa date
 -- et son rôle, donc rien ne peut être écrasé ni mal découpé à la relecture.
--- Interventions candidates au rapprochement d'une facture de prestation.
--- Une facture arrive une à deux semaines après le passage et peut couvrir
--- plusieurs journées : on ne cherche donc pas une date exacte mais une fenêtre.
--- Quand la facture porte une période, c'est elle qui fait foi ; sinon on
+-- Journées candidates au rapprochement d'une facture de prestation.
+--
+-- Le numéro de tournée ne sert PAS ici. Dans l'application d'origine,
+-- l'InterventionID changeait à chaque anomalie validée : un même passage
+-- produisait plusieurs identifiants qu'il fallait recoller à la main, et il en
+-- reste des coquilles dans les données reprises. Ce qui identifie réellement un
+-- passage, c'est le couple **qui est venu / quel jour** — les colonnes `PAR` et
+-- `FAIT LE`. On regroupe donc par journée d'intervenant.
+--
+-- Une facture arrive une à deux semaines après et peut couvrir plusieurs
+-- journées : quand elle porte une période, c'est elle qui fait foi ; sinon on
 -- remonte `p_jours` en arrière depuis sa date, puisque la facture suit toujours
--- l'intervention. Une intervention déjà rattachée à une AUTRE facture n'est
--- jamais proposée.
-create function fn_interventions_rapprochables(
+-- l'intervention. Une journée dont une intervention est déjà prise par une
+-- AUTRE facture n'est jamais proposée.
+create function fn_journees_rapprochables(
   p_facture_id uuid,
   p_jours int default 30
 ) returns table (
-  intervention_id    uuid,
-  anomalie_reference bigint,
-  emplacement        text,
-  description        text,
   date_intervention  date,
-  ecart_jours        int,
+  intervenant        text,
+  nb_anomalies       int,
+  emplacements       text,
+  apercu             text,
   cout_materiel      numeric,
+  ecart_jours        int,
+  interventions      uuid[],
   deja_rapprochee    boolean
 )
 language sql stable as $$
   select
-    i.id,
-    a.reference,
-    e.code,
-    a.description,
     i.date_intervention,
-    (f.date_reference - i.date_intervention)::int,
-    c.cout_materiel,
-    fi.facture_id is not null
+    coalesce(pr.nom, ut.nom)                              as intervenant,
+    count(*)::int                                         as nb_anomalies,
+    string_agg(distinct e.code, ', ' order by e.code)     as emplacements,
+    -- De quoi reconnaître le passage sans ouvrir le détail.
+    left(string_agg(a.description, ' · ' order by a.reference), 120) as apercu,
+    coalesce(sum(c.cout_materiel), 0)                     as cout_materiel,
+    (f.date_reference - i.date_intervention)::int         as ecart_jours,
+    array_agg(i.id order by a.reference)                  as interventions,
+    bool_or(fi.facture_id is not null)                    as deja_rapprochee
   from factures f
   join interventions i on i.prestataire_id = f.prestataire_id
   join anomalies a     on a.id = i.anomalie_id
   join emplacements e  on e.id = a.emplacement_id
-  left join v_interventions_cout c  on c.intervention_id = i.id
+  left join prestataires pr on pr.id = i.prestataire_id
+  left join utilisateurs ut on ut.id = i.technicien_id
+  left join v_interventions_cout c   on c.intervention_id = i.id
   left join facture_interventions fi on fi.facture_id = f.id and fi.intervention_id = i.id
   where f.id = p_facture_id
     and f.type = 'prestation'
@@ -225,7 +237,34 @@ language sql stable as $$
     and not exists (
       select 1 from facture_interventions x
       where x.intervention_id = i.id and x.facture_id <> f.id)
-  order by i.date_intervention desc, a.reference;
+  group by i.date_intervention, coalesce(pr.nom, ut.nom), f.date_reference
+  order by i.date_intervention desc;
+$$;
+
+-- Le détail d'une journée, quand on veut voir ce qu'elle contient avant de la
+-- rattacher — ou en retirer une ligne qui n'appartient pas à cette facture.
+create function fn_anomalies_de_la_journee(
+  p_prestataire_id uuid,
+  p_date date
+) returns table (
+  intervention_id    uuid,
+  anomalie_reference bigint,
+  emplacement        text,
+  description        text,
+  cout_materiel      numeric,
+  facture_id         uuid
+)
+language sql stable as $$
+  select i.id, a.reference, e.code, a.description,
+         coalesce(c.cout_materiel, 0), fi.facture_id
+  from interventions i
+  join anomalies a    on a.id = i.anomalie_id
+  join emplacements e on e.id = a.emplacement_id
+  left join v_interventions_cout c   on c.intervention_id = i.id
+  left join facture_interventions fi on fi.intervention_id = i.id
+  where i.prestataire_id = p_prestataire_id
+    and i.date_intervention = p_date
+  order by a.reference;
 $$;
 
 -- Le filet de sécurité : ce qu'un prestataire a fait et qu'aucune facture ne
@@ -575,6 +614,108 @@ left join article_fournisseurs af on af.bouteille_type_id = bt.id
 left join fournisseurs f          on f.id = af.fournisseur_id
 where b.en_reserve <= bt.seuil_alerte;
 
+-- -----------------------------------------------------------------------------
+-- Commandes fournisseur
+-- -----------------------------------------------------------------------------
+create view v_commandes as
+select
+  c.id,
+  c.reference,
+  f.nom                                   as fournisseur,
+  c.fournisseur_id,
+  c.date_commande,
+  c.date_livraison,
+  c.recue_le,
+  c.statut,
+  c.montant_ht,
+  c.montant_ttc,
+  -- Ce que la TVA représente, quand les deux montants sont là. Rien n'est
+  -- stocké : c'est une soustraction, elle se refait à chaque lecture.
+  case when c.montant_ht is not null and c.montant_ttc is not null
+       then c.montant_ttc - c.montant_ht end as montant_tva,
+  c.facture_id,
+  fa.fichier_url                          as facture_fichier,
+  fa.reference                            as facture_reference,
+  coalesce(l.nb_lignes, 0)                as nb_lignes,
+  coalesce(l.nb_articles, 0)              as nb_articles,
+  l.articles,
+  -- Le total des lignes, quand les prix unitaires sont renseignés. Il sert à
+  -- signaler un écart avec le montant saisi, jamais à le remplacer.
+  l.total_lignes_ht,
+  c.commentaire,
+  u.nom                                   as saisie_par
+from commandes c
+join fournisseurs f      on f.id = c.fournisseur_id
+left join factures fa    on fa.id = c.facture_id
+left join utilisateurs u on u.id = c.saisie_par
+left join lateral (
+  select
+    count(*)::int                                   as nb_lignes,
+    sum(cl.quantite)::int                           as nb_articles,
+    string_agg(
+      coalesce(p.designation, bt.libelle) || ' × ' || cl.quantite,
+      ', ' order by coalesce(p.designation, bt.libelle))  as articles,
+    sum(cl.quantite * cl.prix_unitaire_ht)          as total_lignes_ht
+  from commande_lignes cl
+  left join produits p         on p.id = cl.produit_id
+  left join bouteille_types bt on bt.id = cl.bouteille_type_id
+  where cl.commande_id = c.id
+) l on true;
+
+-- -----------------------------------------------------------------------------
+-- Dossiers bouteille : la même chose que `v_incidents_bouteille`, mais rangée
+-- pour l'écran de suivi — un statut lisible, un axe de tri, et de quoi filtrer.
+-- -----------------------------------------------------------------------------
+create view v_dossiers_bouteille as
+select
+  i.*,
+  -- Trois familles suffisent aux filtres : à traiter, réglé, abandonné.
+  case
+    when i.statut in ('signale', 'transmis', 'client_contacte') then 'ouvert'
+    when i.statut in ('restitue', 'facture')                    then 'resolu'
+    else 'perdu'
+  end                                              as famille,
+  (current_date - i.constate_le::date)::int        as jours_ouvert,
+  -- Un dossier client ouvert depuis plus d'une semaine : le client est parti,
+  -- la bouteille ne reviendra pas toute seule.
+  i.statut in ('signale', 'transmis', 'client_contacte')
+    and (current_date - i.constate_le::date) >= 7  as urgent,
+  -- De quoi chercher sans se soucier de la casse ni des accents.
+  lower(coalesce(i.client_nom, '') || ' ' || i.emplacement || ' ' ||
+        i.bouteille || ' ' || coalesce(i.commentaire, '') || ' ' ||
+        i.reference::text)                         as recherche
+from v_incidents_bouteille i;
+
+-- Ce que les bouteilles ont coûté, mois par mois : la matière du tableau de
+-- bord. Un dossier compte dans le mois où il a été constaté.
+create view v_bouteilles_par_mois as
+select
+  date_trunc('month', i.constate_le)::date          as mois,
+  count(*)::int                                     as nb_dossiers,
+  count(*) filter (where i.nature = 'emport')::int  as nb_emports,
+  count(*) filter (where i.nature = 'casse')::int   as nb_casses,
+  count(*) filter (where i.statut = 'restitue')::int    as nb_restituees,
+  count(*) filter (where i.statut = 'facture')::int     as nb_facturees,
+  count(*) filter (where i.statut = 'non_facture')::int as nb_perdues,
+  sum(i.quantite)::int                              as nb_bouteilles,
+  sum(i.montant)                                    as montant_en_jeu,
+  sum(i.montant) filter (where i.statut = 'facture')     as montant_facture,
+  sum(i.montant) filter (where i.statut = 'non_facture') as perte_seche
+from v_incidents_bouteille i
+group by 1;
+
+-- Les emplacements qui perdent le plus de bouteilles. « Top chambres à risque »
+-- du tableau de bord : c'est une information d'exploitation, pas un palmarès.
+create view v_bouteilles_par_emplacement_couts as
+select
+  i.emplacement,
+  count(*)::int          as nb_dossiers,
+  sum(i.quantite)::int   as nb_bouteilles,
+  sum(i.montant)         as montant,
+  max(i.constate_le)     as dernier_dossier
+from v_incidents_bouteille i
+group by i.emplacement;
+
 -- =============================================================================
 -- Règles métier
 -- =============================================================================
@@ -757,7 +898,44 @@ create trigger tg_validation_maj_anomalie
 after insert on validations
 for each row execute function fn_validation_maj_anomalie();
 
--- 6. Valider un inventaire matériel écrit les régularisations correspondantes.
+-- 6. Réceptionner une commande écrit les entrées de stock, et rien d'autre.
+--    C'est le seul moment où une commande touche au stock : tant qu'elle est
+--    en brouillon ou envoyée, elle n'a rien ajouté. Ce qui est compté, c'est ce
+--    qui est arrivé (`quantite_recue`), pas ce qui avait été commandé.
+create function fn_receptionner_commande() returns trigger
+language plpgsql as $$
+begin
+  if new.statut = 'recue' and old.statut is distinct from 'recue' then
+    insert into mouvements_stock (
+      produit_id, type, quantite, date_mouvement, utilisateur_id, commentaire)
+    select cl.produit_id, 'entree', coalesce(cl.quantite_recue, cl.quantite),
+           new.recue_le, new.saisie_par,
+           'Commande n° ' || new.reference
+    from commande_lignes cl
+    where cl.commande_id = new.id
+      and cl.produit_id is not null
+      and coalesce(cl.quantite_recue, cl.quantite) > 0;
+
+    insert into mouvements_bouteilles (
+      type, bouteille_type_id, quantite, de_lieu, vers_lieu,
+      date_mouvement, utilisateur_id, commentaire)
+    select 'entree', cl.bouteille_type_id, coalesce(cl.quantite_recue, cl.quantite),
+           'hors_parc', 'reserve', new.recue_le, new.saisie_par,
+           'Commande n° ' || new.reference
+    from commande_lignes cl
+    where cl.commande_id = new.id
+      and cl.bouteille_type_id is not null
+      and coalesce(cl.quantite_recue, cl.quantite) > 0;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger tg_receptionner_commande
+after update on commandes
+for each row execute function fn_receptionner_commande();
+
+-- 7. Valider un inventaire matériel écrit les régularisations correspondantes.
 --    Le stock est recalé par un mouvement tracé, jamais par une écriture directe.
 create function fn_valider_inventaire_materiel() returns trigger
 language plpgsql as $$
@@ -782,7 +960,7 @@ create trigger tg_valider_inventaire_materiel
 after update on inventaires
 for each row execute function fn_valider_inventaire_materiel();
 
--- 7. Préparer une demande de devis par fournisseur, regroupant tous ses articles
+-- 8. Préparer une demande de devis par fournisseur, regroupant tous ses articles
 --    sous le seuil. Une seule demande par fournisseur, donc un seul mail.
 create function fn_preparer_demandes_devis(p_utilisateur_id uuid default null)
 returns setof demandes_devis
@@ -825,7 +1003,7 @@ begin
 end;
 $$;
 
--- 8. Le digest du soir a envoyé : on horodate, pour ne pas renvoyer demain.
+-- 9. Le digest du soir a envoyé : on horodate, pour ne pas renvoyer demain.
 create function fn_marquer_envois(p_categorie text, p_tournees uuid[])
 returns int
 language plpgsql as $$
@@ -845,7 +1023,7 @@ begin
 end;
 $$;
 
--- 9. Recherche du catalogue par mots-clés, depuis le téléphone de la gouvernante.
+-- 10. Recherche du catalogue par mots-clés, depuis le téléphone de la gouvernante.
 --    Tolérante : elle ne lève jamais d'erreur de syntaxe quel que soit le texte
 --    saisi, contrairement à une requête plein-texte construite à la volée.
 create function fn_rechercher_catalogue(p_terme text default null)
