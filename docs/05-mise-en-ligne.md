@@ -110,9 +110,13 @@ Elles ne vivent pas dans la base : elles vivent dans Supabase Storage.
    poser les enregistrements DNS demandés. Sans cette étape, l'expéditeur reste
    `onboarding@resend.dev`, ce qui suffit pour essayer.
 
-La file d'attente se vide toute seule **toutes les quinze minutes**. L'écran `/administration`
-montre ce qui attend, ce qui est parti, ce qui a échoué — et permet de déclencher un passage sans
-attendre.
+**Un message part dans la seconde qui suit son dépôt** : l'alerte bouteille doit joindre la
+réception pendant que le client est peut-être encore là. Une tâche planifiée repasse une fois par
+jour pour reprendre ce qui aurait échoué — l'offre gratuite de Vercel n'en accepte pas de plus
+fréquente, et un réglage plus rapide ferait échouer le déploiement.
+
+L'écran `/administration` montre ce qui attend, ce qui est parti, ce qui a échoué — et permet de
+déclencher un passage sans attendre.
 
 ---
 

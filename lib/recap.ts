@@ -1,4 +1,5 @@
 import { sql } from "./db";
+import { viderLaFileEnFond } from "./envoi";
 import {
   corpsRecapTournee,
   objetRecapTournee,
@@ -68,6 +69,10 @@ export async function deposerRecap(tournee: string, complet: boolean, renvoi = f
     insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
     values (${categorie}, ${tournee}, ${destinataires.liste},
             ${objetRecapTournee(recap, complet)}, ${corpsRecapTournee(recap, complet)})`;
+
+  // Deux messages, deux moments : ils partent quand l'événement a lieu, pas
+  // au prochain passage planifié.
+  viderLaFileEnFond();
 
   // L'horodatage sur la tournée dit qu'elle n'attend plus son message.
   if (complet) {

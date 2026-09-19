@@ -9,6 +9,7 @@ import { ChampCommentaire } from "@/app/composants/fil";
 import { TotalBouteilles } from "@/app/composants/total-bouteilles";
 import { ChoixPrenom } from "@/app/composants/prenom";
 import { corpsAlerteBouteille, objetAlerteBouteille, type LigneBouteille } from "@/lib/courriel";
+import { viderLaFileEnFond } from "@/lib/envoi";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,9 @@ export default async function Signaler({
           insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
           values ('alerte_bouteille', ${dossier.id}, ${alerte.destinataires},
                   ${objetAlerteBouteille(d)}, ${corpsAlerteBouteille(d)})`;
+        // La réception doit l'avoir tout de suite : le client est peut-être
+        // encore là. On ne fait pas attendre l'écran pour autant.
+        viderLaFileEnFond();
       }
     }
 

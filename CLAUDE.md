@@ -45,8 +45,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    un destinataire.
 7quater. **Le mail ne s'affiche jamais : c'est une action.** Il est standardisé, il n'y a rien à
    y relire ni à y corriger. « Transmettre » le rédige et le dépose dans `emails_envoyes` avec
-   `envoye_le` nul ; `lib/envoi.ts` vide la file toutes les quinze minutes (`/api/envoi`,
-   protégée par `CRON_SECRET`). Ne jamais remettre le texte à l'écran.
+   `envoye_le` nul. **Le message part dans la foulée du dépôt** : `viderLaFileEnFond()` vide la
+   file après la réponse (`after()` de Next), sans faire attendre l'écran. La tâche planifiée
+   (`/api/envoi`, protégée par `CRON_SECRET`) n'est qu'un **filet de rattrapage quotidien** —
+   l'offre gratuite de Vercel refuse une tâche plus fréquente, et un cron plus rapide fait
+   échouer le déploiement. Ne jamais faire dépendre l'alerte bouteille du passage planifié : elle
+   doit partir au constat. Ne jamais remettre le texte à l'écran.
 7quinquies. **Sans clé d'envoi, on ne prétend pas avoir envoyé.** `RESEND_API_KEY` absente : la
    file reste intacte et l'écran le dit. Un échec n'efface rien non plus — la ligne garde son
    erreur et repart au passage suivant. Ne jamais marquer `envoye_le` sur un message qui n'est

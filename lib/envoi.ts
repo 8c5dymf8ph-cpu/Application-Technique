@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { sql } from "./db";
 
 /**
@@ -116,4 +117,26 @@ export async function envoyerCourrielsEnAttente(limite = 25): Promise<Resultat> 
   }
 
   return resultat;
+}
+
+/**
+ * Vider la file sans faire attendre celui qui vient de déposer.
+ *
+ * L'offre gratuite de Vercel n'accepte qu'une tâche planifiée par jour : le
+ * passage régulier ne peut plus être le chemin normal. Or l'alerte bouteille
+ * doit partir **dès le constat** — le client est peut-être encore là. L'envoi
+ * se déclenche donc à la fin de la requête qui a déposé le message, une fois
+ * la réponse rendue : l'écran ne ralentit pas.
+ *
+ * Un échec ici n'a rien de grave et ne remonte pas : la ligne reste dans la
+ * file avec son erreur, et le passage quotidien la reprendra.
+ */
+export function viderLaFileEnFond(): void {
+  after(async () => {
+    try {
+      await envoyerCourrielsEnAttente();
+    } catch {
+      // La file garde la ligne : le prochain passage réessaiera.
+    }
+  });
 }

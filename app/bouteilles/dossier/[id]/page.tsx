@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { viderLaFileEnFond } from "@/lib/envoi";
 import { euros, jours } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { Frise } from "@/app/composants/suivi";
@@ -146,6 +147,7 @@ export default async function DetailDossier({
       where not exists (
         select 1 from emails_envoyes e
         where e.reference_id = ${dossier}::uuid and e.categorie = 'alerte_bouteille')`;
+    viderLaFileEnFond();
   }
 
   async function modifier(donnees: FormData) {
