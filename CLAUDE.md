@@ -201,6 +201,13 @@ d'entrée. Plusieurs par produit, dont une mise en avant, qui est
 celle que le technicien voit en choisissant son matériel. Sans photo, l'écran dessine la bouteille à sa
 couleur — il n'attend jamais une image pour fonctionner.
 
+**Une photo se réduit dans le navigateur avant de partir.** La plateforme coupe toute requête
+de plus de 4,5 Mo (413) et une photo de téléphone en fait trois à huit : l'envoi échouait sans
+rien afficher, l'écran paraissait figé. `ChampPhotos` redessine l'image à 1600 px de côté, en
+respectant l'orientation EXIF, et affiche ce qui est prêt à partir. Ne jamais annoncer une limite
+de corps supérieure à ce que la plateforme accepte, et ne pas mettre `capture` sur le champ :
+il faut pouvoir prendre une photo **ou** en choisir une dans la photothèque.
+
 Une facture se range au même endroit qu'une photo — PDF compris. Le stockage passe par
 `lib/stockage.ts` : **Supabase Storage dès que `SUPABASE_URL` et la clé de service sont là, le
 disque sinon.** La clé se lit sous son nom actuel `SUPABASE_SECRET_KEY` (`sb_secret_…`) ou sous

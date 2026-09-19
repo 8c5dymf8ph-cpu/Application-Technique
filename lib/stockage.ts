@@ -32,8 +32,11 @@ const EXTENSIONS: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
-/** 12 Mo : une photo de téléphone non redimensionnée tient largement dedans. */
-export const TAILLE_MAX = 12 * 1024 * 1024;
+/**
+ * 4 Mo : c'est ce que la plateforme laisse passer (elle coupe à 4,5 Mo). Les
+ * photos arrivent réduites par le navigateur ; une facture PDF tient dedans.
+ */
+export const TAILLE_MAX = 4 * 1024 * 1024;
 
 function supabase() {
   const url = process.env.SUPABASE_URL;
