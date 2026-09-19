@@ -100,6 +100,21 @@ export default async function Stock({
           </p>
         )}
 
+        <div className="flex gap-2">
+          <Link
+            href={"/stock/inventaire" as Route}
+            className="flex-1 h-[46px] rounded-card bg-plum-soft text-plum text-[14px] grid place-items-center font-medium"
+          >
+            Inventaire
+          </Link>
+          <Link
+            href={"/bouteilles/commandes" as Route}
+            className="flex-1 h-[46px] rounded-card bg-surface border border-line text-[14px] grid place-items-center"
+          >
+            Commandes
+          </Link>
+        </div>
+
         <Recherche valeur={q} placeholder="Chercher un produit…" caches={{ lieu }} />
 
         <Filtres

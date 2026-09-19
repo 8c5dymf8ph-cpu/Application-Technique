@@ -45,7 +45,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    un destinataire.
 7quater. **Le mail ne s'affiche jamais : c'est une action.** Il est standardisé, il n'y a rien à
    y relire ni à y corriger. « Transmettre » le rédige et le dépose dans `emails_envoyes` avec
-   `envoye_le` nul ; le service d'envoi vide la file. Ne jamais remettre le texte à l'écran.
+   `envoye_le` nul ; `lib/envoi.ts` vide la file toutes les quinze minutes (`/api/envoi`,
+   protégée par `CRON_SECRET`). Ne jamais remettre le texte à l'écran.
+7quinquies. **Sans clé d'envoi, on ne prétend pas avoir envoyé.** `RESEND_API_KEY` absente : la
+   file reste intacte et l'écran le dit. Un échec n'efface rien non plus — la ligne garde son
+   erreur et repart au passage suivant. Ne jamais marquer `envoye_le` sur un message qui n'est
+   pas parti.
 8. **Un même problème ne peut pas être ouvert deux fois au même endroit.** L'index
    `anomalie_unique_ouverte_par_lieu` l'interdit en base : ce n'est pas un avertissement que
    l'interface pourrait contourner. L'écran de déclaration montre d'abord `v_anomalies_du_lieu`,
@@ -73,6 +78,10 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 13. **Un ajustement de stock porte toujours un motif** (`inventaire`, `casse`, `perte`,
    `erreur_saisie`, `autre`). Seul le motif `inventaire` exige un comptage complet : une casse
    se corrige au fil de l'eau.
+13bis. **Un article non compté n'est pas compté pour zéro.** Dans un inventaire, le champ laissé
+   vide laisse l'article ABSENT du comptage : aucune ligne, aucun écart, aucun mouvement. Le
+   théorique s'affiche en filigrane, jamais pré-rempli — un chiffre déjà posé se valide sans
+   être vérifié, et l'inventaire ne vaut plus rien.
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
    explicite, pas une absence de réponse.

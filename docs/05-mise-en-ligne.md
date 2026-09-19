@@ -33,7 +33,20 @@ connexion : tout se saisit directement dans Supabase et dans Vercel.
 
 3. Vérifier dans **Table Editor** que `anomalies` contient bien 670 lignes.
 
-## 2. L'hébergement — Vercel
+## 2. Les mails — Resend
+
+1. Créer un compte sur **resend.com** (offre gratuite : 100 messages par jour, 3 000 par mois —
+   l'hôtel en enverra quelques-uns).
+2. **API Keys → Create**, copier la clé. Elle se saisit dans Vercel à l'étape suivante, jamais ici.
+3. Pour que les messages partent depuis une adresse de l'hôtel, ajouter le domaine dans
+   **Domains** et suivre les enregistrements DNS. Sans cette étape, l'expéditeur reste
+   `onboarding@resend.dev`, ce qui suffit pour essayer.
+
+La file d'attente se vide toute seule **toutes les quinze minutes** (`vercel.json`). L'écran
+`/administration` montre ce qui attend, ce qui est parti, et ce qui a échoué — et permet de
+déclencher un passage sans attendre.
+
+## 3. L'hébergement — Vercel
 
 1. Créer un compte sur **vercel.com** en se connectant avec GitHub.
 2. **Add New → Project**, choisir le dépôt `Application-Technique`, branche
@@ -43,6 +56,9 @@ connexion : tout se saisit directement dans Supabase et dans Vercel.
    | Nom | Valeur |
    |---|---|
    | `DATABASE_URL` | la chaîne de connexion Supabase (Settings → Database → **Connection pooling**, mode *Transaction*) |
+   | `RESEND_API_KEY` | la clé d'API Resend (resend.com → API Keys). Sans elle, rien ne part : les messages s'accumulent dans la file sans se perdre |
+   | `MAIL_EXPEDITEUR` | l'expéditeur, par exemple `Parisianer <technique@contacthotelparisianer.com>`. Le domaine doit être vérifié chez Resend ; à défaut, `onboarding@resend.dev` fonctionne pour les essais |
+   | `CRON_SECRET` | une longue chaîne au hasard. Elle protège `/api/envoi` : sans elle, n'importe qui pourrait déclencher des envois |
 
    Prendre bien celle du *pooling* et non la connexion directe : Vercel ouvre beaucoup de
    connexions courtes, et la connexion directe les épuiserait.

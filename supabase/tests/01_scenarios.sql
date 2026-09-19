@@ -1161,5 +1161,56 @@ begin
     format('la porte doit rester à la 57 — aperçu : %s', v_apercu);
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 17 — Inventaire matériel : un produit non compté n'existe pas dans
+-- l'inventaire, et un écart devient une régularisation de motif « inventaire ».
+-- ===========================================================================
+do $$
+declare
+  v_inv     uuid;
+  v_produit uuid;
+  v_autre   uuid;
+  v_avant   numeric;
+  v_apres   numeric;
+  v_motif   motif_regularisation;
+begin
+  select id into v_produit from produits where code = 'JNT-12';
+  select id into v_autre   from produits where code = 'FLX-40';
+  select stock into v_avant from v_stock_produits where id = v_produit;
+
+  insert into inventaires (type, libelle, ouvert_par)
+  values ('materiel', 'Comptage de test', '22222222-2222-2222-2222-222222222222')
+  returning id into v_inv;
+
+  -- On compte UN seul produit : l'autre n'est pas dans l'inventaire.
+  insert into inventaire_lignes_produit (inventaire_id, produit_id,
+                                         quantite_theorique, quantite_comptee)
+  values (v_inv, v_produit, v_avant, v_avant - 4);
+
+  -- En brouillon, rien n'a bougé.
+  select stock into v_apres from v_stock_produits where id = v_produit;
+  assert v_apres = v_avant,
+    format('le stock a bougé (%s → %s) avant validation', v_avant, v_apres);
+
+  update inventaires set statut = 'valide', valide_le = now(),
+                         valide_par = '22222222-2222-2222-2222-222222222222'
+   where id = v_inv;
+
+  select stock into v_apres from v_stock_produits where id = v_produit;
+  assert v_apres = v_avant - 4,
+    format('stock = %s, attendu %s après régularisation', v_apres, v_avant - 4);
+
+  -- La régularisation dit pourquoi, et à quel inventaire elle se rattache.
+  select motif into v_motif from mouvements_stock
+   where inventaire_id = v_inv and produit_id = v_produit;
+  assert v_motif = 'inventaire', format('motif = %s, attendu inventaire', v_motif);
+
+  -- Le produit non compté n'a produit aucun mouvement : il n'a pas été compté
+  -- pour zéro, il était simplement absent.
+  assert (select count(*) from mouvements_stock
+           where inventaire_id = v_inv and produit_id = v_autre) = 0,
+    'un produit absent de l''inventaire ne doit produire aucun mouvement';
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;
