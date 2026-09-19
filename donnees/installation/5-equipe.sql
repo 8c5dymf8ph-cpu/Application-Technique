@@ -21,3 +21,8 @@ update utilisateurs set intervient_technique = false;
 update utilisateurs set intervient_technique = true where nom in ('Farid', 'Miguel', 'Rachid', 'Victoria', 'Taibi');
 
 commit;
+
+
+select '5-equipe.sql' as "Fichier joué",
+       case when exists (select 1 from prestataires where nom = 'ALAIN')
+            then 'noms NON corrigés — le fichier n''a pas tourné' else 'noms corrigés — installation terminée' end as "Où ça en est";

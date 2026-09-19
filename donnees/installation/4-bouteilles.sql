@@ -586,3 +586,8 @@ update incidents_bouteille set statut = 'transmis'
               order by reference desc limit 1);
 
 commit;
+
+
+select '4-bouteilles.sql' as "Fichier joué",
+       count(*) || ' dossiers de bouteille sur 17' as "Où ça en est"
+  from incidents_bouteille;

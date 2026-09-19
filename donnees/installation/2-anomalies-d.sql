@@ -2762,3 +2762,7 @@ insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, des
 
 alter table validations enable trigger tg_validation_maj_anomalie;
 commit;
+
+select '2-anomalies-d.sql' as "Fichier joué",
+       count(*) || ' anomalies sur 670' as "Où ça en est"
+  from anomalies;

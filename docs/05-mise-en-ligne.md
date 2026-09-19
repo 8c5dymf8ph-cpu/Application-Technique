@@ -27,19 +27,28 @@ des adresses des deux autres.
    Pour chacun : l'ouvrir, cliquer **Raw** en haut à droite, **Ctrl+A** puis **Ctrl+C**
    (Cmd sur Mac). Dans Supabase, coller dans l'éditeur, **Run**, attendre « Success ».
 
-   **Un seul onglet suffit pour les neuf fichiers.** Inutile d'ouvrir une nouvelle requête à
-   chaque fois : une fois « Success » affiché, **cliquer dans l'éditeur**, **Ctrl+A** pour tout
-   sélectionner, puis coller le fichier suivant par-dessus, et **Run**. Ce qui compte est l'ordre
-   dans lequel on appuie sur Run, pas le nombre d'onglets.
+   **Une nouvelle requête pour chaque fichier** — *New query* dans le SQL Editor. C'est plus
+   sûr que de réutiliser le même onglet : un éditeur vide ne peut pas rejouer le fichier
+   précédent. Réutiliser un onglet oblige à tout sélectionner avant de coller, et si le clic
+   n'était pas dans l'éditeur, le Ctrl+A sélectionne la page : le collage ne remplace rien et
+   c'est le fichier d'avant qui repart. C'est le piège le plus courant de cette étape.
 
    **Un fichier par Run, jamais deux.** Collés à la suite, ils dépassent ce que l'éditeur
    accepte — il répond qu'il y a trop de lignes — et en cas d'erreur on ne sait plus lequel est
    passé.
 
-   **Vérifier que le collage a bien remplacé le contenu** avant d'appuyer sur Run : si le clic
-   n'était pas dans l'éditeur, le Ctrl+A a sélectionné la page et le fichier précédent est
-   toujours là. C'est le piège le plus courant, et il se traduit par une erreur déroutante —
-   celle du fichier qu'on croyait avoir remplacé.
+   **Chaque fichier se nomme dans son résultat.** Après chaque Run, le tableau affiche le nom du
+   fichier qui vient réellement de tourner et où en est l'installation :
+
+   | Fichier joué | Où ça en est |
+   |---|---|
+   | `2-anomalies-b.sql` | 284 anomalies sur 670 |
+
+   Si le nom affiché n'est pas celui que vous venez de coller, le collage n'a pas pris : le Run
+   a rejoué le fichier précédent. Recommencez ce fichier-là dans une **nouvelle requête**.
+
+   **Rejouer un fichier déjà passé ne casse rien** : rien n'est inséré deux fois, le compte ne
+   bouge pas. Le seul fichier qui refuse, c'est le 1 — voir plus bas.
 
    **Perdu ?** Jouer `0-ou-en-suis-je.sql` : il ne modifie rien et affiche un tableau qui dit
    ce qui est en place et quel fichier coller maintenant. Il se rejoue à volonté.

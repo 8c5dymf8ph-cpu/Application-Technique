@@ -75,6 +75,16 @@ def decouper(source: Path):
                 "alter table validations enable trigger tg_validation_maj_anomalie;"
             )
         lignes.append("commit;")
+        # Chaque fichier se nomme dans son résultat. Collé dans un éditeur qui
+        # a gardé le contenu précédent, on voit tout de suite lequel a tourné.
+        lignes.append("")
+        lignes.append(
+            f"select '{nom.name}' as \"Fichier joué\","
+        )
+        lignes.append(
+            "       count(*) || ' anomalies sur 670' as \"Où ça en est\""
+        )
+        lignes.append("  from anomalies;")
         nom.write_text("\n".join(lignes) + "\n", encoding="utf-8")
         ecrits.append(nom)
     return ecrits

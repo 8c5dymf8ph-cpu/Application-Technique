@@ -2159,3 +2159,8 @@ group by p.id, c.stock_vise, u.id
 having c.stock_vise - coalesce(sum(m.quantite), 0) <> 0;
 
 commit;
+
+
+select '3-stock.sql' as "Fichier joué",
+       count(*) || ' produits sur 36' as "Où ça en est"
+  from produits;

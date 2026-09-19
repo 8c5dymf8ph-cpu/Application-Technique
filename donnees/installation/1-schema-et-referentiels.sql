@@ -2751,3 +2751,8 @@ left join types_intervention t on t.code = s.type_code
 where not exists (
   select 1 from catalogue_anomalies c where c.libelle = s.libelle
 );
+
+
+select '1-schema-et-referentiels.sql' as "Fichier joué",
+       count(*) || ' emplacements — le schéma est en place' as "Où ça en est"
+  from emplacements;
