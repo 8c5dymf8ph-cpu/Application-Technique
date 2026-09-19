@@ -41,18 +41,32 @@ $f$;
 insert into mouvements_bouteilles (type, bouteille_type_id, quantite, de_lieu, vers_lieu)
 select 'entree', id, 100, 'hors_parc', 'reserve' from bouteille_types;
 
--- Dotation initiale : 1 de chaque dans chacune des 37 chambres
+-- Dotation initiale : ce que le référentiel prévoit, chambre par chambre. Le
+-- nombre de chambres dotées n'est pas écrit ici — il change quand l'hôtel
+-- change, et un scénario qui le fige se réécrit à chaque fois.
 insert into mouvements_bouteilles (type, bouteille_type_id, quantite, de_lieu, vers_lieu, vers_emplacement_id)
 select 'dotation', d.bouteille_type_id, d.quantite, 'reserve', 'emplacement', d.emplacement_id
-from dotations d;
+from dotations d
+join emplacements e on e.id = d.emplacement_id
+-- Un scénario mesure l'hôtel, pas les chambres d'entraînement.
+where not e.essai;
 
 do $$
-declare v record;
+declare
+  v record;
+  v_dotees int;
 begin
+  select coalesce(sum(d.quantite), 0)::int into v_dotees
+    from dotations d
+    join bouteille_types b on b.id = d.bouteille_type_id
+    join emplacements e    on e.id = d.emplacement_id
+   where b.code = 'filtree' and not e.essai;
+
   select * into v from ecart_bouteilles('filtree');
-  assert v.en_reserve = 63 and v.en_chambre = 37 and v.chez_clients = 0 and v.parc_detenu = 100,
-    format('après dotation : réserve %s, chambre %s, clients %s, détenu %s (en écart)',
-           v.en_reserve, v.en_chambre, v.chez_clients, v.parc_detenu);
+  assert v.en_reserve = 100 - v_dotees and v.en_chambre = v_dotees
+     and v.chez_clients = 0 and v.parc_detenu = 100,
+    format('après dotation de %s bouteilles : réserve %s, chambre %s, clients %s, détenu %s (en écart)',
+           v_dotees, v.en_reserve, v.en_chambre, v.chez_clients, v.parc_detenu);
 end $$;
 
 -- ---------------------------------------------------------------------------

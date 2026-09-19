@@ -148,3 +148,24 @@ insert into alertes_destinataires (evenement, destinataires, actif) values
 on conflict (evenement) do update
   set destinataires = excluded.destinataires, actif = excluded.actif
   where alertes_destinataires.evenement = 'incident_bouteille';
+
+-- ---------------------------------------------------------------------------
+-- Deux chambres d'essai
+-- ---------------------------------------------------------------------------
+-- Il faut un endroit où déclarer, intervenir, valider et perdre une bouteille
+-- pour de faux. Sans lui, on essaie sur une vraie chambre et les chiffres de
+-- l'hôtel s'en ressentent. Ces deux lieux se voient à l'écran, et l'accueil ne
+-- compte pas ce qui s'y passe.
+insert into emplacements (code, nom, etage_id, type, dote_bouteilles, essai, ordre)
+select v.code, v.nom, (select id from etages order by ordre limit 1),
+       'chambre', true, true, 900
+  from (values ('06', 'Chambre 06 — essai'),
+               ('07', 'Chambre 07 — essai')) as v (code, nom)
+ where not exists (select 1 from emplacements e where e.code = v.code);
+
+insert into dotations (emplacement_id, bouteille_type_id, quantite)
+select e.id, b.id, 1
+  from emplacements e cross join bouteille_types b
+ where e.essai
+   and not exists (select 1 from dotations d
+                    where d.emplacement_id = e.id and d.bouteille_type_id = b.id);

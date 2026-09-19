@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { profilActif, type Profil } from "@/lib/profil";
 import { saTournee } from "@/lib/acces";
 import { peutValider } from "@/lib/domaine";
@@ -18,12 +19,30 @@ type Chiffres = {
   a_controler: number;
 };
 
-async function chiffres(): Promise<Chiffres> {
+/**
+ * Les lieux d'essai.
+ *
+ * On doit pouvoir déclarer, intervenir et valider pour de faux sans que les
+ * compteurs de l'accueil s'en ressentent. Une liste vide n'exclut personne :
+ * `= any('{}')` est faux, donc la condition laisse tout passer — ce qui est
+ * exactement ce qu'il faut tant que la migration 0008 n'est pas appliquée.
+ */
+async function lieuxDEssai(): Promise<string[]> {
+  if (!(await colonneExiste("emplacements", "essai"))) return [];
+  const lignes = await sql<{ id: string }[]>`select id from emplacements where essai`;
+  return lignes.map((l) => l.id);
+}
+
+async function chiffres(essai: string[]): Promise<Chiffres> {
   const [c] = await sql<Chiffres[]>`
     select
-      (select count(*) from anomalies where statut = 'a_faire')::int            as a_faire,
-      (select count(*) from anomalies where statut = 'en_cours')::int           as en_cours,
-      (select count(*) from anomalies where statut = 'attente_validation')::int as attente,
+      (select count(*) from anomalies
+        where statut = 'a_faire' and not (emplacement_id = any(${essai})))::int  as a_faire,
+      (select count(*) from anomalies
+        where statut = 'en_cours' and not (emplacement_id = any(${essai})))::int as en_cours,
+      (select count(*) from anomalies
+        where statut = 'attente_validation'
+          and not (emplacement_id = any(${essai})))::int                         as attente,
       (select count(*) from v_tournees where nb_en_attente > 0)::int            as a_valider_lots,
       (select count(*) from v_incidents_bouteille where dossier_ouvert)::int    as dossiers_bouteille,
       (select count(*) from v_stock_produits where sous_seuil)::int             as sous_seuil,
@@ -40,7 +59,7 @@ export default async function Accueil() {
   // Le coût d'un passage, les factures, la valeur du stock ne le regardent pas.
   if (!peutValider(profil.role)) return <AccueilIntervenant profil={profil} />;
 
-  const c = await chiffres();
+  const c = await chiffres(await lieuxDEssai());
 
   const gouvernante = peutValider(profil.role);
   const admin = profil.role === "admin" || profil.role === "operations";

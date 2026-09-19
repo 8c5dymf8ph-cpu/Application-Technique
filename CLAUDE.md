@@ -274,6 +274,15 @@ le dépôt distant depuis un poste. Le disque de Vercel repart à zéro à chaqu
 photo qui y serait écrite serait perdue, et `/administration` le signale en rouge. Rien d'autre
 dans l'application ne connaît autre chose qu'un nom de fichier.
 
+## Essayer sans fausser les chiffres
+
+Les chambres **06 et 07** sont des lieux d'essai (`emplacements.essai`). Tous les écrans les
+acceptent comme n'importe quel lieu — déclarer, intervenir, valider, perdre une bouteille — mais
+l'écran de déclaration les marque d'un contour pointillé et du mot « essai », et **les compteurs
+de l'accueil excluent ce qui s'y passe**. Sans elles, on essaie sur une vraie chambre et le suivi
+de l'hôtel s'en ressent. Les scénarios les écartent aussi : ils mesurent l'hôtel, pas
+l'entraînement.
+
 ## Écrans
 
 - **En déclarant, la gouvernante ne voit que ce qui reste à traiter** dans le lieu — à faire, en

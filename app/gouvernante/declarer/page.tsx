@@ -1,16 +1,21 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { Entete } from "../../composants/ui";
 
 export const dynamic = "force-dynamic";
 
-type Lieu = { code: string; etage: string; ordre_etage: number; ouvertes: number };
+type Lieu = { code: string; etage: string; ordre_etage: number; ouvertes: number; essai: boolean };
 
 export default async function ChoixLieu() {
   // Le nombre d'anomalies encore ouvertes s'affiche dès le choix du lieu :
   // c'est le premier signal, avant même d'entrer dans la chambre.
+  // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'est
+  // marqué, ce qui est exactement l'état d'avant.
+  const marque = await colonneExiste("emplacements", "essai");
   const lieux = await sql<Lieu[]>`
     select e.code, et.nom as etage, et.ordre as ordre_etage,
+           ${marque ? sql`e.essai` : sql`false`} as essai,
            count(a.id) filter (
              where a.statut in ('a_faire','en_cours','a_acheter')
            )::int as ouvertes
@@ -18,7 +23,7 @@ export default async function ChoixLieu() {
     join etages et on et.id = e.etage_id
     left join anomalies a on a.emplacement_id = e.id
     where e.actif
-    group by e.id, et.nom, et.ordre, e.ordre
+    group by e.id, et.nom, et.ordre, e.ordre, e.code
     order by et.ordre, e.ordre, e.code`;
 
   const etages = [...new Set(lieux.map((l) => l.etage))];
@@ -61,9 +66,16 @@ export default async function ChoixLieu() {
                     key={l.code}
                     href={`/gouvernante/declarer/${encodeURIComponent(l.code)}`}
                     data-cible
-                    className="relative px-3.5 flex items-center justify-center min-w-[54px] rounded-pill border border-line bg-surface-muted text-[15px] active:bg-plum-soft"
+                    className={`relative px-3.5 flex items-center justify-center min-w-[54px] rounded-pill border text-[15px] active:bg-plum-soft ${
+                      l.essai
+                        ? "border-dashed border-plum bg-plum-soft text-plum"
+                        : "border-line bg-surface-muted"
+                    }`}
                   >
                     {l.code}
+                    {/* Un lieu d'essai se voit : on y fait ce qu'on veut, et
+                        rien de ce qu'on y fait ne compte dans les chiffres. */}
+                    {l.essai && <span className="ml-1.5 text-[11px]">essai</span>}
                     {l.ouvertes > 0 && (
                       <span
                         className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-amber text-white text-[11px] grid place-items-center tabular-nums"
