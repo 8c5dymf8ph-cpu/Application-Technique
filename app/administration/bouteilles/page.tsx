@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
+import { ChampPhotos } from "@/app/composants/photos";
 import { enregistrerFichier } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -117,17 +118,7 @@ export default async function ReglagesBouteilles() {
               </div>
             </div>
 
-            <label data-cible className="flex flex-col gap-1 cursor-pointer">
-              <span className="etiquette">
-                {t.photo ? "Remplacer la photo" : "Ajouter une photo"}
-              </span>
-              <input
-                type="file"
-                name="photo"
-                accept="image/*"
-                className="text-[13px] file:mr-3 file:h-[38px] file:px-3 file:rounded-[10px] file:border file:border-line file:bg-surface-muted file:text-[13px]"
-              />
-            </label>
+            <ChampPhotos nom="photo" libelle={t.photo ? "Remplacer la photo" : "Ajouter une photo"} multiple={false} />
 
             <div className="flex gap-2">
               <label className="flex-1 min-w-0 flex flex-col gap-1">

@@ -72,15 +72,21 @@ function Etat({ nombre }: { nombre: number }) {
   const { pending } = useFormStatus();
   if (pending && nombre > 0) return <>Envoi en cours…</>;
   if (nombre === 0) return null;
-  return <>{nombre === 1 ? "1 photo prête" : `${nombre} photos prêtes`}</>;
+  return <>{nombre === 1 ? "1 fichier prêt" : `${nombre} fichiers prêts`}</>;
 }
 
 export function ChampPhotos({
   nom = "photos",
   libelle = "Ajouter une ou plusieurs photos",
+  multiple = true,
+  documents = false,
 }: {
   nom?: string;
   libelle?: string;
+  /** Un seul fichier quand l'écran n'en attend qu'un — la photo d'un produit. */
+  multiple?: boolean;
+  /** Une facture arrive en PDF aussi souvent qu'en photo. */
+  documents?: boolean;
 }) {
   const champ = useRef<HTMLInputElement>(null);
   const [apercus, setApercus] = useState<string[]>([]);
@@ -101,8 +107,10 @@ export function ChampPhotos({
       for (const f of reduites) sac.items.add(f);
       champs.files = sac.files;
       setApercus((anciens) => {
-        anciens.forEach(URL.revokeObjectURL);
-        return reduites.map((f) => URL.createObjectURL(f));
+        anciens.filter((a) => !a.startsWith("pdf:")).forEach(URL.revokeObjectURL);
+        return reduites.map((f) =>
+          f.type === "application/pdf" ? `pdf:${f.name}` : URL.createObjectURL(f),
+        );
       });
     } catch {
       // La réduction a échoué : les originaux partent tels quels.
@@ -138,16 +146,18 @@ export function ChampPhotos({
           ref={champ}
           type="file"
           name={nom}
-          multiple
-          accept="image/*"
+          multiple={multiple}
+          accept={documents ? "image/*,application/pdf" : "image/*"}
           className="sr-only"
           onChange={choisies}
         />
       </label>
 
-      {apercus.length > 0 && (
+      {apercus.filter((a) => !a.startsWith("pdf:")).length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {apercus.map((src) => (
+          {apercus
+            .filter((src) => !src.startsWith("pdf:"))
+            .map((src) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={src}
@@ -155,7 +165,7 @@ export function ChampPhotos({
               alt=""
               className="w-[56px] h-[56px] object-cover rounded-[9px] border border-line"
             />
-          ))}
+            ))}
         </div>
       )}
     </div>

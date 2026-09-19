@@ -127,11 +127,18 @@ export default async function ValiderLot({
     // Le mot de la gouvernante reste attaché à sa décision : il s'ajoute au
     // fil sous celui du technicien, il ne le remplace pas.
     const mot = String(donnees.get("commentaire") ?? "").trim() || null;
+    // Un lot non rendu ne se valide pas : le technicien est peut-être encore
+    // dans les étages, il peut revenir sur ce qu'il a coché. La liste ne le
+    // propose pas, mais un écran resté ouvert depuis avant la clôture, ou une
+    // adresse conservée, passerait à travers.
     await sql`
       insert into validations (intervention_id, acteur, decision, utilisateur_id,
                                saisie_par, commentaire)
-      values (${intervention}, 'gouvernante', ${decision}::decision_validation,
-              ${profil_.id}, ${profil_.id}, ${mot})`;
+      select ${intervention}, 'gouvernante', ${decision}::decision_validation,
+             ${profil_.id}, ${profil_.id}, ${mot}
+        from interventions i
+        join tournees t on t.id = i.tournee_id
+       where i.id = ${intervention} and t.cloturee_le is not null`;
 
     // Dès que plus rien n'attend son avis, le récapitulatif complet est rédigé
     // et déposé — avec ce qu'elle n'a pas validé, dit en clair.

@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
+import { ChampPhotos } from "@/app/composants/photos";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { enregistrerFichier, supprimerFichier } from "@/lib/stockage";
 
@@ -119,7 +120,10 @@ export default async function FicheProduit({
     order by af.prefere desc, f.nom`;
 
   const tous = await sql<{ id: string; nom: string; email: string | null }[]>`
-    select id, nom, email from fournisseurs where actif order by nom`;
+    -- Culligan ne vend que des bouteilles : il n'a rien à faire dans la liste
+    -- qu'on propose en ouvrant la fiche d'un joint.
+    select id, nom, email from fournisseurs
+     where actif and not pour_bouteilles order by nom`;
 
   const [prix] = await sql<Prix[]>`
     select prix_reference, dernier_prix, dernier_achat, dernier_fournisseur,
@@ -416,19 +420,7 @@ export default async function FicheProduit({
                 )}
 
                 <form action={ajouterPhotos} className="flex flex-col gap-2">
-                  <label data-cible className="flex flex-col gap-1 cursor-pointer">
-                    <span className="etiquette">
-                      {photos.length === 0 ? "Ajouter une ou plusieurs photos" : "En ajouter"}
-                    </span>
-                    <input
-                      type="file"
-                      name="photos"
-                      multiple
-                      accept="image/*"
-                      capture="environment"
-                      className="text-[13px] file:mr-3 file:h-[38px] file:px-3 file:rounded-[10px] file:border file:border-line file:bg-surface-muted file:text-[13px]"
-                    />
-                  </label>
+                  <ChampPhotos nom="photos" libelle={photos.length === 0 ? "Ajouter une ou plusieurs photos" : "En ajouter"} />
                   <button className="h-[46px] rounded-[12px] bg-plum text-white font-display font-semibold text-[14.5px]">
                     Enregistrer
                   </button>

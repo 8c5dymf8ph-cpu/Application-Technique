@@ -81,7 +81,9 @@ export default async function AValider() {
            nb_a_refaire::int, nb_en_cours::int, cout_total, cout_incomplet,
            prete_pour_recap, reprise, mail_recap_envoye_le
     from v_tournees
-    where nb_interventions > 0
+    -- Une tournée ouverte n'est pas un lot rendu : elle n'a pas à apparaître
+    -- ici, même vide d'avis. Le technicien n'a pas dit qu'il avait fini.
+    where nb_interventions > 0 and cloturee_le is not null
     order by nb_en_attente > 0 desc, date_tournee desc
     limit 40`;
 

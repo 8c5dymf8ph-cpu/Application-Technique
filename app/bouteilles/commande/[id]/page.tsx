@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { aujourdhuiISO, euros, jourISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
+import { ChampPhotos } from "@/app/composants/photos";
 import { enregistrerFichier } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -413,15 +414,7 @@ export default async function DetailCommande({
                 className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
               />
             </label>
-            <label data-cible className="flex flex-col gap-1 cursor-pointer">
-              <span className="etiquette">Le document (PDF ou photo)</span>
-              <input
-                type="file"
-                name="facture"
-                accept="application/pdf,image/*"
-                className="text-[13px] file:mr-3 file:h-[38px] file:px-3 file:rounded-[10px] file:border file:border-line file:bg-surface-muted file:text-[13px]"
-              />
-            </label>
+            <ChampPhotos nom="facture" libelle={"Le document (PDF ou photo)"} multiple={false} documents />
             <button className="h-[46px] rounded-[12px] bg-surface-muted border border-line text-[14.5px]">
               {commande.facture_fichier ? "Remplacer la facture" : "Joindre la facture"}
             </button>

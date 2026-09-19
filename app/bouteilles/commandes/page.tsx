@@ -68,7 +68,9 @@ export default async function Commandes({
     limit 50`;
 
   const fournisseurs = await sql<{ id: string; nom: string }[]>`
-    select id, nom from fournisseurs where actif order by nom`;
+    -- Une commande de bouteilles ne part pas chez un quincaillier.
+    select id, nom from fournisseurs
+     where actif and pour_bouteilles order by nom`;
 
   async function creer(donnees: FormData) {
     "use server";

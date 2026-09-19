@@ -73,7 +73,13 @@ export default async function DetailAnomalie({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
-      <Entete titre={anomalie.emplacement} sous_titre={anomalie.etage} />
+      {/* On arrive ici depuis l'historique du lieu : sans retour, le seul
+          moyen de repartir était le bouton du navigateur. */}
+      <Entete
+        titre={anomalie.emplacement}
+        sous_titre={anomalie.etage}
+        retour={`/gouvernante/historique/${encodeURIComponent(anomalie.emplacement)}`}
+      />
 
       <div className="px-5 py-5 flex flex-col gap-6">
         <div className="flex flex-col gap-2">

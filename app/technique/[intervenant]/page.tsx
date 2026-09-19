@@ -140,7 +140,7 @@ export default async function Tournee({
                         {/* La case coche ET décoche : tant que la tournée n'est
                             pas rendue, on peut revenir sur ce qu'on a déclaré. */}
                         {l.traitee ? (
-                          <form action={deselectionner} className="shrink-0 mt-0.5">
+                          <form action={deselectionner} className="w-[30px] h-[30px] mt-0.5 shrink-0">
                             <input type="hidden" name="anomalie" value={l.anomalie_id} />
                             <button
                               aria-label="Annuler ma déclaration"
@@ -181,7 +181,7 @@ export default async function Tournee({
                             </span>
                           </span>
                           {l.traitee && (
-                            <span className="self-start px-2.5 py-1 rounded-md bg-plum-soft text-plum text-[13px]">
+                            <span className="text-[13px] text-ink-faint">
                               {l.materiel ?? "Aucun matériel"}
                             </span>
                           )}

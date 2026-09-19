@@ -42,6 +42,7 @@ function VignetteProduit({ photo, taille = 44 }: { photo: string | null; taille?
 type Anomalie = {
   id: string;
   description: string;
+  catalogue_id: string | null;
   emplacement: string;
   etage: string;
   intervenant: string | null;
@@ -63,7 +64,8 @@ export default async function TraiterAnomalie({
   const { par, q = "", pris = "" } = await searchParams;
 
   const [anomalie] = await sql<Anomalie[]>`
-    select a.id, a.description, e.code as emplacement, et.nom as etage, null as intervenant
+    select a.id, a.description, a.catalogue_id, e.code as emplacement,
+           et.nom as etage, null as intervenant
     from anomalies a
     join emplacements e on e.id = a.emplacement_id
     join etages et      on et.id = e.etage_id
@@ -86,13 +88,49 @@ export default async function TraiterAnomalie({
   // en base tant que le technicien n'a pas confirmé.
   const choisis = pris.split(",").filter(Boolean);
 
-  const produits = q.trim()
-    ? await sql<Produit[]>`
-        select id, designation, code, stock, photo_principale as photo
-        from v_stock_produits
-        where actif and (designation ilike ${"%" + q + "%"} or code ilike ${"%" + q + "%"})
-        order by designation limit 12`
-    : [];
+  /**
+   * Ce qu'on lui propose.
+   *
+   * Un technicien debout dans une chambre ne tape pas le nom d'un joint : il
+   * reconnaît une photo. La liste s'affiche donc d'emblée, et c'est **ce qui a
+   * déjà servi pour ce problème-là** qui vient en tête — le catalogue donne le
+   * libellé normalisé, les interventions passées donnent le matériel. À défaut,
+   * ce qui sort le plus souvent dans l'hôtel. La recherche ne sert qu'à
+   * raccourcir une liste, jamais à la faire apparaître.
+   */
+  const produits = await sql<Produit[]>`
+    with deja_servi as (
+      select m.produit_id, count(*) as fois
+        from mouvements_stock m
+        join interventions i on i.id = m.intervention_id
+        join anomalies a     on a.id = i.anomalie_id
+       where m.type = 'sortie'
+         and a.id <> ${id}
+         and (
+           -- Le même libellé de catalogue : c'est le même problème.
+           (${anomalie.catalogue_id}::uuid is not null
+             and a.catalogue_id = ${anomalie.catalogue_id}::uuid)
+           -- Sinon, la même description mot pour mot.
+           or (${anomalie.catalogue_id}::uuid is null
+             and a.description = ${anomalie.description})
+         )
+       group by m.produit_id
+    ),
+    courant as (
+      select m.produit_id, count(*) as fois
+        from mouvements_stock m
+       where m.type = 'sortie' and m.date_mouvement > now() - interval '18 months'
+       group by m.produit_id
+    )
+    select p.id, p.designation, p.code, p.stock, p.photo_principale as photo
+      from v_stock_produits p
+      left join deja_servi d on d.produit_id = p.id
+      left join courant   c on c.produit_id = p.id
+     where p.actif
+       and (${q} = '' or p.designation ilike ${"%" + q + "%"} or p.code ilike ${"%" + q + "%"})
+     order by (d.produit_id is not null) desc, d.fois desc nulls last,
+              p.stock > 0 desc, c.fois desc nulls last, p.designation
+     limit 24`;
 
   const retenus = choisis.length
     ? await sql<Produit[]>`
@@ -214,21 +252,37 @@ export default async function TraiterAnomalie({
             </ul>
           )}
 
-          <form method="get" className="flex gap-2">
-            {par && <input type="hidden" name="par" value={par} />}
-            <input type="hidden" name="pris" value={pris} />
-            <input
-              id="produit"
-              name="q"
-              defaultValue={q}
-              autoComplete="off"
-              placeholder="Ajouter un article…"
-              className="carte grow px-4 h-[48px] text-[16px] placeholder:text-ink-faint"
-            />
-            <button className="px-4 rounded-card bg-surface border border-line text-[15px]">
-              Chercher
-            </button>
-          </form>
+          <p className="text-[13.5px] text-ink-faint text-pretty">
+            Ce qui a déjà servi pour ce problème vient en premier. Appuyez sur un article
+            pour l’ajouter.
+          </p>
+
+          {/* La recherche raccourcit la liste ; elle ne sert pas à la faire
+              apparaître. Un technicien debout ne tape pas « joint torique ». */}
+          <details className="group/chercher">
+            <summary className="list-none carte px-4 py-3 text-[15px] text-ink-soft flex items-center gap-2.5 cursor-pointer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
+                   strokeWidth="1.9" strokeLinecap="round">
+                <circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" />
+              </svg>
+              {q ? `Recherche : « ${q} »` : "Chercher un article"}
+            </summary>
+            <form method="get" className="flex gap-2 pt-2">
+              {par && <input type="hidden" name="par" value={par} />}
+              <input type="hidden" name="pris" value={pris} />
+              <input
+                id="produit"
+                name="q"
+                defaultValue={q}
+                autoComplete="off"
+                placeholder="Nom ou code…"
+                className="carte grow px-4 h-[48px] text-[16px] placeholder:text-ink-faint"
+              />
+              <button className="px-4 rounded-card bg-surface border border-line text-[15px]">
+                Chercher
+              </button>
+            </form>
+          </details>
 
           <ul className="flex flex-col gap-1.5">
             {produits

@@ -14,9 +14,14 @@ import { peutValider } from "./domaine";
  * que `peutValider` recouvre, et on ne recrée pas une seconde liste.
  */
 
-/** Sa tournée, la seule page qu'un intervenant ait besoin d'ouvrir. */
-export function saTournee(profil: Profil): Route {
-  return `/technique/${encodeURIComponent(profil.nom)}` as Route;
+/**
+ * Sa tournée, la seule page qu'un intervenant ait besoin d'ouvrir.
+ *
+ * Une adresse fixe, sans son nom dedans : un nom qui ne correspondait pas
+ * exactement à la liste des intervenants donnait un 404 muet.
+ */
+export function saTournee(_profil?: Profil): Route {
+  return "/technique/ma-tournee" as Route;
 }
 
 /** Un écran réservé à l'encadrement : l'intervenant est renvoyé chez lui. */
