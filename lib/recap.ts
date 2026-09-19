@@ -29,9 +29,18 @@ export async function deposerRecap(tournee: string, complet: boolean, renvoi = f
     if (deja.n > 0) return;
   }
 
+  // Les adresses se règlent depuis /administration, comme celles de l'alerte
+  // bouteille. À défaut, celles des administrateurs inscrits — mais personne
+  // n'a d'adresse dans `utilisateurs` tant qu'on ne l'y met pas, et rien ne le
+  // signalait : le récapitulatif ne partait jamais en silence.
   const [destinataires] = await sql<{ liste: string[] }[]>`
-    select coalesce(array_agg(u.email) filter (where u.email is not null), '{}') as liste
-    from utilisateurs u where u.role = 'admin' and u.actif`;
+    select coalesce(
+      (select d.destinataires from alertes_destinataires d
+        where d.evenement = ${categorie} and d.actif
+          and cardinality(d.destinataires) > 0),
+      (select coalesce(array_agg(u.email) filter (where u.email is not null), '{}')
+         from utilisateurs u where u.role = 'admin' and u.actif)
+    ) as liste`;
   if (destinataires.liste.length === 0) return;
 
   const [t] = await sql<

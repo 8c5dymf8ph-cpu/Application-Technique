@@ -51,6 +51,13 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    l'offre gratuite de Vercel refuse une tâche plus fréquente, et un cron plus rapide fait
    échouer le déploiement. Ne jamais faire dépendre l'alerte bouteille du passage planifié : elle
    doit partir au constat. Ne jamais remettre le texte à l'écran.
+7sexies. **Les destinataires se règlent dans l'application, pas dans le code.** Les
+   récapitulatifs cherchaient l'adresse d'un administrateur dans `utilisateurs.email`, qu'aucun
+   écran ne permet de saisir : ils ne partaient jamais, en silence. Ils lisent désormais
+   `alertes_destinataires`, comme l'alerte bouteille, et se règlent depuis `/administration`.
+   Une ligne sans adresse reste inactive — la contrainte l'impose, et c'est juste : une ligne
+   active sans destinataire est une promesse en l'air.
+
 7quinquies. **Sans clé d'envoi, on ne prétend pas avoir envoyé.** `RESEND_API_KEY` absente : la
    file reste intacte et l'écran le dit. Un échec n'efface rien non plus — la ligne garde son
    erreur et repart au passage suivant. Ne jamais marquer `envoye_le` sur un message qui n'est
@@ -71,6 +78,20 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    avis côte à côte, avec ce qu'elle n'a PAS validé dit en clair. `deposerRecap()` les rédige et
    les dépose dans la file ; `prete_pour_recap` et `mail_recap_envoye_le` empêchent l'envoi
    prématuré et le doublon. Pas d'heure fixe : le message part quand l'événement a lieu.
+10quater. **Un passage ne s'étale pas sur deux jours.** Le technicien vient le lundi, la
+   gouvernante ne finit de vérifier que le mardi, et le mardi il revient pour autre chose : ce
+   sont deux passages, qui se valident séparément. `tourneeEnCours` rend d'office une tournée
+   restée ouverte d'un jour précédent — le récapitulatif de clôture part comme s'il avait appuyé
+   sur « Fin d'intervention » — et en ouvre une neuve pour aujourd'hui. Ne jamais laisser un lot
+   courir d'un jour sur l'autre.
+
+10quinquies. **Qui facture ne se déduit pas du fait d'être une entreprise.** Farid et Rachid
+   interviennent sans être salariés : ils facturent, bien qu'inscrits dans `utilisateurs`. Taibi,
+   Victoria et Miguel sont de la maison : leur passage ne coûte que le matériel sorti.
+   `utilisateurs.emet_des_factures` le dit, `factures.technicien_id` permet de rattacher la
+   pièce, et la contrainte impose un émetteur et un seul. Ne jamais tester `prestataire_id` pour
+   savoir si un passage donne lieu à une facture.
+
 10bis. **Le lot n'existe pour la gouvernante qu'une fois rendu.** Une anomalie cochée par le
    technicien reste `en_cours` tant que la tournée est ouverte : il est encore dans les étages,
    il peut se déraviser. `tg_cloture_tournee` les bascule toutes en `attente_validation` à la

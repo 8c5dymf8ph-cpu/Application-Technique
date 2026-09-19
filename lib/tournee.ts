@@ -1,4 +1,5 @@
 import { sql } from "./db";
+import { deposerRecap } from "./recap";
 
 export type Intervenant = {
   utilisateur_id: string | null;
@@ -22,17 +23,36 @@ export async function intervenants(): Promise<Intervenant[]> {
 }
 
 /**
- * La tournée en cours d'un intervenant, ou une nouvelle.
+ * La tournée du jour d'un intervenant, ou une nouvelle.
  *
- * Une tournée est le lot qu'il rendra d'un coup : tant qu'elle n'est pas
- * close, tout ce qu'il traite s'y rattache, même s'il revient le lendemain.
+ * **Un passage ne s'étale pas sur deux jours.** Un technicien vient le lundi,
+ * la gouvernante ne finit de vérifier que le mardi — et le mardi il revient
+ * pour autre chose. Ce sont deux passages, qui se valident séparément. Une
+ * tournée restée ouverte d'un jour précédent est donc rendue telle quelle : le
+ * travail du lundi part chez la gouvernante, celui du mardi commence à neuf.
+ *
+ * C'est aussi ce que dit la règle 16 : un passage, c'est qui est venu et quel
+ * jour.
  */
 export async function tourneeEnCours(i: Intervenant): Promise<Tournee> {
+  // Ce qu'il a laissé ouvert un autre jour : on le rend pour lui, et le
+  // récapitulatif de clôture part comme s'il avait appuyé sur « Fin
+  // d'intervention ».
+  const oubliees = await sql<{ id: string }[]>`
+    update tournees set cloturee_le = now()
+     where cloturee_le is null
+       and date_tournee < current_date
+       and technicien_id  is not distinct from ${i.utilisateur_id}
+       and prestataire_id is not distinct from ${i.prestataire_id}
+    returning id`;
+  for (const t of oubliees) await deposerRecap(t.id, false);
+
   const [existante] = await sql<Tournee[]>`
     select t.id, t.reference, t.date_tournee,
            (select count(*) from interventions x where x.tournee_id = t.id)::int as nb_interventions
     from tournees t
     where t.cloturee_le is null
+      and t.date_tournee = current_date
       and (t.technicien_id is not distinct from ${i.utilisateur_id}
        and t.prestataire_id is not distinct from ${i.prestataire_id})
     order by t.cree_le desc limit 1`;

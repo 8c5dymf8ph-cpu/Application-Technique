@@ -26,6 +26,10 @@ ORTHOGRAPHE = {
 # du seul fait d'exister.
 INTERVENANTS_INTERNES = ["Farid", "Miguel", "Rachid", "Victoria", "Taibi"]
 
+# Qui, parmi eux, n'est pas salarié de l'hôtel et facture ses passages. Les
+# autres interviennent aussi, mais leur passage ne coûte que le matériel sorti.
+FACTURENT = ["Farid", "Rachid"]
+
 
 def q(v):
     return "'" + str(v).replace("'", "''") + "'"
@@ -49,5 +53,10 @@ print("\n-- Qui fait partie des intervenants techniques ------------------------
 print("update utilisateurs set intervient_technique = false;")
 noms = ", ".join(q(n) for n in INTERVENANTS_INTERNES)
 print(f"update utilisateurs set intervient_technique = true where nom in ({noms});")
+
+print("\n-- Qui facture ses passages, et qui est de la maison ---------------------")
+print("update utilisateurs set emet_des_factures = false;")
+facturent = ", ".join(q(n) for n in FACTURENT)
+print(f"update utilisateurs set emet_des_factures = true where nom in ({facturent});")
 
 print("\ncommit;")

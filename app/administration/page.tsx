@@ -39,6 +39,14 @@ const EVENEMENT: Record<string, { titre: string; aide: string }> = {
     titre: "Produit sous le seuil",
     aide: "Qui doit savoir qu’il faut recommander.",
   },
+  recap_technicien: {
+    titre: "Lot rendu par l’intervenant",
+    aide: "Envoyé à la fin d’un passage : ce que l’intervenant déclare avoir fait.",
+  },
+  recap_intervention: {
+    titre: "Récapitulatif complet",
+    aide: "Envoyé à la dernière validation : les deux avis, et ce qui n’a pas été validé.",
+  },
 };
 
 export default async function Administration({

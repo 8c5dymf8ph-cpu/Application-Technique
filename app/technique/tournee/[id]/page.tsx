@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { enregistrerFichier } from "@/lib/stockage";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
@@ -56,6 +57,13 @@ const DECISION: Record<string, { l: string; fond: string; texte: string }> = {
   a_refaire: { l: "À refaire", fond: "bg-red-soft", texte: "text-red" },
 };
 
+type Emetteur = {
+  prestataire_id: string | null;
+  technicien_id: string | null;
+  prestataire: string | null;
+  facture: boolean;
+};
+
 export default async function DetailTournee({
   params,
 }: {
@@ -90,13 +98,29 @@ export default async function DetailTournee({
     where r.tournee = ${lot.reference}
     order by r.date_intervention desc, r.emplacement`;
 
-  // Qui est venu, et sous quelle forme : seule une entreprise extérieure
-  // envoie une facture. Un salarié de l'hôtel n'en émet pas — son passage ne
-  // coûte que le matériel sorti.
-  const [qui] = await sql<{ prestataire_id: string | null; prestataire: string | null }[]>`
-    select t.prestataire_id, p.nom as prestataire
-      from tournees t left join prestataires p on p.id = t.prestataire_id
-     where t.id = ${id}`;
+  /**
+   * Qui est venu, et s'il facture.
+   *
+   * Une entreprise extérieure facture toujours. Une personne inscrite facture
+   * si elle n'est pas de la maison : Farid et Rachid interviennent sans être
+   * salariés. Taibi, Victoria et Miguel sont de l'hôtel — leur passage ne
+   * coûte que le matériel sorti.
+   */
+  const dit = await colonneExiste("utilisateurs", "emet_des_factures");
+  const [qui] = dit
+    ? await sql<Emetteur[]>`
+        select t.prestataire_id, t.technicien_id, p.nom as prestataire,
+               coalesce(u.emet_des_factures, t.prestataire_id is not null) as facture
+          from tournees t
+          left join prestataires p on p.id = t.prestataire_id
+          left join utilisateurs u on u.id = t.technicien_id
+         where t.id = ${id}`
+    : await sql<Emetteur[]>`
+        select t.prestataire_id, t.technicien_id, p.nom as prestataire,
+               (t.prestataire_id is not null) as facture
+          from tournees t
+          left join prestataires p on p.id = t.prestataire_id
+         where t.id = ${id}`;
 
   const [facture] = await sql<{
     id: string; reference: string | null; montant_ht: number | null;
@@ -124,7 +148,7 @@ export default async function DetailTournee({
     "use server";
     const profil_ = await profilActif();
     if (!profil_ || !peutValider(profil_.role)) redirect(`/technique/tournee/${id}` as Route);
-    if (!qui?.prestataire_id) return;
+    if (!qui?.facture) return;
 
     const montant = String(donnees.get("montant_ht") ?? "").trim();
     const reference = String(donnees.get("reference") ?? "").trim() || null;
@@ -135,10 +159,12 @@ export default async function DetailTournee({
     if (piece instanceof File && piece.size > 0) chemin = await enregistrerFichier(piece);
 
     const [f] = await sql<{ id: string }[]>`
-      insert into factures (id, type, prestataire_id, reference, date_reference,
+      insert into factures (id, type, prestataire_id, technicien_id, reference,
+                            date_reference,
                             date_facture, montant_ht, fichier_url, statut, saisie_par)
       values (coalesce(${facture?.id ?? null}::uuid, gen_random_uuid()),
-              'prestation', ${qui.prestataire_id}, ${reference},
+              'prestation', ${qui.prestataire_id},
+              ${qui.prestataire_id ? null : qui.technicien_id}, ${reference},
               ${lot.date_tournee}::date, ${quand}::date,
               ${montant === "" ? null : Number(montant)}, ${chemin},
               'rapprochee', ${profil_.id})
@@ -227,7 +253,7 @@ export default async function DetailTournee({
               pas le coût réel.
             </p>
           )}
-          {prestataireTotal === 0 && lot.intervenant && !qui?.prestataire_id && (
+          {prestataireTotal === 0 && lot.intervenant && !qui?.facture && (
             <p className="text-[12.5px] text-ink-faint text-pretty leading-snug">
               {lot.intervenant} fait partie de l’hôtel : ce passage ne coûte que le matériel
               sorti.
@@ -238,7 +264,7 @@ export default async function DetailTournee({
               intéresse pas : le matériel appartient le plus souvent à l'hôtel,
               et la facture porte le déplacement et ce que l'intervenant estime
               avoir coûté. */}
-          {qui?.prestataire_id && (
+          {qui?.facture && (
             <details className="group/cout" open={prestataireTotal === 0}>
               <summary className="list-none carte px-4 py-3 text-[15px] flex items-center justify-between cursor-pointer">
                 <span>{facture ? "Corriger la facture" : "Renseigner ce qu’il a facturé"}</span>

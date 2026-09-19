@@ -20,6 +20,10 @@ update prestataires set nom = 'Technicien Telec' where nom = 'Technicien TELEC' 
 update utilisateurs set intervient_technique = false;
 update utilisateurs set intervient_technique = true where nom in ('Farid', 'Miguel', 'Rachid', 'Victoria', 'Taibi');
 
+-- Qui facture ses passages, et qui est de la maison ---------------------
+update utilisateurs set emet_des_factures = false;
+update utilisateurs set emet_des_factures = true where nom in ('Farid', 'Rachid');
+
 commit;
 
 
