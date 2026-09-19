@@ -3,13 +3,24 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Où vivent les photos.
+ * Où vivent les fichiers — photos d'anomalies, de produits, de bouteilles, et
+ * factures en PDF.
  *
- * En développement, sur le disque, sous `donnees/photos`. En production ce sera
- * Supabase Storage : seules les deux fonctions ci-dessous changent, le reste de
- * l'application ne connaît qu'un chemin.
+ * Deux dépôts, un seul contrat : le reste de l'application ne connaît qu'un nom
+ * de fichier, jamais un chemin ni une adresse.
+ *
+ * - **En production**, Supabase Storage. Le disque de Vercel est en lecture
+ *   seule et repart à zéro à chaque déploiement : une photo écrite sur ce
+ *   disque serait perdue au déploiement suivant.
+ * - **En développement**, le dossier `donnees/photos`, pour n'avoir besoin de
+ *   rien d'autre qu'une base locale.
+ *
+ * Le choix se fait sur la présence des variables Supabase, jamais sur
+ * `NODE_ENV` : on peut vouloir tester le dépôt distant depuis un poste.
  */
+
 const RACINE = path.join(process.cwd(), "donnees", "photos");
+const SEAU = process.env.SUPABASE_BUCKET ?? "fichiers";
 
 const EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -24,6 +35,21 @@ const EXTENSIONS: Record<string, string> = {
 /** 12 Mo : une photo de téléphone non redimensionnée tient largement dedans. */
 export const TAILLE_MAX = 12 * 1024 * 1024;
 
+function supabase() {
+  const url = process.env.SUPABASE_URL;
+  // La clé de service contourne les règles de ligne : elle ne doit JAMAIS
+  // partir vers le navigateur. Elle n'est lue que dans ce fichier, qui ne
+  // s'exécute que sur le serveur.
+  const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !cle) return null;
+  return { url: url.replace(/\/+$/, ""), cle };
+}
+
+/** Le nom d'un fichier, jamais un chemin : rien ne doit remonter au-dessus. */
+function sur(nom: string): boolean {
+  return nom === path.basename(nom) && !nom.startsWith(".");
+}
+
 export async function enregistrerFichier(fichier: File): Promise<string | null> {
   if (!fichier || fichier.size === 0) return null;
   if (fichier.size > TAILLE_MAX) return null;
@@ -31,20 +57,64 @@ export async function enregistrerFichier(fichier: File): Promise<string | null> 
   if (!extension) return null;
 
   const nom = `${randomUUID()}.${extension}`;
+  const contenu = Buffer.from(await fichier.arrayBuffer());
+  const distant = supabase();
+
+  if (distant) {
+    const reponse = await fetch(
+      `${distant.url}/storage/v1/object/${SEAU}/${nom}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${distant.cle}`,
+          "Content-Type": fichier.type,
+          "x-upsert": "false",
+        },
+        body: new Uint8Array(contenu),
+      },
+    );
+    // Un envoi raté ne doit pas laisser croire que la photo est là : on rend
+    // null, et l'appelant n'enregistre aucune ligne.
+    if (!reponse.ok) return null;
+    return nom;
+  }
+
   await mkdir(RACINE, { recursive: true });
-  await writeFile(path.join(RACINE, nom), Buffer.from(await fichier.arrayBuffer()));
+  await writeFile(path.join(RACINE, nom), contenu);
   return nom;
 }
 
 export async function lireFichier(nom: string): Promise<Buffer | null> {
-  // Un nom de fichier, jamais un chemin : rien ne doit pouvoir remonter
-  // au-dessus du dossier des photos.
-  if (nom !== path.basename(nom)) return null;
+  if (!sur(nom)) return null;
+  const distant = supabase();
+
+  if (distant) {
+    const reponse = await fetch(
+      `${distant.url}/storage/v1/object/${SEAU}/${nom}`,
+      { headers: { Authorization: `Bearer ${distant.cle}` } },
+    );
+    if (!reponse.ok) return null;
+    return Buffer.from(await reponse.arrayBuffer());
+  }
+
   try {
     return await readFile(path.join(RACINE, nom));
   } catch {
     return null;
   }
+}
+
+export async function supprimerFichier(nom: string): Promise<void> {
+  if (!sur(nom)) return;
+  const distant = supabase();
+  if (distant) {
+    await fetch(`${distant.url}/storage/v1/object/${SEAU}/${nom}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${distant.cle}` },
+    });
+  }
+  // En local on laisse le fichier : il ne gêne personne, et le retrouver rend
+  // service quand on s'est trompé.
 }
 
 export function typeMime(nom: string): string {
@@ -53,6 +123,11 @@ export function typeMime(nom: string): string {
     Object.entries(EXTENSIONS).find(([, e]) => e === extension)?.[0] ??
     "application/octet-stream"
   );
+}
+
+/** Le dépôt réellement utilisé, pour que l'écran d'administration le dise. */
+export function depot(): "supabase" | "disque" {
+  return supabase() ? "supabase" : "disque";
 }
 
 /** Les deux noms d'origine, conservés là où l'on ne manipule que des photos. */

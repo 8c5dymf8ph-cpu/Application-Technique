@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 import { envoyerCourrielsEnAttente } from "@/lib/envoi";
+import { depot } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export default async function Administration({
     select count(*)::int as n from v_controle_donnees`;
 
   const configure = Boolean(process.env.RESEND_API_KEY);
+  const ouVontLesFichiers = depot();
   const total = attente.reduce((n, a) => n + a.nombre, 0);
 
   async function envoyerMaintenant() {
@@ -206,6 +208,16 @@ export default async function Administration({
             </details>
           )}
         </section>
+
+        {/* Où vont les photos et les factures */}
+        {ouVontLesFichiers === "disque" && (
+          <p className="rounded-card bg-red-soft px-4 py-3 text-[12.5px] text-red text-pretty leading-snug">
+            Les photos et les factures sont écrites sur le disque du serveur. En ligne, ce
+            disque repart à zéro à chaque déploiement : elles seraient perdues. Renseignez{" "}
+            <code>SUPABASE_URL</code> et <code>SUPABASE_SERVICE_ROLE_KEY</code> avant de mettre
+            en service.
+          </p>
+        )}
 
         {/* Qui reçoit quoi */}
         <section className="flex flex-col gap-2">

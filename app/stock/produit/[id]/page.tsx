@@ -7,7 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
-import { enregistrerFichier } from "@/lib/stockage";
+import { enregistrerFichier, supprimerFichier } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,8 @@ type Fournisseur = {
   fournisseur_id: string;
   nom: string;
   email: string | null;
+  contact: string | null;
+  telephone: string | null;
   reference_fournisseur: string | null;
   prefere: boolean;
 };
@@ -86,12 +88,15 @@ const MOTIFS = [
 
 export default async function FicheProduit({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ neuf?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
+  const { neuf } = await searchParams;
 
   const [p] = await sql<Produit[]>`
     select id, code, designation, categorie, categorie_lieu, unite, prix_unitaire,
@@ -107,7 +112,7 @@ export default async function FicheProduit({
 
   const fournisseurs = await sql<Fournisseur[]>`
     select af.id as lien_id, f.id as fournisseur_id, f.nom, f.email,
-           af.reference_fournisseur, af.prefere
+           f.contact, f.telephone, af.reference_fournisseur, af.prefere
     from article_fournisseurs af
     join fournisseurs f on f.id = af.fournisseur_id
     where af.produit_id = ${id}
@@ -191,7 +196,8 @@ export default async function FicheProduit({
         values (${id}, ${chemin}, ${rang === 0}, ${rang}, ${profil_.id})`;
       rang += 1;
     }
-    revalidatePath(`/stock/produit/${id}`);
+    // Renavigue plutôt que revalider : le panneau des photos se referme.
+    redirect(`/stock/produit/${id}` as Route);
   }
 
   async function mettreEnAvant(donnees: FormData) {
@@ -199,12 +205,19 @@ export default async function FicheProduit({
     const photo = String(donnees.get("photo"));
     await sql`update photos_produit set principale = false where produit_id = ${id}`;
     await sql`update photos_produit set principale = true where id = ${photo}`;
-    revalidatePath(`/stock/produit/${id}`);
+    // Renavigue plutôt que revalider : le panneau des photos se referme.
+    redirect(`/stock/produit/${id}` as Route);
   }
 
   async function retirerPhoto(donnees: FormData) {
     "use server";
-    await sql`delete from photos_produit where id = ${String(donnees.get("photo"))}`;
+    const photo = String(donnees.get("photo"));
+    // On retire le fichier du dépôt aussi : une photo supprimée de l'écran mais
+    // gardée en stockage se paierait au gigaoctet.
+    const [ligne] = await sql<{ chemin: string }[]>`
+      select chemin from photos_produit where id = ${photo}`;
+    await sql`delete from photos_produit where id = ${photo}`;
+    if (ligne) await supprimerFichier(ligne.chemin);
     // S'il reste des photos, la première reprend la place.
     await sql`
       update photos_produit set principale = true
@@ -212,7 +225,8 @@ export default async function FicheProduit({
                    order by ordre, ajoutee_le limit 1)
          and not exists (select 1 from photos_produit
                           where produit_id = ${id} and principale)`;
-    revalidatePath(`/stock/produit/${id}`);
+    // Renavigue plutôt que revalider : le panneau des photos se referme.
+    redirect(`/stock/produit/${id}` as Route);
   }
 
   async function rattacher(donnees: FormData) {
@@ -228,13 +242,25 @@ export default async function FicheProduit({
     // fiche du produit pour aller saisir un référentiel.
     if (nom) {
       const [cree] = await sql<{ id: string }[]>`
-        insert into fournisseurs (nom, email) values (${nom}, ${email})
-        on conflict (nom) do update set email = coalesce(excluded.email, fournisseurs.email)
+        insert into fournisseurs (nom, email, contact, telephone)
+        values (${nom}, ${email},
+                ${String(donnees.get("contact") ?? "").trim() || null},
+                ${String(donnees.get("telephone") ?? "").trim() || null})
+        on conflict (nom) do update
+          set email     = coalesce(excluded.email, fournisseurs.email),
+              contact   = coalesce(excluded.contact, fournisseurs.contact),
+              telephone = coalesce(excluded.telephone, fournisseurs.telephone)
         returning id`;
       fournisseur = cree.id;
-    } else if (email && fournisseur) {
-      // L'adresse se corrige au passage : c'est là qu'on s'en rend compte.
-      await sql`update fournisseurs set email = ${email} where id = ${fournisseur}`;
+    } else if (fournisseur) {
+      // Ce qu'on a saisi corrige la fiche du fournisseur : c'est ici qu'on se
+      // rend compte que le contact a changé.
+      await sql`
+        update fournisseurs
+           set email     = coalesce(${email}, email),
+               contact   = coalesce(${String(donnees.get("contact") ?? "").trim() || null}, contact),
+               telephone = coalesce(${String(donnees.get("telephone") ?? "").trim() || null}, telephone)
+         where id = ${fournisseur}`;
     }
     if (!fournisseur) return;
 
@@ -244,6 +270,23 @@ export default async function FicheProduit({
               ${String(donnees.get("reference") ?? "").trim() || null},
               not exists (select 1 from article_fournisseurs where produit_id = ${id}))
       on conflict do nothing`;
+    revalidatePath(`/stock/produit/${id}`);
+  }
+
+  async function corrigerFournisseur(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/stock/produit/${id}` as Route);
+    await sql`
+      update fournisseurs
+         set email     = ${String(donnees.get("email") ?? "").trim() || null},
+             contact   = ${String(donnees.get("contact") ?? "").trim() || null},
+             telephone = ${String(donnees.get("telephone") ?? "").trim() || null}
+       where id = ${String(donnees.get("fournisseur"))}`;
+    await sql`
+      update article_fournisseurs
+         set reference_fournisseur = ${String(donnees.get("reference") ?? "").trim() || null}
+       where id = ${String(donnees.get("lien"))}`;
     revalidatePath(`/stock/produit/${id}`);
   }
 
@@ -300,6 +343,13 @@ export default async function FicheProduit({
       <Entete titre={p.designation} sous_titre={p.code} retour="/stock" />
 
       <div className="px-5 py-4 flex flex-col gap-5">
+        {neuf && (
+          <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug">
+            Produit créé. Il reste à lui mettre une photo — appuyez sur la vignette —, un
+            fournisseur, et à enregistrer ce que vous en avez en stock.
+          </p>
+        )}
+
         {/* L'état, d'un coup d'œil */}
         <section className="carte px-4 py-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
@@ -643,7 +693,8 @@ export default async function FicheProduit({
               ) : (
                 <ul className="flex flex-col gap-1.5">
                   {fournisseurs.map((f) => (
-                    <li key={f.lien_id} className="flex items-center gap-2">
+                    <li key={f.lien_id} className="flex flex-col gap-1.5">
+                    <span className="flex items-center gap-2">
                       <span className="grow min-w-0">
                         <span className="block text-[14px] truncate">
                           {f.nom}
@@ -655,6 +706,17 @@ export default async function FicheProduit({
                           {f.email ?? "pas d’adresse — le devis ne partira pas"}
                           {f.reference_fournisseur && ` · réf. ${f.reference_fournisseur}`}
                         </span>
+                        {(f.contact || f.telephone) && (
+                          <span className="block text-[11.5px] text-ink-faint truncate">
+                            {f.contact}
+                            {f.contact && f.telephone && " · "}
+                            {f.telephone && (
+                              <a href={`tel:${f.telephone}`} className="text-plum">
+                                {f.telephone}
+                              </a>
+                            )}
+                          </span>
+                        )}
                       </span>
                       {!f.prefere && peutValider(profil.role) && (
                         <form action={prefererFournisseur}>
@@ -678,6 +740,58 @@ export default async function FicheProduit({
                           </button>
                         </form>
                       )}
+                    </span>
+
+                    {peutValider(profil.role) && (
+                      <details className="rounded-[10px] bg-surface-muted px-2.5 py-1.5">
+                        <summary className="text-[11.5px] text-plum cursor-pointer list-none underline underline-offset-4">
+                          Corriger le contact
+                        </summary>
+                        <form action={corrigerFournisseur} className="flex flex-col gap-1.5 pt-2">
+                          <input type="hidden" name="fournisseur" value={f.fournisseur_id} />
+                          <input type="hidden" name="lien" value={f.lien_id} />
+                          <input
+                            name="contact"
+                            autoComplete="off"
+                            defaultValue={f.contact ?? ""}
+                            placeholder="Nom de la personne"
+                            className="w-full h-[40px] px-2.5 rounded-[9px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
+                          />
+                          <div className="flex gap-1.5">
+                            <input
+                              name="telephone"
+                              type="tel"
+                              autoComplete="off"
+                              defaultValue={f.telephone ?? ""}
+                              placeholder="Téléphone"
+                              className="flex-1 min-w-0 h-[40px] px-2.5 rounded-[9px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
+                            />
+                            <input
+                              name="reference"
+                              autoComplete="off"
+                              defaultValue={f.reference_fournisseur ?? ""}
+                              placeholder="Réf."
+                              className="w-[88px] h-[40px] px-2.5 rounded-[9px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
+                            />
+                          </div>
+                          <input
+                            name="email"
+                            type="email"
+                            autoComplete="off"
+                            defaultValue={f.email ?? ""}
+                            placeholder="Adresse mail"
+                            className="w-full h-[40px] px-2.5 rounded-[9px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
+                          />
+                          <button className="h-[38px] rounded-[9px] bg-surface border border-line text-[12.5px]">
+                            Enregistrer
+                          </button>
+                          <p className="text-[10.5px] text-ink-faint text-pretty leading-snug">
+                            Le contact change souvent : il se corrige d’ici, sans quitter le
+                            produit.
+                          </p>
+                        </form>
+                      </details>
+                    )}
                     </li>
                   ))}
                 </ul>
@@ -720,6 +834,21 @@ export default async function FicheProduit({
                     placeholder="Adresse mail — c’est là que part le devis"
                     className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
                   />
+                  <div className="flex gap-2">
+                    <input
+                      name="contact"
+                      autoComplete="off"
+                      placeholder="Nom du contact"
+                      className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                    />
+                    <input
+                      name="telephone"
+                      type="tel"
+                      autoComplete="off"
+                      placeholder="Téléphone"
+                      className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                    />
+                  </div>
                   <button className="h-[44px] rounded-[12px] bg-surface-muted border border-line text-[14px]">
                     Rattacher au produit
                   </button>

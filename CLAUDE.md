@@ -198,8 +198,11 @@ celle que le technicien voit en choisissant son matériel. Sans photo, l'écran 
 couleur — il n'attend jamais une image pour fonctionner.
 
 Une facture se range au même endroit qu'une photo — PDF compris. Le stockage passe par
-`lib/stockage.ts` : disque en développement, Supabase Storage en
-production. Rien d'autre dans l'application ne connaît autre chose qu'un nom de fichier.
+`lib/stockage.ts` : **Supabase Storage dès que `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY`
+sont là, le disque sinon.** Le choix ne se fait jamais sur `NODE_ENV` : on peut vouloir essayer
+le dépôt distant depuis un poste. Le disque de Vercel repart à zéro à chaque déploiement — une
+photo qui y serait écrite serait perdue, et `/administration` le signale en rouge. Rien d'autre
+dans l'application ne connaît autre chose qu'un nom de fichier.
 
 ## Écrans
 
