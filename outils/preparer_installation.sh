@@ -18,9 +18,14 @@ mkdir -p "$sortie"
   done
 } > "$sortie/1-schema-et-referentiels.sql"
 
+rm -f "$sortie"/2-anomalies-*.sql
 cp donnees/import_anomalies.sql  "$sortie/2-anomalies.sql"
 cp donnees/import_stock.sql      "$sortie/3-stock.sql"
 cp donnees/import_bouteilles.sql "$sortie/4-bouteilles.sql"
 python3 outils/equipe.py            > "$sortie/5-equipe.sql"
+
+# Le fichier des anomalies dépasse ce que l'éditeur SQL du navigateur encaisse :
+# il est aussi livré en morceaux collables, à jouer dans l'ordre des lettres.
+python3 outils/decouper.py "$sortie/2-anomalies.sql" > /dev/null
 
 wc -c "$sortie"/*.sql

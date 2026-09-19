@@ -16,33 +16,48 @@ des adresses des deux autres.
 1. Créer un compte sur **supabase.com**, puis un projet.
    - Région : **Europe (Paris ou Francfort)**, pour que l'application reste rapide depuis l'hôtel.
    - Noter le mot de passe de la base : il n'est affiché qu'une fois.
-2. Ouvrir **SQL Editor** et exécuter, **dans cet ordre**, les fichiers de
-   `donnees/installation/` :
 
-| Fichier | Contenu | Taille |
-|---|---|---|
-| `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés | 143 Ko |
-| `2-anomalies.sql` | 670 anomalies, 528 interventions, 29 tournées | 1 010 Ko |
-| `3-stock.sql` | 36 produits, 257 mouvements | 164 Ko |
-| `4-bouteilles.sql` | 17 dossiers de bouteille, la livraison du 31/03, le parc constaté | 31 Ko |
-| `5-equipe.sql` | L'orthographe des noms et la liste des intervenants techniques | 2 Ko |
+2. **Récupérer les fichiers à jouer.** Ils ne sont pas dans Supabase : le *SQL Editor* est une
+   page blanche, il n'ouvre aucun fichier, on y **colle** du texte. Les fichiers sont dans le
+   dépôt GitHub, dossier `donnees/installation/`, sur la branche
+   `claude/friendly-allen-lmkxuo` :
+
+   > https://github.com/8c5dymf8ph-cpu/Application-Technique/tree/claude/friendly-allen-lmkxuo/donnees/installation
+
+   Pour chacun : l'ouvrir, cliquer **Raw** en haut à droite, **Ctrl+A** puis **Ctrl+C**
+   (Cmd sur Mac). Dans Supabase, *SQL Editor → New query*, coller, **Run**, et attendre
+   « Success » avant de passer au suivant.
+
+3. Les exécuter **dans cet ordre** :
+
+| Ordre | Fichier | Contenu | Taille |
+|---|---|---|---|
+| 1 | `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés | 143 Ko |
+| 2 | `2-anomalies-a.sql` … `-e.sql` | 670 anomalies, 528 interventions, 29 tournées — **cinq morceaux, dans l'ordre des lettres** | ~215 Ko chacun |
+| 3 | `3-stock.sql` | 36 produits, 257 mouvements | 163 Ko |
+| 4 | `4-bouteilles.sql` | 17 dossiers de bouteille, la livraison du 31/03, le parc constaté | 30 Ko |
+| 5 | `5-equipe.sql` | L'orthographe des noms et la liste des intervenants techniques | 2 Ko |
+
+> **Pourquoi les anomalies sont en cinq morceaux.** Le fichier entier fait un méga-octet, et
+> l'éditeur du navigateur s'étrangle bien avant. `2-anomalies.sql` reste dans le dossier, entier,
+> pour qui passe par un terminal : `psql "<chaîne de connexion>" -f donnees/installation/2-anomalies.sql`
+> (la chaîne est dans **Settings → Database → Connection string → URI**).
+> **Jouer les morceaux OU le fichier entier, jamais les deux.** Dans les deux cas rien n'est
+> inséré en double si on rejoue : un morceau passé deux fois ne fait aucun dégât.
 
 > Ces fichiers sont produits par `outils/preparer_installation.sh` : ils ne s'éditent pas à la
 > main, ils se regénèrent après toute modification du schéma.
 
-> `2-anomalies.sql` est volumineux pour l'éditeur du navigateur. S'il bloque, le passer depuis un
-> terminal : `psql "<chaîne de connexion>" -f donnees/installation/2-anomalies.sql`
-> La chaîne se trouve dans **Settings → Database → Connection string → URI**.
+4. Vérifier dans **Table Editor** que `anomalies` contient bien **670 lignes**. C'est ce qui
+   prouve que les cinq morceaux sont tous passés — s'il en manque un, le compte est plus bas.
 
-3. Vérifier dans **Table Editor** que `anomalies` contient bien **670 lignes**.
+### Où vont les photos et les factures
 
-### Le dépôt des fichiers
+Elles ne vivent pas dans la base : elles vivent dans Supabase Storage.
 
-Les photos et les factures ne vivent pas dans la base : elles vivent dans Supabase Storage.
-
-4. **Storage → New bucket**, nom `fichiers`, **privé** (ne pas cocher « Public bucket »).
+5. **Storage → New bucket**, nom `fichiers`, **privé** (ne pas cocher « Public bucket »).
    L'application lit et écrit avec sa clé de service ; rien n'est accessible sans passer par elle.
-5. **Settings → API**, noter deux valeurs pour l'étape 3 :
+6. **Settings → API**, noter deux valeurs pour la partie Vercel, plus bas :
    - **Project URL** (`https://xxxx.supabase.co`)
    - **service_role secret** — la clé longue. Elle contourne les règles de sécurité : elle ne
      doit figurer que dans Vercel, jamais dans le code, jamais dans un message.
