@@ -127,7 +127,7 @@ attendre.
 |---|---|---|
 | `DATABASE_URL` | Supabase → Settings → Database → **Connection pooling**, mode *Transaction* | L'application ne démarre pas |
 | `SUPABASE_URL` | Supabase → Settings → API → **Project URL** | Les photos sont écrites sur un disque éphémère et perdues au déploiement suivant |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → **service_role secret** | idem |
+| `SUPABASE_SECRET_KEY` | Supabase → **Connect** → *Server* → `SUPABASE_SECRET_KEY` (`sb_secret_…`) | idem |
 | `SUPABASE_BUCKET` | `fichiers` | Vaut `fichiers` par défaut — à ne renseigner que si le seau porte un autre nom |
 | `RESEND_API_KEY` | Resend → API Keys | Rien ne part. Les messages s'accumulent dans la file sans se perdre |
 | `MAIL_EXPEDITEUR` | `Parisianer <technique@contacthotelparisianer.com>`, ou `onboarding@resend.dev` pour essayer | L'expéditeur par défaut de Resend est employé |
@@ -180,7 +180,7 @@ L'application s'ouvre ensuite en plein écran, sans barre de navigateur.
 | Symptôme | Cause la plus probable |
 |---|---|
 | Page blanche, « A server error occurred » | `DATABASE_URL` absente ou mauvaise. Vercel → Deployments → Logs |
-| Les photos disparaissent après un déploiement | `SUPABASE_URL` ou `SUPABASE_SERVICE_ROLE_KEY` manquante |
+| Les photos disparaissent après un déploiement | `SUPABASE_URL` ou `SUPABASE_SECRET_KEY` manquante |
 | Une photo ne s'enregistre pas | Le seau `fichiers` n'existe pas, ou porte un autre nom |
 | Rien ne part en mail | `RESEND_API_KEY` absente — l'écran `/administration` le dit |
 | Les mails partent mais tombent en spam | Le domaine n'est pas vérifié chez Resend |

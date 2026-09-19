@@ -40,7 +40,12 @@ function supabase() {
   // La clé de service contourne les règles de ligne : elle ne doit JAMAIS
   // partir vers le navigateur. Elle n'est lue que dans ce fichier, qui ne
   // s'exécute que sur le serveur.
-  const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  //
+  // Supabase a renommé ses clés : `sb_secret_…` (SUPABASE_SECRET_KEY) remplace
+  // l'ancienne `service_role`. Les deux noms sont acceptés — un projet ancien
+  // n'a pas à être repris, un projet neuf n'a pas à traduire.
+  const cle =
+    process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !cle) return null;
   return { url: url.replace(/\/+$/, ""), cle };
 }

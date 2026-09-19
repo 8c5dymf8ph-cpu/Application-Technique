@@ -198,8 +198,9 @@ celle que le technicien voit en choisissant son matériel. Sans photo, l'écran 
 couleur — il n'attend jamais une image pour fonctionner.
 
 Une facture se range au même endroit qu'une photo — PDF compris. Le stockage passe par
-`lib/stockage.ts` : **Supabase Storage dès que `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY`
-sont là, le disque sinon.** Le choix ne se fait jamais sur `NODE_ENV` : on peut vouloir essayer
+`lib/stockage.ts` : **Supabase Storage dès que `SUPABASE_URL` et la clé de service sont là, le
+disque sinon.** La clé se lit sous son nom actuel `SUPABASE_SECRET_KEY` (`sb_secret_…`) ou sous
+l'ancien `SUPABASE_SERVICE_ROLE_KEY` — Supabase les a renommées, les deux restent acceptés. Le choix ne se fait jamais sur `NODE_ENV` : on peut vouloir essayer
 le dépôt distant depuis un poste. Le disque de Vercel repart à zéro à chaque déploiement — une
 photo qui y serait écrite serait perdue, et `/administration` le signale en rouge. Rien d'autre
 dans l'application ne connaît autre chose qu'un nom de fichier.

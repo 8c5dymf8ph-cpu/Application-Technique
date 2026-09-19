@@ -214,7 +214,7 @@ export default async function Administration({
           <p className="rounded-card bg-red-soft px-4 py-3 text-[12.5px] text-red text-pretty leading-snug">
             Les photos et les factures sont écrites sur le disque du serveur. En ligne, ce
             disque repart à zéro à chaque déploiement : elles seraient perdues. Renseignez{" "}
-            <code>SUPABASE_URL</code> et <code>SUPABASE_SERVICE_ROLE_KEY</code> avant de mettre
+            <code>SUPABASE_URL</code> et <code>SUPABASE_SECRET_KEY</code> avant de mettre
             en service.
           </p>
         )}
