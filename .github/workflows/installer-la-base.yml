@@ -43,6 +43,85 @@ jobs:
             exit 1
           fi
 
+      - name: Examiner la chaîne de connexion
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          from urllib.parse import urlsplit, unquote
+
+          brute = os.environ["PGURL"].strip()
+
+          def stop(*messages):
+              print("")
+              for m in messages:
+                  print(f"  • {m}", file=sys.stderr)
+              sys.exit(1)
+
+          # Le texte d'exemple se teste AVANT l'analyse : ses crochets font
+          # prendre le mot de passe pour une adresse IPv6, et l'analyse échoue
+          # sur une erreur qui n'explique rien.
+          if "[" in brute or "]" in brute:
+              stop(
+                  "La chaîne contient encore des crochets, donc le texte "
+                  "d'exemple [YOUR-PASSWORD]. Il faut le remplacer par le vrai "
+                  "mot de passe de la base — ou en poser un nouveau : Supabase "
+                  "→ Settings → Database → Reset database password."
+              )
+
+          soucis = []
+
+          # Un « @ » non encodé dans le mot de passe couperait l'adresse au
+          # mauvais endroit : on le repère avant de faire confiance au reste.
+          if brute.count("@") > 1:
+              soucis.append(
+                  "Le mot de passe contient un « @ » : il doit être encodé "
+                  "(%40), ou remplacé par un mot de passe sans caractère spécial."
+              )
+
+          try:
+              u = urlsplit(brute)
+          except ValueError as e:
+              stop(f"La chaîne n'est pas lisible ({e}).", *soucis)
+          hote, port, base = u.hostname or "", u.port, (u.path or "/").lstrip("/")
+          user = unquote(u.username or "")
+          mdp = unquote(u.password or "")
+
+          print(f"hôte          : {hote}")
+          print(f"port          : {port}")
+          print(f"base          : {base}")
+          print(f"utilisateur   : {user}")
+          print(f"mot de passe  : {len(mdp)} caractères")
+
+          if "pooler.supabase.com" not in hote:
+              soucis.append(
+                  "L'hôte n'est pas celui du pooler. Prendre la chaîne "
+                  "« Session pooler » dans Supabase → Connect → Direct."
+              )
+          if "." not in user:
+              soucis.append(
+                  f"L'utilisateur est « {user} », sans la référence du projet. "
+                  "Le pooler attend « postgres.<référence-du-projet> » : la "
+                  "chaîne a été modifiée, ou ce n'est pas celle du Session pooler."
+              )
+          if not mdp:
+              soucis.append("Il n'y a pas de mot de passe dans la chaîne.")
+          elif mdp.upper().strip("[]") in ("YOUR-PASSWORD", "YOUR_PASSWORD", "PASSWORD"):
+              soucis.append(
+                  "Le mot de passe est resté le texte d'exemple [YOUR-PASSWORD]. "
+                  "Il faut le remplacer par le vrai mot de passe de la base."
+              )
+
+          if soucis:
+              print("")
+              for s in soucis:
+                  print(f"  • {s}", file=sys.stderr)
+              sys.exit(1)
+          print("")
+          print("La chaîne a la bonne forme.")
+          PY
+
       - name: Effacer la base, si demandé
         if: ${{ inputs.repartir_de_zero }}
         env:
