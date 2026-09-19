@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Retour } from "./retour";
 import type { Route } from "next";
 
 /** Une adresse construite à partir d'un segment dynamique. */
@@ -16,16 +17,10 @@ export function Entete({
   return (
     <header className="bg-plum px-5 pb-[18px] pt-5 flex items-center gap-3">
       {retour && (
-        <Link
-          href={retour as Route}
-          aria-label="Retour"
-          className="w-11 h-11 shrink-0 rounded-[13px] bg-white/15 grid place-items-center"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
-               strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
-        </Link>
+        <Retour
+          vers={retour as Route}
+          classe="w-11 h-11 shrink-0 rounded-[13px] bg-white/15 grid place-items-center active:bg-white/25"
+        />
       )}
       <div className="min-w-0">
         <h1 className="font-display font-bold text-[21px] text-white leading-tight">{titre}</h1>

@@ -285,6 +285,13 @@ l'entraînement.
 
 ## Écrans
 
+- **Le retour ramène d'où l'on vient, pas à un parent supposé.** Chaque écran désignait son
+  parent en dur : consulter une ancienne intervention depuis l'historique d'une chambre, puis
+  revenir, renvoyait à l'historique complet et non à l'endroit quitté. Le composant `Retour`
+  refait le geste de la flèche du navigateur ; l'adresse passée à `Entete` n'est plus qu'un
+  filet, pour l'ouverture directe d'un lien partagé ou l'application lancée depuis l'écran
+  d'accueil. Il ne sort jamais de l'application : le point de départ de l'onglet est mémorisé,
+  `history.length` seul ne distinguant pas nos pages de ce qui précédait.
 - **En déclarant, la gouvernante ne voit que ce qui reste à traiter** dans le lieu — à faire, en
   cours, achat à faire. L'historique complet est derrière un lien, jamais dans le chemin de saisie.
   Il a toute sa place ailleurs : historique du lieu, rapports.
