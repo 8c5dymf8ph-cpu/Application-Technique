@@ -79,6 +79,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 15. **Une section spécialisée ne montre que son métier.** Sans ligne dans
    `specialites_intervenant`, un intervenant est polyvalent ; avec, il ne voit que ses types.
    La règle vaut pour les salariés comme pour les entreprises extérieures.
+15bis. **Le prix payé se lit dans les mouvements, il ne se stocke pas.** Chaque entrée porte le
+   prix de SA livraison ; `v_prix_produit` en déduit le dernier prix, la variation et l'écart
+   au prix de référence. **`produits.prix_unitaire` ne se met jamais à jour tout seul** : c'est
+   lui qui valorise le stock, et l'aligner est une décision qu'on prend en voyant la hausse.
+   Un produit peut avoir plusieurs fournisseurs, chacun avec son adresse : c'est là que part
+   la demande de devis, et l'un d'eux est `prefere`.
 16. **Une facture de prestataire se rapproche par la journée et l'intervenant**, jamais par le
    numéro de tournée. L'ancien `InterventionID` changeait à chaque anomalie validée : il fallait
    le corriger à la main, et il reste des coquilles dans les données reprises. Ce qui identifie
@@ -98,6 +104,10 @@ donnees/installation/  les trois fichiers à jouer en production, produits par
                        outils/preparer_installation.sh — jamais édités à la main
 donnees/demo_*.sql     données inventées, pour regarder les écrans. Jamais en production.
 ```
+
+**Le pilote PostgreSQL rend les colonnes `date` sous forme d'objet `Date`, pas de chaîne.**
+Découper la chaîne à la main (`.slice(0, 10)`) passe le typage et casse en production : utiliser
+`jourISO()` de `lib/domaine.ts`.
 
 Les scénarios se mesurent en **écarts**, pas en valeurs absolues : ils doivent pouvoir se
 rejouer sur la base de l'hôtel, avec son parc réel, sans être réécrits.

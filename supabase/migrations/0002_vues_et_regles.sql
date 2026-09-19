@@ -9,6 +9,66 @@
 -- Stock matériel — alimente aussi la fiche produit
 -- (Initial / Entrées / Sorties / Ajustements / Stock actuel)
 -- -----------------------------------------------------------------------------
+-- Le prix payé, dans le temps
+--
+-- Chaque entrée de stock porte le prix payé POUR CETTE livraison. Rien de plus
+-- n'est nécessaire : l'évolution du prix se lit dans les mouvements, elle ne se
+-- stocke pas. `produits.prix_unitaire` reste le prix de référence — celui qui
+-- valorise le stock — et ces vues disent s'il est encore d'actualité.
+-- -----------------------------------------------------------------------------
+create view v_achats_produit as
+select
+  m.produit_id,
+  m.id                        as mouvement_id,
+  m.date_mouvement,
+  m.quantite,
+  m.prix_unitaire,
+  f.nom                       as fournisseur,
+  fa.reference                as facture,
+  fa.fichier_url              as facture_fichier,
+  fa.id                       as facture_id,
+  -- Le prix payé la fois d'avant, pour lire la variation sans la calculer deux fois.
+  lag(m.prix_unitaire) over (partition by m.produit_id order by m.date_mouvement,
+                                                                m.id) as prix_precedent
+from mouvements_stock m
+left join factures fa     on fa.id = m.facture_id
+left join fournisseurs f  on f.id = fa.fournisseur_id
+where m.type = 'entree' and m.prix_unitaire is not null;
+
+-- Ce qu'il faut savoir d'un coup d'œil : le dernier prix payé, sa variation, et
+-- l'écart avec le prix de référence. Un prix qui a augmenté depuis la dernière
+-- commande est une information d'achat, pas un détail comptable.
+create view v_prix_produit as
+select
+  p.id                                  as produit_id,
+  p.prix_unitaire                       as prix_reference,
+  d.prix_unitaire                       as dernier_prix,
+  d.date_mouvement                      as dernier_achat,
+  d.fournisseur                         as dernier_fournisseur,
+  d.prix_precedent,
+  case when d.prix_precedent is not null and d.prix_precedent > 0
+       then round((d.prix_unitaire - d.prix_precedent) / d.prix_precedent * 100, 1)
+  end                                   as variation_pct,
+  case when p.prix_unitaire is not null and p.prix_unitaire > 0 and d.prix_unitaire is not null
+       then round((d.prix_unitaire - p.prix_unitaire) / p.prix_unitaire * 100, 1)
+  end                                   as ecart_reference_pct,
+  s.nb_achats,
+  s.prix_min,
+  s.prix_max,
+  s.prix_moyen
+from produits p
+left join lateral (
+  select * from v_achats_produit a
+  where a.produit_id = p.id
+  order by a.date_mouvement desc, a.mouvement_id desc limit 1
+) d on true
+left join lateral (
+  select count(*)::int as nb_achats, min(prix_unitaire) as prix_min,
+         max(prix_unitaire) as prix_max, round(avg(prix_unitaire), 2) as prix_moyen
+  from v_achats_produit a where a.produit_id = p.id
+) s on true;
+
+-- -----------------------------------------------------------------------------
 create view v_stock_produits as
 select
   p.id,
@@ -30,14 +90,31 @@ select
   coalesce(sum(m.quantite), 0)                         as stock,
   coalesce(sum(m.quantite), 0) * p.prix_unitaire       as valeur_stock,
   coalesce(sum(m.quantite), 0) <= p.seuil_alerte       as sous_seuil,
-  max(m.date_mouvement)                                as dernier_mouvement
+  max(m.date_mouvement)                                as dernier_mouvement,
+  pr.dernier_prix,
+  pr.variation_pct,
+  -- Le fournisseur préféré, et son adresse : c'est à lui que part la demande.
+  fo.fournisseur,
+  fo.email_fournisseur,
+  fo.nb_fournisseurs
 from produits p
 left join mouvements_stock m on m.produit_id = p.id
+left join v_prix_produit pr  on pr.produit_id = p.id
 left join lateral (
   select chemin from photos_produit x
   where x.produit_id = p.id order by x.principale desc, x.ordre limit 1
 ) ph on true
-group by p.id, ph.chemin;
+left join lateral (
+  select f.nom as fournisseur, f.email as email_fournisseur,
+         (select count(*)::int from article_fournisseurs y where y.produit_id = p.id)
+           as nb_fournisseurs
+  from article_fournisseurs af
+  join fournisseurs f on f.id = af.fournisseur_id
+  where af.produit_id = p.id
+  order by af.prefere desc, f.nom limit 1
+) fo on true
+group by p.id, ph.chemin, pr.dernier_prix, pr.variation_pct,
+         fo.fournisseur, fo.email_fournisseur, fo.nb_fournisseurs;
 
 -- -----------------------------------------------------------------------------
 -- Coût d'une intervention

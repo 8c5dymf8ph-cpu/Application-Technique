@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { personnes, profilActif } from "@/lib/profil";
-import { euros } from "@/lib/domaine";
+import { euros , aujourdhuiISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampCommentaire } from "@/app/composants/fil";
 import { TotalBouteilles } from "@/app/composants/total-bouteilles";
@@ -172,7 +172,7 @@ export default async function Signaler({
       ...extra,
     })}` as Route;
 
-  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const aujourdhui = aujourdhuiISO();
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">

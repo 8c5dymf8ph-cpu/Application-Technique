@@ -32,6 +32,39 @@ type Produit = {
   dernier_mouvement: string | null;
 };
 
+type Fournisseur = {
+  lien_id: string;
+  fournisseur_id: string;
+  nom: string;
+  email: string | null;
+  reference_fournisseur: string | null;
+  prefere: boolean;
+};
+
+type Achat = {
+  mouvement_id: string;
+  date_mouvement: string;
+  quantite: number;
+  prix_unitaire: number;
+  fournisseur: string | null;
+  facture_fichier: string | null;
+  facture: string | null;
+  prix_precedent: number | null;
+};
+
+type Prix = {
+  prix_reference: number | null;
+  dernier_prix: number | null;
+  dernier_achat: string | null;
+  dernier_fournisseur: string | null;
+  variation_pct: number | null;
+  ecart_reference_pct: number | null;
+  nb_achats: number;
+  prix_min: number | null;
+  prix_max: number | null;
+  prix_moyen: number | null;
+};
+
 type Mouvement = {
   id: string;
   type: string;
@@ -71,6 +104,28 @@ export default async function FicheProduit({
   const photos = await sql<{ id: string; chemin: string; principale: boolean }[]>`
     select id, chemin, principale from photos_produit
     where produit_id = ${id} order by principale desc, ordre, ajoutee_le`;
+
+  const fournisseurs = await sql<Fournisseur[]>`
+    select af.id as lien_id, f.id as fournisseur_id, f.nom, f.email,
+           af.reference_fournisseur, af.prefere
+    from article_fournisseurs af
+    join fournisseurs f on f.id = af.fournisseur_id
+    where af.produit_id = ${id}
+    order by af.prefere desc, f.nom`;
+
+  const tous = await sql<{ id: string; nom: string; email: string | null }[]>`
+    select id, nom, email from fournisseurs where actif order by nom`;
+
+  const [prix] = await sql<Prix[]>`
+    select prix_reference, dernier_prix, dernier_achat, dernier_fournisseur,
+           variation_pct, ecart_reference_pct, nb_achats, prix_min, prix_max, prix_moyen
+    from v_prix_produit where produit_id = ${id}`;
+
+  const achats = await sql<Achat[]>`
+    select mouvement_id, date_mouvement, quantite, prix_unitaire, fournisseur,
+           facture_fichier, facture, prix_precedent
+    from v_achats_produit where produit_id = ${id}
+    order by date_mouvement desc, mouvement_id desc limit 12`;
 
   const mouvements = await sql<Mouvement[]>`
     select m.id, m.type::text, m.motif::text, m.quantite, m.date_mouvement,
@@ -157,6 +212,64 @@ export default async function FicheProduit({
                    order by ordre, ajoutee_le limit 1)
          and not exists (select 1 from photos_produit
                           where produit_id = ${id} and principale)`;
+    revalidatePath(`/stock/produit/${id}`);
+  }
+
+  async function rattacher(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/stock/produit/${id}` as Route);
+
+    const nom = String(donnees.get("nouveau") ?? "").trim();
+    const email = String(donnees.get("email") ?? "").trim() || null;
+    let fournisseur = String(donnees.get("fournisseur") ?? "");
+
+    // Un fournisseur qui n'existe pas encore se crée ici : on ne quitte pas la
+    // fiche du produit pour aller saisir un référentiel.
+    if (nom) {
+      const [cree] = await sql<{ id: string }[]>`
+        insert into fournisseurs (nom, email) values (${nom}, ${email})
+        on conflict (nom) do update set email = coalesce(excluded.email, fournisseurs.email)
+        returning id`;
+      fournisseur = cree.id;
+    } else if (email && fournisseur) {
+      // L'adresse se corrige au passage : c'est là qu'on s'en rend compte.
+      await sql`update fournisseurs set email = ${email} where id = ${fournisseur}`;
+    }
+    if (!fournisseur) return;
+
+    await sql`
+      insert into article_fournisseurs (produit_id, fournisseur_id, reference_fournisseur, prefere)
+      values (${id}, ${fournisseur},
+              ${String(donnees.get("reference") ?? "").trim() || null},
+              not exists (select 1 from article_fournisseurs where produit_id = ${id}))
+      on conflict do nothing`;
+    revalidatePath(`/stock/produit/${id}`);
+  }
+
+  async function detacher(donnees: FormData) {
+    "use server";
+    await sql`delete from article_fournisseurs where id = ${String(donnees.get("lien"))}`;
+    revalidatePath(`/stock/produit/${id}`);
+  }
+
+  async function prefererFournisseur(donnees: FormData) {
+    "use server";
+    await sql`update article_fournisseurs set prefere = false where produit_id = ${id}`;
+    await sql`update article_fournisseurs set prefere = true where id = ${String(donnees.get("lien"))}`;
+    revalidatePath(`/stock/produit/${id}`);
+  }
+
+  async function alignerPrix() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/stock/produit/${id}` as Route);
+    // Le prix de référence ne bouge jamais tout seul : c'est une décision, et
+    // elle se prend en connaissant la hausse.
+    await sql`
+      update produits p set prix_unitaire = v.dernier_prix
+      from v_prix_produit v
+      where v.produit_id = p.id and p.id = ${id} and v.dernier_prix is not null`;
     revalidatePath(`/stock/produit/${id}`);
   }
 
@@ -327,6 +440,213 @@ export default async function FicheProduit({
             </p>
           </form>
         </section>
+
+        {/* Le prix, et ce qu'il devient */}
+        {/* Toujours visible pour qui peut la tenir : sans elle, le premier
+            fournisseur ne pourrait jamais être rattaché. */}
+        {(peutValider(profil.role) || fournisseurs.length > 0 || (prix?.nb_achats ?? 0) > 0) && (
+          <section className="flex flex-col gap-2">
+            <h2 className="etiquette">Le prix</h2>
+
+            {prix && prix.nb_achats > 0 && (
+              <div className="carte px-4 py-3.5 flex flex-col gap-2.5">
+                <div className="flex items-baseline gap-3">
+                  <span className="grow min-w-0">
+                    <span className="block text-[11.5px] text-ink-faint">
+                      Dernier prix payé
+                      {prix.dernier_fournisseur && ` · ${prix.dernier_fournisseur}`}
+                    </span>
+                    <span className="block font-display font-semibold text-[22px] tabular-nums">
+                      {euros(prix.dernier_prix)}
+                    </span>
+                  </span>
+                  {prix.variation_pct !== null && Number(prix.variation_pct) !== 0 && (
+                    <span
+                      className={`px-2.5 py-1 rounded-md text-[13px] tabular-nums ${
+                        Number(prix.variation_pct) > 0
+                          ? "bg-red-soft text-red"
+                          : "bg-green-soft text-green"
+                      }`}
+                    >
+                      {Number(prix.variation_pct) > 0 ? "+" : "−"}
+                      {Math.abs(Number(prix.variation_pct))} %
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-[12px] text-ink-soft text-pretty leading-snug">
+                  {prix.nb_achats} achat{prix.nb_achats > 1 ? "s" : ""} — de{" "}
+                  {euros(prix.prix_min)} à {euros(prix.prix_max)}, {euros(prix.prix_moyen)} en
+                  moyenne.
+                </p>
+
+                {prix.ecart_reference_pct !== null &&
+                  Math.abs(Number(prix.ecart_reference_pct)) >= 1 && (
+                    <div className="rounded-card bg-amber-soft px-3.5 py-2.5 flex flex-col gap-2">
+                      <p className="text-[12.5px] text-amber text-pretty leading-snug">
+                        Le prix de référence est {euros(prix.prix_reference)}, le dernier payé{" "}
+                        {euros(prix.dernier_prix)} —{" "}
+                        {Number(prix.ecart_reference_pct) > 0 ? "+" : "−"}
+                        {Math.abs(Number(prix.ecart_reference_pct))} %. La valeur du stock est
+                        calculée sur la référence.
+                      </p>
+                      {peutValider(profil.role) && (
+                        <form action={alignerPrix}>
+                          <button className="h-[38px] px-3 rounded-[10px] bg-surface border border-amber/30 text-[12.5px] text-amber">
+                            Aligner la référence sur {euros(prix.dernier_prix)}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+
+                {/* Les achats, du plus récent au plus ancien. Une liste dit mieux
+                    qu'une courbe ce qui s'est passé quand il y a trois achats. */}
+                <ul className="flex flex-col gap-1 border-t border-line pt-2.5">
+                  {achats.map((a) => {
+                    const hausse =
+                      a.prix_precedent !== null
+                        ? Number(a.prix_unitaire) - Number(a.prix_precedent)
+                        : null;
+                    return (
+                      <li key={a.mouvement_id} className="flex items-baseline gap-2 text-[12.5px]">
+                        <span className="text-ink-faint tabular-nums w-[68px] shrink-0">
+                          {new Date(a.date_mouvement).toLocaleDateString("fr-FR")}
+                        </span>
+                        <span className="grow min-w-0 truncate text-ink-soft">
+                          {a.fournisseur ?? "—"}
+                          {a.facture && ` · ${a.facture}`}
+                        </span>
+                        {hausse !== null && Math.abs(hausse) >= 0.01 && (
+                          <span
+                            className={`tabular-nums text-[11px] ${
+                              hausse > 0 ? "text-red" : "text-green"
+                            }`}
+                          >
+                            {hausse > 0 ? "+" : "−"}
+                            {Math.abs(hausse).toFixed(2)}
+                          </span>
+                        )}
+                        <span className="tabular-nums shrink-0">{euros(a.prix_unitaire)}</span>
+                        {a.facture_fichier && (
+                          <a
+                            href={`/photo/${a.facture_fichier}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Voir la facture"
+                            className="text-plum underline underline-offset-2 text-[11px] shrink-0"
+                          >
+                            facture
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {/* Chez qui on commande, et à quelle adresse */}
+            <div className="carte px-3.5 py-3 flex flex-col gap-2.5">
+              <span className="etiquette">Fournisseurs</span>
+              {fournisseurs.length === 0 ? (
+                <p className="text-[12.5px] text-ink-faint text-pretty">
+                  Aucun fournisseur rattaché : la demande de devis ne peut pas partir pour ce
+                  produit.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1.5">
+                  {fournisseurs.map((f) => (
+                    <li key={f.lien_id} className="flex items-center gap-2">
+                      <span className="grow min-w-0">
+                        <span className="block text-[14px] truncate">
+                          {f.nom}
+                          {f.prefere && (
+                            <span className="ml-1.5 text-[10.5px] text-plum">préféré</span>
+                          )}
+                        </span>
+                        <span className="block text-[11.5px] text-ink-faint truncate">
+                          {f.email ?? "pas d’adresse — le devis ne partira pas"}
+                          {f.reference_fournisseur && ` · réf. ${f.reference_fournisseur}`}
+                        </span>
+                      </span>
+                      {!f.prefere && peutValider(profil.role) && (
+                        <form action={prefererFournisseur}>
+                          <input type="hidden" name="lien" value={f.lien_id} />
+                          <button className="h-[34px] px-2.5 rounded-[9px] bg-plum-soft text-plum text-[11px] min-h-0">
+                            Préférer
+                          </button>
+                        </form>
+                      )}
+                      {peutValider(profil.role) && (
+                        <form action={detacher}>
+                          <input type="hidden" name="lien" value={f.lien_id} />
+                          <button
+                            aria-label={`Retirer ${f.nom}`}
+                            className="w-9 h-9 rounded-[9px] bg-surface border border-line grid place-items-center min-h-0"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="#8E8AA3" strokeWidth="2.2" strokeLinecap="round">
+                              <path d="M6 12h12" />
+                            </svg>
+                          </button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {peutValider(profil.role) && (
+                <form action={rattacher} className="flex flex-col gap-2 border-t border-line pt-2.5">
+                  <select
+                    name="fournisseur"
+                    className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface-muted text-[15px]"
+                  >
+                    <option value="">— Un fournisseur connu —</option>
+                    {tous
+                      .filter((t) => !fournisseurs.some((f) => f.fournisseur_id === t.id))
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nom}
+                          {t.email ? "" : " (sans adresse)"}
+                        </option>
+                      ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <input
+                      name="nouveau"
+                      autoComplete="off"
+                      placeholder="…ou un nouveau nom"
+                      className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                    />
+                    <input
+                      name="reference"
+                      autoComplete="off"
+                      placeholder="Réf. chez lui"
+                      className="w-[110px] h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                    />
+                  </div>
+                  <input
+                    name="email"
+                    type="email"
+                    autoComplete="off"
+                    placeholder="Adresse mail — c’est là que part le devis"
+                    className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                  />
+                  <button className="h-[44px] rounded-[12px] bg-surface-muted border border-line text-[14px]">
+                    Rattacher au produit
+                  </button>
+                  <p className="text-[11px] text-ink-faint text-pretty leading-snug">
+                    Plusieurs fournisseurs sont possibles : la consultation part alors chez
+                    chacun, pour comparer. L’adresse saisie ici corrige aussi celle du
+                    fournisseur.
+                  </p>
+                </form>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Les photos, ajoutées par vous */}
         <section className="flex flex-col gap-2">

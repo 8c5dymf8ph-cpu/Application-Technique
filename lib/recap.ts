@@ -16,13 +16,17 @@ import {
  * Un même message n'est jamais déposé deux fois : c'est la catégorie qui le
  * distingue, et la tournée qui l'identifie.
  */
-export async function deposerRecap(tournee: string, complet: boolean) {
+export async function deposerRecap(tournee: string, complet: boolean, renvoi = false) {
   const categorie = complet ? "recap_intervention" : "recap_technicien";
 
-  const [deja] = await sql<{ n: number }[]>`
-    select count(*)::int as n from emails_envoyes
-    where reference_id = ${tournee} and categorie = ${categorie}`;
-  if (deja.n > 0) return;
+  // Un même message n'est jamais déposé deux fois — sauf demande explicite :
+  // « renvoyer » est une décision, elle se distingue d'un doublon accidentel.
+  if (!renvoi) {
+    const [deja] = await sql<{ n: number }[]>`
+      select count(*)::int as n from emails_envoyes
+      where reference_id = ${tournee} and categorie = ${categorie}`;
+    if (deja.n > 0) return;
+  }
 
   const [destinataires] = await sql<{ liste: string[] }[]>`
     select coalesce(array_agg(u.email) filter (where u.email is not null), '{}') as liste

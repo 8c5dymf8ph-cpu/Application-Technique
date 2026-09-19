@@ -1031,5 +1031,51 @@ begin
     format('%s ligne déclarée faite mais non validée, attendu 1', v_n);
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 14 — Le prix payé se suit dans les mouvements. Une hausse se lit
+-- sans être stockée nulle part, et le prix de référence ne bouge pas tout seul.
+-- ===========================================================================
+do $$
+declare
+  v_produit uuid;
+  v_prix    record;
+begin
+  -- Un produit à soi : le scénario doit tenir sur n'importe quelle base, y
+  -- compris celle de l'hôtel où JNT-12 a déjà une histoire.
+  insert into produits (code, designation, prix_unitaire, seuil_alerte)
+  values ('TEST-PRIX', 'Produit de test — suivi du prix', 3.00, 5)
+  returning id into v_produit;
+
+  -- Trois livraisons, à trois prix différents.
+  insert into mouvements_stock (produit_id, type, quantite, prix_unitaire,
+                                date_mouvement, utilisateur_id)
+  values (v_produit, 'entree', 10, 3.00, now() - interval '90 days',
+          '11111111-1111-1111-1111-111111111111'),
+         (v_produit, 'entree', 10, 3.20, now() - interval '45 days',
+          '11111111-1111-1111-1111-111111111111'),
+         (v_produit, 'entree', 10, 3.84, now() - interval '2 days',
+          '11111111-1111-1111-1111-111111111111');
+
+  select * into v_prix from v_prix_produit where produit_id = v_produit;
+  assert v_prix.nb_achats = 3, format('%s achats, attendu 3', v_prix.nb_achats);
+  assert v_prix.dernier_prix = 3.84, format('dernier prix = %s, attendu 3.84', v_prix.dernier_prix);
+  assert v_prix.prix_precedent = 3.20,
+    format('prix précédent = %s, attendu 3.20', v_prix.prix_precedent);
+  assert v_prix.variation_pct = 20.0,
+    format('variation = %s %%, attendu 20.0', v_prix.variation_pct);
+  assert v_prix.ecart_reference_pct = 28.0,
+    format('écart au prix de référence = %s %%, attendu 28.0', v_prix.ecart_reference_pct);
+  assert v_prix.prix_min = 3.00 and v_prix.prix_max = 3.84,
+    format('min %s, max %s — attendu 3.00 et 3.84', v_prix.prix_min, v_prix.prix_max);
+
+  -- Le prix de référence n'a pas bougé : c'est une décision, pas un effet de bord.
+  assert (select prix_unitaire from produits where id = v_produit) = 3.00,
+    'le prix de référence ne doit jamais se mettre à jour tout seul';
+
+  -- Et il se lit depuis la liste du stock, sans requête de plus.
+  assert (select variation_pct from v_stock_produits where id = v_produit) = 20.0,
+    'la hausse doit être lisible depuis la liste du stock';
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;
