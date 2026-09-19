@@ -47,6 +47,14 @@ des adresses des deux autres.
 > lui arrive de rejouer un contenu périmé : on croit coller un fichier, c'est le précédent qui
 > part. Le chemin ci-dessus ne colle rien.
 
+### Plus tard : appliquer une évolution du schéma
+
+Quand une modification touche la base, elle arrive comme un fichier de plus dans
+`supabase/migrations/`. Onglet *Actions* → **Mettre à jour la base** → *Run workflow*.
+
+Ce workflow **ne touche pas aux données** : il ne joue que les fichiers qui manquent et note ce
+qu'il a joué dans `migrations_appliquees`. Le relancer sur une base à jour ne fait rien.
+
 ### Si vous préférez coller à la main
 
 Les fichiers restent dans `donnees/installation/`, dans l'ordre donné par `ordre.txt` :

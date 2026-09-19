@@ -1,0 +1,36 @@
+# Applique à la base les évolutions du schéma, sans toucher aux données.
+#
+# À lancer après chaque modification annoncée comme « migration ». Ne joue que
+# les fichiers qui manquent : relancer ce workflow sur une base à jour ne fait
+# rien.
+name: Mettre à jour la base
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier que la clé de connexion est posée
+        run: |
+          if [ -z "${{ secrets.INSTALL_DATABASE_URL }}" ]; then
+            echo "Le secret INSTALL_DATABASE_URL est absent." >&2
+            exit 1
+          fi
+
+      - name: Appliquer les migrations manquantes
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: ./outils/appliquer_migrations.sh
+
+      - name: Compter ce qui est en place
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          psql "$PGURL" --quiet --no-psqlrc --no-align --tuples-only -c "
+            select 'anomalies : ' || count(*) from anomalies
+            union all
+            select 'migrations jouées : ' || count(*) from migrations_appliquees"
