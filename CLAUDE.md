@@ -120,6 +120,21 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    un passage, c'est **qui** est venu et **quel jour** — `FAIT LE` et `PAR` dans l'ancienne
    application. `fn_interventions_rapprochables` propose donc des journées d'intervenant, pas des
    tournées, et une facture peut en couvrir plusieurs.
+16quater. **Le coût d'un passage, c'est le matériel PLUS ce que l'intervenant facture.** Le
+   détail de sa facture ne nous intéresse pas : le matériel appartient le plus souvent à l'hôtel,
+   et ce qu'il facture est son déplacement et ce qu'il estime avoir coûté. Le montant et la pièce
+   se saisissent **depuis le passage**, là où on le regarde — pas dans un écran de factures à
+   part. Le coût matériel reste compté à côté : il s'ajoute, il ne se remplace pas. La facture
+   couvre tout le passage ; `facture_interventions` la rattache à chaque intervention,
+   `montant_affecte` nul valant répartition à parts égales.
+
+16quinquies. **Un passage existe dès qu'un intervenant est venu un jour donné.** L'import n'avait
+   créé une tournée que pour les lignes portant un InterventionID exploitable : 419 interventions
+   sur 528 n'avaient aucun passage, et l'historique n'en montrait qu'un cinquième. La migration
+   0006 les reconstitue par (intervenant, jour), en `reprise` pour qu'aucun récapitulatif ne
+   parte. Ne jamais laisser une intervention sans tournée : elle disparaît de l'historique, et
+   aucun coût ne peut s'y rattacher.
+
 16bis. **Une anomalie ne se montre jamais séparée de son lieu.** Deux listes côte à côte — les
    lieux d'un côté, les descriptions de l'autre — laissent croire qu'il y a un lave-vaisselle
    dans la chambre 57. Partout où plusieurs anomalies s'affichent ensemble, chacune porte sa

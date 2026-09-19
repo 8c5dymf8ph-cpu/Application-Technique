@@ -3,10 +3,12 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { enregistrerFichier } from "@/lib/stockage";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
 import { euros, jourISO, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
+import { ChampPhotos } from "@/app/composants/photos";
 import { deposerRecap } from "@/lib/recap";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +90,78 @@ export default async function DetailTournee({
     where r.tournee = ${lot.reference}
     order by r.date_intervention desc, r.emplacement`;
 
+  // Qui est venu, et sous quelle forme : seule une entreprise extérieure
+  // envoie une facture. Un salarié de l'hôtel n'en émet pas — son passage ne
+  // coûte que le matériel sorti.
+  const [qui] = await sql<{ prestataire_id: string | null; prestataire: string | null }[]>`
+    select t.prestataire_id, p.nom as prestataire
+      from tournees t left join prestataires p on p.id = t.prestataire_id
+     where t.id = ${id}`;
+
+  const [facture] = await sql<{
+    id: string; reference: string | null; montant_ht: number | null;
+    date_facture: string | null; fichier_url: string | null;
+  }[]>`
+    select distinct f.id, f.reference, f.montant_ht, f.date_facture, f.fichier_url
+      from factures f
+      join facture_interventions fi on fi.facture_id = f.id
+      join v_recap_interventions r on r.intervention_id = fi.intervention_id
+     where r.tournee = ${lot.reference}
+     limit 1`;
+
+  /**
+   * Ce que l'intervenant facture.
+   *
+   * Le détail ne nous intéresse pas : dans la plupart des cas le matériel
+   * appartient à l'hôtel, et sa facture porte le déplacement et ce qu'il
+   * estime avoir coûté. On saisit donc un montant et on joint la pièce. Le
+   * coût du matériel reste compté à part — il s'ajoute, il ne se remplace pas.
+   *
+   * La facture couvre toutes les interventions du passage : c'est le lot qui
+   * est l'unité, pas l'anomalie.
+   */
+  async function enregistrerCout(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/technique/tournee/${id}` as Route);
+    if (!qui?.prestataire_id) return;
+
+    const montant = String(donnees.get("montant_ht") ?? "").trim();
+    const reference = String(donnees.get("reference") ?? "").trim() || null;
+    const quand = String(donnees.get("date_facture") ?? "").trim() || null;
+
+    let chemin: string | null = null;
+    const piece = donnees.get("fichier");
+    if (piece instanceof File && piece.size > 0) chemin = await enregistrerFichier(piece);
+
+    const [f] = await sql<{ id: string }[]>`
+      insert into factures (id, type, prestataire_id, reference, date_reference,
+                            date_facture, montant_ht, fichier_url, statut, saisie_par)
+      values (coalesce(${facture?.id ?? null}::uuid, gen_random_uuid()),
+              'prestation', ${qui.prestataire_id}, ${reference},
+              ${lot.date_tournee}::date, ${quand}::date,
+              ${montant === "" ? null : Number(montant)}, ${chemin},
+              'rapprochee', ${profil_.id})
+      on conflict (id) do update
+        set reference    = coalesce(excluded.reference, factures.reference),
+            date_facture = coalesce(excluded.date_facture, factures.date_facture),
+            montant_ht   = coalesce(excluded.montant_ht, factures.montant_ht),
+            -- Une pièce déjà jointe ne s'efface pas parce qu'on corrige un montant.
+            fichier_url  = coalesce(excluded.fichier_url, factures.fichier_url)
+      returning id`;
+
+    // Le rapprochement porte sur le passage entier ; montant_affecte reste nul,
+    // la répartition se fait à parts égales.
+    await sql`
+      insert into facture_interventions (facture_id, intervention_id)
+      select ${f.id}, r.intervention_id
+        from v_recap_interventions r
+       where r.tournee = ${lot.reference}
+      on conflict do nothing`;
+
+    revalidatePath(`/technique/tournee/${id}`);
+  }
+
   async function renvoyer(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -153,11 +227,88 @@ export default async function DetailTournee({
               pas le coût réel.
             </p>
           )}
-          {prestataireTotal === 0 && lot.intervenant && (
-            <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
-              Aucune facture de prestation rattachée à ce passage. Elle arrive souvent une à deux
-              semaines après.
+          {prestataireTotal === 0 && lot.intervenant && !qui?.prestataire_id && (
+            <p className="text-[12.5px] text-ink-faint text-pretty leading-snug">
+              {lot.intervenant} fait partie de l’hôtel : ce passage ne coûte que le matériel
+              sorti.
             </p>
+          )}
+
+          {/* Saisir le montant là où l'on regarde le passage. Le détail ne nous
+              intéresse pas : le matériel appartient le plus souvent à l'hôtel,
+              et la facture porte le déplacement et ce que l'intervenant estime
+              avoir coûté. */}
+          {qui?.prestataire_id && (
+            <details className="group/cout" open={prestataireTotal === 0}>
+              <summary className="list-none carte px-4 py-3 text-[15px] flex items-center justify-between cursor-pointer">
+                <span>{facture ? "Corriger la facture" : "Renseigner ce qu’il a facturé"}</span>
+                <span className="text-[13px] text-ink-faint">
+                  {facture?.montant_ht != null ? euros(Number(facture.montant_ht)) : "à saisir"}
+                </span>
+              </summary>
+
+              <form action={enregistrerCout} className="flex flex-col gap-2.5 pt-2.5">
+                <label className="flex flex-col gap-1">
+                  <span className="etiquette">Montant HT facturé</span>
+                  <input
+                    name="montant_ht"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    defaultValue={facture?.montant_ht ?? ""}
+                    placeholder="Déplacement et main-d’œuvre"
+                    className="w-full h-[50px] px-3 rounded-[11px] border border-line bg-surface text-[17px] tabular-nums"
+                  />
+                </label>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="etiquette">Numéro</span>
+                    <input
+                      name="reference"
+                      defaultValue={facture?.reference ?? ""}
+                      className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="etiquette">Date de facture</span>
+                    <input
+                      name="date_facture"
+                      type="date"
+                      defaultValue={jourISO(facture?.date_facture)}
+                      className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
+                    />
+                  </label>
+                </div>
+
+                <ChampPhotos
+                  nom="fichier"
+                  libelle={facture?.fichier_url ? "Remplacer la facture" : "Joindre la facture"}
+                  multiple={false}
+                  documents
+                />
+
+                {facture?.fichier_url && (
+                  <a
+                    href={`/photo/${facture.fichier_url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[13.5px] text-plum underline underline-offset-4"
+                  >
+                    Voir la facture jointe
+                  </a>
+                )}
+
+                <button className="h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[16px]">
+                  Enregistrer
+                </button>
+                <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+                  Le matériel sorti reste compté à part : il s’ajoute à ce montant, il ne le
+                  remplace pas.
+                </p>
+              </form>
+            </details>
           )}
         </section>
 
