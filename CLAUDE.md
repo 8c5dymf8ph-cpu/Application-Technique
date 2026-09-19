@@ -165,6 +165,12 @@ done
 psql -h /tmp -p 55432 -U postgres -d valid -q -f supabase/tests/01_scenarios.sql
 ```
 
+**Le code part en ligne avant la migration.** Vercel redéploie à chaque poussée ; une migration
+s'applique à la main, plus tard. Entre les deux, l'application tourne sur un schéma plus ancien
+que le code — et une requête qui nomme une colonne absente **casse l'écran** : Postgres refuse
+l'instruction entière, il n'ignore pas la condition. Écrire deux requêtes et choisir avec
+`colonneExiste()` de `lib/schema.ts`, jamais une condition booléenne dans le SQL.
+
 ## Rôles
 
 | Rôle | Ce qu'il fait |

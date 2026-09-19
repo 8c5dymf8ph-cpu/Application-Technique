@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
@@ -111,6 +112,13 @@ export default async function FicheProduit({
     select id, chemin, principale from photos_produit
     where produit_id = ${id} order by principale desc, ordre, ajoutee_le`;
 
+  // Culligan ne vend que des bouteilles : il n'a rien à faire dans la liste
+  // qu'on propose en ouvrant la fiche d'un joint. Tant que la migration 0005
+  // n'est pas appliquée, la colonne n'existe pas — et Postgres refuse la
+  // requête entière, il ne se contente pas d'ignorer la condition. Deux
+  // requêtes, donc, pas une condition.
+  const tri = await colonneExiste("fournisseurs", "pour_bouteilles");
+
   const fournisseurs = await sql<Fournisseur[]>`
     select af.id as lien_id, f.id as fournisseur_id, f.nom, f.email,
            f.contact, f.telephone, af.reference_fournisseur, af.prefere
@@ -119,11 +127,12 @@ export default async function FicheProduit({
     where af.produit_id = ${id}
     order by af.prefere desc, f.nom`;
 
-  const tous = await sql<{ id: string; nom: string; email: string | null }[]>`
-    -- Culligan ne vend que des bouteilles : il n'a rien à faire dans la liste
-    -- qu'on propose en ouvrant la fiche d'un joint.
-    select id, nom, email from fournisseurs
-     where actif and not pour_bouteilles order by nom`;
+  const tous = tri
+    ? await sql<{ id: string; nom: string; email: string | null }[]>`
+        select id, nom, email from fournisseurs
+         where actif and not pour_bouteilles order by nom`
+    : await sql<{ id: string; nom: string; email: string | null }[]>`
+        select id, nom, email from fournisseurs where actif order by nom`;
 
   const [prix] = await sql<Prix[]>`
     select prix_reference, dernier_prix, dernier_achat, dernier_fournisseur,

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { euros } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
@@ -67,10 +68,16 @@ export default async function Commandes({
     order by date_commande desc, reference desc
     limit 50`;
 
-  const fournisseurs = await sql<{ id: string; nom: string }[]>`
-    -- Une commande de bouteilles ne part pas chez un quincaillier.
-    select id, nom from fournisseurs
-     where actif and pour_bouteilles order by nom`;
+  // Une commande de bouteilles ne part pas chez un quincaillier. Tant que la
+  // migration 0005 n'est pas appliquée, la colonne n'existe pas : Postgres
+  // refuserait la requête entière, on en pose donc deux.
+  const tri = await colonneExiste("fournisseurs", "pour_bouteilles");
+  const fournisseurs = tri
+    ? await sql<{ id: string; nom: string }[]>`
+        select id, nom from fournisseurs
+         where actif and pour_bouteilles order by nom`
+    : await sql<{ id: string; nom: string }[]>`
+        select id, nom from fournisseurs where actif order by nom`;
 
   async function creer(donnees: FormData) {
     "use server";
