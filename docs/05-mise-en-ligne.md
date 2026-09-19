@@ -25,8 +25,13 @@ des adresses des deux autres.
    > https://github.com/8c5dymf8ph-cpu/Application-Technique/tree/claude/friendly-allen-lmkxuo/donnees/installation
 
    Pour chacun : l'ouvrir, cliquer **Raw** en haut à droite, **Ctrl+A** puis **Ctrl+C**
-   (Cmd sur Mac). Dans Supabase, *SQL Editor → New query*, coller, **Run**, et attendre
-   « Success » avant de passer au suivant.
+   (Cmd sur Mac). Dans Supabase, coller dans l'éditeur, **Run**, attendre « Success ».
+
+   **Un seul onglet suffit pour les neuf fichiers.** Inutile d'ouvrir une nouvelle requête à
+   chaque fois : une fois « Success » affiché, **Ctrl+A** dans l'éditeur pour tout sélectionner,
+   puis coller le fichier suivant par-dessus, et **Run**. Ce qui compte est l'ordre dans lequel
+   on appuie sur Run, pas le nombre d'onglets. Ne jamais mettre deux fichiers à la suite dans le
+   même Run : s'il y a une erreur, on ne sait plus lequel est passé.
 
 3. Les exécuter **dans cet ordre** :
 
@@ -50,6 +55,15 @@ des adresses des deux autres.
 
 4. Vérifier dans **Table Editor** que `anomalies` contient bien **670 lignes**. C'est ce qui
    prouve que les cinq morceaux sont tous passés — s'il en manque un, le compte est plus bas.
+
+> **Si quelque chose casse en route, reprendre au fichier 1.** Il commence par remettre le
+> schéma à zéro : on peut le rejouer autant de fois qu'on veut, il n'y a pas de demi-installation
+> dont il faudrait se dépêtrer à la main. Une erreur du genre
+> `type "role_utilisateur" already exists` ne peut plus arriver.
+>
+> Ce même fichier **refuse de s'exécuter** dès que la base porte des anomalies, des mouvements de
+> stock ou des dossiers de bouteille : passé l'installation, c'est la base de l'hôtel, et il
+> s'arrête sans rien effacer. Le message le dit en clair.
 
 ### Où vont les photos et les factures
 

@@ -12,6 +12,7 @@ mkdir -p "$sortie"
   printf -- '-- Application Technique — Hôtel Parisianer\n'
   printf -- '-- Schéma, vues, règles, sécurité et référentiels.\n'
   printf -- '-- Fichier produit par outils/preparer_installation.sh — ne pas éditer.\n\n'
+  cat outils/preambule_schema.sql
   for f in supabase/migrations/*.sql supabase/seed/*.sql; do
     printf -- '\n-- ===== %s =====\n' "$f"
     cat "$f"
