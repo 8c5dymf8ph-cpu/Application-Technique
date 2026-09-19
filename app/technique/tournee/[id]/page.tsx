@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { exigerEncadrement } from "@/lib/acces";
 import { euros, jourISO, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { deposerRecap } from "@/lib/recap";
@@ -58,8 +59,7 @@ export default async function DetailTournee({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const profil = await profilActif();
-  if (!profil) redirect("/profil");
+  const profil = await exigerEncadrement();
   const { id } = await params;
 
   const [lot] = await sql<Lot[]>`

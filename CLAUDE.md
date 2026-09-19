@@ -71,6 +71,20 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    avis côte à côte, avec ce qu'elle n'a PAS validé dit en clair. `deposerRecap()` les rédige et
    les dépose dans la file ; `prete_pour_recap` et `mail_recap_envoye_le` empêchent l'envoi
    prématuré et le doublon. Pas d'heure fixe : le message part quand l'événement a lieu.
+10bis. **Le lot n'existe pour la gouvernante qu'une fois rendu.** Une anomalie cochée par le
+   technicien reste `en_cours` tant que la tournée est ouverte : il est encore dans les étages,
+   il peut se déraviser. `tg_cloture_tournee` les bascule toutes en `attente_validation` à la
+   clôture, et `v_tournees.nb_en_attente` vaut 0 sur une tournée ouverte. **Décocher supprime la
+   déclaration entière** — l'avis et le matériel qu'elle portait, qui n'a donc pas été utilisé ;
+   le laisser sorti fausserait le stock. Ne jamais présenter à la gouvernante un travail que
+   personne n'a déclaré terminé.
+
+10ter. **Un intervenant ne voit que sa tournée.** Ni le coût d'un passage, ni les factures, ni la
+   valeur du stock, ni l'historique : il vient traiter des anomalies. Désigner qui intervient est
+   une décision d'encadrement — Victoria, Miguel, Sarah P, c'est-à-dire `peutValider`. La règle
+   est dans `lib/acces.ts` (`exigerEncadrement`), et les écrans de `/technique` la posent tous.
+   Ne jamais rouvrir ces écrans à un technicien « pour dépanner ».
+
 11. **La gouvernante a trois issues**, pas deux : `validee`, `en_cours`, `a_refaire`. Ne jamais
    réduire le choix à valider/refuser.
 12. **Les commentaires forment un fil, jamais un champ texte.** Un commentaire libre est une ligne
@@ -88,7 +102,9 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    être vérifié, et l'inventaire ne vaut plus rien.
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
-   explicite, pas une absence de réponse.
+   explicite, pas une absence de réponse. **Un article épuisé ne se choisit pas** : il reste
+   visible, grisé, et dit qu'il n'y a rien en réserve — sinon on le cherche sans comprendre.
+   L'écran le grise et l'enregistrement le revérifie : un lien recopié ne doit pas passer.
 15. **Une section spécialisée ne montre que son métier.** Sans ligne dans
    `specialites_intervenant`, un intervenant est polyvalent ; avec, il ne voit que ses types.
    La règle vaut pour les salariés comme pour les entreprises extérieures.

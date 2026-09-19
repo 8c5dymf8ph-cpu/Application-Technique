@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
@@ -76,6 +77,32 @@ export default async function Tournee({
   const faites = uniques.filter((l) => l.traitee);
   const chambres = [...new Set(uniques.map((l) => l.emplacement))];
 
+  /**
+   * Se déraviser.
+   *
+   * Tant que la tournée n'est pas rendue, une anomalie cochée peut être
+   * décochée : on est encore dans les étages, on a pu se tromper de chambre.
+   * La déclaration disparaît entièrement — l'avis, et le matériel qu'elle
+   * portait, qui n'a donc pas été utilisé. Le laisser sorti fausserait le
+   * stock. Les photos restent attachées au lieu : ce sont des faits.
+   */
+  async function deselectionner(donnees: FormData) {
+    "use server";
+    const anomalie = String(donnees.get("anomalie"));
+    const [i] = await sql<{ id: string }[]>`
+      select i.id from interventions i
+      join tournees t on t.id = i.tournee_id
+      where i.anomalie_id = ${anomalie} and i.tournee_id = ${tournee.id}
+        and t.cloturee_le is null`;
+    if (!i) return;
+    await sql`delete from mouvements_stock where intervention_id = ${i.id}`;
+    await sql`delete from interventions where id = ${i.id}`;
+    await sql`
+      update anomalies set statut = 'a_faire', maj_le = now()
+      where id = ${anomalie} and statut in ('en_cours', 'attente_validation')`;
+    revalidatePath(`/technique/${encodeURIComponent(nom)}`);
+  }
+
   async function cloturer() {
     "use server";
     await sql`update tournees set cloturee_le = now() where id = ${tournee.id}`;
@@ -103,39 +130,49 @@ export default async function Tournee({
               <section key={chambre} className="flex flex-col gap-2">
                 <div className="flex items-center gap-2.5">
                   <span className="w-[3px] h-4 rounded-sm bg-amber" />
-                  <h2 className="font-display font-semibold text-[16px]">{chambre}</h2>
-                  <span className="text-[11.5px] text-ink-faint">{dedans[0].etage}</span>
+                  <h2 className="font-display font-semibold text-[19px]">{chambre}</h2>
+                  <span className="text-[13px] text-ink-faint">{dedans[0].etage}</span>
                 </div>
                 <ul className="carte divide-y divide-line">
                   {dedans.map((l) => (
                     <li key={l.anomalie_id}>
-                      <Link
-                        href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
-                        className="px-3.5 py-3 flex items-start gap-3 active:bg-surface-muted"
-                      >
-                        <span
-                          className={`w-[22px] h-[22px] mt-0.5 shrink-0 rounded-md grid place-items-center ${
-                            l.traitee ? "bg-green" : "border-[1.7px] border-[#C9C5D8]"
-                          }`}
+                      <div className="px-3.5 py-3.5 flex items-start gap-3">
+                        {/* La case coche ET décoche : tant que la tournée n'est
+                            pas rendue, on peut revenir sur ce qu'on a déclaré. */}
+                        {l.traitee ? (
+                          <form action={deselectionner} className="shrink-0 mt-0.5">
+                            <input type="hidden" name="anomalie" value={l.anomalie_id} />
+                            <button
+                              aria-label="Annuler ma déclaration"
+                              className="w-[30px] h-[30px] rounded-lg bg-green grid place-items-center active:opacity-70"
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                   stroke="#fff" strokeWidth="2.6" strokeLinecap="round"
+                                   strokeLinejoin="round">
+                                <path d="M5 12.5l4.5 4.5L19 7.5" />
+                              </svg>
+                            </button>
+                          </form>
+                        ) : (
+                          <Link
+                            href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
+                            aria-label="Traiter cette anomalie"
+                            className="w-[30px] h-[30px] mt-0.5 shrink-0 rounded-lg border-[2px] border-[#C9C5D8]"
+                          />
+                        )}
+                        <Link
+                          href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
+                          className="flex flex-col gap-1.5 grow min-w-0 active:opacity-70"
                         >
-                          {l.traitee && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                 stroke="#fff" strokeWidth="2.6" strokeLinecap="round"
-                                 strokeLinejoin="round">
-                              <path d="M5 12.5l4.5 4.5L19 7.5" />
-                            </svg>
-                          )}
-                        </span>
-                        <span className="flex flex-col gap-1 grow min-w-0">
                           <span className="flex items-start gap-2">
                             <span
-                              className={`grow min-w-0 text-[14px] leading-snug text-pretty ${
+                              className={`grow min-w-0 text-[16.5px] leading-snug text-pretty ${
                                 l.traitee ? "text-ink-faint line-through" : ""
                               }`}
                             >
                               {l.description}
                             </span>
-                            <span className="mt-[1px]">
+                            <span className="mt-[2px]">
                               <Indices
                                 photos={l.photos}
                                 commentaires={l.commentaires}
@@ -144,12 +181,12 @@ export default async function Tournee({
                             </span>
                           </span>
                           {l.traitee && (
-                            <span className="self-start px-2 py-0.5 rounded-md bg-plum-soft text-plum text-[11.5px]">
+                            <span className="self-start px-2.5 py-1 rounded-md bg-plum-soft text-plum text-[13px]">
                               {l.materiel ?? "Aucun matériel"}
                             </span>
                           )}
-                        </span>
-                      </Link>
+                        </Link>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -162,7 +199,7 @@ export default async function Tournee({
       {faites.length > 0 && (
         <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
           <form action={cloturer}>
-            <button className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
+            <button className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px]">
               Fin d’intervention — {faites.length} anomalie{faites.length > 1 ? "s" : ""}
             </button>
           </form>

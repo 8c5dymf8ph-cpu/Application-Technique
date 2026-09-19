@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { exigerEncadrement } from "@/lib/acces";
 import { euros, peutValider , aujourdhuiISO } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Stat } from "@/app/composants/suivi";
@@ -43,8 +44,7 @@ export default async function Factures({
 }: {
   searchParams: Promise<{ filtre?: string }>;
 }) {
-  const profil = await profilActif();
-  if (!profil) redirect("/profil");
+  const profil = await exigerEncadrement();
   const { filtre = "a_rapprocher" } = await searchParams;
 
   const [c] = await sql<

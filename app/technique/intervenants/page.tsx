@@ -1,15 +1,14 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { sql } from "@/lib/db";
-import { profilActif } from "@/lib/profil";
+import { exigerEncadrement } from "@/lib/acces";
 import { intervenants } from "@/lib/tournee";
 import { Entete } from "@/app/composants/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChoixIntervenant() {
-  const profil = await profilActif();
-  if (!profil) redirect("/profil");
+  const profil = await exigerEncadrement();
 
   const liste = await intervenants();
 

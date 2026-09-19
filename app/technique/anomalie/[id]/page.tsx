@@ -118,6 +118,8 @@ export default async function TraiterAnomalie({
               ${intervenant.prestataire_id}, ${profil_.id})
       returning id`;
 
+    // L'écran grise les articles épuisés, mais un lien recopié ou une réserve
+    // vidée entre-temps passerait à travers : on revérifie ici.
     // Une sortie de stock par article, rattachée à cette anomalie : c'est ce
     // qui donnera son coût matériel, sans que le technicien voie un prix.
     for (const article of articles) {
@@ -127,7 +129,10 @@ export default async function TraiterAnomalie({
         select ${article}, 'sortie', -1, ${intervenant.utilisateur_id},
                ${intervenant.prestataire_id}, a.emplacement_id, ${intervention.id},
                'Intervention — ' || a.description
-        from anomalies a where a.id = ${id}`;
+        from anomalies a
+        where a.id = ${id}
+          and exists (select 1 from v_stock_produits s
+                       where s.id = ${article} and s.stock > 0)`;
     }
 
     for (const fichier of donnees.getAll("photos")) {
@@ -228,26 +233,45 @@ export default async function TraiterAnomalie({
           <ul className="flex flex-col gap-1.5">
             {produits
               .filter((p) => !choisis.includes(p.id))
-              .map((p) => (
-                <li key={p.id}>
-                  <Link
-                    href={lien({ pris: [...choisis, p.id].join(",") })}
-                    className="px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 active:bg-plum-soft"
-                  >
+              .map((p) => {
+                // Un article qu'on n'a plus ne se prend pas dans la réserve.
+                // Il reste visible — sinon on le cherche sans comprendre — mais
+                // il ne s'ajoute pas, et il dit pourquoi.
+                const epuise = p.stock <= 0;
+                const dedans = (
+                  <>
                     <VignetteProduit photo={p.photo} taille={40} />
                     <span className="flex flex-col grow min-w-0">
-                      <span className="text-[14px] leading-snug text-pretty">{p.designation}</span>
-                      <span className="text-[11.5px] text-ink-faint">
-                        reste {p.stock} en réserve
+                      <span className="text-[15.5px] leading-snug text-pretty">
+                        {p.designation}
+                      </span>
+                      <span className={`text-[13px] ${epuise ? "text-red" : "text-ink-faint"}`}>
+                        {epuise ? "épuisé — rien en réserve" : `reste ${p.stock} en réserve`}
                       </span>
                     </span>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
-                         strokeWidth="2.2" strokeLinecap="round" className="shrink-0">
-                      <path d="M6 12h12" /><path d="M12 6v12" />
-                    </svg>
-                  </Link>
-                </li>
-              ))}
+                  </>
+                );
+                return (
+                  <li key={p.id}>
+                    {epuise ? (
+                      <div className="px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 opacity-55">
+                        {dedans}
+                      </div>
+                    ) : (
+                      <Link
+                        href={lien({ pris: [...choisis, p.id].join(",") })}
+                        className="px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 active:bg-plum-soft"
+                      >
+                        {dedans}
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
+                             strokeWidth="2.2" strokeLinecap="round" className="shrink-0">
+                          <path d="M6 12h12" /><path d="M12 6v12" />
+                        </svg>
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
           </ul>
         </section>
       </div>

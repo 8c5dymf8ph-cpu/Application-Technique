@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
-import { profilActif } from "@/lib/profil";
+import { exigerEncadrement } from "@/lib/acces";
 import { euros } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Recherche, Stat } from "@/app/composants/suivi";
@@ -31,8 +31,7 @@ export default async function Historique({
 }: {
   searchParams: Promise<{ q?: string; qui?: string }>;
 }) {
-  const profil = await profilActif();
-  if (!profil) redirect("/profil");
+  const profil = await exigerEncadrement();
   const { q = "", qui = "tous" } = await searchParams;
   const terme = q.trim().toLowerCase();
 

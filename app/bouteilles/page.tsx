@@ -132,24 +132,15 @@ export default async function Bouteilles({
         </section>
 
         <div className="flex flex-col gap-3">
+          {/* Une seule porte : perte, casse et remplacement menaient à la même
+              page, qui porte déjà son propre choix en haut. Trois tuiles pour
+              un écran, c'était trois fois la même chose. */}
           <Tuile
             href="/bouteilles/signaler"
-            titre="Perte"
-            detail="Une bouteille emportée par le client"
-            ton="bg-amber-soft"
-          />
-          <Tuile
-            href="/bouteilles/signaler?mode=casse"
-            titre="Casse"
-            detail="Une bouteille cassée, elle sort du parc"
-            ton="bg-red-soft"
-          />
-          <Tuile
-            href="/bouteilles/signaler?mode=remplacement"
-            titre="Remplacement"
-            detail="Re-doter une chambre depuis la réserve"
+            titre="Déclarer"
+            detail="Perte, casse, ou re-doter une chambre"
             badge={parc.reduce((n, b) => n + Math.max(0, b.dotation_theorique - b.en_chambre), 0)}
-            ton="bg-blue-soft"
+            ton="bg-amber-soft"
           />
           <Tuile
             href="/bouteilles/inventaire"

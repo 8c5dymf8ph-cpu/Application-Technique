@@ -7,6 +7,22 @@ export const dynamic = "force-dynamic";
 export default async function ChoixProfil() {
   const profils = await profilsDisponibles();
 
+  // Deux groupes, parce que ce sont deux métiers : celles et ceux qui déclarent,
+  // valident et suivent — et les intervenants, qui viennent traiter. Un
+  // technicien se retrouve dans sa section, sans lire toute la liste.
+  const sections = [
+    {
+      titre: "Encadrement",
+      pastille: "bg-plum-soft text-plum",
+      gens: profils.filter((p) => p.role !== "technicien"),
+    },
+    {
+      titre: "Techniciens",
+      pastille: "bg-green-soft text-green",
+      gens: profils.filter((p) => p.role === "technicien"),
+    },
+  ].filter((s) => s.gens.length > 0);
+
   async function selectionner(donnees: FormData) {
     "use server";
     await choisirProfil(String(donnees.get("id")));
@@ -24,22 +40,29 @@ export default async function ChoixProfil() {
         </p>
       </div>
 
-      <form action={selectionner} className="flex flex-col gap-2">
-        {profils.map((p) => (
-          <button
-            key={p.id}
-            name="id"
-            value={p.id}
-            className="carte px-4 py-4 flex items-center gap-4 text-left active:bg-surface-muted"
-          >
-            <span className="w-11 h-11 shrink-0 rounded-full bg-plum-soft grid place-items-center font-display font-semibold text-[15px] text-plum">
-              {p.nom.slice(0, 2).toUpperCase()}
-            </span>
-            <span className="flex flex-col grow min-w-0">
-              <span className="font-display font-semibold text-[17px]">{p.nom}</span>
-              <span className="text-[12.5px] text-ink-faint">{LIBELLE_ROLE[p.role]}</span>
-            </span>
-          </button>
+      <form action={selectionner} className="flex flex-col gap-6">
+        {sections.map((s) => (
+          <section key={s.titre} className="flex flex-col gap-2">
+            <h2 className="etiquette">{s.titre}</h2>
+            {s.gens.map((p) => (
+              <button
+                key={p.id}
+                name="id"
+                value={p.id}
+                className="carte px-4 py-4 flex items-center gap-4 text-left active:bg-surface-muted"
+              >
+                <span
+                  className={`w-11 h-11 shrink-0 rounded-full grid place-items-center font-display font-semibold text-[16px] ${s.pastille}`}
+                >
+                  {p.nom.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="flex flex-col grow min-w-0">
+                  <span className="font-display font-semibold text-[18px]">{p.nom}</span>
+                  <span className="text-[13px] text-ink-faint">{LIBELLE_ROLE[p.role]}</span>
+                </span>
+              </button>
+            ))}
+          </section>
         ))}
       </form>
     </main>

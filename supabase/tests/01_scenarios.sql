@@ -270,10 +270,16 @@ begin
 end $$;
 
 
+-- Une tournée à nous, encore ouverte : c'est elle qui décide du moment où la
+-- gouvernante voit le travail.
+insert into tournees (id, reference, technicien_id, date_tournee)
+values ('55555555-5555-5555-5555-555555555555', 'TEST-LOT-0001',
+        '11111111-1111-1111-1111-111111111111', current_date);
+
 insert into interventions (id, anomalie_id, tournee_id, technicien_id)
 values ('44444444-4444-4444-4444-444444444444',
         '33333333-3333-3333-3333-333333333333',
-        (select id from tournees limit 1),
+        '55555555-5555-5555-5555-555555555555',
         '11111111-1111-1111-1111-111111111111');
 
 -- Le technicien coche le matériel utilisé — rien d'autre
@@ -295,14 +301,31 @@ begin
   assert (select stock from v_stock_produits where code = 'JNT-12') = 18, 'stock joint attendu 18';
 end $$;
 
--- Le technicien déclare fait => attente de validation
+-- Le technicien déclare fait, mais sa tournée est encore ouverte : il peut
+-- revenir sur cette chambre, la gouvernante n'a rien à valider pour l'instant.
 insert into validations (intervention_id, acteur, decision, utilisateur_id, commentaire)
 values ('44444444-4444-4444-4444-444444444444', 'technicien', 'fait',
         '11111111-1111-1111-1111-111111111111', 'Joint changé');
 
 do $$ begin
   assert (select statut from anomalies where id = '33333333-3333-3333-3333-333333333333')
-         = 'attente_validation', 'statut attendu attente_validation';
+         = 'en_cours', 'tournée ouverte : l''anomalie doit rester en_cours';
+  assert (select nb_en_attente from v_tournees
+           where id = '55555555-5555-5555-5555-555555555555') = 0,
+         'une tournée ouverte ne présente rien à valider';
+end $$;
+
+-- Fin d'intervention : le lot est rendu, tout passe sous les yeux de la
+-- gouvernante d'un seul coup.
+update tournees set cloturee_le = now()
+ where id = '55555555-5555-5555-5555-555555555555';
+
+do $$ begin
+  assert (select statut from anomalies where id = '33333333-3333-3333-3333-333333333333')
+         = 'attente_validation', 'lot rendu : statut attendu attente_validation';
+  assert (select nb_en_attente from v_tournees
+           where id = '55555555-5555-5555-5555-555555555555') = 1,
+         'le lot rendu présente son anomalie à valider';
 end $$;
 
 -- La gouvernante refuse => retour en « à faire », avis du technicien conservé,
@@ -1007,6 +1030,15 @@ begin
   from v_tournees where id = v_tournee;
   assert v_n = 3, format('%s interventions dans le lot, attendu 3', v_n);
   assert not v_prete, 'le lot ne peut pas être prêt : la gouvernante n''a rien tranché';
+
+  -- Tant que le passage n'est pas rendu, la gouvernante n'a rien devant elle.
+  select nb_en_attente into v_n from v_tournees where id = v_tournee;
+  assert v_n = 0, format('tournée ouverte : %s à valider, attendu 0', v_n);
+
+  -- Fin d'intervention : le lot est rendu.
+  update tournees set cloturee_le = now() where id = v_tournee;
+  select nb_en_attente into v_n from v_tournees where id = v_tournee;
+  assert v_n = 3, format('lot rendu : %s à valider, attendu 3', v_n);
 
   -- La gouvernante valide deux lignes et en refuse une.
   update validations set id = id where false;  -- no-op, garde la lisibilité

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
-import { profilActif } from "@/lib/profil";
+import { profilActif, type Profil } from "@/lib/profil";
+import { saTournee } from "@/lib/acces";
 import { peutValider } from "@/lib/domaine";
 import { Compteur, Tuile } from "./composants/ui";
 
@@ -34,6 +35,11 @@ async function chiffres(): Promise<Chiffres> {
 export default async function Accueil() {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
+
+  // Un intervenant vient faire des anomalies : son accueil, c'est sa tournée.
+  // Le coût d'un passage, les factures, la valeur du stock ne le regardent pas.
+  if (!peutValider(profil.role)) return <AccueilIntervenant profil={profil} />;
+
   const c = await chiffres();
 
   const gouvernante = peutValider(profil.role);
@@ -106,6 +112,48 @@ export default async function Accueil() {
       <a
         href="/profil"
         className="text-[13px] text-ink-faint underline underline-offset-4 self-center mt-auto pt-6"
+      >
+        Changer de profil
+      </a>
+    </main>
+  );
+}
+
+/** L'accueil d'un intervenant : son nom, ce qui l'attend, et rien d'autre. */
+async function AccueilIntervenant({ profil }: { profil: Profil }) {
+  const [c] = await sql<{ a_traiter: number }[]>`
+    select count(*)::int as a_traiter
+      from fn_anomalies_pour_intervenant(${profil.nom})`;
+
+  return (
+    <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
+      <div className="flex flex-col gap-[2px]">
+        <p className="text-[15px] text-ink-faint">Bonjour {profil.nom}</p>
+        <h1 className="font-display font-bold text-[32px] leading-tight tracking-tight">
+          Hôtel Parisianer
+        </h1>
+        <p className="text-[14px] text-ink-faint mt-1">
+          {new Date().toLocaleDateString("fr-FR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+        </p>
+      </div>
+
+      <nav className="flex flex-col gap-3.5">
+        <Tuile
+          href={saTournee(profil)}
+          titre="Ma tournée"
+          detail="Traiter mes anomalies, dire le matériel utilisé"
+          badge={c.a_traiter}
+          ton="bg-green-soft"
+        />
+      </nav>
+
+      <a
+        href="/profil"
+        className="text-[14px] text-ink-faint underline underline-offset-4 self-center mt-auto pt-6"
       >
         Changer de profil
       </a>

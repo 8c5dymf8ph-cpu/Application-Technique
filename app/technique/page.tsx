@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
-import { profilActif } from "@/lib/profil";
+import { exigerEncadrement } from "@/lib/acces";
 import { euros } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 
@@ -20,8 +20,7 @@ type Lot = {
 };
 
 export default async function HubTechnique() {
-  const profil = await profilActif();
-  if (!profil) redirect("/profil");
+  const profil = await exigerEncadrement();
 
   const [c] = await sql<
     {

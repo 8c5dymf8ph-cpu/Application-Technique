@@ -182,6 +182,20 @@ export default async function DetailCommande({
     revalidatePath(`/bouteilles/commande/${id}`);
   }
 
+  /**
+   * Jeter un brouillon.
+   *
+   * Un brouillon n'a rien produit : ni entrée de stock, ni message parti. Le
+   * garder « annulé » encombre la liste sans rien apprendre. Une commande
+   * envoyée ou reçue, elle, s'annule mais ne s'efface pas — elle a existé
+   * au-dehors.
+   */
+  async function supprimerBrouillon() {
+    "use server";
+    await sql`delete from commandes where id = ${id} and statut = 'brouillon'`;
+    redirect("/bouteilles/commandes" as Route);
+  }
+
   // Corriger la date d'une réception déjà faite : le déclencheur déplace les
   // mouvements de stock avec elle.
   async function redater(donnees: FormData) {
@@ -508,6 +522,16 @@ export default async function DetailCommande({
                 className="h-[44px] rounded-[12px] bg-surface border border-line text-[13px] text-ink-faint"
               >
                 Annuler la commande
+              </button>
+            </form>
+          )}
+
+          {/* Un brouillon n'a rien produit : il se jette, au lieu de rester
+              « annulé » dans la liste. */}
+          {commande.statut === "brouillon" && (
+            <form action={supprimerBrouillon}>
+              <button className="w-full h-[44px] rounded-[12px] bg-red-soft text-red text-[13.5px]">
+                Supprimer ce brouillon
               </button>
             </form>
           )}
