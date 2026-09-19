@@ -1,1936 +1,1521 @@
 -- Généré par outils/importer_anomalies.py — ne pas modifier à la main.
 -- Import de la liste « TEST Tech 3 » vers anomalies / tournees /
 -- interventions / validations. Rejouable : rien n'est inséré deux fois.
--- Morceau 5 sur 5 — à jouer dans l'ordre des lettres.
+-- Morceau 5 sur 9 — à jouer dans l'ordre des lettres.
 
 begin;
 alter table validations disable trigger tg_validation_maj_anomalie;
 
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-04', timestamptz '2025-01-04'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 386, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', 'validee', u1.id, u2.id, timestamptz '2025-11-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '03' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 467
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 386
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-04'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 467
+  where a.sharepoint_id = 386
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 468, e.id, c.id, t.id, 'Joint pour faire tenir le pommeau de douche', 'a_acheter', u1.id, u2.id, timestamptz '2025-02-18', null
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 1128, e.id, c.id, t.id, 'Ascenseur en panne - Il faut contacter KONE', 'validee', u1.id, u2.id, timestamptz '2025-11-12', '2025-11-12'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Joint pour faire tenir le pommeau de douche'
+  left join catalogue_anomalies c on c.libelle = 'Ascenseur en panne - Il faut contacter KONE'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = 'Ascenseur' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'L’ascenseur indiqué hors service et se trouvait bloqué au niveau 0. Il s’est ensuite remis à fonctionner, mais de manière aléatoire. J’ai donc choisi de le bloquer au niveau -1', 'utilisateur', u.id, timestamptz '2025-11-12'
+  from anomalies a left join utilisateurs u on u.nom = 'Miguel'
+  where a.sharepoint_id = 1128
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'L’ascenseur indiqué hors service et se trouvait bloqué au niveau 0. Il s’est ensuite remis à fonctionner, mais de manière aléatoire. J’ai donc choisi de le bloquer au niveau -1');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-12', timestamptz '2025-11-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Technicien Kone'
+  where a.sharepoint_id = 1128
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 1128
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2025-11-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = 'Miguel'
+  where a.sharepoint_id = 1128
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 380, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', 'validee', u1.id, u2.id, timestamptz '2025-10-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '02' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 380
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 380
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 573, e.id, c.id, t.id, 'Refixer le miroir grossissant', 'a_faire', u1.id, u2.id, timestamptz '2025-10-12', null
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Refixer le miroir grossissant'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '18' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'RAS selon visite HEDI le 5/08 ( à revérifier par Victoria) - il faut acheter un joint pour que nous puissions faire tenir la pomme de douche', 'utilisateur', u.id, timestamptz '2025-02-18'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 468
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'RAS selon visite HEDI le 5/08 ( à revérifier par Victoria) - il faut acheter un joint pour que nous puissions faire tenir la pomme de douche');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 608, e.id, c.id, t.id, 'Lumière grand miroir SDB', 'validee', u1.id, u2.id, timestamptz '2025-02-18', '2026-05-02'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '34' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 622, e.id, c.id, t.id, 'Refixer le miroir grossissant', 'a_faire', u1.id, u2.id, timestamptz '2025-10-12', null
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Lumière grand miroir SDB'
-  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join catalogue_anomalies c on c.libelle = 'Refixer le miroir grossissant'
+  left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '37' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'prévoir le changement du connecteur de raccordement car ne tient plus - att retour Alain avec fourniture - vu le 4/08', 'utilisateur', u.id, timestamptz '2025-02-18'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 608
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'prévoir le changement du connecteur de raccordement car ne tient plus - att retour Alain avec fourniture - vu le 4/08');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '38' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 876, e.id, c.id, t.id, 'Fortes odeurs constaté au niveau de la colonne, il faut trouver une solution pour reboucher', 'validee', u1.id, u2.id, timestamptz '2025-10-12', '2025-12-23'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Fortes odeurs constaté au niveau de la colonne, il faut trouver une solution pour reboucher'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = 'Sous-sol divers' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Serafino'
-  where a.sharepoint_id = 608
+  where a.sharepoint_id = 876
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 608
+  where a.sharepoint_id = 876
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 608
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 672, e.id, c.id, t.id, 'Lampe bureau cassée - faire réparer comme M Negroni', 'validee', u1.id, u2.id, timestamptz '2025-02-18', null
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 370, e.id, c.id, t.id, 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Lampe bureau cassée - faire réparer comme M Negroni'
+  left join catalogue_anomalies c on c.libelle = 'Changement des circuits électriques pour que la TV ne s''éteigne plus quand la carte est retirée'
   left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
   left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '46' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-18', timestamptz '2025-02-18'
+  where e.code = '01' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 672
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 370
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 515, e.id, c.id, t.id, 'Refixer la liseuse de gauche', 'validee', u1.id, u2.id, timestamptz '2025-02-17', '2025-05-08'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 370
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 379, e.id, c.id, t.id, 'Lit côté gauche cassé', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-12-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Refixer la liseuse de gauche'
+  left join catalogue_anomalies c on c.libelle = 'lit côté gauche cassé'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '02' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Au lieu de les agrafer ensemble, Mr Serafino les a viser', 'utilisateur', u.id, timestamptz '2025-09-12'
+  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 379
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Au lieu de les agrafer ensemble, Mr Serafino les a viser');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 379
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 379
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 412, e.id, c.id, t.id, 'Spot à changer', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Spot à changer'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '12' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 412
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 412
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 484, e.id, c.id, t.id, 'Télérupteur à changer - spot et leds', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Télérupteur à changer - spot et leds'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '22' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 484
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 484
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 506, e.id, c.id, t.id, 'Liseuse côté droit à changer', 'validee', u1.id, u2.id, timestamptz '2025-09-12', null
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Liseuse côté droit à changer'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '24' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 507, e.id, c.id, t.id, 'Télérupteur à changer - spot et leds', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Télérupteur à changer - spot et leds'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
   left join utilisateurs u2 on u2.nom = 'Miguel'
   where e.code = '25' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-05-08', timestamptz '2025-05-08'
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 515
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 507
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-05-08'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 515
+  where a.sharepoint_id = 507
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 600, e.id, c.id, t.id, 'Manque porte placard du haut', 'a_faire', u1.id, u2.id, timestamptz '2025-02-17', null
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 508, e.id, c.id, t.id, 'Spot à changer', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Manque porte placard du haut'
+  left join catalogue_anomalies c on c.libelle = 'Spot à changer'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '25' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 508
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 508
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 691, e.id, c.id, t.id, 'Télérupteur à changer - appliques murales sautent', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Télérupteur à changer - appliques murales sautent'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '47' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 691
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 691
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 773, e.id, c.id, t.id, 'Télérupteur à changer - appliques murales sautent', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Télérupteur à changer - appliques murales sautent'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '56' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 773
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 773
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 774, e.id, c.id, t.id, 'Spot à changer', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Spot à changer'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '56' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 774
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 774
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 788, e.id, c.id, t.id, 'Liseuse côté gauche à changer', 'validee', u1.id, u2.id, timestamptz '2025-09-12', '2025-12-23'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Liseuse côté gauche à changer'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '36' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Récupérée par Farid le 17/02 pour emmener à l''atelier', 'utilisateur', u.id, timestamptz '2025-02-17'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 600
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Récupérée par Farid le 17/02 pour emmener à l''atelier');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 658, e.id, c.id, t.id, 'Remplacement de la bonde lavabo', 'validee', u1.id, u2.id, timestamptz '2025-02-17', '2025-02-17'
+  where e.code = '57' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 788
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 788
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 459, e.id, c.id, t.id, 'La poignée de la fenêtre s''enlève', 'validee', u1.id, u2.id, timestamptz '2025-02-12', '2025-03-12'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Remplacement de la bonde lavabo'
+  left join catalogue_anomalies c on c.libelle = 'La poignée de la fenêtre s''enlève'
   left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'FARID'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '45' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
+  where e.code = '18' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 658
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 459
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 658
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 459
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 662, e.id, c.id, t.id, 'De l''eau coule à l''interier depuis la fenetre', 'a_faire', u1.id, u2.id, timestamptz '2025-02-17', null
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 462, e.id, c.id, t.id, 'Porte placard du haut à remettre / se trouve dans le local technique', 'a_faire', u1.id, u2.id, timestamptz '2025-02-12', null
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'De l''eau coule à l''interier depuis la fenetre'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '45' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 403, e.id, c.id, t.id, 'Serrer le bras liseuse côté droit', 'validee', u1.id, u2.id, timestamptz '2025-02-15', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'serrer le bras liseuse côté droit'
+  left join catalogue_anomalies c on c.libelle = 'Porte placard du haut à remettre / se trouve dans le local technique'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '11' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 403
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 403
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 404, e.id, c.id, t.id, 'Spot dans la salle de bain', 'validee', u1.id, u2.id, timestamptz '2025-02-15', '2025-02-17'
+  where e.code = '18' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 716, e.id, c.id, t.id, 'lit côté droit cassé - à agrafer', 'validee', u1.id, u2.id, timestamptz '2025-02-12', '2025-12-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Spot dans la salle de bain'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '11' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'lumière fonctionne lors de la visite de Farid', 'utilisateur', u.id, timestamptz '2025-02-15'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 404
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'lumière fonctionne lors de la visite de Farid');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 404
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 404
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 806, e.id, c.id, t.id, 'Serrer le bras liseuse côté droit', 'validee', u1.id, u2.id, timestamptz '2025-02-15', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'serrer le bras liseuse côté droit'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '58' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 806
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 806
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 718, e.id, c.id, t.id, 'joint sillicone dans le bac à douche', 'validee', u1.id, u2.id, timestamptz '2025-02-14', '2025-06-24'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'joint sillicone dans le bac à douche'
+  left join catalogue_anomalies c on c.libelle = 'lit côté droit cassé - à agrafer'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Sarah P'
   where e.code = '51' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-06-24', timestamptz '2025-06-24'
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Au lieu de les agrafer ensemble, Mr Serafino les a viser', 'utilisateur', u.id, timestamptz '2025-02-12'
+  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 716
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Au lieu de les agrafer ensemble, Mr Serafino les a viser');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 718
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 716
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-06-24'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 718
+  where a.sharepoint_id = 716
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 741, e.id, c.id, t.id, 'joint sillicone dans le bac à douche', 'validee', u1.id, u2.id, timestamptz '2025-02-14', '2025-11-16'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 744, e.id, c.id, t.id, 'lit côté droit cassé - à agrafer', 'validee', u1.id, u2.id, timestamptz '2025-02-12', '2025-12-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'joint sillicone dans le bac à douche'
+  left join catalogue_anomalies c on c.libelle = 'lit côté droit cassé - à agrafer'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
+  where e.code = '54' on conflict (sharepoint_id) do nothing;
 insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'déjà fait selon visite Hedi le 05/08', 'utilisateur', u.id, timestamptz '2025-02-14'
+  select a.id, 'Au lieu de les agrafer ensemble, Mr Serafino les a viser', 'utilisateur', u.id, timestamptz '2025-02-12'
   from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 741
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'déjà fait selon visite Hedi le 05/08');
+  where a.sharepoint_id = 744
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Au lieu de les agrafer ensemble, Mr Serafino les a viser');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 744
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 744
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 576, e.id, c.id, t.id, 'Changement du séche cheveux', 'validee', u1.id, u2.id, timestamptz '2025-11-25', '2025-11-26'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Changement du séche cheveux'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '35' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-26', timestamptz '2025-11-26'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = 'Victoria'
+  left join prestataires p on p.nom = null
+  where a.sharepoint_id = 576
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-26'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 576
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 396, e.id, c.id, t.id, 'Fuite au niveau du bac de douche', 'validee', u1.id, u2.id, timestamptz '2025-11-16', '2025-11-16'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Fuite au niveau du bac de douche'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '03' on conflict (sharepoint_id) do nothing;
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-16', timestamptz '2025-11-16'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 741
+  where a.sharepoint_id = 396
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-16'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 741
+  where a.sharepoint_id = 396
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 756, e.id, c.id, t.id, 'joint sillicone dans le bac à douche et lavabo', 'validee', u1.id, u2.id, timestamptz '2025-02-14', '2025-01-04'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 469, e.id, c.id, t.id, 'flexible douche à changer', 'validee', u1.id, u2.id, timestamptz '2025-11-15', '2025-11-16'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'joint sillicone dans le bac à douche et lavabo'
+  left join catalogue_anomalies c on c.libelle = 'flexible douche à changer'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '54' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-04', timestamptz '2025-01-04'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 756
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-04'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 756
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 765, e.id, c.id, t.id, 'joint sillicone dans le bac à douche', 'validee', u1.id, u2.id, timestamptz '2025-02-14', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'joint sillicone dans le bac à douche'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '55' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Vérifié par Victoria, il n''y avait plus besoin de le faire', 'utilisateur', u.id, timestamptz '2025-02-14'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 765
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Vérifié par Victoria, il n''y avait plus besoin de le faire');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-14', timestamptz '2025-02-14'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '18' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-16', timestamptz '2025-11-16'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 765
+  where a.sharepoint_id = 469
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 785, e.id, c.id, t.id, 'joint sillicone dans le bac à douche', 'validee', u1.id, u2.id, timestamptz '2025-02-14', '2026-06-15'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-16'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 469
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 399, e.id, c.id, t.id, 'Resserrer la poignée', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-12-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'joint sillicone dans le bac à douche'
+  left join catalogue_anomalies c on c.libelle = 'Resserrer la poignée'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '56' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-06-15', timestamptz '2026-06-15'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '11' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
-  left join tournees t on t.reference = 'INT-Serafino-20260615121923728'
+  left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Serafino'
-  where a.sharepoint_id = 785
+  where a.sharepoint_id = 399
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-06-15'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 785
+  where a.sharepoint_id = 399
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-06-15'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 447, e.id, c.id, t.id, 'La poignée de la fenêtre s''enlève', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-03-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'La poignée de la fenêtre s''enlève'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '16' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 447
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 447
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 473, e.id, c.id, t.id, 'Télérupteur à changer - appliques murales sautent', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-09-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Télérupteur à changer - appliques murales sautent'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '21' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-12', timestamptz '2025-09-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 473
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 473
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 493, e.id, c.id, t.id, 'barriere de douche à fixer', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2026-02-25'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'barriere de douche à fixer'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '22' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-25', timestamptz '2026-02-25'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 493
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-25'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 493
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-25'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 785
+  where a.sharepoint_id = 493
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 790, e.id, c.id, t.id, 'joint sillicone dans le bac à douche', 'validee', u1.id, u2.id, timestamptz '2025-02-14', '2025-05-30'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 494, e.id, c.id, t.id, 'Lit côté droit cassé', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-12-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'joint sillicone dans le bac à douche'
+  left join catalogue_anomalies c on c.libelle = 'Lit côté droit cassé'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '57' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-05-30', timestamptz '2025-05-30'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 790
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-05-30'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 790
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 804, e.id, c.id, t.id, 'joint sillicone dans le bac à douche', 'validee', u1.id, u2.id, timestamptz '2025-02-14', '2025-05-30'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'joint sillicone dans le bac à douche'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '58' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-05-30', timestamptz '2025-05-30'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 804
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-05-30'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 804
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 837, e.id, c.id, t.id, 'La moquette de la premiere marche en partant du haut est decollée', 'a_faire', u1.id, u2.id, timestamptz '2025-02-13', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'La moquette de la premiere marche en partant du haut est decollée'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Miguel'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = 'Palier 1er' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 498, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
   left join utilisateurs u2 on u2.nom = 'Miguel'
   where e.code = '24' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Au lieu de les agrafer ensemble, Mr Serafino les a viser', 'utilisateur', u.id, timestamptz '2025-11-11'
+  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 494
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Au lieu de les agrafer ensemble, Mr Serafino les a viser');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 498
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 494
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 498
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 494
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 568, e.id, c.id, t.id, 'Changement des rideaux - salle de bain', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 534, e.id, c.id, t.id, 'Plinthe de la fenêtre à recoller', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-12-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux - salle de bain'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '34' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 568
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 568
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 677, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '46' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 677
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 677
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 720, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '51' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 720
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 720
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 734, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 734
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 734
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 754, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '54' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 754
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 754
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 755, e.id, c.id, t.id, 'Changement des rideaux - salle de bain', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux - salle de bain'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '54' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 755
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 755
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 767, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '55' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 767
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 767
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 779, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '56' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 779
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 779
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 793, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '57' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 793
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 793
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 807, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '58' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 807
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 807
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 808, e.id, c.id, t.id, 'Changement des rideaux - salle de bain', 'validee', u1.id, u2.id, timestamptz '2025-12-02', '2025-03-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux - salle de bain'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '58' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-14', timestamptz '2025-03-14'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 808
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 808
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 416, e.id, c.id, t.id, 'Refixer la liseuse de droite', 'validee', u1.id, u2.id, timestamptz '2025-09-02', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'refixer la liseuse de droite'
+  left join catalogue_anomalies c on c.libelle = 'Plinthe de la fenêtre à recoller'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '12' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
+  where e.code = '28' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 416
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 534
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 416
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 534
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 429, e.id, c.id, t.id, 'Refixer la liseuse de gauche', 'validee', u1.id, u2.id, timestamptz '2025-09-02', '2025-02-17'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 548, e.id, c.id, t.id, 'Cache pile du coffre manquant', 'a_faire', u1.id, u2.id, timestamptz '2025-11-11', null
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Refixer la liseuse de gauche'
+  left join catalogue_anomalies c on c.libelle = 'Cache pile du coffre manquant'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '14' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
+  where e.code = '28' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 574, e.id, c.id, t.id, 'Serrer le bras liseuse côté gauche', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-12-23'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'serrer le bras liseuse côté gauche'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '35' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 429
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 574
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 429
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 574
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 434, e.id, c.id, t.id, 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)', 'validee', u1.id, u2.id, timestamptz '2025-09-02', '2025-09-18'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 610, e.id, c.id, t.id, 'Serrer le bras liseuse côté gauche', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-12-23'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'serrer le bras liseuse côté gauche'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '38' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 610
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 610
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 626, e.id, c.id, t.id, 'Cale porte à refixer (la piece est encore dans la chambre)', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-03-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'cale porte à refixer (la piece est encore dans la chambre)'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '41' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 626
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 626
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 634, e.id, c.id, t.id, 'Refixer le miroir grossissant', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-03-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Refixer le miroir grossissant'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '42' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 634
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 634
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 641, e.id, c.id, t.id, 'Bac de douche à changer - URGENT', 'en_cours', u1.id, u2.id, timestamptz '2025-11-11', null
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Bac de douche à changer - URGENT'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '42' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 642, e.id, c.id, t.id, 'fenêtre se ferme mal', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2026-01-13'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'fenêtre se ferme mal'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '42' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Changement de la poignée de fenêtre', 'utilisateur', u.id, timestamptz '2025-11-11'
+  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 642
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Changement de la poignée de fenêtre');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-01-13', timestamptz '2026-01-13'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 642
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-01-13'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 642
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 689, e.id, c.id, t.id, 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)', 'a_faire', u1.id, u2.id, timestamptz '2025-11-11', null
   from emplacements e
   left join catalogue_anomalies c on c.libelle = 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '15' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Repasser dessus car l''aimant vissé ne tient pas, il faut ajouter une vis ou refixer correctement', 'utilisateur', u.id, timestamptz '2025-09-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 434
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Repasser dessus car l''aimant vissé ne tient pas, il faut ajouter une vis ou refixer correctement');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-18', timestamptz '2025-09-18'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 434
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-18'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 434
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 585, e.id, c.id, t.id, 'Il manque la porte du placard du bas', 'a_faire', u1.id, u2.id, timestamptz '2025-09-02', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Il manque la porte du placard du bas'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '35' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 461, e.id, c.id, t.id, 'lampe bureau à réparer', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2025-06-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'lampe bureau à réparer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '18' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'OK REMISE EN CHAMBRE', 'utilisateur', u.id, timestamptz '2025-07-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 461
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'OK REMISE EN CHAMBRE');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-06-02', timestamptz '2025-06-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 461
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-06-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 461
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 537, e.id, c.id, t.id, 'lampe bureau à réparer', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2025-06-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'lampe bureau à réparer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '28' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'OK REMISE EN CHAMBRE', 'utilisateur', u.id, timestamptz '2025-07-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 537
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'OK REMISE EN CHAMBRE');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-06-02', timestamptz '2025-06-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 537
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-06-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 537
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 638, e.id, c.id, t.id, 'lampe bureau à réparer', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2025-06-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'lampe bureau à réparer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '42' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'OK REMISE EN CHAMBRE', 'utilisateur', u.id, timestamptz '2025-07-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 638
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'OK REMISE EN CHAMBRE');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-06-02', timestamptz '2025-06-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 638
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-06-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 638
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 719, e.id, c.id, t.id, 'Manque porte placard ( grande) / visser aimant', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2025-07-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Manque porte placard ( grande) / visser aimant'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '51' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-07-02', timestamptz '2025-07-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 719
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-07-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 719
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 742, e.id, c.id, t.id, 'Manque porte placard ( grande) / visser aimant', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2026-05-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Manque porte placard ( grande) / visser aimant'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'La porte à été remise le 17/02 mais il manque la vis pour faire tenir l''aimant', 'utilisateur', u.id, timestamptz '2025-07-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 742
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'La porte à été remise le 17/02 mais il manque la vis pour faire tenir l''aimant');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-23', timestamptz '2026-04-23'
-  from anomalies a
-  left join tournees t on t.reference = 'INT-Serafino-20260511103458060'
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Serafino'
-  where a.sharepoint_id = 742
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-23'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 742
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 742
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 752, e.id, c.id, t.id, 'lampe bureau à réparer', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2025-06-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'lampe bureau à réparer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '54' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'OK REMISE EN CHAMBRE', 'utilisateur', u.id, timestamptz '2025-07-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 752
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'OK REMISE EN CHAMBRE');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-06-02', timestamptz '2025-06-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 752
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-06-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 752
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 771, e.id, c.id, t.id, 'lampe bureau à réparer', 'validee', u1.id, u2.id, timestamptz '2025-07-02', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'lampe bureau à réparer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '55' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Réparation M Negroni ok, manque juste l''ampoule ( lampe dans le local technique) - @ réception le 18/02 car nous avons trouvé une lampe fonctionnelle en 55... Nous ne savons pas où mettre la lampe qui se trouve au sous sol', 'utilisateur', u.id, timestamptz '2025-07-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 771
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Réparation M Negroni ok, manque juste l''ampoule ( lampe dans le local technique) - @ réception le 18/02 car nous avons trouvé une lampe fonctionnelle en 55... Nous ne savons pas où mettre la lampe qui se trouve au sous sol');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 777, e.id, c.id, t.id, 'lampe bureau à réparer', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2025-06-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'lampe bureau à réparer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '56' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'OK REMISE EN CHAMBRE', 'utilisateur', u.id, timestamptz '2025-07-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 777
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'OK REMISE EN CHAMBRE');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-06-02', timestamptz '2025-06-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 777
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-06-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 777
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 791, e.id, c.id, t.id, 'Prise arrachée du mur SDB', 'validee', u1.id, u2.id, timestamptz '2025-07-02', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'prise arrachée du mur sdb'
-  left join types_intervention t on t.code = 'ELECTRIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '57' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 791
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 791
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 846, e.id, c.id, t.id, 'Installer un interupteur', 'validee', u1.id, u2.id, timestamptz '2025-06-02', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Installer un interupteur'
-  left join types_intervention t on t.code = 'ELECTRIQUE'
-  left join utilisateurs u1 on u1.nom = 'MR NEGRONI'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = 'Local Technique' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'A la demande de Mr Negroni - fait par Alain', 'utilisateur', u.id, timestamptz '2025-06-02'
-  from anomalies a left join utilisateurs u on u.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 846
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'A la demande de Mr Negroni - fait par Alain');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 851, e.id, c.id, t.id, 'faire un trou et ensuite avec un fil de fer tirer les fils pour installer la prise pour le nouveau cadre', 'validee', u1.id, u2.id, timestamptz '2025-06-02', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'faire un trou et ensuite avec un fil de fer tirer les fils pour installer la prise pour le nouveau cadre'
-  left join types_intervention t on t.code = 'ELECTRIQUE'
-  left join utilisateurs u1 on u1.nom = 'MR NEGRONI'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = 'Réception' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Vu entre Marie et Alain pour l''intervention', 'utilisateur', u.id, timestamptz '2025-06-02'
-  from anomalies a left join utilisateurs u on u.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 851
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Vu entre Marie et Alain pour l''intervention');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 557, e.id, c.id, t.id, 'flexible liseuse côté gauche à changer', 'validee', u1.id, u2.id, timestamptz '2025-05-02', '2025-08-04'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté gauche à changer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '31' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Suite passage du 08/04/25 pas besoin de changer mais juste à resserer', 'utilisateur', u.id, timestamptz '2025-05-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 557
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Suite passage du 08/04/25 pas besoin de changer mais juste à resserer');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-08-04', timestamptz '2025-08-04'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 557
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-08-04'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 557
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 654, e.id, c.id, t.id, 'flexible liseuse côté gauche à changer', 'validee', u1.id, u2.id, timestamptz '2025-05-02', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté gauche à changer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '45' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 654
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 654
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 671, e.id, c.id, t.id, 'Support gel douche à changer', 'validee', u1.id, u2.id, timestamptz '2025-05-02', '2025-08-04'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Support gel douche à changer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
   where e.code = '46' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-08-04', timestamptz '2025-08-04'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 671
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-08-04'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 671
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 707, e.id, c.id, t.id, 'Joint porte sdb', 'validee', u1.id, u2.id, timestamptz '2025-05-02', '2025-06-24'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 700, e.id, c.id, t.id, 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)', 'a_faire', u1.id, u2.id, timestamptz '2025-11-11', null
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Joint porte sdb'
+  left join catalogue_anomalies c on c.libelle = 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '48' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-06-24', timestamptz '2025-06-24'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 707
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-06-24'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 707
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 739, e.id, c.id, t.id, 'Lavabo qui coule', 'validee', u1.id, u2.id, timestamptz '2025-05-02', '2025-05-08'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Lavabo qui coule'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-05-08', timestamptz '2025-05-08'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 739
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-05-08'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 739
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 564, e.id, c.id, t.id, 'Miroir plateau à changé', 'validee', u1.id, u2.id, timestamptz '2025-04-02', '2026-05-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Miroir plateau à changé'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '32' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Serafino'
-  where a.sharepoint_id = 564
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 564
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 564
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 583, e.id, c.id, t.id, 'flexible liseuse côté droit à resserer', 'validee', u1.id, u2.id, timestamptz '2025-04-02', '2025-08-04'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté droit à resserer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '35' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-08-04', timestamptz '2025-08-04'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 583
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-08-04'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 583
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 594, e.id, c.id, t.id, 'Refixer la liseuse de gauche', 'validee', u1.id, u2.id, timestamptz '2025-04-02', '2025-07-02'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Refixer la liseuse de gauche'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '36' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-07-02', timestamptz '2025-07-02'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 594
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-07-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 594
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 614, e.id, c.id, t.id, 'flexible liseuse côté gauche à changer', 'validee', u1.id, u2.id, timestamptz '2025-04-02', '2025-08-04'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté gauche à changer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '38' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-08-04', timestamptz '2025-08-04'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 614
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-08-04'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 614
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 620, e.id, c.id, t.id, 'Miroir plateau à changé', 'validee', u1.id, u2.id, timestamptz '2025-04-02', '2026-05-14'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Miroir plateau à changé'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '38' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'test prévu dans cette chambre avec Serafino lors de son prochain passage - vu avec Sarah & Serafino le 6/01', 'utilisateur', u.id, timestamptz '2025-04-02'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 620
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'test prévu dans cette chambre avec Serafino lors de son prochain passage - vu avec Sarah & Serafino le 6/01');
+  where e.code = '47' on conflict (sharepoint_id) do nothing;
 insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-11-05', timestamptz '2026-11-05'
   from anomalies a
   left join tournees t on t.reference = 'INT-Serafino-20260511114443975'
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Serafino'
-  where a.sharepoint_id = 620
+  where a.sharepoint_id = 700
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-11-05'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 620
+  where a.sharepoint_id = 700
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-14'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 620
+  where a.sharepoint_id = 700
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 812, e.id, c.id, t.id, 'Miroir plateau à changé', 'validee', u1.id, u2.id, timestamptz '2025-04-02', '2026-05-02'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 705, e.id, c.id, t.id, 'Lit côté droit cassé', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-12-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Miroir plateau à changé'
+  left join catalogue_anomalies c on c.libelle = 'Lit côté droit cassé'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '58' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-05-02', timestamptz '2026-05-02'
+  where e.code = '48' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Au lieu de les agrafer ensemble, Mr Serafino les a viser', 'utilisateur', u.id, timestamptz '2025-11-11'
+  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 705
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Au lieu de les agrafer ensemble, Mr Serafino les a viser');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-12-23', timestamptz '2025-12-23'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Serafino'
-  where a.sharepoint_id = 812
+  where a.sharepoint_id = 705
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-05-02'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-12-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 812
+  where a.sharepoint_id = 705
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-05-02'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 812
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 873, e.id, c.id, t.id, 'Neon salle de repos à changer', 'validee', u1.id, u2.id, timestamptz '2025-01-02', '2025-03-20'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 729, e.id, c.id, t.id, 'Il faut changer la bouilloire', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-11-26'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Neon salle de repos à changer'
+  left join catalogue_anomalies c on c.libelle = 'Il faut changer la bouilloire'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = 'Salle de repos' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-20', timestamptz '2025-03-20'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 873
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-20'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 873
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 983, e.id, c.id, t.id, 'Changement des rideaux', 'validee', u1.id, u2.id, timestamptz '2025-01-29', '2026-03-31'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Changement des rideaux'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '03' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Dégâts fait par le technicien Avir', 'utilisateur', u.id, timestamptz '2025-01-29'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 983
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Dégâts fait par le technicien Avir');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-03-31', timestamptz '2026-03-31'
+  where e.code = '52' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-26', timestamptz '2025-11-26'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = 'Victoria'
   left join prestataires p on p.nom = null
-  where a.sharepoint_id = 983
+  where a.sharepoint_id = 729
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-03-31'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-26'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 983
+  where a.sharepoint_id = 729
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 457, e.id, c.id, t.id, 'URGENT! PRIORITE Coffre à reprogrammer', 'validee', u1.id, u2.id, timestamptz '2025-01-28', '2025-03-11'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 743, e.id, c.id, t.id, 'barriere de douche à fixer', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2026-02-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'urgent! priorite coffre à reprogrammer'
+  left join catalogue_anomalies c on c.libelle = 'barriere de douche à fixer'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '52' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-02-23', timestamptz '2026-02-23'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 743
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-02-23'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 743
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-02-23'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 743
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 745, e.id, c.id, t.id, 'Liseuse côté droit à changer', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-03-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Liseuse côté droit à changer'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '54' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 745
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 745
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 763, e.id, c.id, t.id, 'Spot à changer - côté du miroir', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-03-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Spot à changer - côté du miroir'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '55' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 763
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 763
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 800, e.id, c.id, t.id, 'Serrer le bras liseuse côté droit', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-03-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'serrer le bras liseuse côté droit'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '58' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 800
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 800
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 820, e.id, c.id, t.id, 'Spot noir à changer - en face de la chambre 38', 'validee', u1.id, u2.id, timestamptz '2025-11-11', '2025-03-12'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Spot noir à changer - en face de la chambre 38'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '3eme étage' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-12', timestamptz '2025-03-12'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Serafino'
+  where a.sharepoint_id = 820
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-12'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 820
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 825, e.id, c.id, t.id, 'Batterie du bloc secours à changer (celui en face de la chambre 48)', 'a_faire', u1.id, u2.id, timestamptz '2025-11-11', null
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Batterie du bloc secours à changer (celui en face de la chambre 48)'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '4eme étage' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 826, e.id, c.id, t.id, 'Batterie du bloc secours à changer (celui en face de la chambre 58)', 'a_faire', u1.id, u2.id, timestamptz '2025-11-11', null
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Batterie du bloc secours à changer (celui en face de la chambre 58)'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = 'Palier 5ème' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 850, e.id, c.id, t.id, 'Il manque juste le petit papier qui va à l''interieur et non le cache', 'en_cours', u1.id, u2.id, timestamptz '2025-09-11', null
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Il manque juste le petit papier qui va à l''interieur et non le cache'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Miguel'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '18' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-11', timestamptz '2025-03-11'
+  where e.code = 'Local TGBT' on conflict (sharepoint_id) do nothing;
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 455, e.id, c.id, t.id, 'remplacer l''économiseur d''énergie pour éclairage principal', 'validee', u1.id, u2.id, timestamptz '2025-07-11', '2026-04-22'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'remplacer l''économiseur d''énergie pour éclairage principal'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '16' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Hedi a "réparer l''économisseur" en recollant les piéces defaillantes à la colle forte. Aucun remplacement à été fait', 'utilisateur', u.id, timestamptz '2025-07-11'
+  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 455
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Hedi a "réparer l''économisseur" en recollant les piéces defaillantes à la colle forte. Aucun remplacement à été fait');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-22', timestamptz '2026-04-22'
   from anomalies a
-  left join tournees t on t.reference = null
+  left join tournees t on t.reference = 'INT-LEGACY-Alain-20260422'
   left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Technicien EUROPROH'
-  where a.sharepoint_id = 457
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 455
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-11'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-22'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 457
+  where a.sharepoint_id = 455
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 415, e.id, c.id, t.id, 'Spot plafond niveau armoire à changer', 'validee', u1.id, u2.id, timestamptz '2025-01-27', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Spot plafond niveau armoire à changer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '12' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Apparemment déjà fait', 'utilisateur', u.id, timestamptz '2025-01-27'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 415
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Apparemment déjà fait');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 415
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-22'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 415
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 428, e.id, c.id, t.id, 'Mettre une vis pour l''aimant de la porte dorée armoire (bas)', 'validee', u1.id, u2.id, timestamptz '2025-01-27', '2025-09-18'
+  left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 455
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 819, e.id, c.id, t.id, 'Batterie du bloc secours à changer (celui en face de la chambre 28)', 'validee', u1.id, u2.id, timestamptz '2025-03-11', '2025-11-16'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Mettre une vis pour l''aimant de la porte dorée armoire (bas)'
+  left join catalogue_anomalies c on c.libelle = 'Batterie du bloc secours à changer (celui en face de la chambre 28)'
   left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u1 on u1.nom = 'Miguel'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '14' on conflict (sharepoint_id) do nothing;
+  where e.code = '2eme étage' on conflict (sharepoint_id) do nothing;
 insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'noté fait le 30/01 mais pas fait', 'utilisateur', u.id, timestamptz '2025-01-27'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 428
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'noté fait le 30/01 mais pas fait');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-18', timestamptz '2025-09-18'
+  select a.id, 'Le 16/11/25 Hedi a changé une seule batterie sur les deux et pour l''instant tout semble en ordre - je n''ai pas modifé le stock parce que d''après lui la batterie fonctionne encore à confirmer', 'utilisateur', u.id, timestamptz '2025-03-11'
+  from anomalies a left join utilisateurs u on u.nom = 'Miguel'
+  where a.sharepoint_id = 819
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Le 16/11/25 Hedi a changé une seule batterie sur les deux et pour l''instant tout semble en ordre - je n''ai pas modifé le stock parce que d''après lui la batterie fonctionne encore à confirmer');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-16', timestamptz '2025-11-16'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 428
+  where a.sharepoint_id = 819
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-18'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-16'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 428
+  where a.sharepoint_id = 819
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 627, e.id, c.id, t.id, 'flexible liseuse côté SDB à changer', 'validee', u1.id, u2.id, timestamptz '2025-01-27', '2025-01-30'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté SDB à changer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '41' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-30', timestamptz '2025-01-30'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 627
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-30'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 627
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 650, e.id, c.id, t.id, 'Barrre de douche à refixer', 'validee', u1.id, u2.id, timestamptz '2025-01-27', '2025-01-30'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Barrre de douche à refixer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '44' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-30', timestamptz '2025-01-30'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 650
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-30'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 650
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 814, e.id, c.id, t.id, 'plafond douche SDB cloqué - voir avec Kamel', 'a_faire', u1.id, u2.id, timestamptz '2025-01-27', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'plafond douche SDB cloqué - voir avec Kamel'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '58' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Voir avec Serafino pour vérifier l''état de la VMC et s''il trouve le pb lors de son passage du mardi 13 -', 'utilisateur', u.id, timestamptz '2025-01-27'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 814
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Voir avec Serafino pour vérifier l''état de la VMC et s''il trouve le pb lors de son passage du mardi 13 -');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 878, e.id, c.id, t.id, 'réparation enduit mur blanc niveau lingerie + peinture Farid + baguettes plastiques larges et resistantes car les livreurs abîment les angles avec leurs charriots', 'validee', u1.id, u2.id, timestamptz '2025-01-27', '2025-03-20'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'réparation enduit mur blanc niveau lingerie + peinture Farid + baguettes plastiques larges et resistantes car les livreurs abîment les angles avec leurs charriots'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = 'Sous-sol divers' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-03-20', timestamptz '2025-03-20'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'MR NEGRONI'
-  where a.sharepoint_id = 878
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-03-20'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 878
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 584, e.id, c.id, t.id, 'Mettre feutrine découpée sur mesure au dos de la table de chevet pour protéger le mur', 'a_faire', u1.id, u2.id, timestamptz '2025-01-24', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Mettre feutrine découpée sur mesure au dos de la table de chevet pour protéger le mur'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '35' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 392, e.id, c.id, t.id, 'mettre des cornieres noires à l''entrée de la chambe', 'a_faire', u1.id, u2.id, timestamptz '2025-01-23', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'mettre des cornieres noires à l''entrée de la chambe'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '03' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 842, e.id, c.id, t.id, 'Voilages dechirés', 'validee', u1.id, u2.id, timestamptz '2025-01-23', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Voilages dechirés'
-  left join types_intervention t on t.code = 'ACHATS'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = 'Parties communes' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'EN COMMANDE PAR ANDREA - reçu le 14/03/25 par Victoria', 'utilisateur', u.id, timestamptz '2025-01-23'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 842
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'EN COMMANDE PAR ANDREA - reçu le 14/03/25 par Victoria');
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Localisation d''origine : GENERAL', 'reprise', u.id, timestamptz '2025-01-23'
-  from anomalies a left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 842
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Localisation d''origine : GENERAL');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-23', timestamptz '2025-01-23'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 842
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 411, e.id, c.id, t.id, 'changement du flexible de la liseuse de droite', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'changement du flexible de la liseuse de droite'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '11' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 411
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 411
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 490, e.id, c.id, t.id, 'Refixer le miroir grossissant', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Refixer le miroir grossissant'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '22' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Apres verifications le 19/02/25 par Victoria - Le miroir n''a pas été correctement visé - ok Hedi est repassé dessus le 05/08 ( non vérifié)', 'utilisateur', u.id, timestamptz '2025-01-21'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 490
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Apres verifications le 19/02/25 par Victoria - Le miroir n''a pas été correctement visé - ok Hedi est repassé dessus le 05/08 ( non vérifié)');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 490
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 490
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 491, e.id, c.id, t.id, 'problème de joint sur la paroi de douche car l''eau coule à travers -', 'validee', u1.id, u2.id, timestamptz '2025-01-21', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'problème de joint sur la paroi de douche car l''eau coule à travers -'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '22' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, '6 baguettes joints neuves déposées par M Negroni le 24/01 pour pare douches dans la lingerie -', 'utilisateur', u.id, timestamptz '2025-01-21'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 491
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = '6 baguettes joints neuves déposées par M Negroni le 24/01 pour pare douches dans la lingerie -');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 521, e.id, c.id, t.id, 'Mettre une vis pour l''aimant de la porte dorée armoire (bas)', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Mettre une vis pour l''aimant de la porte dorée armoire (bas)'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '26' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 521
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 521
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 523, e.id, c.id, t.id, 'flexible liseuse côté droit à changer', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-08-04'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 615, e.id, c.id, t.id, 'flexible liseuse côté droit à changer', 'validee', u1.id, u2.id, timestamptz '2025-10-28', '2025-11-16'
   from emplacements e
   left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté droit à changer'
   left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '26' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-08-04', timestamptz '2025-08-04'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 523
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-08-04'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 523
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 524, e.id, c.id, t.id, 'flexible liseuse côté gauche à resserer', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté gauche à resserer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '26' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Apres verifications le 19/02/25 par Victoria - resseré le 08/04/25', 'utilisateur', u.id, timestamptz '2025-01-21'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 524
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Apres verifications le 19/02/25 par Victoria - resseré le 08/04/25');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 524
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 524
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 530, e.id, c.id, t.id, 'Refixer la liseuse de droite', 'validee', u1.id, u2.id, timestamptz '2025-01-21', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'refixer la liseuse de droite'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '27' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 531, e.id, c.id, t.id, 'Plainte rose coté lit SDB à recoller', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-05-08'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Plainte rose coté lit SDB à recoller'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '27' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-05-08', timestamptz '2025-05-08'
+  where e.code = '38' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-16', timestamptz '2025-11-16'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 531
+  where a.sharepoint_id = 615
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-05-08'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-16'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 531
+  where a.sharepoint_id = 615
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 538, e.id, c.id, t.id, 'La porte principale ne se fermait pas bien', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 616, e.id, c.id, t.id, 'flexible liseuse côté gauche à fixer', 'validee', u1.id, u2.id, timestamptz '2025-10-28', '2025-11-16'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'La porte principale ne se fermait pas bien'
+  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté gauche à fixer'
   left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Miguel'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '28' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 538
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 538
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 582, e.id, c.id, t.id, 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)', 'validee', u1.id, u2.id, timestamptz '2025-01-21', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Mettre une vis pour l''aimant de la porte dorée armoire (haut)'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '35' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 607, e.id, c.id, t.id, 'Plinthe bois chambre (Mur a gauche du lit) à recoller', 'validee', u1.id, u2.id, timestamptz '2025-01-21', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Plinthe bois chambre (Mur a gauche du lit) à recoller'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '37' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Collé ok - faire le joint et repeindre la plinthe - selon Hedi déjà fait lors du passage du 18.09', 'utilisateur', u.id, timestamptz '2025-01-21'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 607
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Collé ok - faire le joint et repeindre la plinthe - selon Hedi déjà fait lors du passage du 18.09');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 684, e.id, c.id, t.id, 'Fuite syphon Lavabo SDB', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Fuite syphon Lavabo SDB'
-  left join types_intervention t on t.code = 'PLOMBERIE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '46' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'fait le 21/01 mais fuit de nouveau le 24/01 - 30/01/25, le joint à été enlevé par Farid et Mr Jacques', 'utilisateur', u.id, timestamptz '2025-01-21'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 684
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'fait le 21/01 mais fuit de nouveau le 24/01 - 30/01/25, le joint à été enlevé par Farid et Mr Jacques');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 684
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 684
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 732, e.id, c.id, t.id, 'Refixer la liseuse de gauche', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Refixer la liseuse de gauche'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'Victoria a contaster qu''il fallait de nouveau le faire le 15/02/25', 'utilisateur', u.id, timestamptz '2025-01-21'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 732
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Victoria a contaster qu''il fallait de nouveau le faire le 15/02/25');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 732
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 732
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 737, e.id, c.id, t.id, 'Mettre une vise sur la Porte dorée armoire (haut)', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Mettre une vise sur la Porte dorée armoire (haut)'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 737
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 737
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 738, e.id, c.id, t.id, 'Refixer le miroir grossissant', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-05-08'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Refixer le miroir grossissant'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'le miroir a dû être déplacé donc trous apparents, refaire peinture', 'utilisateur', u.id, timestamptz '2025-01-21'
-  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
-  where a.sharepoint_id = 738
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'le miroir a dû être déplacé donc trous apparents, refaire peinture');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-05-08', timestamptz '2025-05-08'
+  where e.code = '38' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-16', timestamptz '2025-11-16'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
   left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 738
+  where a.sharepoint_id = 616
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-05-08'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-16'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 738
+  where a.sharepoint_id = 616
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 751, e.id, c.id, t.id, 'Refixer le miroir grossissant', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-02-17'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 710, e.id, c.id, t.id, 'flexible liseuse côté gauche à fixer', 'validee', u1.id, u2.id, timestamptz '2025-10-28', '2025-11-16'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Refixer le miroir grossissant'
+  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté gauche à fixer'
   left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '54' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 751
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 751
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 770, e.id, c.id, t.id, 'Baguette d''angle noir a recollé - mur entree chambre', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Baguette d''angle noir a recollé - mur entree chambre'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '55' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 770
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 770
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 778, e.id, c.id, t.id, 'Fuite syphon Lavabo SDB', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Fuite syphon Lavabo SDB'
-  left join types_intervention t on t.code = 'PLOMBERIE'
   left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '56' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
+  where e.code = '48' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-16', timestamptz '2025-11-16'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 778
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Hedi'
+  where a.sharepoint_id = 710
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-16'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 778
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 710
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 865, e.id, c.id, t.id, 'coller deux baguettes d''angle noires dans l''encadrement porte DAES', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 728, e.id, c.id, t.id, 'flexible liseuse côté droit à changer', 'validee', u1.id, u2.id, timestamptz '2025-10-28', '2025-11-16'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'coller deux baguettes d''angle noires dans l''encadrement porte DAES'
+  left join catalogue_anomalies c on c.libelle = 'flexible liseuse côté droit à changer'
   left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
-  left join utilisateurs u2 on u2.nom = 'Sarah P'
-  where e.code = 'Ascenseur' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 865
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 865
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 877, e.id, c.id, t.id, 'Mettre le tableau pour l''affichage obligatoire', 'validee', u1.id, u2.id, timestamptz '2025-01-21', '2025-01-21'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Mettre le tableau pour l''affichage obligatoire'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
   left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = 'Sous-sol divers' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-21', timestamptz '2025-01-21'
+  where e.code = '52' on conflict (sharepoint_id) do nothing;
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-16', timestamptz '2025-11-16'
   from anomalies a
   left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 877
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'Hedi'
+  where a.sharepoint_id = 728
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-21'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-16'
   from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 877
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 728
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 817, e.id, c.id, t.id, 'Spot du couloir a changer à coté de la chambre 18', 'validee', u1.id, u2.id, timestamptz '2025-01-16', '2025-01-30'
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 824, e.id, c.id, t.id, 'Batterie du bloc secours à changer (celui en face de la chambre 44)', 'validee', u1.id, u2.id, timestamptz '2025-10-22', '2025-10-23'
   from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Spot du couloir a changer à coté de la chambre 18'
+  left join catalogue_anomalies c on c.libelle = 'Batterie du bloc secours à changer (celui en face de la chambre 44)'
   left join types_intervention t on t.code = 'ELECTRIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = 'Palier 1er' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-30', timestamptz '2025-01-30'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 817
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-30'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 817
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 440, e.id, c.id, t.id, 'Porte du frigo à fixer', 'validee', u1.id, u2.id, timestamptz '2025-11-01', '2025-05-08'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'porte du frigo à fixer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '15' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-05-08', timestamptz '2025-05-08'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 440
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-05-08'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 440
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 649, e.id, c.id, t.id, 'Lavabo bouché', 'validee', u1.id, u2.id, timestamptz '2025-11-01', '2025-01-16'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'lavabo bouché'
-  left join types_intervention t on t.code = 'PLOMBERIE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '44' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-16', timestamptz '2025-01-16'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 649
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-16'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 649
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 723, e.id, c.id, t.id, 'Bouton on/off pour regler la temperature non fonctionnel', 'validee', u1.id, u2.id, timestamptz '2025-11-01', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Bouton on/off pour regler la temperature non fonctionnel'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '51' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 805, e.id, c.id, t.id, 'La lumiere du miroir ne s''allume pas', 'validee', u1.id, u2.id, timestamptz '2025-11-01', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'La lumiere du miroir ne s''allume pas'
-  left join types_intervention t on t.code = 'ELECTRIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '58' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 805
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 805
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 417, e.id, c.id, t.id, 'joint porte sdb', 'validee', u1.id, u2.id, timestamptz '2025-09-01', '2025-11-01'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Joint porte sdb'
-  left join types_intervention t on t.code = 'PLOMBERIE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '12' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-01', timestamptz '2025-11-01'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 417
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-01'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 417
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 497, e.id, c.id, t.id, 'change bonde lavabo', 'validee', u1.id, u2.id, timestamptz '2025-09-01', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'change bonde lavabo'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '24' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 497
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 497
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 511, e.id, c.id, t.id, 'deboucher l''evier', 'validee', u1.id, u2.id, timestamptz '2025-09-01', '2025-11-01'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'deboucher l''evier'
-  left join types_intervention t on t.code = 'PLOMBERIE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '25' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-11-01', timestamptz '2025-11-01'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 511
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-11-01'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 511
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 529, e.id, c.id, t.id, 'deboucher l''evier', 'validee', u1.id, u2.id, timestamptz '2025-09-01', null
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'deboucher l''evier'
-  left join types_intervention t on t.code = 'PLOMBERIE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '27' on conflict (sharepoint_id) do nothing;
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 560, e.id, c.id, t.id, 'Télérupteur spot et led à changer', 'validee', u1.id, u2.id, timestamptz '2025-09-01', '2025-01-22'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Télérupteur spot et led à changer'
-  left join types_intervention t on t.code = 'ELECTRIQUE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '32' on conflict (sharepoint_id) do nothing;
-insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
-  select a.id, 'telerupteur mecanique - L''hotel test des télérupteurs mecaniques à la place des télérupteurs electriques', 'utilisateur', u.id, timestamptz '2025-09-01'
-  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 560
-    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'telerupteur mecanique - L''hotel test des télérupteurs mecaniques à la place des télérupteurs electriques');
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-22', timestamptz '2025-01-22'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'ALAIN'
-  where a.sharepoint_id = 560
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-22'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 560
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 731, e.id, c.id, t.id, 'changer la bonde du lavabo', 'validee', u1.id, u2.id, timestamptz '2025-09-01', '2025-02-17'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'changer la bonde du lavabo'
-  left join types_intervention t on t.code = 'PLOMBERIE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '52' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-02-17', timestamptz '2025-02-17'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'FARID'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 731
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-02-17'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'FARID'
-  where a.sharepoint_id = 731
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 783, e.id, c.id, t.id, 'deboucher l''evier', 'validee', u1.id, u2.id, timestamptz '2025-09-01', '2025-01-16'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'deboucher l''evier'
-  left join types_intervention t on t.code = 'PLOMBERIE'
-  left join utilisateurs u1 on u1.nom = 'Victoria'
-  left join utilisateurs u2 on u2.nom = 'Victoria'
-  where e.code = '56' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-16', timestamptz '2025-01-16'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = 'Victoria'
-  left join prestataires p on p.nom = null
-  where a.sharepoint_id = 783
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-16'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = 'Victoria'
-  where a.sharepoint_id = 783
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 387, e.id, c.id, t.id, 'Applique coté entrée à refixer correctement', 'validee', u1.id, u2.id, timestamptz '2025-05-01', '2025-09-18'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Applique coté entrée à refixer correctement'
-  left join types_intervention t on t.code = 'TECHNIQUE'
-  left join utilisateurs u1 on u1.nom = 'Miguel'
-  left join utilisateurs u2 on u2.nom = 'Miguel'
-  where e.code = '03' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-18', timestamptz '2025-09-18'
-  from anomalies a
-  left join tournees t on t.reference = null
-  left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Hedi'
-  where a.sharepoint_id = 387
-    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-18'
-  from interventions i join anomalies a on a.id = i.anomalie_id
-  left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 387
-    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
-insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 822, e.id, c.id, t.id, 'Spot à coté de l''ascenseur à changer', 'validee', u1.id, u2.id, timestamptz '2025-05-01', '2025-01-04'
-  from emplacements e
-  left join catalogue_anomalies c on c.libelle = 'Spot à coté de l''ascenseur à changer'
-  left join types_intervention t on t.code = 'TECHNIQUE'
   left join utilisateurs u1 on u1.nom = 'Miguel'
   left join utilisateurs u2 on u2.nom = 'Miguel'
   where e.code = '4eme étage' on conflict (sharepoint_id) do nothing;
-insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-01-04', timestamptz '2025-01-04'
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-10-23', timestamptz '2025-10-23'
   from anomalies a
   left join tournees t on t.reference = null
   left join utilisateurs u on u.nom = null
-  left join prestataires p on p.nom = 'Juan'
-  where a.sharepoint_id = 822
+  left join prestataires p on p.nom = 'Technicien TELEC'
+  where a.sharepoint_id = 824
     and not exists (select 1 from interventions i where i.anomalie_id = a.id);
-insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-01-04'
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-10-23'
   from interventions i join anomalies a on a.id = i.anomalie_id
   left join utilisateurs u on u.nom = null
-  where a.sharepoint_id = 822
+  where a.sharepoint_id = 824
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 784, e.id, c.id, t.id, 'remplacer l''économiseur d''énergie pour éclairage principal', 'validee', u1.id, u2.id, timestamptz '2025-10-17', '2026-04-17'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'remplacer l''économiseur d''énergie pour éclairage principal'
+  left join types_intervention t on t.code = 'ELECTRIQUE'
+  left join utilisateurs u1 on u1.nom = 'Victoria'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '56' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Hedi passage le 16/11 mais ne fonctionne toujorus pas', 'utilisateur', u.id, timestamptz '2025-10-17'
+  from anomalies a left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 784
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Hedi passage le 16/11 mais ne fonctionne toujorus pas');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2026-04-16', timestamptz '2026-04-16'
+  from anomalies a
+  left join tournees t on t.reference = 'INT-LEGACY-Alain-20260416'
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'ALAIN'
+  where a.sharepoint_id = 784
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2026-04-16'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 784
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'gouvernante', 'validee', u.id, timestamptz '2026-04-17'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = 'Victoria'
+  where a.sharepoint_id = 784
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'gouvernante');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 376, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '01' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 376
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 376
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 376
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 384, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '02' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 384
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 384
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 384
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 394, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '03' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 394
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 394
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 394
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 407, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '11' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 407
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 407
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 407
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 420, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '12' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 420
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 420
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 420
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 433, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '14' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 433
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 433
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 433
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 444, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '15' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 444
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 444
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 444
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 452, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '16' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 452
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 452
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 452
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 465, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '18' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 465
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 465
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 465
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 480, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '21' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 480
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 480
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 480
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 488, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '22' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 488
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 488
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 488
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 500, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '24' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 500
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 500
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 500
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 514, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '25' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 514
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 514
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 514
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 520, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '26' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 520
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 520
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 520
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 527, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '27' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 527
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 527
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 527
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 542, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '28' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 542
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 542
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 542
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 556, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '31' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 556
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 556
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 556
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 563, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '32' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 563
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 563
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 563
+    and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
+insert into anomalies (sharepoint_id, emplacement_id, catalogue_id, type_id, description, statut, constate_par, saisie_par, declare_le, cloture_le) select 570, e.id, c.id, t.id, 'Demande de vérification s''il y a la présence de punaises', 'validee', u1.id, u2.id, timestamptz '2025-09-30', '2025-09-30'
+  from emplacements e
+  left join catalogue_anomalies c on c.libelle = 'Demande de vérification s''il y a la présence de punaises'
+  left join types_intervention t on t.code = 'TECHNIQUE'
+  left join utilisateurs u1 on u1.nom = 'Sarah P'
+  left join utilisateurs u2 on u2.nom = 'Miguel'
+  where e.code = '34' on conflict (sharepoint_id) do nothing;
+insert into commentaires (anomalie_id, texte, origine, auteur_id, ecrit_le)
+  select a.id, 'Détection de punaises par la société Ecoflair - RAS', 'utilisateur', u.id, timestamptz '2025-09-30'
+  from anomalies a left join utilisateurs u on u.nom = 'Sarah P'
+  where a.sharepoint_id = 570
+    and not exists (select 1 from commentaires x where x.anomalie_id = a.id and x.texte = 'Détection de punaises par la société Ecoflair - RAS');
+insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, date_intervention, cree_le) select a.id, t.id, u.id, p.id, date '2025-09-30', timestamptz '2025-09-30'
+  from anomalies a
+  left join tournees t on t.reference = null
+  left join utilisateurs u on u.nom = null
+  left join prestataires p on p.nom = 'EcoFlair'
+  where a.sharepoint_id = 570
+    and not exists (select 1 from interventions i where i.anomalie_id = a.id);
+insert into validations (intervention_id, acteur, decision, utilisateur_id, decide_le) select i.id, 'technicien', 'fait', u.id, timestamptz '2025-09-30'
+  from interventions i join anomalies a on a.id = i.anomalie_id
+  left join utilisateurs u on u.nom = null
+  where a.sharepoint_id = 570
     and not exists (select 1 from validations v where v.intervention_id = i.id and v.acteur = 'technicien');
 
 alter table validations enable trigger tg_validation_maj_anomalie;
 commit;
 
-select '2-anomalies-e.sql' as "Fichier joué",
-       count(*) || ' anomalies sur 670' as "Où ça en est"
-  from anomalies;
+
+-- Trace de passage : c'est elle que lit 0-ou-en-suis-je.sql.
+create table if not exists installation_journal (
+  fichier  text primary key,
+  joue_le  timestamptz not null default now()
+);
+insert into installation_journal (fichier) values ('2-anomalies-e.sql')
+  on conflict (fichier) do update set joue_le = now();
+
+select '2-anomalies-e.sql' as "Fichier joué", (select count(*) || ' anomalies sur 670' from anomalies) as "Où ça en est";

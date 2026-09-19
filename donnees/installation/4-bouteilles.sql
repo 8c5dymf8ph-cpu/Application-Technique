@@ -588,6 +588,12 @@ update incidents_bouteille set statut = 'transmis'
 commit;
 
 
-select '4-bouteilles.sql' as "Fichier joué",
-       count(*) || ' dossiers de bouteille sur 17' as "Où ça en est"
-  from incidents_bouteille;
+-- Trace de passage : c'est elle que lit 0-ou-en-suis-je.sql.
+create table if not exists installation_journal (
+  fichier  text primary key,
+  joue_le  timestamptz not null default now()
+);
+insert into installation_journal (fichier) values ('4-bouteilles.sql')
+  on conflict (fichier) do update set joue_le = now();
+
+select '4-bouteilles.sql' as "Fichier joué", (select count(*) || ' dossiers de bouteille sur 17' from incidents_bouteille) as "Où ça en est";

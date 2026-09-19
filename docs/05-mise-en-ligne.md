@@ -42,7 +42,7 @@ des adresses des deux autres.
 
    | Fichier joué | Où ça en est |
    |---|---|
-   | `2-anomalies-b.sql` | 284 anomalies sur 670 |
+   | `2-anomalies-b.sql` | 161 anomalies sur 670 |
 
    Si le nom affiché n'est pas celui que vous venez de coller, le collage n'a pas pris : le Run
    a rejoué le fichier précédent. Recommencez ce fichier-là dans une **nouvelle requête**.
@@ -57,17 +57,21 @@ des adresses des deux autres.
 
 | Ordre | Fichier | Contenu | Taille |
 |---|---|---|---|
-| — | `0-ou-en-suis-je.sql` | **Ne modifie rien.** Dit où en est l'installation et quel fichier jouer ensuite | 3 Ko |
-| 1 | `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés | 143 Ko |
-| 2 | `2-anomalies-a.sql` … `-e.sql` | 670 anomalies, 528 interventions, 29 tournées — **cinq morceaux, dans l'ordre des lettres** | ~215 Ko chacun |
-| 3 | `3-stock.sql` | 36 produits, 257 mouvements | 163 Ko |
+| — | `0-ou-en-suis-je.sql` | **Ne modifie rien.** Dit où en est l'installation et quel fichier jouer ensuite | 2 Ko |
+| 1 | `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés | 145 Ko |
+| 2 | `2-anomalies-a.sql` … `-i.sql` | 670 anomalies, 528 interventions, 29 tournées — **neuf morceaux, dans l'ordre des lettres** | ~118 Ko chacun |
+| 3 | `3-stock-a.sql`, `-b.sql` | 36 produits, 279 mouvements — **deux morceaux** | 117 et 46 Ko |
 | 4 | `4-bouteilles.sql` | 17 dossiers de bouteille, la livraison du 31/03, le parc constaté | 30 Ko |
-| 5 | `5-equipe.sql` | L'orthographe des noms et la liste des intervenants techniques | 2 Ko |
+| 5 | `5-equipe.sql` | L'orthographe des noms et la liste des intervenants techniques | 3 Ko |
 
-> **Pourquoi les anomalies sont en cinq morceaux.** Le fichier entier fait un méga-octet, et
-> l'éditeur du navigateur s'étrangle bien avant. `2-anomalies.sql` reste dans le dossier, entier,
-> pour qui passe par un terminal : `psql "<chaîne de connexion>" -f donnees/installation/2-anomalies.sql`
-> (la chaîne est dans **Settings → Database → Connection string → URI**).
+> **Pourquoi des morceaux.** L'éditeur du navigateur refuse « Query is too large » au-delà
+> d'environ 220 000 caractères — mesuré : 220 112 passe, 220 502 non. Les morceaux font la
+> moitié de cette taille, pour ne pas jouer avec la limite. Seul le fichier 1 reste d'un bloc à
+> 145 Ko : il contient des corps de fonctions qu'on ne peut pas couper n'importe où.
+>
+> `2-anomalies.sql` et `3-stock.sql` restent dans le dossier, entiers, pour qui passe par un
+> terminal : `psql "<chaîne de connexion>" -f donnees/installation/2-anomalies.sql` (la chaîne
+> est dans **Settings → Database → Connection string → URI**).
 > **Jouer les morceaux OU le fichier entier, jamais les deux.** Dans les deux cas rien n'est
 > inséré en double si on rejoue : un morceau passé deux fois ne fait aucun dégât.
 
@@ -75,7 +79,7 @@ des adresses des deux autres.
 > main, ils se regénèrent après toute modification du schéma.
 
 4. Vérifier dans **Table Editor** que `anomalies` contient bien **670 lignes**. C'est ce qui
-   prouve que les cinq morceaux sont tous passés — s'il en manque un, le compte est plus bas.
+   prouve que les neuf morceaux sont tous passés — s'il en manque un, le compte est plus bas.
 
 > **Si quelque chose casse en route, reprendre au fichier 1.** Il commence par remettre le
 > schéma à zéro : on peut le rejouer autant de fois qu'on veut, il n'y a pas de demi-installation

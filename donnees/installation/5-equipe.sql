@@ -23,6 +23,12 @@ update utilisateurs set intervient_technique = true where nom in ('Farid', 'Migu
 commit;
 
 
-select '5-equipe.sql' as "Fichier joué",
-       case when exists (select 1 from prestataires where nom = 'ALAIN')
-            then 'noms NON corrigés — le fichier n''a pas tourné' else 'noms corrigés — installation terminée' end as "Où ça en est";
+-- Trace de passage : c'est elle que lit 0-ou-en-suis-je.sql.
+create table if not exists installation_journal (
+  fichier  text primary key,
+  joue_le  timestamptz not null default now()
+);
+insert into installation_journal (fichier) values ('5-equipe.sql')
+  on conflict (fichier) do update set joue_le = now();
+
+select '5-equipe.sql' as "Fichier joué", (select case when exists (select 1 from prestataires where nom = 'ALAIN') then 'noms NON corrigés' else 'noms corrigés — installation terminée' end) as "Où ça en est";

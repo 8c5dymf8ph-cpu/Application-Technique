@@ -2753,6 +2753,12 @@ where not exists (
 );
 
 
-select '1-schema-et-referentiels.sql' as "Fichier joué",
-       count(*) || ' emplacements — le schéma est en place' as "Où ça en est"
-  from emplacements;
+-- Trace de passage : c'est elle que lit 0-ou-en-suis-je.sql.
+create table if not exists installation_journal (
+  fichier  text primary key,
+  joue_le  timestamptz not null default now()
+);
+insert into installation_journal (fichier) values ('1-schema-et-referentiels.sql')
+  on conflict (fichier) do update set joue_le = now();
+
+select '1-schema-et-referentiels.sql' as "Fichier joué", (select count(*) || ' emplacements — le schéma est en place' from emplacements) as "Où ça en est";
