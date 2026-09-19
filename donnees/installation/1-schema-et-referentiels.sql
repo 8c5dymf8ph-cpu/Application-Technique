@@ -24,9 +24,14 @@ begin
     if to_regclass('public.' || t) is not null then
       execute format('select count(*) from public.%I', t) into n;
       if n > 0 then
-        raise exception 'La table % porte déjà % ligne(s) : ce fichier les effacerait.', t, n
-          using hint = 'Installation déjà faite. Pour tout reprendre à zéro, effacer '
-                    || 'le schéma public à la main, en connaissance de cause.';
+        raise exception
+          'RIEN N''A ÉTÉ EFFACÉ. La table % porte déjà % ligne(s), et ce fichier '
+          'les aurait effacées.', t, n
+          using hint =
+            'Vous venez sans doute de rejouer 1-schema-et-referentiels.sql par '
+         || 'erreur : le collage n''a pas remplacé le contenu de l''éditeur. '
+         || 'Jouez 0-ou-en-suis-je.sql, il dit quel fichier coller maintenant. '
+         || 'Pour tout reprendre à zéro volontairement : 0-tout-effacer.sql.';
       end if;
     end if;
   end loop;

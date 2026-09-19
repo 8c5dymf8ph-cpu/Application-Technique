@@ -28,15 +28,27 @@ des adresses des deux autres.
    (Cmd sur Mac). Dans Supabase, coller dans l'éditeur, **Run**, attendre « Success ».
 
    **Un seul onglet suffit pour les neuf fichiers.** Inutile d'ouvrir une nouvelle requête à
-   chaque fois : une fois « Success » affiché, **Ctrl+A** dans l'éditeur pour tout sélectionner,
-   puis coller le fichier suivant par-dessus, et **Run**. Ce qui compte est l'ordre dans lequel
-   on appuie sur Run, pas le nombre d'onglets. Ne jamais mettre deux fichiers à la suite dans le
-   même Run : s'il y a une erreur, on ne sait plus lequel est passé.
+   chaque fois : une fois « Success » affiché, **cliquer dans l'éditeur**, **Ctrl+A** pour tout
+   sélectionner, puis coller le fichier suivant par-dessus, et **Run**. Ce qui compte est l'ordre
+   dans lequel on appuie sur Run, pas le nombre d'onglets.
+
+   **Un fichier par Run, jamais deux.** Collés à la suite, ils dépassent ce que l'éditeur
+   accepte — il répond qu'il y a trop de lignes — et en cas d'erreur on ne sait plus lequel est
+   passé.
+
+   **Vérifier que le collage a bien remplacé le contenu** avant d'appuyer sur Run : si le clic
+   n'était pas dans l'éditeur, le Ctrl+A a sélectionné la page et le fichier précédent est
+   toujours là. C'est le piège le plus courant, et il se traduit par une erreur déroutante —
+   celle du fichier qu'on croyait avoir remplacé.
+
+   **Perdu ?** Jouer `0-ou-en-suis-je.sql` : il ne modifie rien et affiche un tableau qui dit
+   ce qui est en place et quel fichier coller maintenant. Il se rejoue à volonté.
 
 3. Les exécuter **dans cet ordre** :
 
 | Ordre | Fichier | Contenu | Taille |
 |---|---|---|---|
+| — | `0-ou-en-suis-je.sql` | **Ne modifie rien.** Dit où en est l'installation et quel fichier jouer ensuite | 3 Ko |
 | 1 | `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés | 143 Ko |
 | 2 | `2-anomalies-a.sql` … `-e.sql` | 670 anomalies, 528 interventions, 29 tournées — **cinq morceaux, dans l'ordre des lettres** | ~215 Ko chacun |
 | 3 | `3-stock.sql` | 36 produits, 257 mouvements | 163 Ko |
@@ -63,7 +75,11 @@ des adresses des deux autres.
 >
 > Ce même fichier **refuse de s'exécuter** dès que la base porte des anomalies, des mouvements de
 > stock ou des dossiers de bouteille : passé l'installation, c'est la base de l'hôtel, et il
-> s'arrête sans rien effacer. Le message le dit en clair.
+> s'arrête sans rien effacer. Le message commence par « RIEN N'A ÉTÉ EFFACÉ » et dit quoi faire.
+>
+> Pour repartir de zéro **volontairement** — une installation à reprendre depuis le début —
+> jouer `0-tout-effacer.sql`, puis `1-schema-et-referentiels.sql`. Celui-là ne demande rien et
+> n'épargne rien : il n'a aucune raison d'être joué sur la base de l'hôtel.
 
 ### Où vont les photos et les factures
 
