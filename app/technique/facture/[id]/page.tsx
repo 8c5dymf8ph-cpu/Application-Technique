@@ -40,7 +40,7 @@ type Journee = {
 
 type Rattachee = {
   intervention_id: string;
-  date_intervention: string;
+  date_intervention: string | Date;
   emplacement: string;
   description: string;
   cout_materiel: number | null;
@@ -203,33 +203,55 @@ export default async function DetailFacture({
               Rien encore. Choisissez les journées ci-dessous.
             </p>
           ) : (
-            <ul className="carte divide-y divide-line">
-              {rattachees.map((r) => (
-                <li key={r.intervention_id} className="px-3.5 py-2.5 flex items-center gap-3">
-                  <span className="grow min-w-0">
-                    <span className="block text-[13.5px] leading-snug text-pretty">
-                      {r.emplacement} — {r.description}
-                    </span>
-                    <span className="block text-[11px] text-ink-faint">
-                      {new Date(r.date_intervention).toLocaleDateString("fr-FR")}
-                    </span>
-                  </span>
-                  {peutValider(profil.role) && (
-                    <form action={detacher}>
-                      <input type="hidden" name="intervention" value={r.intervention_id} />
-                      <button
-                        aria-label="Retirer"
-                        className="w-9 h-9 shrink-0 rounded-[10px] bg-surface-muted grid place-items-center min-h-0"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
-                             strokeWidth="2.2" strokeLinecap="round">
-                          <path d="M6 12h12" />
-                        </svg>
-                      </button>
-                    </form>
-                  )}
-                </li>
-              ))}
+            <ul className="flex flex-col gap-2">
+              {[...new Set(rattachees.map((r) => jourISO(r.date_intervention)))].map((jour) => {
+                const dedans = rattachees.filter((r) => jourISO(r.date_intervention) === jour);
+                return (
+                  <li key={jour} className="carte overflow-hidden">
+                    <p className="px-3.5 py-2 bg-surface-muted border-b border-line text-[12px] text-ink-soft">
+                      {new Date(jour).toLocaleDateString("fr-FR", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
+                    <ul className="divide-y divide-line">
+                      {dedans.map((r) => (
+                        <li
+                          key={r.intervention_id}
+                          className="px-3.5 py-2.5 flex items-center gap-2.5"
+                        >
+                          <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[10.5px]">
+                            {r.emplacement}
+                          </span>
+                          <span className="grow min-w-0 text-[13.5px] leading-snug text-pretty">
+                            {r.description}
+                          </span>
+                          {peutValider(profil.role) && (
+                            <form action={detacher}>
+                              <input
+                                type="hidden"
+                                name="intervention"
+                                value={r.intervention_id}
+                              />
+                              <button
+                                aria-label="Retirer"
+                                className="w-9 h-9 shrink-0 rounded-[10px] bg-surface-muted grid place-items-center min-h-0"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                     stroke="#4F4B6B" strokeWidth="2.2" strokeLinecap="round">
+                                  <path d="M6 12h12" />
+                                </svg>
+                              </button>
+                            </form>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -293,12 +315,21 @@ export default async function DetailFacture({
                       )}
                     </div>
 
-                    <p className="text-[12px] text-ink-soft leading-snug text-pretty">
-                      {j.emplacements}
-                    </p>
-                    <p className="text-[11.5px] text-ink-faint leading-snug text-pretty">
-                      {j.apercu}
-                    </p>
+                    <ul className="flex flex-col gap-0.5">
+                      {j.apercu.split("\n").map((ligne) => {
+                        const [lieu, ...reste] = ligne.split(" — ");
+                        return (
+                          <li key={ligne} className="flex items-baseline gap-2 text-[12px]">
+                            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[10.5px]">
+                              {lieu}
+                            </span>
+                            <span className="grow min-w-0 text-ink-soft leading-snug text-pretty">
+                              {reste.join(" — ")}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
 
                     {j.deja_rapprochee ? (
                       <span className="text-[11.5px] text-green">Déjà rattachée</span>

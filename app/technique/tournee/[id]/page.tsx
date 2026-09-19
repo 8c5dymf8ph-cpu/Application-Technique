@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros, peutValider } from "@/lib/domaine";
+import { euros, jourISO, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { deposerRecap } from "@/lib/recap";
 
@@ -37,6 +37,7 @@ type Ligne = {
   commentaire_gouvernante: string | null;
   gouvernante: string | null;
   non_validee_par_gouvernante: boolean;
+  date_intervention: string | Date;
   materiel: string | null;
   cout_materiel: number | null;
   cout_prestataire: number | null;
@@ -78,13 +79,14 @@ export default async function DetailTournee({
               from mouvements_stock m join produits p on p.id = m.produit_id
              where m.intervention_id = r.intervention_id and m.type = 'sortie') as materiel,
            r.cout_materiel, r.cout_prestataire, r.cout_total, r.articles_sans_prix,
+           r.date_intervention,
            f.reference    as facture,
            f.fichier_url  as facture_fichier
     from v_recap_interventions r
     left join facture_interventions fi on fi.intervention_id = r.intervention_id
     left join factures f               on f.id = fi.facture_id
     where r.tournee = ${lot.reference}
-    order by r.emplacement`;
+    order by r.date_intervention desc, r.emplacement`;
 
   async function renvoyer(donnees: FormData) {
     "use server";
@@ -99,6 +101,8 @@ export default async function DetailTournee({
   const materielTotal = lignes.reduce((n, l) => n + Number(l.cout_materiel ?? 0), 0);
   const prestataireTotal = lignes.reduce((n, l) => n + Number(l.cout_prestataire ?? 0), 0);
   const refusees = lignes.filter((l) => l.non_validee_par_gouvernante);
+  // Un lot peut s'étaler : le technicien revient parfois le lendemain finir.
+  const jours = [...new Set(lignes.map((l) => jourISO(l.date_intervention)))];
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -172,10 +176,21 @@ export default async function DetailTournee({
         <section className="flex flex-col gap-2">
           <h2 className="etiquette">Ce qui a été fait</h2>
           <ul className="flex flex-col gap-2">
-            {lignes.map((l) => {
+            {lignes.map((l, i) => {
               const d = l.decision_gouvernante ? DECISION[l.decision_gouvernante] : null;
+              const jour = jourISO(l.date_intervention);
+              const nouveauJour = i === 0 || jourISO(lignes[i - 1].date_intervention) !== jour;
               return (
                 <li key={l.intervention_id} className="carte px-4 py-3 flex flex-col gap-2">
+                  {nouveauJour && jours.length > 1 && (
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint -mb-0.5">
+                      {new Date(jour).toLocaleDateString("fr-FR", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
+                    </p>
+                  )}
                   <div className="flex items-start gap-2">
                     <span className="px-2 py-0.5 rounded-md bg-plum-soft text-plum text-[11.5px] shrink-0">
                       {l.emplacement}

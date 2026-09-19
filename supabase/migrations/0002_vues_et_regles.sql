@@ -290,8 +290,10 @@ language sql stable as $$
     coalesce(pr.nom, ut.nom)                              as intervenant,
     count(*)::int                                         as nb_anomalies,
     string_agg(distinct e.code, ', ' order by e.code)     as emplacements,
-    -- De quoi reconnaître le passage sans ouvrir le détail.
-    left(string_agg(a.description, ' · ' order by a.reference), 120) as apercu,
+    -- Chaque anomalie reste collée à son lieu. Séparer les deux listes laissait
+    -- croire qu'il y avait un lave-vaisselle dans la chambre 57.
+    string_agg(e.code || ' — ' || a.description, E'\n' order by e.code, a.reference)
+                                                          as apercu,
     coalesce(sum(c.cout_materiel), 0)                     as cout_materiel,
     (f.date_reference - i.date_intervention)::int         as ecart_jours,
     array_agg(i.id order by a.reference)                  as interventions,
@@ -1008,9 +1010,10 @@ language plpgsql as $$
 begin
   if new.statut = 'recue' and old.statut is distinct from 'recue' then
     insert into mouvements_stock (
-      produit_id, type, quantite, date_mouvement, utilisateur_id, commentaire)
+      produit_id, type, quantite, date_mouvement, utilisateur_id, commande_id,
+      prix_unitaire, commentaire)
     select cl.produit_id, 'entree', coalesce(cl.quantite_recue, cl.quantite),
-           new.recue_le, new.saisie_par,
+           new.recue_le, new.saisie_par, new.id, cl.prix_unitaire_ht,
            'Commande n° ' || new.reference
     from commande_lignes cl
     where cl.commande_id = new.id
@@ -1019,9 +1022,9 @@ begin
 
     insert into mouvements_bouteilles (
       type, bouteille_type_id, quantite, de_lieu, vers_lieu,
-      date_mouvement, utilisateur_id, commentaire)
+      date_mouvement, utilisateur_id, commande_id, commentaire)
     select 'entree', cl.bouteille_type_id, coalesce(cl.quantite_recue, cl.quantite),
-           'hors_parc', 'reserve', new.recue_le, new.saisie_par,
+           'hors_parc', 'reserve', new.recue_le, new.saisie_par, new.id,
            'Commande n° ' || new.reference
     from commande_lignes cl
     where cl.commande_id = new.id
@@ -1035,6 +1038,27 @@ $$;
 create trigger tg_receptionner_commande
 after update on commandes
 for each row execute function fn_receptionner_commande();
+
+-- 6bis. Antidater une réception déplace les mouvements qu'elle a produits.
+--       Une entrée de stock porte la date de la livraison, pas celle de sa
+--       saisie : corriger l'une sans l'autre fausserait l'historique du prix.
+create function fn_redater_reception() returns trigger
+language plpgsql as $$
+begin
+  if new.statut = 'recue' and old.statut = 'recue'
+     and new.recue_le is distinct from old.recue_le then
+    update mouvements_stock      set date_mouvement = new.recue_le
+     where commande_id = new.id and type = 'entree';
+    update mouvements_bouteilles set date_mouvement = new.recue_le
+     where commande_id = new.id and type = 'entree';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger tg_redater_reception
+after update on commandes
+for each row execute function fn_redater_reception();
 
 -- 7. Valider un inventaire matériel écrit les régularisations correspondantes.
 --    Le stock est recalé par un mouvement tracé, jamais par une écriture directe.

@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros } from "@/lib/domaine";
+import { aujourdhuiISO, euros, jourISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { enregistrerFichier } from "@/lib/stockage";
 
@@ -17,7 +17,7 @@ type Commande = {
   fournisseur_id: string;
   date_commande: string;
   date_livraison: string | null;
-  recue_le: string | null;
+  recue_le: string | Date | null;
   statut: string;
   montant_ht: number | null;
   montant_ttc: number | null;
@@ -156,6 +156,7 @@ export default async function DetailCommande({
   async function changerStatut(donnees: FormData) {
     "use server";
     const vers = String(donnees.get("vers"));
+    const quand = String(donnees.get("recue_le") ?? "").trim();
     if (vers === "recue") {
       // La réception écrit les entrées de stock (trigger). Les quantités reçues
       // saisies ligne à ligne l'emportent sur les quantités commandées.
@@ -168,14 +169,29 @@ export default async function DetailCommande({
            where id = ${ligne} and commande_id = ${id}`;
       }
       await sql`
-        update commandes set statut = 'recue', recue_le = now(),
-                             date_livraison = coalesce(date_livraison, current_date)
+        update commandes
+           set statut = 'recue',
+               recue_le = coalesce(${quand || null}::timestamptz, now()),
+               date_livraison = coalesce(${quand || null}::date, date_livraison, current_date)
          where id = ${id} and statut <> 'recue'`;
     } else {
       await sql`
         update commandes set statut = ${vers}::statut_commande
          where id = ${id} and statut <> 'recue'`;
     }
+    revalidatePath(`/bouteilles/commande/${id}`);
+  }
+
+  // Corriger la date d'une réception déjà faite : le déclencheur déplace les
+  // mouvements de stock avec elle.
+  async function redater(donnees: FormData) {
+    "use server";
+    const quand = String(donnees.get("recue_le") ?? "").trim();
+    if (!quand) return;
+    await sql`
+      update commandes
+         set recue_le = ${quand}::timestamptz, date_livraison = ${quand}::date
+       where id = ${id} and statut = 'recue'`;
     revalidatePath(`/bouteilles/commande/${id}`);
   }
 
@@ -404,11 +420,32 @@ export default async function DetailCommande({
             {commande.statut === "recue" ? "Reçue" : "Où en est la commande"}
           </h2>
           {commande.statut === "recue" ? (
-            <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
-              Reçue le {new Date(commande.recue_le!).toLocaleDateString("fr-FR")}. Les entrées de
-              stock ont été écrites : elles sont visibles dans l’historique des mouvements, et
-              rien ne se « recalcule ».
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
+                Reçue le {new Date(commande.recue_le!).toLocaleDateString("fr-FR")}. Les entrées
+                de stock ont été écrites : elles sont visibles dans l’historique des mouvements,
+                et rien ne se « recalcule ».
+              </p>
+              <form action={redater} className="carte px-3.5 py-3 flex flex-col gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="etiquette">Corriger la date de réception</span>
+                  <input
+                    name="recue_le"
+                    type="date"
+                    max={aujourdhuiISO()}
+                    defaultValue={jourISO(commande.recue_le)}
+                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
+                  />
+                </label>
+                <button className="h-[44px] rounded-[12px] bg-surface-muted border border-line text-[14px]">
+                  Enregistrer la nouvelle date
+                </button>
+                <p className="text-[11px] text-ink-faint text-pretty leading-snug">
+                  Les entrées de stock suivent : une entrée porte la date de la livraison, pas
+                  celle de sa saisie.
+                </p>
+              </form>
+            </div>
           ) : (
             <form action={changerStatut} className="flex flex-col gap-2.5">
               {lignes.length > 0 && (
@@ -432,6 +469,20 @@ export default async function DetailCommande({
                   ))}
                 </div>
               )}
+              <label className="carte px-3.5 py-3 flex flex-col gap-1">
+                <span className="etiquette">Date de réception</span>
+                <input
+                  name="recue_le"
+                  type="date"
+                  max={aujourdhuiISO()}
+                  defaultValue={aujourdhuiISO()}
+                  className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
+                />
+                <span className="text-[11px] text-ink-faint text-pretty">
+                  Une livraison arrive rarement le jour où on la saisit : antidater est prévu.
+                </span>
+              </label>
+
               <div className="flex gap-2">
                 {commande.statut === "brouillon" && (
                   <button

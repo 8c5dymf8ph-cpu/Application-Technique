@@ -91,6 +91,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    un passage, c'est **qui** est venu et **quel jour** — `FAIT LE` et `PAR` dans l'ancienne
    application. `fn_interventions_rapprochables` propose donc des journées d'intervenant, pas des
    tournées, et une facture peut en couvrir plusieurs.
+16bis. **Une anomalie ne se montre jamais séparée de son lieu.** Deux listes côte à côte — les
+   lieux d'un côté, les descriptions de l'autre — laissent croire qu'il y a un lave-vaisselle
+   dans la chambre 57. Partout où plusieurs anomalies s'affichent ensemble, chacune porte sa
+   puce de lieu, et les listes se rangent par date, la plus récente d'abord, avec la date en
+   en-tête dès qu'il y en a plusieurs.
+16ter. **Une entrée de stock porte la date de la LIVRAISON, pas celle de sa saisie.** La date de
+   réception se saisit et se corrige après coup ; `tg_redater_reception` déplace alors les
+   mouvements que la commande a produits, grâce à `mouvements_*.commande_id`. Sans ce lien,
+   l'historique du prix serait faux.
 17. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
    Ne jamais réintroduire `Stock_Initial`, `StockActuel` ni `EstHistorique`.
 
@@ -173,7 +182,9 @@ intervention**, prises par le technicien. Les deux sont facultatives et les deux
 dans l'historique du lieu. Le technicien voit les photos du constat avant d'intervenir.
 
 **Miguel ajoute lui-même les photos** : celles des bouteilles depuis `/administration/bouteilles`,
-celles des produits depuis leur fiche — plusieurs par produit, dont une mise en avant, qui est
+celles des produits **en appuyant sur la vignette du produit** — elle ouvre la galerie, où l'on
+consulte, ajoute et supprime. Pas de section « Photos » séparée : l'image est sa propre porte
+d'entrée. Plusieurs par produit, dont une mise en avant, qui est
 celle que le technicien voit en choisissant son matériel. Sans photo, l'écran dessine la bouteille à sa
 couleur — il n'attend jamais une image pour fonctionner.
 

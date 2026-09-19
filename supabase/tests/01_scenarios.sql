@@ -1077,5 +1077,89 @@ begin
     'la hausse doit être lisible depuis la liste du stock';
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 15 — Antidater une réception déplace les mouvements qu'elle a
+-- produits : une entrée porte la date de la livraison, pas celle de sa saisie.
+-- ===========================================================================
+do $$
+declare
+  v_cmd     uuid;
+  v_produit uuid;
+  v_quand   timestamptz;
+  v_prix    numeric;
+begin
+  select id into v_produit from produits where code = 'FLX-40';
+  insert into commandes (fournisseur_id, saisie_par)
+  select id, '22222222-2222-2222-2222-222222222222'
+  from fournisseurs where nom = 'Fournisseur de test'
+  returning id into v_cmd;
+
+  insert into commande_lignes (commande_id, produit_id, quantite, prix_unitaire_ht)
+  values (v_cmd, v_produit, 5, 11.40);
+
+  update commandes set statut = 'recue', recue_le = now() where id = v_cmd;
+
+  -- Le prix payé suit la ligne de commande : il nourrit l'historique du prix.
+  select date_mouvement, prix_unitaire into v_quand, v_prix
+  from mouvements_stock where commande_id = v_cmd and type = 'entree';
+  assert v_prix = 11.40, format('prix repris = %s, attendu 11.40', v_prix);
+  assert v_quand::date = current_date,
+    format('mouvement daté du %s, attendu aujourd''hui', v_quand::date);
+
+  -- La livraison était en fait arrivée dix jours plus tôt.
+  update commandes set recue_le = now() - interval '10 days' where id = v_cmd;
+
+  select date_mouvement into v_quand
+  from mouvements_stock where commande_id = v_cmd and type = 'entree';
+  assert v_quand::date = (current_date - 10),
+    format('mouvement daté du %s après correction, attendu %s',
+           v_quand::date, current_date - 10);
+
+  -- Et une seule entrée : redater ne duplique rien.
+  assert (select count(*) from mouvements_stock
+           where commande_id = v_cmd and type = 'entree') = 1,
+    'redater une réception ne doit pas créer une seconde entrée';
+end $$;
+
+-- ===========================================================================
+-- SCÉNARIO 16 — L'aperçu d'une journée garde chaque anomalie avec son lieu.
+-- Deux listes séparées laissaient croire qu'il y avait un lave-vaisselle
+-- dans la chambre 57.
+-- ===========================================================================
+do $$
+declare
+  v_facture uuid;
+  v_apercu  text;
+begin
+  insert into anomalies (emplacement_id, description, constate_par)
+  select e.id, 'Fuite au niveau du lave-vaisselle',
+         '22222222-2222-2222-2222-222222222222'
+  from emplacements e where e.code = 'Cuisine';
+  insert into anomalies (emplacement_id, description, constate_par)
+  select e.id, 'Difficulté à fermer la porte',
+         '22222222-2222-2222-2222-222222222222'
+  from emplacements e where e.code = '57';
+
+  insert into interventions (anomalie_id, prestataire_id, date_intervention)
+  select a.id, '99999999-9999-9999-9999-999999999999', current_date - 5
+  from anomalies a
+  where a.description in ('Fuite au niveau du lave-vaisselle',
+                          'Difficulté à fermer la porte');
+
+  insert into factures (type, prestataire_id, date_reference, statut)
+  values ('prestation', '99999999-9999-9999-9999-999999999999',
+          current_date, 'a_rapprocher')
+  returning id into v_facture;
+
+  select apercu into v_apercu
+  from fn_journees_rapprochables(v_facture, 30)
+  where date_intervention = current_date - 5;
+
+  assert v_apercu like '%Cuisine — Fuite au niveau du lave-vaisselle%',
+    format('le lave-vaisselle doit rester à la cuisine — aperçu : %s', v_apercu);
+  assert v_apercu like '%57 — Difficulté à fermer la porte%',
+    format('la porte doit rester à la 57 — aperçu : %s', v_apercu);
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

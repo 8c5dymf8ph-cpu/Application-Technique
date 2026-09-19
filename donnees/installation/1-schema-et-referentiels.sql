@@ -448,6 +448,9 @@ create table mouvements_stock (
   emplacement_id  uuid references emplacements (id),
   intervention_id uuid references interventions (id) on delete set null,
   inventaire_id   uuid references inventaires (id) on delete cascade,
+  -- La commande qui a produit cette entrée. Sans ce lien, corriger une date de
+  -- réception laisserait le mouvement à l'ancienne date.
+  commande_id     uuid,
   -- Prix payé pour CETTE livraison : il varie d'une commande à l'autre, alors
   -- que produits.prix_unitaire reste le prix de référence.
   prix_unitaire   numeric(10, 2) check (prix_unitaire >= 0),
@@ -581,6 +584,7 @@ create table mouvements_bouteilles (
   utilisateur_id        uuid references utilisateurs (id),
   incident_id           uuid references incidents_bouteille (id) on delete cascade,
   inventaire_id         uuid references inventaires (id) on delete cascade,
+  commande_id           uuid,
   commentaire           text,
   constraint emplacement_requis_si_lieu_emplacement check (
     (de_lieu   = 'emplacement') = (de_emplacement_id   is not null) and
@@ -713,6 +717,16 @@ create table commande_lignes (
     check (num_nonnulls(produit_id, bouteille_type_id) = 1)
 );
 create index on commande_lignes (commande_id);
+
+-- Les mouvements existent avant `commandes` : la contrainte se pose ici.
+alter table mouvements_stock
+  add constraint mouvements_stock_commande_fkey
+  foreign key (commande_id) references commandes (id) on delete set null;
+alter table mouvements_bouteilles
+  add constraint mouvements_bouteilles_commande_fkey
+  foreign key (commande_id) references commandes (id) on delete set null;
+create index on mouvements_stock (commande_id) where commande_id is not null;
+create index on mouvements_bouteilles (commande_id) where commande_id is not null;
 
 create table alertes_destinataires (
   id            uuid primary key default gen_random_uuid(),
@@ -1065,8 +1079,10 @@ language sql stable as $$
     coalesce(pr.nom, ut.nom)                              as intervenant,
     count(*)::int                                         as nb_anomalies,
     string_agg(distinct e.code, ', ' order by e.code)     as emplacements,
-    -- De quoi reconnaître le passage sans ouvrir le détail.
-    left(string_agg(a.description, ' · ' order by a.reference), 120) as apercu,
+    -- Chaque anomalie reste collée à son lieu. Séparer les deux listes laissait
+    -- croire qu'il y avait un lave-vaisselle dans la chambre 57.
+    string_agg(e.code || ' — ' || a.description, E'\n' order by e.code, a.reference)
+                                                          as apercu,
     coalesce(sum(c.cout_materiel), 0)                     as cout_materiel,
     (f.date_reference - i.date_intervention)::int         as ecart_jours,
     array_agg(i.id order by a.reference)                  as interventions,
@@ -1783,9 +1799,10 @@ language plpgsql as $$
 begin
   if new.statut = 'recue' and old.statut is distinct from 'recue' then
     insert into mouvements_stock (
-      produit_id, type, quantite, date_mouvement, utilisateur_id, commentaire)
+      produit_id, type, quantite, date_mouvement, utilisateur_id, commande_id,
+      prix_unitaire, commentaire)
     select cl.produit_id, 'entree', coalesce(cl.quantite_recue, cl.quantite),
-           new.recue_le, new.saisie_par,
+           new.recue_le, new.saisie_par, new.id, cl.prix_unitaire_ht,
            'Commande n° ' || new.reference
     from commande_lignes cl
     where cl.commande_id = new.id
@@ -1794,9 +1811,9 @@ begin
 
     insert into mouvements_bouteilles (
       type, bouteille_type_id, quantite, de_lieu, vers_lieu,
-      date_mouvement, utilisateur_id, commentaire)
+      date_mouvement, utilisateur_id, commande_id, commentaire)
     select 'entree', cl.bouteille_type_id, coalesce(cl.quantite_recue, cl.quantite),
-           'hors_parc', 'reserve', new.recue_le, new.saisie_par,
+           'hors_parc', 'reserve', new.recue_le, new.saisie_par, new.id,
            'Commande n° ' || new.reference
     from commande_lignes cl
     where cl.commande_id = new.id
@@ -1810,6 +1827,27 @@ $$;
 create trigger tg_receptionner_commande
 after update on commandes
 for each row execute function fn_receptionner_commande();
+
+-- 6bis. Antidater une réception déplace les mouvements qu'elle a produits.
+--       Une entrée de stock porte la date de la livraison, pas celle de sa
+--       saisie : corriger l'une sans l'autre fausserait l'historique du prix.
+create function fn_redater_reception() returns trigger
+language plpgsql as $$
+begin
+  if new.statut = 'recue' and old.statut = 'recue'
+     and new.recue_le is distinct from old.recue_le then
+    update mouvements_stock      set date_mouvement = new.recue_le
+     where commande_id = new.id and type = 'entree';
+    update mouvements_bouteilles set date_mouvement = new.recue_le
+     where commande_id = new.id and type = 'entree';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger tg_redater_reception
+after update on commandes
+for each row execute function fn_redater_reception();
 
 -- 7. Valider un inventaire matériel écrit les régularisations correspondantes.
 --    Le stock est recalé par un mouvement tracé, jamais par une écriture directe.

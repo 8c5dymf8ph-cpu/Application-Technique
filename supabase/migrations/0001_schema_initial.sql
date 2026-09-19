@@ -442,6 +442,9 @@ create table mouvements_stock (
   emplacement_id  uuid references emplacements (id),
   intervention_id uuid references interventions (id) on delete set null,
   inventaire_id   uuid references inventaires (id) on delete cascade,
+  -- La commande qui a produit cette entrée. Sans ce lien, corriger une date de
+  -- réception laisserait le mouvement à l'ancienne date.
+  commande_id     uuid,
   -- Prix payé pour CETTE livraison : il varie d'une commande à l'autre, alors
   -- que produits.prix_unitaire reste le prix de référence.
   prix_unitaire   numeric(10, 2) check (prix_unitaire >= 0),
@@ -575,6 +578,7 @@ create table mouvements_bouteilles (
   utilisateur_id        uuid references utilisateurs (id),
   incident_id           uuid references incidents_bouteille (id) on delete cascade,
   inventaire_id         uuid references inventaires (id) on delete cascade,
+  commande_id           uuid,
   commentaire           text,
   constraint emplacement_requis_si_lieu_emplacement check (
     (de_lieu   = 'emplacement') = (de_emplacement_id   is not null) and
@@ -707,6 +711,16 @@ create table commande_lignes (
     check (num_nonnulls(produit_id, bouteille_type_id) = 1)
 );
 create index on commande_lignes (commande_id);
+
+-- Les mouvements existent avant `commandes` : la contrainte se pose ici.
+alter table mouvements_stock
+  add constraint mouvements_stock_commande_fkey
+  foreign key (commande_id) references commandes (id) on delete set null;
+alter table mouvements_bouteilles
+  add constraint mouvements_bouteilles_commande_fkey
+  foreign key (commande_id) references commandes (id) on delete set null;
+create index on mouvements_stock (commande_id) where commande_id is not null;
+create index on mouvements_bouteilles (commande_id) where commande_id is not null;
 
 create table alertes_destinataires (
   id            uuid primary key default gen_random_uuid(),
