@@ -108,9 +108,20 @@ select fichier as "Fichier",
 """, encoding="utf-8")
 
 
+def manifeste(noms: list[str]) -> None:
+    """L'ordre de jeu, lisible par un script — une seule source de vérité."""
+    (DOSSIER / "ordre.txt").write_text(
+        "# Les fichiers d'installation, dans l'ordre. Produit par\n"
+        "# outils/finaliser_installation.py — ne pas éditer à la main.\n"
+        + "\n".join(noms) + "\n",
+        encoding="utf-8",
+    )
+
+
 if __name__ == "__main__":
     noms = fichiers()
     for n in noms:
         signer(n)
     diagnostic(noms)
-    print(f"{len(noms)} fichiers signés, diagnostic produit")
+    manifeste(noms)
+    print(f"{len(noms)} fichiers signés, diagnostic et ordre produits")

@@ -1,0 +1,81 @@
+# Installe la base de l'hôtel sans passer par l'éditeur SQL du navigateur.
+#
+# L'éditeur oblige à coller quatorze fichiers à la main, et il lui arrive de
+# rejouer un contenu périmé : on croit coller un fichier, c'est le précédent
+# qui part. Ici les fichiers sont joués dans l'ordre, par la machine, depuis
+# donnees/installation/ordre.txt.
+#
+# Se déclenche à la main : onglet Actions → « Installer la base » → Run workflow.
+name: Installer la base
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Taper INSTALLER pour confirmer"
+        required: true
+        default: ""
+      repartir_de_zero:
+        description: "Effacer d'abord la base — à cocher si une installation a été commencée"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer les fichiers
+        uses: actions/checkout@v4
+
+      - name: Vérifier la confirmation
+        run: |
+          if [ "${{ inputs.confirmation }}" != "INSTALLER" ]; then
+            echo "Taper INSTALLER dans la case de confirmation." >&2
+            exit 1
+          fi
+
+      - name: Vérifier que la clé de connexion est posée
+        run: |
+          if [ -z "${{ secrets.INSTALL_DATABASE_URL }}" ]; then
+            echo "Le secret INSTALL_DATABASE_URL est absent." >&2
+            echo "Settings → Secrets and variables → Actions → New repository secret." >&2
+            exit 1
+          fi
+
+      - name: Effacer la base, si demandé
+        if: ${{ inputs.repartir_de_zero }}
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          set -e
+          psql "$PGURL" -v ON_ERROR_STOP=1 --quiet --no-psqlrc \
+            -f donnees/installation/0-tout-effacer.sql
+
+      - name: Jouer les fichiers, dans l'ordre
+        env:
+          # Jamais affichée : GitHub masque ses secrets dans les journaux, et
+          # aucune commande ici ne l'écrit.
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          set -e
+          cd donnees/installation
+          grep -v '^#' ordre.txt | grep -v '^$' | while read -r f; do
+            echo "::group::$f"
+            psql "$PGURL" -v ON_ERROR_STOP=1 --quiet --no-psqlrc -f "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Compter ce qui est en place
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          psql "$PGURL" --quiet --no-psqlrc --no-align --tuples-only -c "
+            select 'anomalies   : ' || count(*) || ' sur 670'  from anomalies
+            union all
+            select 'produits    : ' || count(*) || ' sur 36'   from produits
+            union all
+            select 'bouteilles  : ' || count(*) || ' dossiers sur 17'
+              from incidents_bouteille
+            union all
+            select 'emplacements: ' || count(*) || ' sur 70'   from emplacements"

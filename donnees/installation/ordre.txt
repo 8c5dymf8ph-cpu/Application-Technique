@@ -1,0 +1,16 @@
+# Les fichiers d'installation, dans l'ordre. Produit par
+# outils/finaliser_installation.py — ne pas éditer à la main.
+1-schema-et-referentiels.sql
+2-anomalies-a.sql
+2-anomalies-b.sql
+2-anomalies-c.sql
+2-anomalies-d.sql
+2-anomalies-e.sql
+2-anomalies-f.sql
+2-anomalies-g.sql
+2-anomalies-h.sql
+2-anomalies-i.sql
+3-stock-a.sql
+3-stock-b.sql
+4-bouteilles.sql
+5-equipe.sql

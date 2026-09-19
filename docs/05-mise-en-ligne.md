@@ -17,82 +17,72 @@ des adresses des deux autres.
    - Région : **Europe (Paris ou Francfort)**, pour que l'application reste rapide depuis l'hôtel.
    - Noter le mot de passe de la base : il n'est affiché qu'une fois.
 
-2. **Récupérer les fichiers à jouer.** Ils ne sont pas dans Supabase : le *SQL Editor* est une
-   page blanche, il n'ouvre aucun fichier, on y **colle** du texte. Les fichiers sont dans le
-   dépôt GitHub, dossier `donnees/installation/`, sur la branche
-   `claude/friendly-allen-lmkxuo` :
+2. **Récupérer la chaîne de connexion.** Dans Supabase, *Connect* (en haut) →
+   **Session pooler** → copier l'URI. Celle-là, et pas la connexion directe : les machines de
+   GitHub n'ont pas d'IPv6, la directe ne répondrait pas.
 
-   > https://github.com/8c5dymf8ph-cpu/Application-Technique/tree/claude/friendly-allen-lmkxuo/donnees/installation
+3. **La poser dans GitHub, jamais ailleurs.** Sur le dépôt : *Settings* → *Secrets and variables*
+   → *Actions* → **New repository secret**, nom `INSTALL_DATABASE_URL`, valeur la chaîne copiée.
+   Elle contient le mot de passe de la base : elle se saisit là et nulle part d'autre — ni dans
+   un fichier, ni dans un message.
 
-   Pour chacun : l'ouvrir, cliquer **Raw** en haut à droite, **Ctrl+A** puis **Ctrl+C**
-   (Cmd sur Mac). Dans Supabase, coller dans l'éditeur, **Run**, attendre « Success ».
+4. **Lancer l'installation.** Onglet *Actions* → **Installer la base** → *Run workflow* :
+   - branche `claude/friendly-allen-lmkxuo`
+   - taper `INSTALLER` dans la case de confirmation
+   - cocher **« Effacer d'abord la base »** si une installation a déjà été commencée
+   - *Run workflow*
 
-   **Une nouvelle requête pour chaque fichier** — *New query* dans le SQL Editor. C'est plus
-   sûr que de réutiliser le même onglet : un éditeur vide ne peut pas rejouer le fichier
-   précédent. Réutiliser un onglet oblige à tout sélectionner avant de coller, et si le clic
-   n'était pas dans l'éditeur, le Ctrl+A sélectionne la page : le collage ne remplace rien et
-   c'est le fichier d'avant qui repart. C'est le piège le plus courant de cette étape.
+   GitHub joue les quatorze fichiers dans l'ordre, sur la machine, et affiche à la fin :
 
-   **Un fichier par Run, jamais deux.** Collés à la suite, ils dépassent ce que l'éditeur
-   accepte — il répond qu'il y a trop de lignes — et en cas d'erreur on ne sait plus lequel est
-   passé.
+   ```
+   anomalies   : 670 sur 670
+   produits    : 36 sur 36
+   bouteilles  : 17 dossiers sur 17
+   emplacements: 70 sur 70
+   ```
 
-   **Chaque fichier se nomme dans son résultat.** Après chaque Run, le tableau affiche le nom du
-   fichier qui vient réellement de tourner et où en est l'installation :
+   Si une étape échoue, rien de la suite ne part : l'ordre est tenu, et le journal dit où.
 
-   | Fichier joué | Où ça en est |
-   |---|---|
-   | `2-anomalies-b.sql` | 161 anomalies sur 670 |
+> **Pourquoi pas l'éditeur SQL de Supabase.** Il faut y coller quatorze fichiers à la main, et il
+> lui arrive de rejouer un contenu périmé : on croit coller un fichier, c'est le précédent qui
+> part. Le chemin ci-dessus ne colle rien.
 
-   Si le nom affiché n'est pas celui que vous venez de coller, le collage n'a pas pris : le Run
-   a rejoué le fichier précédent. Recommencez ce fichier-là dans une **nouvelle requête**.
+### Si vous préférez coller à la main
 
-   **Rejouer un fichier déjà passé ne casse rien** : rien n'est inséré deux fois, le compte ne
-   bouge pas. Le seul fichier qui refuse, c'est le 1 — voir plus bas.
+Les fichiers restent dans `donnees/installation/`, dans l'ordre donné par `ordre.txt` :
 
-   **Perdu ?** Jouer `0-ou-en-suis-je.sql` : il ne modifie rien et affiche un tableau qui dit
-   ce qui est en place et quel fichier coller maintenant. Il se rejoue à volonté.
+| Ordre | Fichier | Contenu |
+|---|---|---|
+| — | `0-ou-en-suis-je.sql` | **Ne modifie rien.** Dit où en est l'installation et quel fichier jouer ensuite |
+| — | `0-tout-effacer.sql` | **Efface tout, sans rien demander.** Pour reprendre volontairement à zéro |
+| 1 | `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés |
+| 2 | `2-anomalies-a.sql` … `-i.sql` | 670 anomalies, 528 interventions, 29 tournées — neuf morceaux |
+| 3 | `3-stock-a.sql`, `-b.sql` | 36 produits, 279 mouvements — deux morceaux |
+| 4 | `4-bouteilles.sql` | 17 dossiers de bouteille, la livraison du 31/03, le parc constaté |
+| 5 | `5-equipe.sql` | L'orthographe des noms et la liste des intervenants techniques |
 
-3. Les exécuter **dans cet ordre** :
+Les récupérer sur GitHub, dossier `donnees/installation/`, bouton **Raw**, tout sélectionner,
+copier. Dans Supabase, **une nouvelle requête par fichier** (*New query*) : un éditeur vide ne
+peut pas rejouer le précédent.
 
-| Ordre | Fichier | Contenu | Taille |
-|---|---|---|---|
-| — | `0-ou-en-suis-je.sql` | **Ne modifie rien.** Dit où en est l'installation et quel fichier jouer ensuite | 2 Ko |
-| 1 | `1-schema-et-referentiels.sql` | Tables, vues, règles, sécurité, 70 emplacements, 268 libellés | 145 Ko |
-| 2 | `2-anomalies-a.sql` … `-i.sql` | 670 anomalies, 528 interventions, 29 tournées — **neuf morceaux, dans l'ordre des lettres** | ~118 Ko chacun |
-| 3 | `3-stock-a.sql`, `-b.sql` | 36 produits, 279 mouvements — **deux morceaux** | 117 et 46 Ko |
-| 4 | `4-bouteilles.sql` | 17 dossiers de bouteille, la livraison du 31/03, le parc constaté | 30 Ko |
-| 5 | `5-equipe.sql` | L'orthographe des noms et la liste des intervenants techniques | 3 Ko |
+**Chaque fichier se nomme dans son résultat.** Après chaque Run, le tableau affiche le nom du
+fichier qui vient réellement de tourner :
 
-> **Pourquoi des morceaux.** L'éditeur du navigateur refuse « Query is too large » au-delà
-> d'environ 220 000 caractères — mesuré : 220 112 passe, 220 502 non. Les morceaux font la
-> moitié de cette taille, pour ne pas jouer avec la limite. Seul le fichier 1 reste d'un bloc à
-> 145 Ko : il contient des corps de fonctions qu'on ne peut pas couper n'importe où.
->
+| Fichier joué | Où ça en est |
+|---|---|
+| `2-anomalies-b.sql` | 161 anomalies sur 670 |
+
+Si ce n'est pas celui que vous venez de coller, le collage n'a pas pris — recommencez ce
+fichier-là. **Rejouer un fichier déjà passé ne casse rien** ; le seul qui refuse est le 1, parce
+qu'il efface le schéma avant de le reconstruire. Son message commence par
+« RIEN N'A ÉTÉ EFFACÉ » : il s'est arrêté, la base est intacte, il suffit de continuer où
+vous en étiez. `0-ou-en-suis-je.sql` le dit.
+
+Supabase demande parfois de confirmer l'exécution : c'est normal pour un script qui crée des
+tables, cela ne change rien au résultat.
+
 > `2-anomalies.sql` et `3-stock.sql` restent dans le dossier, entiers, pour qui passe par un
-> terminal : `psql "<chaîne de connexion>" -f donnees/installation/2-anomalies.sql` (la chaîne
-> est dans **Settings → Database → Connection string → URI**).
-> **Jouer les morceaux OU le fichier entier, jamais les deux.** Dans les deux cas rien n'est
-> inséré en double si on rejoue : un morceau passé deux fois ne fait aucun dégât.
-
-> Ces fichiers sont produits par `outils/preparer_installation.sh` : ils ne s'éditent pas à la
-> main, ils se regénèrent après toute modification du schéma.
-
-4. Vérifier dans **Table Editor** que `anomalies` contient bien **670 lignes**. C'est ce qui
-   prouve que les neuf morceaux sont tous passés — s'il en manque un, le compte est plus bas.
-
-> **Si quelque chose casse en route, reprendre au fichier 1.** Il commence par remettre le
-> schéma à zéro : on peut le rejouer autant de fois qu'on veut, il n'y a pas de demi-installation
-> dont il faudrait se dépêtrer à la main. Une erreur du genre
-> `type "role_utilisateur" already exists` ne peut plus arriver.
->
-> Ce même fichier **refuse de s'exécuter** dès que la base porte des anomalies, des mouvements de
-> stock ou des dossiers de bouteille : passé l'installation, c'est la base de l'hôtel, et il
-> s'arrête sans rien effacer. Le message commence par « RIEN N'A ÉTÉ EFFACÉ » et dit quoi faire.
->
-> Pour repartir de zéro **volontairement** — une installation à reprendre depuis le début —
-> jouer `0-tout-effacer.sql`, puis `1-schema-et-referentiels.sql`. Celui-là ne demande rien et
-> n'épargne rien : il n'a aucune raison d'être joué sur la base de l'hôtel.
+> terminal. **Jouer les morceaux OU l'entier, jamais les deux.**
 
 ### Où vont les photos et les factures
 
