@@ -127,10 +127,24 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    l'écriture borne ce qui sort par la réserve réelle : on ne sort jamais ce qu'on n'a pas.
 
 14ter. **Un produit se retire, il ne se supprime pas.** `produits.actif` le sort du choix du
-   technicien et des compteurs de `/stock`, sans rien effacer : ses mouvements, son prix et les
-   interventions où il a servi restent, sinon le coût des passages passés changerait. Le filtre
-   « Retirés » de `/stock` les retrouve, et la fiche se remet d'un appui. Ne jamais proposer de
-   supprimer un produit.
+   technicien et des alertes, sans rien effacer : ses mouvements, son prix et les interventions
+   où il a servi restent, sinon le coût des passages passés changerait. **Il reste DANS la liste
+   de `/stock`**, en bas, avec la mention « retiré » — l'en sortir le faisait disparaître et on
+   le cherchait en croyant l'avoir perdu ; sa valeur en stock compte toujours, les pièces sont
+   sur l'étagère. La fiche le remet d'un appui. Ne jamais proposer de supprimer un produit.
+
+14quater. **Un geste ne part qu'une fois.** Rien ne change à l'écran le temps qu'une action
+   réponde : on réappuie. Trois appuis sur « C'est fait » ont créé trois déclarations pour la
+   même anomalie, et la gouvernante a eu trois fois la même chose à vérifier. `BoutonEnvoi`
+   (`useFormStatus`) se désactive pendant l'envoi et le dit ; et l'écriture se protège elle-même
+   — une intervention ne s'insère que s'il n'y en a pas déjà une pour cette anomalie dans cette
+   tournée. Le bouton seul ne suffit pas : un écran resté ouvert renvoie encore.
+
+14quinquies. **Une photo s'ajoute, elle ne remplace pas.** Le champ natif vide sa sélection à
+   chaque ouverture : prendre une seconde photo effaçait la première, sans un mot — on croyait
+   ne pas pouvoir en ajouter. `ChampPhotos` tient la liste lui-même et réécrit le champ à partir
+   d'elle ; chaque vignette porte sa croix pour retirer une photo ratée. Un écran qui n'attend
+   qu'un fichier (`multiple={false}`) remplace, lui.
 
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
@@ -325,6 +339,14 @@ l'ancien `SUPABASE_SERVICE_ROLE_KEY` — Supabase les a renommées, les deux res
 le dépôt distant depuis un poste. Le disque de Vercel repart à zéro à chaque déploiement — une
 photo qui y serait écrite serait perdue, et `/administration` le signale en rouge. Rien d'autre
 dans l'application ne connaît autre chose qu'un nom de fichier.
+
+**L'application dit elle-même ce que la base sait faire.** Le code part en ligne avant la
+migration : entre les deux, un bouton est grisé sans que rien n'explique pourquoi — « donner un
+profil ne fonctionne pas ». `lib/capacites.ts` liste les capacités et leur sonde
+(`colonneExiste`, ou `regleContient` quand la migration ne touche qu'une fonction, comme la
+0011), et `/administration` les affiche avec le geste qui débloque. Un écran bloqué renvoie vers
+cette liste au lieu d'afficher un bouton mort. Ajouter une migration qui change ce que l'on peut
+faire, c'est ajouter une ligne ici.
 
 ## Sortir ses données
 

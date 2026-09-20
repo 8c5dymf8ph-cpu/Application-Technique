@@ -7,6 +7,7 @@ import { peutValider } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { deposerRecap } from "@/lib/recap";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
 
@@ -217,9 +218,12 @@ export default async function Tournee({
       {faites.length > 0 && (
         <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
           <form action={cloturer}>
-            <button className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px]">
+            <BoutonEnvoi
+                pendant="Clôture…"
+                className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px]"
+              >
               Fin d’intervention — {faites.length} anomalie{faites.length > 1 ? "s" : ""}
-            </button>
+            </BoutonEnvoi>
           </form>
         </div>
       )}

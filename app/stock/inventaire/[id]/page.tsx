@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 
 export const dynamic = "force-dynamic";
 
@@ -181,9 +182,12 @@ export default async function DetailInventaireMateriel({
         {brouillon ? (
           <div className="flex flex-col gap-2">
             <form action={valider}>
-              <button className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
+              <BoutonEnvoi
+                pendant="Enregistrement…"
+                className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
+              >
                 Valider — écrire les régularisations
-              </button>
+              </BoutonEnvoi>
             </form>
             <p className="text-[11.5px] text-ink-faint text-pretty text-center">
               Chaque écart devient un mouvement tracé, de motif « inventaire », rattaché à ce

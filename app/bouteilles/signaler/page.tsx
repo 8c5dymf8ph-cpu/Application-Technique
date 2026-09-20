@@ -5,6 +5,7 @@ import { sql } from "@/lib/db";
 import { personnes, profilActif } from "@/lib/profil";
 import { euros , aujourdhuiISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampCommentaire } from "@/app/composants/fil";
 import { TotalBouteilles } from "@/app/composants/total-bouteilles";
 import { ChoixPrenom } from "@/app/composants/prenom";
@@ -374,9 +375,12 @@ export default async function Signaler({
 
             {!remplacement && <ChampCommentaire libelle="Précision (facultatif)" lignes={2} />}
 
-            <button className="h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
+            <BoutonEnvoi
+                pendant="Enregistrement…"
+                className="h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
+              >
               {remplacement ? "Enregistrer le remplacement" : "Enregistrer le dossier"}
-            </button>
+            </BoutonEnvoi>
             <p className="text-[11.5px] text-ink-faint text-pretty text-center -mt-2">
               {remplacement
                 ? "Les bouteilles sortent de la réserve et rejoignent la chambre."

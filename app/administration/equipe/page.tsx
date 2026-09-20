@@ -6,7 +6,8 @@ import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { LIBELLE_ROLE, peutValider, type RoleUtilisateur } from "@/lib/domaine";
-import { Entete } from "@/app/composants/ui";
+import { Confirmation, Entete } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 
 export const dynamic = "force-dynamic";
 
@@ -61,9 +62,9 @@ const LISTES: {
 export default async function Equipe({
   searchParams,
 }: {
-  searchParams: Promise<{ deja?: string; role?: string }>;
+  searchParams: Promise<{ deja?: string; role?: string; fait?: string }>;
 }) {
-  const { deja, role: roleDeja } = await searchParams;
+  const { deja, role: roleDeja, fait } = await searchParams;
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   // La composition de l'étage change souvent : la gouvernante doit pouvoir la
@@ -176,6 +177,9 @@ export default async function Equipe({
         values (${nom}, 'technicien', true, true, ${prestataire}::uuid, true)`;
     }
     revalidatePath("/administration/equipe");
+    // Sans un mot, on ne sait pas si l'appui a porté : la pastille change,
+    // mais elle est en bas d'une liste de quinze.
+    redirect("/administration/equipe?fait=profil" as Route);
   }
 
   /** Où part son récapitulatif de fin de passage. */
@@ -198,6 +202,7 @@ export default async function Equipe({
       await sql`update prestataires set email = ${email} where id = ${prestataire}::uuid`;
     }
     revalidatePath("/administration/equipe");
+    redirect("/administration/equipe?fait=adresse" as Route);
   }
 
   async function ajouterIntervenant(donnees: FormData) {
@@ -262,6 +267,7 @@ export default async function Equipe({
       <Entete titre="L’équipe" sous_titre="Qui constate, à qui l’on transmet" retour="/administration" />
 
       <div className="px-5 py-4 flex flex-col gap-6">
+        <Confirmation quoi={fait} />
         {deja && (
           <p className="rounded-card bg-amber-soft px-4 py-3 text-[13.5px] text-amber text-pretty leading-snug">
             <strong>{deja}</strong> est déjà inscrit comme{" "}
@@ -364,10 +370,12 @@ export default async function Equipe({
 
           {!reglable && (
             <p className="rounded-card bg-amber-soft px-4 py-3 text-[13px] text-amber text-pretty leading-snug">
-              Les noms sont là, mais le réglage « profil » attend une mise à jour de la base :
-              onglet <strong>Actions</strong> de GitHub → <strong>Mettre à jour la base</strong>{" "}
-              → <em>Run workflow</em>. Rien n’est effacé, et les adresses se notent dès
-              maintenant.
+              Les noms sont là, mais donner un profil — et noter une adresse — attend une mise à
+              jour de la base. Le détail et le geste à faire sont dans{" "}
+              <Link href={"/administration" as Route} className="underline underline-offset-4">
+                l’état de la base
+              </Link>
+              .
             </p>
           )}
 
@@ -409,18 +417,19 @@ export default async function Equipe({
                           ? "Apparaît au choix des profils."
                           : "N’apparaît pas au choix des profils."}
                       </span>
-                      <button
+                      <BoutonEnvoi
                         disabled={!reglable}
+                        pendant="…"
                         className={`h-[38px] px-3 rounded-[10px] text-[12.5px] shrink-0 ${
                           reglable
                             ? i.compte
                               ? "bg-surface-muted border border-line text-ink-soft"
                               : "bg-plum text-white"
-                            : "bg-surface-muted border border-line text-ink-faint"
+                            : "bg-surface-muted border border-line text-ink-faint opacity-60"
                         }`}
                       >
                         {i.compte ? "Retirer le profil" : "Donner un profil"}
-                      </button>
+                      </BoutonEnvoi>
                     </form>
 
                     <form action={enregistrerCourriel} className="flex gap-2">
@@ -431,13 +440,22 @@ export default async function Equipe({
                         type="email"
                         inputMode="email"
                         autoComplete="off"
+                        disabled={!courriels}
                         defaultValue={i.courriel ?? ""}
-                        placeholder="Adresse pour le récapitulatif"
-                        className="grow min-w-0 h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                        placeholder={
+                          courriels
+                            ? "Adresse pour le récapitulatif"
+                            : "Adresse — après la mise à jour"
+                        }
+                        className="grow min-w-0 h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint disabled:bg-surface-muted disabled:text-ink-faint"
                       />
-                      <button className="px-3 rounded-[11px] bg-surface-muted border border-line text-[13px]">
+                      <BoutonEnvoi
+                        disabled={!courriels}
+                        pendant="…"
+                        className="px-3 rounded-[11px] bg-surface-muted border border-line text-[13px]"
+                      >
                         Noter
-                      </button>
+                      </BoutonEnvoi>
                     </form>
                   </div>
                 </details>

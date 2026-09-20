@@ -5,39 +5,13 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { Entete } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
+import { PhotoProduit } from "@/app/composants/photo-produit";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
 import { enregistrerPhoto } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
-
-/** La photo du produit, ou un repère tant qu'elle n'a pas été chargée. */
-function VignetteProduit({ photo, taille = 44 }: { photo: string | null; taille?: number }) {
-  if (photo) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return (
-      <img
-        src={`/photo/${photo}`}
-        alt=""
-        style={{ width: taille, height: taille }}
-        className="shrink-0 rounded-[11px] object-cover border border-line bg-surface-muted"
-      />
-    );
-  }
-  return (
-    <span
-      style={{ width: taille, height: taille }}
-      className="shrink-0 rounded-[11px] bg-plum-soft grid place-items-center"
-    >
-      <svg width={taille * 0.45} height={taille * 0.45} viewBox="0 0 24 24" fill="none"
-           stroke="#8B86A8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="5" width="18" height="14" rx="2" />
-        <circle cx="9" cy="10.5" r="1.8" />
-        <path d="M3 16l4.5-4 4 3.5L15.5 11l5.5 5" />
-      </svg>
-    </span>
-  );
-}
 
 type Anomalie = {
   id: string;
@@ -171,11 +145,27 @@ export default async function TraiterAnomalie({
     if (!intervenant) redirect(`/technique/anomalie/${id}`);
     const tournee = await tourneeEnCours(intervenant);
 
+    /**
+     * Une anomalie ne se déclare qu'une fois par passage.
+     *
+     * Rien ne change à l'écran le temps que l'action réponde : on réappuie.
+     * Trois appuis ont créé trois déclarations pour la même anomalie, et la
+     * gouvernante a eu trois fois la même chose à vérifier. Le bouton se
+     * désactive maintenant, mais un second envoi peut encore venir d'un écran
+     * resté ouvert : l'insertion ne passe donc que s'il n'y en a pas déjà une
+     * dans cette tournée.
+     */
     const [intervention] = await sql<{ id: string }[]>`
       insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, saisie_par)
-      values (${id}, ${tournee.id}, ${intervenant.utilisateur_id},
-              ${intervenant.prestataire_id}, ${profil_.id})
+      select ${id}, ${tournee.id}, ${intervenant.utilisateur_id},
+             ${intervenant.prestataire_id}, ${profil_.id}
+       where not exists (
+         select 1 from interventions
+          where anomalie_id = ${id} and tournee_id = ${tournee.id})
       returning id`;
+    // Déjà déclarée pendant ce passage : on ne double ni la sortie de stock,
+    // ni les photos, ni l'avis.
+    if (!intervention) redirect(`/technique/${encodeURIComponent(nom)}`);
 
     // L'écran grise les articles épuisés, mais un lien recopié ou une réserve
     // vidée entre-temps passerait à travers : on revérifie ici.
@@ -259,7 +249,7 @@ export default async function TraiterAnomalie({
             <ul className="flex flex-col gap-2">
               {retenus.map((p) => (
                 <li key={p.id} className="carte px-3.5 py-3 flex items-center gap-3">
-                  <VignetteProduit photo={p.photo} />
+                  <PhotoProduit photo={p.photo} designation={p.designation} taille={52} />
                   <span className="flex flex-col grow min-w-0">
                     <span className="text-[15.5px] leading-snug text-pretty">{p.designation}</span>
                     <span className="text-[12.5px] text-ink-faint">
@@ -374,7 +364,7 @@ export default async function TraiterAnomalie({
                 const epuise = p.stock <= 0;
                 const dedans = (
                   <>
-                    <VignetteProduit photo={p.photo} taille={40} />
+                    <PhotoProduit photo={p.photo} designation={p.designation} taille={44} />
                     <span className="flex flex-col grow min-w-0">
                       <span className="text-[15.5px] leading-snug text-pretty">
                         {p.designation}
@@ -417,11 +407,14 @@ export default async function TraiterAnomalie({
           <input type="hidden" name="pris" value={pris} />
           <ChampCommentaire libelle="Un mot sur ce que vous avez fait" lignes={2} />
           <ChampPhotos libelle="Photographier le travail fait (facultatif)" />
-          <button className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
+          <BoutonEnvoi
+                pendant="Enregistrement…"
+                className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
+              >
             {choisis.length === 0
               ? "C’est fait, sans matériel"
               : `C’est fait — ${choisis.length} article${choisis.length > 1 ? "s" : ""}`}
-          </button>
+          </BoutonEnvoi>
         </form>
       </div>
     </main>

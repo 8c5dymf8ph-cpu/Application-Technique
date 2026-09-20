@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { capacites } from "@/lib/capacites";
 import { profilActif } from "@/lib/profil";
 import { peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
@@ -122,6 +123,11 @@ export default async function Administration({
     revalidatePath("/administration");
   }
 
+  // Ce que la base sait déjà faire. Un bouton grisé sans explication envoie
+  // chercher un bug dans l'écran : ici on dit que c'est la base qui attend.
+  const etat = await capacites();
+  const enAttente = etat.filter((c) => !c.prete);
+
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="Administration" sous_titre={profil.nom} retour="/" />
@@ -138,6 +144,53 @@ export default async function Administration({
               : `Passage terminé : ${envoi}.`}
           </p>
         )}
+
+        {/* Ce que la base sait faire */}
+        <details open={enAttente.length > 0} className="flex flex-col gap-2">
+          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
+            <span className="etiquette">État de la base</span>
+            <span
+              className={`text-[12.5px] tabular-nums ${
+                enAttente.length === 0 ? "text-green" : "text-amber"
+              }`}
+            >
+              {enAttente.length === 0
+                ? "à jour"
+                : `${enAttente.length} mise${enAttente.length > 1 ? "s" : ""} à jour en attente`}
+            </span>
+          </summary>
+
+          {enAttente.length > 0 && (
+            <p className="rounded-card bg-amber-soft px-4 py-3 text-[13px] text-amber text-pretty leading-snug">
+              Sur GitHub : onglet <strong>Actions</strong> → <strong>Mettre à jour la base</strong>{" "}
+              → <em>Run workflow</em>. Rien n’est effacé, et ce qui est déjà appliqué n’est pas
+              rejoué. Revenez ici ensuite : la ligne doit passer au vert.
+            </p>
+          )}
+
+          <ul className="carte divide-y divide-line">
+            {etat.map((c) => (
+              <li key={c.titre} className="px-3.5 py-2.5 flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className={`mt-0.5 w-[18px] h-[18px] shrink-0 rounded-full grid place-items-center text-[11px] ${
+                    c.prete ? "bg-green-soft text-green" : "bg-amber-soft text-amber"
+                  }`}
+                >
+                  {c.prete ? "✓" : "!"}
+                </span>
+                <span className="grow min-w-0">
+                  <span className="block text-[14px] leading-snug">{c.titre}</span>
+                  {!c.prete && (
+                    <span className="block text-[11.5px] text-ink-faint text-pretty leading-snug mt-0.5">
+                      {c.sans}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
 
         {/* Les envois */}
         <details open={attente.length > 0} className="flex flex-col gap-2">

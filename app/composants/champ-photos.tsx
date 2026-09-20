@@ -75,6 +75,9 @@ function Etat({ nombre }: { nombre: number }) {
   return <>{nombre === 1 ? "1 fichier prêt" : `${nombre} fichiers prêts`}</>;
 }
 
+/** Un fichier prêt à partir, et son aperçu. */
+type Prete = { fichier: File; apercu: string };
+
 export function ChampPhotos({
   nom = "photos",
   libelle = "Ajouter une ou plusieurs photos",
@@ -89,36 +92,52 @@ export function ChampPhotos({
   documents?: boolean;
 }) {
   const champ = useRef<HTMLInputElement>(null);
-  const [apercus, setApercus] = useState<string[]>([]);
+  const [pretes, setPretes] = useState<Prete[]>([]);
   const [prepare, setPrepare] = useState(false);
 
+  /**
+   * Le champ natif REMPLACE sa sélection à chaque ouverture.
+   *
+   * Sur un téléphone, prendre une photo puis rouvrir pour en prendre une
+   * seconde effaçait la première, sans un mot. On croyait ne pas pouvoir en
+   * ajouter. On garde donc la liste nous-mêmes, et on réécrit le champ à
+   * partir d'elle : chaque photo s'ajoute aux précédentes.
+   */
+  function poser(liste: Prete[]) {
+    const sac = new DataTransfer();
+    for (const p of liste) sac.items.add(p.fichier);
+    if (champ.current) champ.current.files = sac.files;
+    setPretes(liste);
+  }
+
+  function retirer(rang: number) {
+    const gardees = pretes.filter((_, i) => i !== rang);
+    const partie = pretes[rang];
+    if (partie && !partie.apercu.startsWith("pdf:")) URL.revokeObjectURL(partie.apercu);
+    poser(gardees);
+  }
+
   async function choisies(evenement: React.ChangeEvent<HTMLInputElement>) {
-    const champs = evenement.currentTarget;
-    const choix = Array.from(champs.files ?? []);
-    if (choix.length === 0) {
-      setApercus([]);
-      return;
-    }
+    const choix = Array.from(evenement.currentTarget.files ?? []);
+    if (choix.length === 0) return;
     setPrepare(true);
     try {
       const reduites = await Promise.all(choix.map(reduire));
-      // On remplace le contenu du champ : c'est lui que le formulaire envoie.
-      const sac = new DataTransfer();
-      for (const f of reduites) sac.items.add(f);
-      champs.files = sac.files;
-      setApercus((anciens) => {
-        anciens.filter((a) => !a.startsWith("pdf:")).forEach(URL.revokeObjectURL);
-        return reduites.map((f) =>
-          f.type === "application/pdf" ? `pdf:${f.name}` : URL.createObjectURL(f),
-        );
-      });
+      const neuves = reduites.map((f) => ({
+        fichier: f,
+        apercu: f.type === "application/pdf" ? `pdf:${f.name}` : URL.createObjectURL(f),
+      }));
+      // Un écran qui n'attend qu'un fichier remplace ; les autres ajoutent.
+      poser(multiple ? [...pretes, ...neuves] : neuves);
     } catch {
-      // La réduction a échoué : les originaux partent tels quels.
-      setApercus(choix.map((f) => URL.createObjectURL(f)));
+      const neuves = choix.map((f) => ({ fichier: f, apercu: URL.createObjectURL(f) }));
+      poser(multiple ? [...pretes, ...neuves] : neuves);
     } finally {
       setPrepare(false);
     }
   }
+
+  const images = pretes.filter((p) => !p.apercu.startsWith("pdf:"));
 
   return (
     <div className="flex flex-col gap-2">
@@ -134,9 +153,11 @@ export function ChampPhotos({
           </svg>
         </span>
         <span className="flex flex-col grow min-w-0">
-          <span className="text-[14.5px] text-ink-soft">{libelle}</span>
+          <span className="text-[14.5px] text-ink-soft">
+            {pretes.length > 0 && multiple ? "Ajouter une autre photo" : libelle}
+          </span>
           <span className="text-[11.5px] text-ink-faint">
-            {prepare ? "Préparation…" : <Etat nombre={apercus.length} />}
+            {prepare ? "Préparation…" : <Etat nombre={pretes.length} />}
           </span>
         </span>
         {/* Pas de `capture` : le téléphone propose alors l'appareil photo ET la
@@ -153,20 +174,53 @@ export function ChampPhotos({
         />
       </label>
 
-      {apercus.filter((a) => !a.startsWith("pdf:")).length > 0 && (
+      {images.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {apercus
-            .filter((src) => !src.startsWith("pdf:"))
-            .map((src) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={src}
-              src={src}
-              alt=""
-              className="w-[56px] h-[56px] object-cover rounded-[9px] border border-line"
-            />
-            ))}
+          {images.map((p) => {
+            const rang = pretes.indexOf(p);
+            return (
+              <span key={p.apercu} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.apercu}
+                  alt=""
+                  className="w-[64px] h-[64px] object-cover rounded-[9px] border border-line"
+                />
+                {/* Une photo ratée se retire : sinon il faut tout recommencer. */}
+                <button
+                  type="button"
+                  onClick={() => retirer(rang)}
+                  aria-label="Retirer cette photo"
+                  className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full bg-ink text-white grid place-items-center"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       strokeWidth="3" strokeLinecap="round">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </span>
+            );
+          })}
         </div>
+      )}
+
+      {pretes.some((p) => p.apercu.startsWith("pdf:")) && (
+        <ul className="flex flex-col gap-1">
+          {pretes
+            .filter((p) => p.apercu.startsWith("pdf:"))
+            .map((p) => (
+              <li key={p.apercu} className="text-[12.5px] text-ink-faint flex items-center gap-2">
+                <span className="grow min-w-0 truncate">{p.apercu.slice(4)}</span>
+                <button
+                  type="button"
+                  onClick={() => retirer(pretes.indexOf(p))}
+                  className="text-plum underline underline-offset-4 shrink-0"
+                >
+                  retirer
+                </button>
+              </li>
+            ))}
+        </ul>
       )}
     </div>
   );

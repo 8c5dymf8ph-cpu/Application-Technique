@@ -54,6 +54,13 @@ export default async function Exporter() {
       />
 
       <div className="px-5 py-4 flex flex-col gap-4">
+        <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug">
+          <strong>Rien n’est préparé à l’avance.</strong> Chaque fichier est construit à
+          l’instant où vous appuyez : il contient la dernière déclaration, la dernière
+          validation, le dernier mouvement de stock. Le nombre de lignes affiché ci-dessous est
+          celui de maintenant.
+        </p>
+
         <p className="text-[13px] text-ink-soft text-pretty leading-snug">
           Chaque fichier est un tableau prêt à l’emploi : une ligne par fait, les codes
           remplacés par les noms, les colonnes en français. Il s’ouvre d’un double-clic dans

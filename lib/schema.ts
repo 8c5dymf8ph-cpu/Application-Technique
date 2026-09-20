@@ -35,3 +35,26 @@ export async function colonneExiste(table: string, colonne: string): Promise<boo
   if (r.presente) presentes.add(cle);
   return r.presente;
 }
+
+/**
+ * Une règle de sécurité porte-t-elle déjà ce mot ?
+ *
+ * Certaines migrations ne posent pas de colonne : la 0011 réécrit seulement
+ * `fn_peut_supprimer` pour y ajouter la gouvernante. `colonneExiste` ne peut
+ * rien en dire. On lit donc la définition de la fonction — et comme pour les
+ * colonnes, on ne retient que les réponses positives : une règle appliquée ne
+ * se retire pas, une absence retenue rendrait l'écran aveugle à la migration
+ * qui vient de l'appliquer.
+ */
+export async function regleContient(fonction: string, mot: string): Promise<boolean> {
+  const cle = `fn:${fonction}:${mot}`;
+  if (presentes.has(cle)) return true;
+
+  const [r] = await sql<{ presente: boolean }[]>`
+    select count(*) > 0 as presente
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = ${fonction}
+       and p.prosrc like ${"%" + mot + "%"}`;
+  if (r.presente) presentes.add(cle);
+  return r.presente;
+}

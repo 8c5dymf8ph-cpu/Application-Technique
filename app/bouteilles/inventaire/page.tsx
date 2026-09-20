@@ -4,6 +4,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { Entete } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Comptage, type LigneComptage } from "@/app/composants/comptage";
 
 export const dynamic = "force-dynamic";
@@ -164,9 +165,12 @@ export default async function Inventaire() {
           />
         </label>
 
-        <button className="h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
+        <BoutonEnvoi
+                pendant="Ouverture…"
+                className="h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
+              >
           Enregistrer le comptage
-        </button>
+        </BoutonEnvoi>
         <p className="text-[11.5px] text-ink-faint text-pretty text-center -mt-2">
           Le comptage s’enregistre en brouillon. Les écarts se relisent avant d’être validés.
         </p>

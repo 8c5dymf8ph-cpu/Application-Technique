@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Vignettes } from "@/app/composants/photos";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
@@ -285,14 +286,15 @@ export default async function ValiderLot({
                   </details>
                   <div className="grid grid-cols-3 gap-2">
                     {ISSUES.map((i) => (
-                      <button
+                      <BoutonEnvoi
                         key={i.valeur}
                         name="decision"
                         value={i.valeur}
+                        pendant="…"
                         className={`${i.classe} h-[48px] rounded-[13px] font-display font-semibold text-[14.5px]`}
                       >
                         {i.libelle}
-                      </button>
+                      </BoutonEnvoi>
                     ))}
                   </div>
                 </form>

@@ -24,6 +24,7 @@ type Produit = {
   stock: number;
   valeur_stock: number | null;
   sous_seuil: boolean;
+  actif: boolean;
   dernier_mouvement: string | null;
 };
 
@@ -41,19 +42,22 @@ export default async function Stock({
   const [c] = await sql<
     { alertes: number; produits: number; valeur: number; sans_prix: number; rupture: number }[]
   >`
+    -- Les alertes ne portent que sur ce qu'on rachète encore : un produit
+    -- retiré est à zéro pour de bon, ce n'est pas une rupture. Sa valeur en
+    -- stock, elle, compte toujours — les pièces sont là, sur l'étagère.
     select
-      count(*) filter (where sous_seuil)::int          as alertes,
-      count(*)::int                                    as produits,
-      coalesce(sum(valeur_stock), 0)                   as valeur,
-      count(*) filter (where prix_inconnu)::int        as sans_prix,
-      count(*) filter (where stock <= 0)::int          as rupture
-    from v_stock_produits where actif`;
+      count(*) filter (where sous_seuil and actif)::int as alertes,
+      count(*)::int                                     as produits,
+      coalesce(sum(valeur_stock), 0)                    as valeur,
+      count(*) filter (where prix_inconnu and actif)::int as sans_prix,
+      count(*) filter (where stock <= 0 and actif)::int   as rupture
+    from v_stock_produits`;
 
   // Les familles de lieu viennent des données, pas d'une liste écrite en dur :
   // le référentiel peut changer sans qu'on retouche l'écran.
   const familles = await sql<{ lieu: string; nombre: number }[]>`
     select coalesce(categorie_lieu, 'Sans catégorie') as lieu, count(*)::int as nombre
-    from v_stock_produits where actif
+    from v_stock_produits
     group by 1 order by 2 desc, 1`;
 
   // Les produits qu'on ne rachète plus ne disparaissent pas : ils sortent du
@@ -62,21 +66,25 @@ export default async function Stock({
   const [{ retires }] = await sql<{ retires: number }[]>`
     select count(*)::int as retires from v_stock_produits where not actif`;
 
+  // Un produit retiré reste DANS la liste, dit « retiré », et passe en bas.
+  // Le sortir de la vue le faisait disparaître : on le cherchait en croyant
+  // l'avoir perdu. Ce qu'il ne fait plus, c'est se proposer au technicien et
+  // compter dans les alertes.
   const produits = await sql<Produit[]>`
     select id, code, designation, categorie, categorie_lieu, unite,
            prix_unitaire, prix_inconnu, seuil_alerte, photo_principale,
-           stock, valeur_stock, sous_seuil, dernier_mouvement
+           stock, valeur_stock, sous_seuil, actif, dernier_mouvement
     from v_stock_produits
-    where actif = (${lieu} <> 'retires')
+    where (${lieu} <> 'retires' or not actif)
       and (${lieu} = 'tous'
         or ${lieu} = 'retires'
-        or (${lieu} = 'alertes' and sous_seuil)
+        or (${lieu} = 'alertes' and sous_seuil and actif)
         or coalesce(categorie_lieu, 'Sans catégorie') = ${lieu})
       and (${terme} = ''
         or lower(designation) like ${"%" + terme + "%"}
         or lower(code) like ${"%" + terme + "%"}
         or lower(coalesce(categorie, '')) like ${"%" + terme + "%"})
-    order by sous_seuil desc, designation`;
+    order by actif desc, sous_seuil desc, designation`;
 
   // Les familles déjà employées, pour ne pas réinventer une catégorie à chaque
   // produit créé : le référentiel se construit par l'usage, pas par un écran.
@@ -344,7 +352,13 @@ export default async function Stock({
                   <span
                     aria-hidden
                     className={`w-[5px] shrink-0 ${
-                      p.stock <= 0 ? "bg-red" : p.sous_seuil ? "bg-amber" : "bg-green"
+                      !p.actif
+                        ? "bg-line"
+                        : p.stock <= 0
+                          ? "bg-red"
+                          : p.sous_seuil
+                            ? "bg-amber"
+                            : "bg-green"
                     }`}
                   />
                   <span className="grow min-w-0 px-3 py-3 flex items-center gap-3">
@@ -352,6 +366,11 @@ export default async function Stock({
                     <span className="grow min-w-0 flex flex-col gap-1.5">
                       <span className="text-[14.5px] leading-snug text-pretty">
                         {p.designation}
+                        {!p.actif && (
+                          <span className="ml-1.5 align-middle px-1.5 py-0.5 rounded-md bg-surface-muted border border-line text-[10.5px] uppercase tracking-[0.06em] text-ink-faint whitespace-nowrap">
+                            retiré
+                          </span>
+                        )}
                       </span>
                       {p.categorie && (
                         <span className="text-[11px] text-ink-faint truncate">{p.categorie}</span>

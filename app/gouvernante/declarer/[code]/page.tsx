@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { RechercheVive } from "@/app/composants/recherche-vive";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
@@ -313,9 +314,12 @@ export default async function Declarer({
               >
                 Annuler
               </Link>
-              <button className="grow h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]">
+              <BoutonEnvoi
+                pendant="Déclaration…"
+                className="grow h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
+              >
                 Déclarer en {emplacement.code}
-              </button>
+              </BoutonEnvoi>
               </div>
             </form>
           </section>
