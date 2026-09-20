@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { peutValider } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { deposerRecap } from "@/lib/recap";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
@@ -117,7 +118,10 @@ export default async function Tournee({
       <Entete
         titre={nom}
         sous_titre={`${tournee.reference.split("-").slice(-2, -1)} · ${faites.length} sur ${uniques.length}`}
-        retour="/technique"
+        // Un intervenant n'a pas accès à /technique : l'y renvoyer le
+        // ramènerait aussitôt sur cette même page. Pour lui, le filet est
+        // l'accueil ; pour l'encadrement, la liste des intervenants.
+        retour={peutValider(profil.role) ? "/technique/intervenants" : "/"}
       />
 
       <div className="px-5 py-4 flex flex-col gap-4 grow">

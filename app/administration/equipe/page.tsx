@@ -130,7 +130,7 @@ export default async function Equipe() {
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
-      <Entete titre="L’équipe" sous_titre="Qui constate, à qui l’on transmet" retour="/bouteilles" />
+      <Entete titre="L’équipe" sous_titre="Qui constate, à qui l’on transmet" retour="/administration" />
 
       <div className="px-5 py-4 flex flex-col gap-6">
         <p className="text-[13px] text-ink-soft text-pretty leading-snug">

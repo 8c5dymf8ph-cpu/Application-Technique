@@ -73,7 +73,7 @@ export default async function ReglagesBouteilles() {
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
-      <Entete titre="Les bouteilles" sous_titre="Photos, prix, seuils" retour="/bouteilles" />
+      <Entete titre="Les bouteilles" sous_titre="Photos, prix, seuils" retour="/administration" />
 
       <div className="px-5 py-4 flex flex-col gap-5">
         <p className="text-[13px] text-ink-soft text-pretty leading-snug">
