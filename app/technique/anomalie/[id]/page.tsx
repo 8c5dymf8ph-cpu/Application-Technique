@@ -84,9 +84,24 @@ export default async function TraiterAnomalie({
       where anomalie_id = ${id} and moment = 'constat' order by prise_le`
   ).map((p) => p.chemin);
 
-  // Le matériel déjà coché, transmis d'un écran à l'autre : rien n'est écrit
-  // en base tant que le technicien n'a pas confirmé.
-  const choisis = pris.split(",").filter(Boolean);
+  /**
+   * Ce qu'il a coché, avec les quantités.
+   *
+   * Transmis d'un écran à l'autre dans l'adresse — rien n'est écrit en base
+   * tant qu'il n'a pas confirmé. Chaque entrée s'écrit « identifiant~quantité »,
+   * la quantité valant 1 quand elle n'est pas précisée.
+   */
+  const lu = pris
+    .split(",")
+    .filter(Boolean)
+    .map((e) => {
+      const [ident, q] = e.split("~");
+      return { id: ident, qte: Math.max(1, Math.min(99, Number(q) || 1)) };
+    });
+  const choisis = lu.map((e) => e.id);
+  const quantite = new Map(lu.map((e) => [e.id, e.qte]));
+  const ecrire = (liste: { id: string; qte: number }[]) =>
+    liste.map((e) => (e.qte > 1 ? `${e.id}~${e.qte}` : e.id)).join(",");
 
   /**
    * Ce qu'on lui propose.
@@ -144,7 +159,13 @@ export default async function TraiterAnomalie({
     if (!profil_) redirect("/profil");
 
     const nom = String(donnees.get("intervenant"));
-    const articles = String(donnees.get("pris") || "").split(",").filter(Boolean);
+    const articles = String(donnees.get("pris") || "")
+      .split(",")
+      .filter(Boolean)
+      .map((e) => {
+        const [ident, q] = e.split("~");
+        return { id: ident, qte: Math.max(1, Math.min(99, Number(q) || 1)) };
+      });
 
     const intervenant = (await intervenants()).find((i) => i.nom === nom);
     if (!intervenant) redirect(`/technique/anomalie/${id}`);
@@ -161,16 +182,17 @@ export default async function TraiterAnomalie({
     // Une sortie de stock par article, rattachée à cette anomalie : c'est ce
     // qui donnera son coût matériel, sans que le technicien voie un prix.
     for (const article of articles) {
+      // On ne sort jamais plus que ce qu'il reste : `least` borne la quantité
+      // demandée par la réserve réelle, au moment de l'écriture.
       await sql`
         insert into mouvements_stock (produit_id, type, quantite, utilisateur_id,
                                       prestataire_id, emplacement_id, intervention_id, commentaire)
-        select ${article}, 'sortie', -1, ${intervenant.utilisateur_id},
+        select ${article.id}, 'sortie', -least(${article.qte}::numeric, s.stock),
+               ${intervenant.utilisateur_id},
                ${intervenant.prestataire_id}, a.emplacement_id, ${intervention.id},
                'Intervention — ' || a.description
-        from anomalies a
-        where a.id = ${id}
-          and exists (select 1 from v_stock_produits s
-                       where s.id = ${article} and s.stock > 0)`;
+        from anomalies a, v_stock_produits s
+        where a.id = ${id} and s.id = ${article.id} and s.stock > 0`;
     }
 
     for (const fichier of donnees.getAll("photos")) {
@@ -232,13 +254,52 @@ export default async function TraiterAnomalie({
                 <li key={p.id} className="carte px-3.5 py-3 flex items-center gap-3">
                   <VignetteProduit photo={p.photo} />
                   <span className="flex flex-col grow min-w-0">
-                    <span className="text-[14.5px] leading-snug text-pretty">{p.designation}</span>
-                    <span className="text-[11.5px] text-ink-faint">
+                    <span className="text-[15.5px] leading-snug text-pretty">{p.designation}</span>
+                    <span className="text-[12.5px] text-ink-faint">
                       {p.code} · reste {p.stock} en réserve
                     </span>
                   </span>
+                  {/* Combien il en a pris. On ne propose jamais plus que la
+                      réserve : sortir ce qu'on n'a pas fausserait le stock. */}
+                  <span className="flex items-center gap-1 shrink-0">
+                    <Link
+                      href={lien({
+                        pris: ecrire(
+                          lu.map((e) =>
+                            e.id === p.id ? { ...e, qte: Math.max(1, e.qte - 1) } : e,
+                          ),
+                        ),
+                      })}
+                      aria-label="Un de moins"
+                      className={`w-10 h-10 rounded-[10px] bg-surface-muted grid place-items-center text-[19px] ${
+                        (quantite.get(p.id) ?? 1) <= 1 ? "opacity-35 pointer-events-none" : ""
+                      }`}
+                    >
+                      −
+                    </Link>
+                    <span className="w-7 text-center font-display font-semibold text-[17px] tabular-nums">
+                      {quantite.get(p.id) ?? 1}
+                    </span>
+                    <Link
+                      href={lien({
+                        pris: ecrire(
+                          lu.map((e) =>
+                            e.id === p.id
+                              ? { ...e, qte: Math.min(p.stock, e.qte + 1) }
+                              : e,
+                          ),
+                        ),
+                      })}
+                      aria-label="Un de plus"
+                      className={`w-10 h-10 rounded-[10px] bg-surface-muted grid place-items-center text-[19px] ${
+                        (quantite.get(p.id) ?? 1) >= p.stock ? "opacity-35 pointer-events-none" : ""
+                      }`}
+                    >
+                      +
+                    </Link>
+                  </span>
                   <Link
-                    href={lien({ pris: choisis.filter((c) => c !== p.id).join(",") })}
+                    href={lien({ pris: ecrire(lu.filter((e) => e.id !== p.id)) })}
                     aria-label="Retirer"
                     className="w-11 h-11 shrink-0 rounded-[11px] bg-surface-muted grid place-items-center"
                   >
@@ -252,10 +313,22 @@ export default async function TraiterAnomalie({
             </ul>
           )}
 
-          <p className="text-[13.5px] text-ink-faint text-pretty">
-            Ce qui a déjà servi pour ce problème vient en premier. Appuyez sur un article
-            pour l’ajouter.
-          </p>
+          {/* Dès qu'un article est retenu, le catalogue se replie : il restait
+              ouvert sous la sélection, et repoussait l'enregistrement hors de
+              l'écran. On l'ouvre d'un appui pour en ajouter un autre. */}
+          <details open={choisis.length === 0} className="flex flex-col gap-2">
+            <summary className="list-none carte px-4 py-3 text-[15px] text-plum flex items-center gap-2.5 cursor-pointer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="2.2" strokeLinecap="round" className="shrink-0">
+                <path d="M6 12h12" /><path d="M12 6v12" />
+              </svg>
+              {choisis.length === 0 ? "Choisir le matériel utilisé" : "Ajouter un autre article"}
+            </summary>
+
+            <p className="text-[13.5px] text-ink-faint text-pretty pt-2">
+              Ce qui a déjà servi pour ce problème vient en premier. Appuyez sur un article
+              pour l’ajouter.
+            </p>
 
           {/* La recherche raccourcit la liste ; elle ne sert pas à la faire
               apparaître. Un technicien debout ne tape pas « joint torique ». */}
@@ -313,7 +386,7 @@ export default async function TraiterAnomalie({
                       </div>
                     ) : (
                       <Link
-                        href={lien({ pris: [...choisis, p.id].join(",") })}
+                        href={lien({ pris: ecrire([...lu, { id: p.id, qte: 1 }]) })}
                         className="px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 active:bg-plum-soft"
                       >
                         {dedans}
@@ -326,7 +399,8 @@ export default async function TraiterAnomalie({
                   </li>
                 );
               })}
-          </ul>
+            </ul>
+          </details>
         </section>
       </div>
 

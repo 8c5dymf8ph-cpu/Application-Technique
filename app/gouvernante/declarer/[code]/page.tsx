@@ -136,16 +136,26 @@ export default async function Declarer({
 
     // Les photos du constat. Une déclaration sans photo reste valable : c'est
     // un plus, pas une condition.
+    let refusee = false;
     for (const fichier of donnees.getAll("photos")) {
       if (!(fichier instanceof File)) continue;
       const chemin = await enregistrerPhoto(fichier);
-      if (!chemin) continue;
+      // Une photo refusée par le dépôt disparaissait en silence : on la
+      // signale, la déclaration reste enregistrée.
+      if (!chemin) {
+        refusee = true;
+        continue;
+      }
       await sql`
         insert into photos_anomalie (anomalie_id, chemin, moment, prise_par)
         values (${anomalie_id}, ${chemin}, 'constat', ${profil_.id})`;
     }
 
-    redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?fait=1`);
+    // Retour à la liste des lieux, pas dans la chambre : on vient de finir, et
+    // rester devant le même écran laisse douter que ce soit enregistré.
+    redirect(
+      `/gouvernante/declarer?fait=${refusee ? "declare-sans-photo" : "declare"}&ou=${encodeURIComponent(lieu)}`,
+    );
   }
 
   return (

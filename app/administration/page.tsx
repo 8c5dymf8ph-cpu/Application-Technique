@@ -140,8 +140,15 @@ export default async function Administration({
         )}
 
         {/* Les envois */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Courriels</h2>
+        <details open={attente.length > 0} className="flex flex-col gap-2">
+          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
+            <span className="etiquette">Courriels</span>
+            <span className="text-[12.5px] text-ink-faint">
+              {attente.length === 0
+                ? "rien en attente"
+                : `${attente.reduce((n, a) => n + a.nombre, 0)} en attente`}
+            </span>
+          </summary>
 
           {!configure && (
             <p className="rounded-card bg-amber-soft px-4 py-3 text-[12.5px] text-amber text-pretty leading-snug">
@@ -225,7 +232,7 @@ export default async function Administration({
               </ul>
             </details>
           )}
-        </section>
+        </details>
 
         {/* Où vont les photos et les factures */}
         {!verdict && (
@@ -267,8 +274,14 @@ export default async function Administration({
         )}
 
         {/* Qui reçoit quoi */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Destinataires des alertes</h2>
+        <details className="flex flex-col gap-2">
+          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
+            <span className="etiquette">Destinataires des alertes</span>
+            <span className="text-[12.5px] text-ink-faint">
+              {alertes.filter((a) => a.destinataires.length > 0).length} sur {alertes.length}{" "}
+              réglés
+            </span>
+          </summary>
           {alertes.map((a) => {
             const e = EVENEMENT[a.evenement] ?? { titre: a.evenement, aide: "" };
             return (
@@ -308,7 +321,7 @@ export default async function Administration({
               </form>
             );
           })}
-        </section>
+        </details>
 
         {/* Le reste du paramétrage */}
         <div className="flex flex-col gap-3">

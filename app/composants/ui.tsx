@@ -154,6 +154,13 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
   montant: { ton: "green", texte: "Montant et facture enregistrés." },
   profil: { ton: "green", texte: "Réglage enregistré." },
   adresse: { ton: "green", texte: "Adresse enregistrée." },
+  declare: { ton: "green", texte: "Anomalie déclarée." },
+  "declare-sans-photo": {
+    ton: "red",
+    texte:
+      "Anomalie déclarée, mais la photo n’a pas pu être enregistrée. " +
+      "Vérifiez le dépôt des fichiers dans Administration.",
+  },
   lot: {
     ton: "green",
     texte:

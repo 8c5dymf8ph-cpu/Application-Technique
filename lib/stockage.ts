@@ -38,6 +38,9 @@ const EXTENSIONS: Record<string, string> = {
  */
 export const TAILLE_MAX = 4 * 1024 * 1024;
 
+/** Ce que Supabase a répondu la dernière fois qu'il a refusé un fichier. */
+let dernierEchec: string | null = null;
+
 function supabase() {
   const url = process.env.SUPABASE_URL;
   // La clé de service contourne les règles de ligne : elle ne doit JAMAIS
@@ -75,6 +78,10 @@ export async function enregistrerFichier(fichier: File): Promise<string | null> 
         method: "POST",
         headers: {
           Authorization: `Bearer ${distant.cle}`,
+          // Supabase attend les DEUX en-têtes sur son API de stockage. Avec la
+          // seule autorisation, certaines configurations refusent l'écriture
+          // sans dire pourquoi.
+          apikey: distant.cle,
           "Content-Type": fichier.type,
           "x-upsert": "false",
         },
@@ -82,8 +89,13 @@ export async function enregistrerFichier(fichier: File): Promise<string | null> 
       },
     );
     // Un envoi raté ne doit pas laisser croire que la photo est là : on rend
-    // null, et l'appelant n'enregistre aucune ligne.
-    if (!reponse.ok) return null;
+    // null, et l'appelant n'enregistre aucune ligne. Mais on retient pourquoi :
+    // « refusé » sans raison ne se corrige pas.
+    if (!reponse.ok) {
+      dernierEchec = `${reponse.status} ${(await reponse.text()).slice(0, 200)}`;
+      return null;
+    }
+    dernierEchec = null;
     return nom;
   }
 
@@ -99,7 +111,7 @@ export async function lireFichier(nom: string): Promise<Buffer | null> {
   if (distant) {
     const reponse = await fetch(
       `${distant.url}/storage/v1/object/${SEAU}/${nom}`,
-      { headers: { Authorization: `Bearer ${distant.cle}` } },
+      { headers: { Authorization: `Bearer ${distant.cle}`, apikey: distant.cle } },
     );
     if (!reponse.ok) return null;
     return Buffer.from(await reponse.arrayBuffer());
@@ -118,7 +130,7 @@ export async function supprimerFichier(nom: string): Promise<void> {
   if (distant) {
     await fetch(`${distant.url}/storage/v1/object/${SEAU}/${nom}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${distant.cle}` },
+        headers: { Authorization: `Bearer ${distant.cle}`, apikey: distant.cle },
     });
   }
   // En local on laisse le fichier : il ne gêne personne, et le retrouver rend
@@ -185,7 +197,12 @@ export async function verifierDepot(): Promise<Verdict> {
   if (!nom) {
     verdict.detail =
       ou === "supabase"
-        ? `L'écriture a été refusée par Supabase. Le seau « ${SEAU} » existe-t-il ?`
+        ? `Supabase a refusé l'écriture — ${dernierEchec ?? "sans réponse"}.` +
+          (dernierEchec?.startsWith("404")
+            ? ` Le seau « ${SEAU} » n'existe pas : créez-le dans Storage, en privé.`
+            : dernierEchec?.startsWith("40")
+              ? " La clé n'a pas le droit d'écrire : reprenez la clé secrète (sb_secret_…) dans Connect → Server."
+              : "")
         : "L'écriture sur le disque a échoué.";
     return verdict;
   }

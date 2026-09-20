@@ -7,6 +7,8 @@ import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 import { Vignettes } from "@/app/composants/photos";
+import { ApercuFil } from "@/app/composants/apercu-fil";
+import type { Message } from "@/app/composants/fil";
 import { deposerRecapSiComplet } from "@/lib/recap";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +116,18 @@ export default async function ValiderLot({
   const serie = (anomalie: string, moment: string) =>
     photos.filter((p) => p.anomalie_id === anomalie && p.moment === moment).map((p) => p.chemin);
 
+  // Le fil de chaque anomalie du lot, en une requête : la bulle n'affichait
+  // qu'un nombre, on voyait qu'il y avait eu des mots sans pouvoir les lire.
+  const fils = lignes.length
+    ? await sql<(Message & { anomalie_id: string })[]>`
+        select anomalie_id, commentaire_id, source, auteur, texte,
+               date_commentaire, decision::text
+        from v_fil_commentaires
+        where anomalie_id = any(${lignes.map((l) => l.anomalie_id)})
+        order by date_commentaire`
+    : [];
+  const fil = (anomalie: string) => fils.filter((f) => f.anomalie_id === anomalie);
+
   async function decider(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -198,11 +212,10 @@ export default async function ValiderLot({
                   </span>
                   <p className="text-[14.5px] leading-snug text-pretty">{l.description}</p>
                 </div>
-                <span className="mt-[3px]">
-                  <Indices
-                    photos={constat.length + apres.length}
-                    commentaires={l.nb_commentaires}
-                  />
+                <span className="mt-[2px] flex items-center gap-1.5 shrink-0">
+                  <Indices photos={constat.length + apres.length} />
+                  {/* La bulle s'ouvre : les mots se lisent sans quitter l'écran. */}
+                  <ApercuFil messages={fil(l.anomalie_id)} />
                 </span>
               </div>
 

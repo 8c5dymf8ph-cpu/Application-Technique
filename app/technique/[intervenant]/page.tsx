@@ -7,6 +7,8 @@ import { peutValider } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { deposerRecap } from "@/lib/recap";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
+import { ApercuFil } from "@/app/composants/apercu-fil";
+import type { Message } from "@/app/composants/fil";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +77,17 @@ export default async function Tournee({
     order by 2, 1`;
 
   const uniques = [...new Map(lignes.map((l) => [l.anomalie_id, l])).values()];
+
+  // Le fil de chaque anomalie de la tournée : la bulle s'ouvre sur place.
+  const fils = uniques.length
+    ? await sql<(Message & { anomalie_id: string })[]>`
+        select anomalie_id, commentaire_id, source, auteur, texte,
+               date_commentaire, decision::text
+        from v_fil_commentaires
+        where anomalie_id = any(${uniques.map((l) => l.anomalie_id)})
+        order by date_commentaire`
+    : [];
+  const fil = (anomalie: string) => fils.filter((f) => f.anomalie_id === anomalie);
   const faites = uniques.filter((l) => l.traitee);
   const chambres = [...new Set(uniques.map((l) => l.emplacement))];
 
@@ -178,12 +191,8 @@ export default async function Tournee({
                             >
                               {l.description}
                             </span>
-                            <span className="mt-[2px]">
-                              <Indices
-                                photos={l.photos}
-                                commentaires={l.commentaires}
-                                eteint={l.traitee}
-                              />
+                            <span className="mt-[2px] flex items-center gap-1.5 shrink-0">
+                              <Indices photos={l.photos} eteint={l.traitee} />
                             </span>
                           </span>
                           {l.traitee && (
@@ -192,6 +201,9 @@ export default async function Tournee({
                             </span>
                           )}
                         </Link>
+                        <span className="shrink-0 self-start mt-0.5">
+                          <ApercuFil messages={fil(l.anomalie_id)} eteint={l.traitee} />
+                        </span>
                       </div>
                     </li>
                   ))}

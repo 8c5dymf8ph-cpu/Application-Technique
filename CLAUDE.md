@@ -121,6 +121,11 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    vide laisse l'article ABSENT du comptage : aucune ligne, aucun écart, aucun mouvement. Le
    théorique s'affiche en filigrane, jamais pré-rempli — un chiffre déjà posé se valide sans
    être vérifié, et l'inventaire ne vaut plus rien.
+14bis. **Le catalogue se replie dès qu'un article est retenu.** Il restait ouvert sous la
+   sélection et repoussait l'enregistrement hors de l'écran : on ne savait pas qu'il fallait
+   encore valider. Et **la quantité se règle** — l'adresse porte « identifiant~quantité », et
+   l'écriture borne ce qui sort par la réserve réelle : on ne sort jamais ce qu'on n'a pas.
+
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
    explicite, pas une absence de réponse. **Un article épuisé ne se choisit pas** : il reste
@@ -325,6 +330,9 @@ l'entraînement.
 - **En déclarant, la gouvernante ne voit que ce qui reste à traiter** dans le lieu — à faire, en
   cours, achat à faire. L'historique complet est derrière un lien, jamais dans le chemin de saisie.
   Il a toute sa place ailleurs : historique du lieu, rapports.
+- **La bulle de commentaires s'ouvre.** Elle affichait un nombre et rien d'autre : on voyait
+  qu'il y avait eu des mots sans pouvoir les lire. `ApercuFil` les montre dans une fenêtre
+  native — pas un écran de plus, on ne perd pas sa place.
 - **Les listes longues se replient.** Les étages, les sections d'un écran : sur un téléphone tenu
   d'une main, faire défiler trois écrans avant d'atteindre le cinquième étage est un défaut.
 

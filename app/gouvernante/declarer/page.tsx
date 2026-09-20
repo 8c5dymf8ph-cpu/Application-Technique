@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
-import { Entete } from "../../composants/ui";
+import { Confirmation, Entete } from "../../composants/ui";
 
 export const dynamic = "force-dynamic";
 
 type Lieu = { code: string; etage: string; ordre_etage: number; ouvertes: number; essai: boolean };
 
-export default async function ChoixLieu() {
+export default async function ChoixLieu({
+  searchParams,
+}: {
+  searchParams: Promise<{ fait?: string; ou?: string }>;
+}) {
+  const { fait, ou } = await searchParams;
   // Le nombre d'anomalies encore ouvertes s'affiche dès le choix du lieu :
   // c'est le premier signal, avant même d'entrer dans la chambre.
   // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'est
@@ -31,6 +36,14 @@ export default async function ChoixLieu() {
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="Déclarer" sous_titre="Choisir le lieu" retour="/gouvernante" />
+      {fait && (
+        <div className="px-5 pt-4">
+          <Confirmation quoi={fait} />
+          {ou && fait.startsWith("declare") && (
+            <p className="text-[12.5px] text-ink-faint pt-1">En {ou}.</p>
+          )}
+        </div>
+      )}
       <div className="px-5 py-4 flex flex-col gap-2">
         {etages.map((etage) => {
           const dedans = lieux.filter((l) => l.etage === etage);
