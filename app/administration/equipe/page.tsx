@@ -315,6 +315,13 @@ export default async function Equipe({
         {/* Les intervenants techniques */}
         <section className="flex flex-col gap-2">
           <h2 className="etiquette">Intervenants techniques</h2>
+          {!reglable && (
+            <p className="rounded-card bg-red-soft px-4 py-3 text-[13px] text-red text-pretty leading-snug">
+              Cette liste attend une mise à jour de la base. Onglet <strong>Actions</strong> de
+              GitHub → <strong>Mettre à jour la base</strong> → <em>Run workflow</em>. Rien
+              n’est effacé.
+            </p>
+          )}
           <p className="text-[12px] text-ink-faint text-pretty leading-snug -mt-1">
             Les {intervenants.length} noms proposés dans l’écran technique. Cochez « profil »
             pour que la personne puisse ouvrir l’application à son nom, et donnez son adresse

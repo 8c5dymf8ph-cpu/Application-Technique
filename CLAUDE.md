@@ -279,6 +279,12 @@ respectant l'orientation EXIF, et affiche ce qui est prêt à partir. Ne jamais 
 de corps supérieure à ce que la plateforme accepte, et ne pas mettre `capture` sur le champ :
 il faut pouvoir prendre une photo **ou** en choisir une dans la photothèque.
 
+**Une photo peut s'enregistrer et rester introuvable.** Sans les variables Supabase, le fichier
+part sur le disque de la machine qui a traité l'envoi — et la lecture, servie par une autre
+machine, ne le trouve pas : la ligne existe, l'image est vide, rien ne le dit. `verifierDepot()`
+écrit un fichier, le relit, compare et l'efface ; `/administration` le lance à la demande et
+affiche le verdict. C'est la seule réponse sûre à « pourquoi ma photo ne s'affiche pas ».
+
 Une facture se range au même endroit qu'une photo — PDF compris. Le stockage passe par
 `lib/stockage.ts` : **Supabase Storage dès que `SUPABASE_URL` et la clé de service sont là, le
 disque sinon.** La clé se lit sous son nom actuel `SUPABASE_SECRET_KEY` (`sb_secret_…`) ou sous

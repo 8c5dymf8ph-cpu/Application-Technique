@@ -141,3 +141,73 @@ export function depot(): "supabase" | "disque" {
 /** Les deux noms d'origine, conservés là où l'on ne manipule que des photos. */
 export const enregistrerPhoto = enregistrerFichier;
 export const lirePhoto = lireFichier;
+
+export type Verdict = {
+  depot: "supabase" | "disque";
+  seau: string;
+  ecrit: boolean;
+  relu: boolean;
+  identique: boolean;
+  detail: string;
+};
+
+/**
+ * Le dépôt fonctionne-t-il vraiment ?
+ *
+ * Une photo peut s'enregistrer et rester introuvable : c'est ce qui arrive
+ * quand les variables Supabase manquent. Le fichier part alors sur le disque
+ * de la machine qui a traité l'envoi — et la lecture, servie par une autre
+ * machine, ne le trouve pas. Rien ne le dit : la ligne existe, l'image est
+ * vide.
+ *
+ * On écrit donc un fichier minuscule, on le relit, on compare, on l'efface.
+ * C'est le seul moyen de répondre depuis l'écran, sans deviner.
+ */
+export async function verifierDepot(): Promise<Verdict> {
+  const ou = depot();
+  const verdict: Verdict = {
+    depot: ou,
+    seau: SEAU,
+    ecrit: false,
+    relu: false,
+    identique: false,
+    detail: "",
+  };
+
+  // Un PNG d'un pixel : le plus petit fichier valide qu'on puisse déposer.
+  const pixel = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const essai = new File([new Uint8Array(pixel)], "essai.png", { type: "image/png" });
+
+  const nom = await enregistrerFichier(essai);
+  if (!nom) {
+    verdict.detail =
+      ou === "supabase"
+        ? `L'écriture a été refusée par Supabase. Le seau « ${SEAU} » existe-t-il ?`
+        : "L'écriture sur le disque a échoué.";
+    return verdict;
+  }
+  verdict.ecrit = true;
+
+  const relu = await lireFichier(nom);
+  verdict.relu = relu !== null;
+  verdict.identique = relu !== null && relu.equals(pixel);
+
+  await supprimerFichier(nom);
+
+  if (!verdict.relu) {
+    verdict.detail = "Le fichier s'écrit mais ne se relit pas.";
+  } else if (!verdict.identique) {
+    verdict.detail = "Le fichier relu ne correspond pas à celui écrit.";
+  } else if (ou === "disque") {
+    verdict.detail =
+      "Le dépôt fonctionne, mais sur le disque du serveur : en ligne, chaque " +
+      "machine a le sien, et une photo enregistrée par l'une est introuvable " +
+      "pour l'autre. Renseignez SUPABASE_URL et SUPABASE_SECRET_KEY.";
+  } else {
+    verdict.detail = "Le dépôt fonctionne : écrit, relu, identique.";
+  }
+  return verdict;
+}

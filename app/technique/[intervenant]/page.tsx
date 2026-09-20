@@ -110,7 +110,9 @@ export default async function Tournee({
     // Le lot est rendu : le récapitulatif de ce que le technicien déclare part
     // maintenant, pas à une heure fixe. Un mail par anomalie en aurait fait dix.
     await deposerRecap(tournee.id, false);
-    redirect("/technique");
+    // L'accueil, pas /technique : un intervenant n'y a pas accès et serait
+    // renvoyé sur cette même tournée, qu'il vient de rendre.
+    redirect("/");
   }
 
   return (

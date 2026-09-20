@@ -7,7 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 import { envoyerCourrielsEnAttente } from "@/lib/envoi";
-import { depot } from "@/lib/stockage";
+import { depot, verifierDepot } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
@@ -52,12 +52,12 @@ const EVENEMENT: Record<string, { titre: string; aide: string }> = {
 export default async function Administration({
   searchParams,
 }: {
-  searchParams: Promise<{ envoi?: string }>;
+  searchParams: Promise<{ envoi?: string; essai?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   if (!peutValider(profil.role)) redirect("/");
-  const { envoi } = await searchParams;
+  const { envoi, essai } = await searchParams;
 
   const attente = await sql<Attente[]>`
     select categorie, count(*)::int as nombre, min(cree_le) as plus_ancien,
@@ -78,6 +78,16 @@ export default async function Administration({
 
   const configure = Boolean(process.env.RESEND_API_KEY);
   const ouVontLesFichiers = depot();
+
+  /**
+   * Le test du dépôt, à la demande.
+   *
+   * Il écrit un fichier, le relit et l'efface : c'est la seule réponse sûre à
+   * « pourquoi ma photo ne s'affiche pas ». On ne le lance pas à chaque
+   * ouverture de l'écran — un aller-retour vers Supabase à chaque affichage
+   * serait payé pour rien.
+   */
+  const verdict = essai === "1" ? await verifierDepot() : null;
   const total = attente.reduce((n, a) => n + a.nombre, 0);
 
   async function envoyerMaintenant() {
@@ -218,6 +228,35 @@ export default async function Administration({
         </section>
 
         {/* Où vont les photos et les factures */}
+        {!verdict && (
+          <Link
+            href={"/administration?essai=1" as Route}
+            className="carte px-4 py-3 text-[14.5px] text-center active:bg-surface-muted"
+          >
+            Vérifier le dépôt des fichiers
+          </Link>
+        )}
+
+        {verdict && (
+          <div
+            className={`rounded-card px-4 py-3 flex flex-col gap-1 text-[12.5px] text-pretty leading-snug ${
+              verdict.identique && verdict.depot === "supabase"
+                ? "bg-green-soft text-green"
+                : "bg-red-soft text-red"
+            }`}
+          >
+            <span className="font-display font-semibold text-[13.5px]">
+              Dépôt des fichiers — {verdict.depot === "supabase" ? `Supabase, seau « ${verdict.seau} »` : "disque du serveur"}
+            </span>
+            <span>
+              écrit&nbsp;: {verdict.ecrit ? "oui" : "non"} · relu&nbsp;:{" "}
+              {verdict.relu ? "oui" : "non"} · identique&nbsp;:{" "}
+              {verdict.identique ? "oui" : "non"}
+            </span>
+            <span>{verdict.detail}</span>
+          </div>
+        )}
+
         {ouVontLesFichiers === "disque" && (
           <p className="rounded-card bg-red-soft px-4 py-3 text-[12.5px] text-red text-pretty leading-snug">
             Les photos et les factures sont écrites sur le disque du serveur. En ligne, ce

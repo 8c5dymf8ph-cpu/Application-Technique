@@ -209,8 +209,10 @@ export default async function Declarer({
           )}
         </section>
 
-        {/* Chercher dans le catalogue */}
-        <section className="flex flex-col gap-2.5">
+        {/* Chercher dans le catalogue — masqué une fois le choix fait : la
+            liste faisait défiler l'enregistrement hors de l'écran, et on ne
+            savait pas qu'il fallait encore valider. */}
+        <section className={`flex flex-col gap-2.5 ${choisie ? "hidden" : ""}`}>
           <h2 className="etiquette">Que faut-il faire&nbsp;?</h2>
           <RechercheVive
             valeur={q}
@@ -270,10 +272,17 @@ export default async function Declarer({
 
         {/* Confirmer */}
         {choisie && (
-          <section className="flex flex-col gap-3 border-t border-line pt-5">
-            <p className="font-display font-semibold text-[17px] leading-snug text-pretty">
+          <section className="flex flex-col gap-3 order-first">
+            <p className="etiquette">Ce que vous déclarez</p>
+            <p className="font-display font-semibold text-[19px] leading-snug text-pretty">
               {choisie.libelle}
             </p>
+            <Link
+              href={lien({ q })}
+              className="self-start text-[13.5px] text-plum underline underline-offset-4"
+            >
+              Choisir autre chose
+            </Link>
             {choisie.nb_fois_ici > 0 && (
               <div className="rounded-card bg-blue-soft px-4 py-3 flex flex-col gap-1">
                 <p className="text-[13.5px] text-blue leading-snug text-pretty">
@@ -286,7 +295,7 @@ export default async function Declarer({
             <form action={enregistrer} className="flex flex-col gap-3">
               <input type="hidden" name="catalogue_id" value={choisie.id} />
               <ChampCommentaire />
-              <ChampPhotos libelle="Photographier (facultatif)" />
+              <ChampPhotos libelle="Ajouter une ou plusieurs photos (facultatif)" />
               <div className="flex gap-2">
               <Link
                 href={lien({ q })}
