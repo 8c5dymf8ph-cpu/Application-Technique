@@ -19,7 +19,9 @@ export type Tournee = {
 export async function intervenants(): Promise<Intervenant[]> {
   return sql<Intervenant[]>`
     select utilisateur_id, prestataire_id, nom, origine, specialites
-    from v_intervenants where actif order by origine, nom`;
+    -- Un seul ordre : le nom. Trier par origine d'abord laissait croire
+    -- à deux catégories, alors qu'ils interviennent tous pareil.
+    from v_intervenants where actif order by nom`;
 }
 
 /**

@@ -24,21 +24,43 @@ type Intervenant = {
   interventions: number;
 };
 
-/** Les deux listes qui bougent souvent : l'étage et la réception. */
-const GERABLES: { role: RoleUtilisateur; titre: string; aide: string }[] = [
+/**
+ * Les deux listes de l'écran de déclaration d'une bouteille.
+ *
+ * `roles` dit qui y figure — c'est exactement ce que l'écran de déclaration
+ * propose. `ajoutable` dit qui l'on peut ajouter ou retirer ici : on n'ajoute
+ * pas un administrateur depuis cet écran, mais il faut le VOIR, sinon on
+ * croit qu'il manque et on essaie de l'ajouter en vain.
+ */
+const LISTES: {
+  cle: string;
+  roles: RoleUtilisateur[];
+  ajoutable: RoleUtilisateur | null;
+  titre: string;
+  aide: string;
+}[] = [
   {
-    role: "menage",
-    titre: "Femmes de chambre",
-    aide: "Elles constatent les bouteilles manquantes. Elles n’utilisent pas l’application.",
+    cle: "constat",
+    roles: ["menage", "gouvernante"],
+    ajoutable: "menage",
+    titre: "Qui constate",
+    aide: "Les prénoms proposés quand la gouvernante dit qui a vu la bouteille manquante.",
   },
   {
-    role: "reception",
-    titre: "Réception",
-    aide: "C’est à elles et eux que la gouvernante transmet le dossier.",
+    cle: "transmission",
+    roles: ["reception", "admin"],
+    ajoutable: "reception",
+    titre: "À qui l’on transmet",
+    aide: "Les prénoms proposés pour dire à qui le dossier a été remonté.",
   },
 ];
 
-export default async function Equipe() {
+export default async function Equipe({
+  searchParams,
+}: {
+  searchParams: Promise<{ deja?: string; role?: string }>;
+}) {
+  const { deja, role: roleDeja } = await searchParams;
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   // La composition de l'étage change souvent : la gouvernante doit pouvoir la
@@ -51,8 +73,12 @@ export default async function Equipe() {
           + (select count(*) from incidents_bouteille i where i.transmis_a = u.id))::int
              as citations
     from utilisateurs u
-    where u.role in ('menage', 'reception')
-    order by u.actif desc, u.role, u.nom`;
+    -- Les deux sections reflètent les deux listes de l'écran de déclaration :
+    -- qui constate, et à qui l'on transmet. La gouvernante et l'administrateur
+    -- y figurent sans être « gérables » — on ne les ajoute ni ne les retire
+    -- ici, mais les cacher faisait croire qu'ils n'y étaient pas.
+    where u.role in ('menage', 'reception', 'gouvernante', 'admin')
+    order by u.actif desc, u.nom`;
 
   // Qui figure dans la liste des intervenants techniques. Elle ne se déduit pas
   // d'un rôle : la chargée des opérations n'intervient pas, le réceptionniste
@@ -106,6 +132,19 @@ export default async function Equipe() {
     const nom = String(donnees.get("nom") ?? "").trim();
     const role = String(donnees.get("role"));
     if (!nom || !["menage", "reception"].includes(role)) return;
+
+    // Un prénom déjà pris par quelqu'un qui utilise l'application ne change pas
+    // de rôle : Miguel est administrateur, l'inscrire comme réceptionniste lui
+    // retirerait ses écrans. Il figure DÉJÀ dans la liste par son rôle — mais
+    // l'ajout ne faisait rien et ne disait rien, alors on recommençait.
+    const [existe] = await sql<{ role: string }[]>`
+      select role::text from utilisateurs where nom = ${nom}`;
+    if (existe && existe.role !== role) {
+      redirect(
+        `/administration/equipe?deja=${encodeURIComponent(nom)}&role=${existe.role}` as Route,
+      );
+    }
+
     // Un prénom déjà connu est réactivé plutôt que dupliqué : son historique
     // lui revient.
     await sql`
@@ -133,15 +172,24 @@ export default async function Equipe() {
       <Entete titre="L’équipe" sous_titre="Qui constate, à qui l’on transmet" retour="/administration" />
 
       <div className="px-5 py-4 flex flex-col gap-6">
+        {deja && (
+          <p className="rounded-card bg-amber-soft px-4 py-3 text-[13.5px] text-amber text-pretty leading-snug">
+            <strong>{deja}</strong> est déjà inscrit comme{" "}
+            {LIBELLE_ROLE[(roleDeja ?? "admin") as RoleUtilisateur].toLowerCase()} : son prénom
+            figure déjà dans les listes, plus bas. Son rôle n’a pas été changé — il perdrait ses
+            écrans.
+          </p>
+        )}
+
         <p className="text-[13px] text-ink-soft text-pretty leading-snug">
           Retirer quelqu’un ne l’efface pas : son prénom disparaît des listes de saisie, mais
           reste sur les dossiers qu’il a constatés. Le réajouter lui rend sa place.
         </p>
 
-        {GERABLES.map((g) => {
-          const dedans = personnes.filter((p) => p.role === g.role);
+        {LISTES.map((g) => {
+          const dedans = personnes.filter((p) => g.roles.includes(p.role));
           return (
-            <section key={g.role} className="flex flex-col gap-2">
+            <section key={g.cle} className="flex flex-col gap-2">
               <h2 className="etiquette">{g.titre}</h2>
               <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1">
                 {g.aide}
@@ -157,23 +205,33 @@ export default async function Equipe() {
                         {p.nom}
                       </span>
                       <span className="block text-[11.5px] text-ink-faint">
+                        {LIBELLE_ROLE[p.role]} ·{" "}
                         {p.citations === 0
                           ? "aucun dossier"
                           : `${p.citations} dossier${p.citations > 1 ? "s" : ""}`}
                       </span>
                     </span>
-                    <form action={basculer}>
-                      <input type="hidden" name="personne" value={p.id} />
-                      <button
-                        className={`h-[38px] px-3 rounded-[10px] text-[12.5px] ${
-                          p.actif
-                            ? "bg-surface-muted border border-line text-ink-soft"
-                            : "bg-plum-soft text-plum"
-                        }`}
-                      >
-                        {p.actif ? "Retirer" : "Réintégrer"}
-                      </button>
-                    </form>
+                    {p.role === g.ajoutable ? (
+                      <form action={basculer}>
+                        <input type="hidden" name="personne" value={p.id} />
+                        <button
+                          className={`h-[38px] px-3 rounded-[10px] text-[12.5px] ${
+                            p.actif
+                              ? "bg-surface-muted border border-line text-ink-soft"
+                              : "bg-plum-soft text-plum"
+                          }`}
+                        >
+                          {p.actif ? "Retirer" : "Réintégrer"}
+                        </button>
+                      </form>
+                    ) : (
+                      // Une personne qui utilise l'application ne se retire pas
+                      // d'ici : son rôle la met dans la liste, et l'en sortir
+                      // lui ferait perdre ses écrans.
+                      <span className="text-[11.5px] text-ink-faint shrink-0">
+                        par son rôle
+                      </span>
+                    )}
                   </li>
                 ))}
                 {dedans.length === 0 && (
@@ -182,7 +240,7 @@ export default async function Equipe() {
               </ul>
 
               <form action={ajouter} className="flex gap-2">
-                <input type="hidden" name="role" value={g.role} />
+                <input type="hidden" name="role" value={g.ajoutable ?? ""} />
                 <input
                   name="nom"
                   autoComplete="off"
