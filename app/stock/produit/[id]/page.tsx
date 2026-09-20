@@ -683,9 +683,19 @@ export default async function FicheProduit({
               </div>
             )}
 
-            {/* Chez qui on commande, et à quelle adresse */}
-            <div className="carte px-3.5 py-3 flex flex-col gap-2.5">
-              <span className="etiquette">Fournisseurs</span>
+            {/* Chez qui on commande, et à quelle adresse.
+                Replié dès qu'un fournisseur est en place : une fois réglé, on
+                n'a plus besoin de le voir en ouvrant la fiche. */}
+            <details className="carte px-3.5 py-3" open={fournisseurs.length === 0}>
+              <summary className="list-none flex items-center justify-between cursor-pointer">
+                <span className="etiquette">Fournisseurs</span>
+                <span className="text-[12.5px] text-ink-faint">
+                  {fournisseurs.length === 0
+                    ? "aucun"
+                    : fournisseurs.map((f) => f.nom).join(", ")}
+                </span>
+              </summary>
+              <div className="flex flex-col gap-2.5 pt-2.5">
               {fournisseurs.length === 0 ? (
                 <p className="text-[12.5px] text-ink-faint text-pretty">
                   Aucun fournisseur rattaché : la demande de devis ne peut pas partir pour ce
@@ -799,7 +809,13 @@ export default async function FicheProduit({
               )}
 
               {peutValider(profil.role) && (
-                <form action={rattacher} className="flex flex-col gap-2 border-t border-line pt-2.5">
+                <details className="border-t border-line pt-2.5" open={fournisseurs.length === 0}>
+                  <summary className="list-none text-[14px] text-plum cursor-pointer py-1">
+                    {fournisseurs.length === 0
+                      ? "Rattacher un fournisseur"
+                      : "Rattacher un autre fournisseur"}
+                  </summary>
+                <form action={rattacher} className="flex flex-col gap-2 pt-2">
                   <select
                     name="fournisseur"
                     className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface-muted text-[15px]"
@@ -859,8 +875,10 @@ export default async function FicheProduit({
                     fournisseur.
                   </p>
                 </form>
+                </details>
               )}
-            </div>
+              </div>
+            </details>
           </section>
         )}
 

@@ -41,6 +41,27 @@ export async function deposerRecap(tournee: string, complet: boolean, renvoi = f
       (select coalesce(array_agg(u.email) filter (where u.email is not null), '{}')
          from utilisateurs u where u.role = 'admin' and u.actif)
     ) as liste`;
+  /**
+   * L'intervenant reçoit son propre récapitulatif de fin de passage.
+   *
+   * C'est le message « lot rendu » : ce qu'il déclare avoir fait. Miguel reste
+   * destinataire — il est en copie de ce qui part, jamais court-circuité. Le
+   * récapitulatif complet, lui, ne concerne que l'hôtel : il porte l'avis de
+   * la gouvernante, y compris ce qu'elle n'a pas validé.
+   */
+  const sien = complet
+    ? []
+    : (
+        await sql<{ email: string }[]>`
+          select coalesce(u.email, p.email) as email
+            from tournees t
+            left join utilisateurs u on u.id = t.technicien_id
+            left join prestataires p on p.id = t.prestataire_id
+           where t.id = ${tournee}
+             and coalesce(u.email, p.email) is not null`
+      ).map((r) => r.email);
+
+  destinataires.liste = [...new Set([...destinataires.liste, ...sien])];
   if (destinataires.liste.length === 0) return;
 
   const [t] = await sql<

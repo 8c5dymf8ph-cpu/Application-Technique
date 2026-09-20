@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { RechercheVive } from "@/app/composants/recherche-vive";
+import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { jours, LIBELLE_STATUT, TON_STATUT, type StatutAnomalie } from "@/lib/domaine";
@@ -56,6 +58,21 @@ export default async function Declarer({
     from emplacements e join etages et on et.id = e.etage_id
     where e.code = ${lieu} and e.actif`;
   if (!emplacement) notFound();
+
+  /**
+   * L'adresse de cet écran, avec ses paramètres.
+   *
+   * Les liens pointaient vers « ?q=…&choix=… », sans chemin. Next ne résout
+   * pas cette forme de façon fiable dans l'App Router : le clic ne faisait
+   * rien du tout, sur n'importe quelle chambre.
+   */
+  const lien = (p: { q?: string; choix?: string }) => {
+    const params = new URLSearchParams();
+    if (p.q) params.set("q", p.q);
+    if (p.choix) params.set("choix", p.choix);
+    const suite = params.toString();
+    return `/gouvernante/declarer/${encodeURIComponent(lieu)}${suite ? "?" + suite : ""}` as Route;
+  };
 
   // Les totaux sont comptés à part : la liste affichée est tronquée, et un
   // compteur qui refléterait la troncature mentirait.
@@ -195,19 +212,11 @@ export default async function Declarer({
         {/* Chercher dans le catalogue */}
         <section className="flex flex-col gap-2.5">
           <h2 className="etiquette">Que faut-il faire&nbsp;?</h2>
-          <form method="get" className="flex gap-2">
-            <input
-              id="recherche"
-              name="q"
-              defaultValue={q}
-              autoComplete="off"
-              placeholder="Chercher : fuite, spot, liseuse…"
-              className="carte grow px-4 h-[52px] text-[16px] placeholder:text-ink-faint"
-            />
-            <button className="px-4 rounded-card bg-plum text-white text-[15px]">
-              Chercher
-            </button>
-          </form>
+          <RechercheVive
+            valeur={q}
+            base={`/gouvernante/declarer/${encodeURIComponent(lieu)}`}
+            placeholder="Chercher : fuite, spot, liseuse…"
+          />
 
           {q.trim() && resultats.length === 0 && (
             <Vide>
@@ -235,7 +244,7 @@ export default async function Declarer({
               ) : (
                 <li key={r.id}>
                   <Link
-                    href={`?q=${encodeURIComponent(q)}&choix=${r.id}`}
+                    href={lien({ q, choix: r.id })}
                     className="carte w-full px-4 py-3.5 flex items-center gap-3 text-left active:bg-surface-muted"
                   >
                     <span className="flex flex-col gap-0.5 grow min-w-0">
@@ -280,7 +289,7 @@ export default async function Declarer({
               <ChampPhotos libelle="Photographier (facultatif)" />
               <div className="flex gap-2">
               <Link
-                href={`?q=${encodeURIComponent(q)}`}
+                href={lien({ q })}
                 className="carte px-5 grid place-items-center text-[15px] text-ink-soft"
               >
                 Annuler

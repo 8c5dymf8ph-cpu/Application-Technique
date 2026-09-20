@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { LIBELLE_ROLE, peutValider, type RoleUtilisateur } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
@@ -18,9 +19,11 @@ type Personne = {
 };
 
 type Intervenant = {
-  id: string;
   nom: string;
-  role: RoleUtilisateur;
+  prestataire_id: string | null;
+  utilisateur_id: string | null;
+  compte: boolean;
+  courriel: string | null;
   interventions: number;
 };
 
@@ -83,30 +86,84 @@ export default async function Equipe({
   // Qui figure dans la liste des intervenants techniques. Elle ne se déduit pas
   // d'un rôle : la chargée des opérations n'intervient pas, le réceptionniste
   // qui donne un coup de main, si.
-  const intervenants = await sql<Intervenant[]>`
-    select u.id, u.nom, u.role,
-           (select count(*) from interventions i where i.technicien_id = u.id)::int
-             as interventions
-    from utilisateurs u
-    where u.actif and u.intervient_technique
-    order by u.nom`;
+  /**
+   * Les quinze intervenants, d'où qu'ils viennent.
+   *
+   * `v_intervenants` réunit les personnes inscrites et les entreprises
+   * extérieures. `compte` dit si quelqu'un peut ouvrir l'application à ce nom,
+   * `courriel` où part son récapitulatif de fin de passage.
+   */
+  const reglable = await colonneExiste("utilisateurs", "peut_se_connecter");
+  const intervenants = reglable
+    ? await sql<Intervenant[]>`
+        select v.nom, v.prestataire_id, v.utilisateur_id,
+               coalesce(u.peut_se_connecter, false) as compte,
+               coalesce(u.email, p.email)           as courriel,
+               (select count(*) from interventions i
+                 where i.technicien_id is not distinct from v.utilisateur_id
+                   and i.prestataire_id is not distinct from v.prestataire_id)::int
+                 as interventions
+          from v_intervenants v
+          left join utilisateurs u on u.id = v.utilisateur_id
+          left join prestataires p on p.id = v.prestataire_id
+         where v.actif order by v.nom`
+    : [];
 
-  const disponibles = await sql<Intervenant[]>`
-    select u.id, u.nom, u.role, 0::int as interventions
-    from utilisateurs u
-    where u.actif and not u.intervient_technique
-    order by u.nom`;
 
-  async function basculerIntervenant(donnees: FormData) {
+  /**
+   * Ouvrir ou fermer un profil.
+   *
+   * Pour une entreprise extérieure, cela crée un compte qui la porte : la
+   * tournée qu'il ouvrira restera rattachée au prestataire, et la facture se
+   * rapprochera comme avant. `utilisateurs.prestataire_id` fait ce lien, et
+   * évite que la personne apparaisse deux fois dans la liste.
+   */
+  async function basculerCompte(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
     if (!profil_ || !peutValider(profil_.role)) redirect("/");
-    // Retirer quelqu'un de la liste ne touche pas aux tournées qu'il a faites :
-    // elles gardent son nom.
-    await sql`
-      update utilisateurs
-         set intervient_technique = not intervient_technique
-       where id = ${String(donnees.get("personne"))}`;
+    const nom = String(donnees.get("nom") ?? "").trim();
+    const prestataire = String(donnees.get("prestataire") ?? "").trim() || null;
+    if (!nom) return;
+
+    const [existe] = await sql<{ id: string; peut: boolean }[]>`
+      select id, peut_se_connecter as peut from utilisateurs where nom = ${nom}`;
+
+    if (existe) {
+      await sql`
+        update utilisateurs
+           set peut_se_connecter = not peut_se_connecter,
+               intervient_technique = true,
+               actif = true
+         where id = ${existe.id}`;
+    } else {
+      await sql`
+        insert into utilisateurs (nom, role, intervient_technique,
+                                  peut_se_connecter, prestataire_id, actif)
+        values (${nom}, 'technicien', true, true, ${prestataire}::uuid, true)`;
+    }
+    revalidatePath("/administration/equipe");
+  }
+
+  /** Où part son récapitulatif de fin de passage. */
+  async function enregistrerCourriel(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/");
+    const nom = String(donnees.get("nom") ?? "").trim();
+    const prestataire = String(donnees.get("prestataire") ?? "").trim() || null;
+    const email = String(donnees.get("email") ?? "").trim() || null;
+    if (!nom) return;
+
+    // L'adresse se pose sur le compte s'il existe, sinon sur l'entreprise :
+    // un intervenant sans profil reçoit quand même son récapitulatif.
+    const majFaite = await sql`
+      update utilisateurs set email = ${email} where nom = ${nom}`;
+    if (majFaite.count === 0 && prestataire) {
+      await sql`update prestataires set email = ${email} where id = ${prestataire}::uuid`;
+    } else if (prestataire) {
+      await sql`update prestataires set email = ${email} where id = ${prestataire}::uuid`;
+    }
     revalidatePath("/administration/equipe");
   }
 
@@ -258,80 +315,64 @@ export default async function Equipe({
         {/* Les intervenants techniques */}
         <section className="flex flex-col gap-2">
           <h2 className="etiquette">Intervenants techniques</h2>
-          <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1">
-            Ceux qui apparaissent dans l’écran technique. Retirer quelqu’un ne touche pas aux
-            tournées qu’il a faites : elles gardent son nom.
+          <p className="text-[12px] text-ink-faint text-pretty leading-snug -mt-1">
+            Les {intervenants.length} noms proposés dans l’écran technique. Cochez « profil »
+            pour que la personne puisse ouvrir l’application à son nom, et donnez son adresse
+            pour qu’elle reçoive son récapitulatif à la fin de chaque passage — vous êtes en
+            copie.
           </p>
 
-          <ul className="carte divide-y divide-line">
+          <ul className="flex flex-col gap-2">
             {intervenants.map((i) => (
-              <li key={i.id} className="px-3.5 py-2.5 flex items-center gap-3">
-                <span className="grow min-w-0">
-                  <span className="block text-[15px]">{i.nom}</span>
-                  <span className="block text-[11.5px] text-ink-faint">
-                    {LIBELLE_ROLE[i.role]}
-                    {i.interventions > 0 &&
-                      ` · ${i.interventions} intervention${i.interventions > 1 ? "s" : ""}`}
+              <li key={i.nom} className="carte px-3.5 py-3 flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="grow min-w-0">
+                    <span className="block text-[15.5px]">{i.nom}</span>
+                    <span className="block text-[12px] text-ink-faint">
+                      {i.prestataire_id ? "entreprise extérieure" : "inscrit"}
+                      {i.interventions > 0 &&
+                        ` · ${i.interventions} intervention${i.interventions > 1 ? "s" : ""}`}
+                    </span>
                   </span>
-                </span>
-                <form action={basculerIntervenant}>
-                  <input type="hidden" name="personne" value={i.id} />
-                  <button className="h-[38px] px-3 rounded-[10px] bg-surface-muted border border-line text-[12.5px] text-ink-soft">
-                    Retirer
+                  <form action={basculerCompte}>
+                    <input type="hidden" name="nom" value={i.nom} />
+                    <input
+                      type="hidden"
+                      name="prestataire"
+                      value={i.prestataire_id ?? ""}
+                    />
+                    <button
+                      className={`h-[38px] px-3 rounded-[10px] text-[12.5px] ${
+                        i.compte
+                          ? "bg-plum-soft text-plum"
+                          : "bg-surface-muted border border-line text-ink-soft"
+                      }`}
+                    >
+                      {i.compte ? "profil ✓" : "pas de profil"}
+                    </button>
+                  </form>
+                </div>
+
+                <form action={enregistrerCourriel} className="flex gap-2">
+                  <input type="hidden" name="nom" value={i.nom} />
+                  <input type="hidden" name="prestataire" value={i.prestataire_id ?? ""} />
+                  <input
+                    name="email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="off"
+                    defaultValue={i.courriel ?? ""}
+                    placeholder="Adresse pour le récapitulatif"
+                    className="grow min-w-0 h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                  />
+                  <button className="px-3 rounded-[11px] bg-surface-muted border border-line text-[13px]">
+                    Noter
                   </button>
                 </form>
               </li>
             ))}
           </ul>
-
-          {disponibles.length > 0 && (
-            <details className="carte px-3.5 py-3">
-              <summary className="text-[12.5px] text-plum underline underline-offset-4 cursor-pointer list-none">
-                Ajouter quelqu’un qui existe déjà
-              </summary>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {disponibles.map((d) => (
-                  <li key={d.id} className="flex items-center gap-3">
-                    <span className="grow min-w-0">
-                      <span className="block text-[14px]">{d.nom}</span>
-                      <span className="block text-[11px] text-ink-faint">
-                        {LIBELLE_ROLE[d.role]}
-                      </span>
-                    </span>
-                    <form action={basculerIntervenant}>
-                      <input type="hidden" name="personne" value={d.id} />
-                      <button className="h-[36px] px-3 rounded-[10px] bg-plum-soft text-plum text-[12.5px]">
-                        Ajouter
-                      </button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-
-          <form action={ajouterIntervenant} className="flex gap-2">
-            <input
-              name="nom"
-              autoComplete="off"
-              placeholder="Un renfort, un nouveau nom…"
-              className="carte grow min-w-0 px-4 h-[46px] text-[16px] placeholder:text-ink-faint"
-            />
-            <button className="px-4 rounded-card bg-plum text-white text-[14.5px]">Ajouter</button>
-          </form>
-          <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
-            Un renfort ponctuel s’ajoute ici et se retire d’un appui quand il repart. Pour une
-            entreprise extérieure qui reviendra, c’est un prestataire — dites-le moi et je
-            l’ajoute au référentiel.
-          </p>
         </section>
-
-        <Link
-          href={"/bouteilles" as Route}
-          className="text-[12.5px] text-plum underline underline-offset-4 self-start"
-        >
-          Retour aux bouteilles
-        </Link>
       </div>
     </main>
   );

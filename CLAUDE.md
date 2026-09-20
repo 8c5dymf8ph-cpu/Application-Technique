@@ -235,6 +235,19 @@ elle qui voit la bouteille manquante, et ce n'est jamais elle qui écrit au clie
 prénoms se choisissent en un appui, en clair, jamais dans un menu déroulant. Le remplacement,
 lui, est décidé par la gouvernante : il n'a besoin que de sa trace, pas d'un prénom de plus.
 
+**Qui apparaît au choix des profils est un réglage, pas une conséquence de la table.** Farid et
+Rachid s'y trouvaient d'office parce qu'ils étaient inscrits dans `utilisateurs`, et les treize
+autres en étaient absents parce qu'ils sont des `prestataires` — or c'est ce lien qui sert au
+rapprochement des factures, on ne peut pas les recopier ailleurs. `utilisateurs.prestataire_id`
+relie un compte à son entreprise : la tournée ouverte reste rattachée au prestataire, et
+`v_intervenants` ne compte pas la personne deux fois. `peut_se_connecter` décide de l'affichage,
+et se règle dans `/administration/equipe` — l'hôtel change d'intervenants.
+
+**Chaque intervenant peut recevoir son récapitulatif de fin de passage**, à l'adresse notée sur
+la même ligne. Le message « lot rendu » part chez lui ET chez Miguel : il est en copie, jamais
+court-circuité. Le récapitulatif complet, lui, ne concerne que l'hôtel — il porte l'avis de la
+gouvernante, y compris ce qu'elle n'a pas validé.
+
 **La liste des intervenants se tient depuis l'application.** Un renfort ponctuel s'ajoute et se
 retire d'un appui dans `/administration/equipe` ; ce qu'il a fait reste attaché à son nom.
 
