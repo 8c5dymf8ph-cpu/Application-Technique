@@ -1,11 +1,16 @@
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { Entete, Tuile } from "../composants/ui";
+import { Confirmation, Entete, Tuile } from "../composants/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function HubGouvernante() {
+export default async function HubGouvernante({
+  searchParams,
+}: {
+  searchParams: Promise<{ fait?: string }>;
+}) {
+  const { fait } = await searchParams;
   const profil = await profilActif();
   if (!profil) redirect("/profil");
 
@@ -22,6 +27,7 @@ export default async function HubGouvernante() {
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="Gouvernante" sous_titre={profil.nom} retour="/" />
       <div className="px-5 py-5 flex flex-col gap-3.5">
+        <Confirmation quoi={fait} />
         <Tuile
           href="/gouvernante/declarer"
           titre="Déclarer"

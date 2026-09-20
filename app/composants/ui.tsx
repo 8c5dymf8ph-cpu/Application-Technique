@@ -132,3 +132,47 @@ export function Indices({
     </span>
   );
 }
+
+/**
+ * Le mot qui confirme — ou qui alerte.
+ *
+ * Un geste qui réussit sans rien dire laisse douter : on recommence, ou on
+ * abandonne. Un geste qui échoue sans rien dire est pire. Les écrans passent
+ * donc un `?fait=` dans l'adresse après une action, et ce bandeau le rend.
+ */
+const MOTS: Record<string, { ton: string; texte: string }> = {
+  photo: { ton: "green", texte: "Photo enregistrée." },
+  photos: { ton: "green", texte: "Photos enregistrées." },
+  "photo-refusee": {
+    ton: "red",
+    texte:
+      "La photo n’a pas pu être enregistrée : elle n’apparaîtra nulle part. " +
+      "Vérifiez le dépôt des fichiers dans Administration.",
+  },
+  enregistre: { ton: "green", texte: "Enregistré." },
+  fournisseur: { ton: "green", texte: "Fournisseur enregistré." },
+  montant: { ton: "green", texte: "Montant et facture enregistrés." },
+  profil: { ton: "green", texte: "Réglage enregistré." },
+  adresse: { ton: "green", texte: "Adresse enregistrée." },
+  lot: {
+    ton: "green",
+    texte:
+      "Passage entièrement validé. Le récapitulatif part — avec ce qui n’a pas " +
+      "été validé, dit en clair.",
+  },
+};
+
+export function Confirmation({ quoi }: { quoi?: string }) {
+  const mot = quoi ? MOTS[quoi] : undefined;
+  if (!mot) return null;
+  return (
+    <p
+      className={`rounded-card px-4 py-3 text-[13.5px] text-pretty leading-snug animate-[apparait_.25s_ease-out] ${
+        mot.ton === "green" ? "bg-green-soft text-green" : "bg-red-soft text-red"
+      }`}
+      role="status"
+    >
+      {mot.texte}
+    </p>
+  );
+}

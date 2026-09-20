@@ -6,7 +6,7 @@ import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
-import { Entete } from "@/app/composants/ui";
+import { Entete , Confirmation } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { enregistrerFichier, supprimerFichier } from "@/lib/stockage";
@@ -93,12 +93,12 @@ export default async function FicheProduit({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ neuf?: string }>;
+  searchParams: Promise<{ neuf?: string; fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
-  const { neuf } = await searchParams;
+  const { neuf, fait } = await searchParams;
 
   const [p] = await sql<Produit[]>`
     select id, code, designation, categorie, categorie_lieu, unite, prix_unitaire,
@@ -200,17 +200,26 @@ export default async function FicheProduit({
     const [{ n }] = await sql<{ n: number }[]>`
       select count(*)::int as n from photos_produit where produit_id = ${id}`;
     let rang = n;
+    let posees = 0;
+    let refusees = 0;
     for (const fichier of donnees.getAll("photos")) {
       if (!(fichier instanceof File) || fichier.size === 0) continue;
       const chemin = await enregistrerFichier(fichier);
-      if (!chemin) continue;
+      // Une photo refusée disparaissait sans un mot : on croyait l'avoir
+      // ajoutée, et la vignette ne changeait pas.
+      if (!chemin) {
+        refusees += 1;
+        continue;
+      }
       await sql`
         insert into photos_produit (produit_id, chemin, principale, ordre, ajoutee_par)
         values (${id}, ${chemin}, ${rang === 0}, ${rang}, ${profil_.id})`;
       rang += 1;
+      posees += 1;
     }
     // Renavigue plutôt que revalider : le panneau des photos se referme.
-    redirect(`/stock/produit/${id}` as Route);
+    const mot = refusees > 0 ? "photo-refusee" : posees > 1 ? "photos" : "photo";
+    redirect(`/stock/produit/${id}?fait=${mot}` as Route);
   }
 
   async function mettreEnAvant(donnees: FormData) {
@@ -356,6 +365,7 @@ export default async function FicheProduit({
       <Entete titre={p.designation} sous_titre={p.code} retour="/stock" />
 
       <div className="px-5 py-4 flex flex-col gap-5">
+        <Confirmation quoi={fait} />
         {neuf && (
           <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug">
             Produit créé. Il reste à lui mettre une photo — appuyez sur la vignette —, un

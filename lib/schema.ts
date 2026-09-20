@@ -11,12 +11,20 @@ import { sql } from "./db";
  *
  * On demande donc à la base ce qu'elle a, une fois, et on s'adapte.
  */
-const connues = new Map<string, boolean>();
+/**
+ * On ne retient que les réponses POSITIVES.
+ *
+ * Une colonne qui existe n'est jamais retirée : la retenir est sans risque.
+ * Retenir une absence, en revanche, rend l'application aveugle à la migration
+ * qui vient de l'ajouter — l'écran continue de dire « en attente » alors que la
+ * base est à jour, jusqu'au redémarrage du serveur. C'est exactement ce qui est
+ * arrivé après la migration 0010.
+ */
+const presentes = new Set<string>();
 
 export async function colonneExiste(table: string, colonne: string): Promise<boolean> {
   const cle = `${table}.${colonne}`;
-  const deja = connues.get(cle);
-  if (deja !== undefined) return deja;
+  if (presentes.has(cle)) return true;
 
   const [r] = await sql<{ presente: boolean }[]>`
     select count(*) > 0 as presente
@@ -24,6 +32,6 @@ export async function colonneExiste(table: string, colonne: string): Promise<boo
      where table_schema = 'public'
        and table_name = ${table}
        and column_name = ${colonne}`;
-  connues.set(cle, r.presente);
+  if (r.presente) presentes.add(cle);
   return r.presente;
 }

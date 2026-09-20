@@ -138,11 +138,29 @@ export default async function ValiderLot({
              ${profil_.id}, ${profil_.id}, ${mot}
         from interventions i
         join tournees t on t.id = i.tournee_id
-       where i.id = ${intervention} and t.cloturee_le is not null`;
+       where i.id = ${intervention} and t.cloturee_le is not null
+         -- Un double appui ne fait pas deux avis : le commentaire
+         -- apparaissait alors en double dans le fil du technicien. Deux
+         -- décisions différentes, ou deux mots différents, restent deux
+         -- lignes — c'est de l'histoire, et rien ne l'écrase.
+         and not exists (
+           select 1 from validations v
+            where v.intervention_id = ${intervention}
+              and v.acteur = 'gouvernante'
+              and v.decision = ${decision}::decision_validation
+              and coalesce(v.commentaire, '') = coalesce(${mot}, ''))`;
 
     // Dès que plus rien n'attend son avis, le récapitulatif complet est rédigé
     // et déposé — avec ce qu'elle n'a pas validé, dit en clair.
     await deposerRecapSiComplet(tournee);
+
+    // Plus rien à trancher dans ce lot : on revient au menu, plutôt que de
+    // laisser devant une liste où il n'y a plus rien à faire. Un lot
+    // partiellement traité reste ouvert : elle s'y remet quand elle veut.
+    const [reste] = await sql<{ n: number }[]>`
+      select nb_en_attente::int as n from v_tournees where id = ${tournee}`;
+    if (reste && reste.n === 0) redirect("/gouvernante?fait=lot");
+
     revalidatePath(`/gouvernante/valider/${tournee}`);
   }
 

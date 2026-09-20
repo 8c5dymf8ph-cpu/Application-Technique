@@ -201,6 +201,17 @@ done
 psql -h /tmp -p 55432 -U postgres -d valid -q -f supabase/tests/01_scenarios.sql
 ```
 
+**`colonneExiste()` ne retient que les réponses positives.** Une colonne qui existe n'est jamais
+retirée : la retenir est sans risque. Retenir une ABSENCE rend l'application aveugle à la
+migration qui vient de l'ajouter — l'écran continue de dire « en attente » alors que la base est
+à jour, jusqu'au redémarrage du serveur.
+
+**Un geste qui aboutit doit se voir, un geste qui échoue encore plus.** Une photo refusée par le
+dépôt disparaissait sans un mot : on croyait l'avoir ajoutée et la vignette ne changeait pas.
+Les actions passent un `?fait=` dans l'adresse et `<Confirmation>` le rend — vert pour ce qui est
+enregistré, rouge pour ce qui ne l'est pas. Ne jamais avaler un échec de `enregistrerFichier()`
+avec un `continue` muet.
+
 **Le code part en ligne avant la migration.** Vercel redéploie à chaque poussée ; une migration
 s'applique à la main, plus tard. Entre les deux, l'application tourne sur un schéma plus ancien
 que le code — et une requête qui nomme une colonne absente **casse l'écran** : Postgres refuse
