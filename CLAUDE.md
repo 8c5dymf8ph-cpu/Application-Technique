@@ -126,6 +126,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    encore valider. Et **la quantité se règle** — l'adresse porte « identifiant~quantité », et
    l'écriture borne ce qui sort par la réserve réelle : on ne sort jamais ce qu'on n'a pas.
 
+14ter. **Un produit se retire, il ne se supprime pas.** `produits.actif` le sort du choix du
+   technicien et des compteurs de `/stock`, sans rien effacer : ses mouvements, son prix et les
+   interventions où il a servi restent, sinon le coût des passages passés changerait. Le filtre
+   « Retirés » de `/stock` les retrouve, et la fiche se remet d'un appui. Ne jamais proposer de
+   supprimer un produit.
+
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
    explicite, pas une absence de réponse. **Un article épuisé ne se choisit pas** : il reste
@@ -272,8 +278,14 @@ retire des listes de saisie et son prénom reste sur les dossiers qu'elle a cons
 après son départ. `/administration/equipe` tient les deux listes à jour, et la gouvernante peut
 s'en servir : elle n'a pas à attendre l'administrateur pour enregistrer une arrivée.
 
-Supprimer une anomalie efface une trace : réservé à `operations` et `admin`, jamais à la
-gouvernante. La règle est dans `fn_peut_supprimer` et dans la politique de suppression.
+**Supprimer une anomalie efface une trace : trois personnes, jamais un technicien.** Victoria,
+Sarah P et Miguel — c'est-à-dire `peutValider`. C'est la gouvernante qui déclare, donc c'est elle
+qui se trompe de chambre ou déclare deux fois le même robinet : l'obliger à attendre quelqu'un
+d'autre pour défaire son propre geste n'avait pas de sens. La règle est dans `fn_peut_supprimer`
+et dans la politique de suppression. L'écran dit ce que la suppression emporte — fil, photos,
+interventions — avant de la proposer. **Ce qui est sorti du stock n'est pas rendu** :
+`mouvements_stock.intervention_id` passe à nul, le mouvement reste ; le matériel a bien quitté la
+réserve. Un problème résolu se clôt, il ne se supprime pas.
 
 ## Photos
 
@@ -287,6 +299,11 @@ consulte, ajoute et supprime. Pas de section « Photos » séparée : l'image es
 d'entrée. Plusieurs par produit, dont une mise en avant, qui est
 celle que le technicien voit en choisissant son matériel. Sans photo, l'écran dessine la bouteille à sa
 couleur — il n'attend jamais une image pour fonctionner.
+
+**Une photo se regarde en grand, sans quitter l'écran.** Une vignette de 74 px ne dit pas si la
+fuite est réparée, et ouvrir un onglet faisait perdre sa place. `Vignettes` ouvre une fenêtre
+native — flèches, glissement du doigt, Échap — et prend `taille` : 104 px côté technicien, parce
+que le constat est la première chose qu'il regarde en arrivant.
 
 **Une photo se réduit dans le navigateur avant de partir.** La plateforme coupe toute requête
 de plus de 4,5 Mo (413) et une photo de téléphone en fait trois à huit : l'envoi échouait sans
@@ -308,6 +325,18 @@ l'ancien `SUPABASE_SERVICE_ROLE_KEY` — Supabase les a renommées, les deux res
 le dépôt distant depuis un poste. Le disque de Vercel repart à zéro à chaque déploiement — une
 photo qui y serait écrite serait perdue, et `/administration` le signale en rouge. Rien d'autre
 dans l'application ne connaît autre chose qu'un nom de fichier.
+
+## Sortir ses données
+
+**Ce qu'on ne peut pas exporter n'est pas vraiment à soi.** `/administration/export` sort huit
+tableaux déjà aplatis — anomalies, interventions, passages, mouvements, produits, bouteilles,
+factures, commentaires — définis une fois dans `lib/export.ts` et servis par
+`/api/export/[quoi]`. Une ligne par fait, les identifiants remplacés par les noms, les colonnes
+en français. Le format est un CSV de tableur français : **point-virgule, virgule décimale, BOM en
+tête** — sans le BOM, Excel lit « clé » en « clÃ© » ; sans la virgule décimale, aucune somme ne
+marche. Le fichier porte la date du jour, et un par mois fait une sauvegarde indépendante de
+l'application. Les exports passent par les vues quand elles existent (`v_recap_interventions`,
+`v_dossiers_bouteille`, `v_tournees`) : ce sont elles qui portent déjà les jointures et les coûts.
 
 ## Essayer sans fausser les chiffres
 
@@ -343,3 +372,13 @@ l'entraînement.
 - **Le wifi couvre tout l'hôtel** : aucun écran n'a besoin d'un mode hors ligne ni d'une file
   d'attente locale. Ne pas réintroduire de couche de synchronisation différée.
 - Budget 0 € : rester dans les offres gratuites Supabase / Vercel / Resend.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

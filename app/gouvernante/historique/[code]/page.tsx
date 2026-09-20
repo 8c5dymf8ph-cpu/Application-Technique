@@ -7,7 +7,7 @@ import {
   TON_STATUT,
   type StatutAnomalie,
 } from "@/lib/domaine";
-import { Entete, Vide } from "@/app/composants/ui";
+import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import Link from "next/link";
 import { Vignettes } from "@/app/composants/photos";
 import { profilActif } from "@/lib/profil";
@@ -30,10 +30,13 @@ type Compte = { anomalie_id: string; nb: number };
 
 export default async function HistoriqueDuLieu({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ fait?: string }>;
 }) {
   const lieu = decodeURIComponent((await params).code);
+  const { fait } = await searchParams;
 
   const [emplacement] = await sql<{ id: string; code: string; etage: string }[]>`
     select e.id, e.code, et.nom as etage
@@ -89,6 +92,7 @@ export default async function HistoriqueDuLieu({
       />
 
       <div className="px-5 py-5 flex flex-col gap-6">
+        <Confirmation quoi={fait} />
         {recurrences.length > 0 && (
           <section className="flex flex-col gap-2.5">
             <h2 className="etiquette">Ce qui revient</h2>

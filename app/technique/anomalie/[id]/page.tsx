@@ -236,7 +236,14 @@ export default async function TraiterAnomalie({
           {anomalie.description}
         </p>
 
-        <Vignettes chemins={constat} titre="Photographié au constat" ton="text-blue" />
+        {/* Le technicien regarde le constat avant de monter : c'est le sujet de
+            l'écran, pas une note de bas de page. */}
+        <Vignettes
+          chemins={constat}
+          titre="Photographié au constat"
+          ton="text-blue"
+          taille={104}
+        />
 
         {messages.length > 0 && (
           <section className="flex flex-col gap-2">

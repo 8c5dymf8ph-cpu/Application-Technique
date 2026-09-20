@@ -344,6 +344,12 @@ export default async function Administration({
             badge={controle.n}
             ton="bg-amber-soft"
           />
+          <Tuile
+            href="/administration/export"
+            titre="Exporter"
+            detail="Vos données dans un tableur, prêtes à trier"
+            ton="bg-green-soft"
+          />
         </div>
 
         <Link

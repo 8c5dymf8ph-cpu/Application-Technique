@@ -1,8 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { jours, LIBELLE_STATUT, TON_STATUT, type StatutAnomalie } from "@/lib/domaine";
+import {
+  jours,
+  LIBELLE_STATUT,
+  peutSupprimer,
+  TON_STATUT,
+  type StatutAnomalie,
+} from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
@@ -46,6 +53,39 @@ export default async function DetailAnomalie({
   const photos = await sql<{ chemin: string; moment: string }[]>`
     select chemin, moment::text from photos_anomalie
     where anomalie_id = ${id} order by prise_le`;
+
+  // Ce que la suppression emporterait. On le dit avant, pas après : « 2 photos
+  // et 1 intervention » n'est pas la même décision que « rien ».
+  const [emporte] = await sql<{ interventions: number; photos: number }[]>`
+    select (select count(*) from interventions where anomalie_id = ${id})::int
+             as interventions,
+           (select count(*) from photos_anomalie where anomalie_id = ${id})::int
+             as photos`;
+
+  const supprimable = peutSupprimer(profil.role);
+
+  /**
+   * Supprimer une anomalie.
+   *
+   * Trois personnes seulement — Victoria, Sarah P, Miguel. Ce qui est parti du
+   * stock pour cette anomalie n'est PAS rendu : le mouvement reste, détaché.
+   * Le matériel a bien quitté la réserve, et l'annuler fausserait le stock.
+   */
+  async function supprimer() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!peutSupprimer(profil_?.role)) redirect(`/anomalie/${id}` as Route);
+    const [ou] = await sql<{ code: string }[]>`
+      select e.code from anomalies a
+      join emplacements e on e.id = a.emplacement_id where a.id = ${id}`;
+    await sql`delete from anomalies where id = ${id}`;
+    revalidatePath("/gouvernante/declarer");
+    redirect(
+      ou
+        ? (`/gouvernante/historique/${encodeURIComponent(ou.code)}?fait=supprime` as Route)
+        : ("/gouvernante/declarer?fait=supprime" as Route),
+    );
+  }
 
   async function commenter(donnees: FormData) {
     "use server";
@@ -122,6 +162,35 @@ export default async function DetailAnomalie({
             Ajouter au fil
           </button>
         </form>
+
+        {supprimable && (
+          <details className="border-t border-line pt-5">
+            <summary className="list-none cursor-pointer text-[13px] text-ink-faint underline underline-offset-4">
+              Supprimer cette anomalie
+            </summary>
+            <div className="mt-3 rounded-card bg-red-soft px-4 py-3.5 flex flex-col gap-3">
+              <p className="text-[13px] text-red text-pretty leading-snug">
+                La ligne disparaît pour de bon, avec son fil
+                {messages.length > 0 && ` (${messages.length} message${messages.length > 1 ? "s" : ""})`}
+                {emporte.photos > 0 &&
+                  `, ${emporte.photos} photo${emporte.photos > 1 ? "s" : ""}`}
+                {emporte.interventions > 0 &&
+                  ` et ${emporte.interventions} intervention${emporte.interventions > 1 ? "s" : ""}`}
+                . À réserver à ce qui n’aurait jamais dû être déclaré — une erreur de chambre,
+                un doublon. Un problème résolu se clôt, il ne se supprime pas.
+              </p>
+              <p className="text-[12px] text-red/80 text-pretty leading-snug">
+                Le matériel sorti pour cette anomalie n’est pas remis en réserve : il a bien
+                quitté le stock.
+              </p>
+              <form action={supprimer}>
+                <button className="h-[46px] w-full rounded-[12px] bg-red text-white font-display font-semibold text-[14.5px]">
+                  Supprimer définitivement
+                </button>
+              </form>
+            </div>
+          </details>
+        )}
       </div>
     </main>
   );

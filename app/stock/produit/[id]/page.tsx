@@ -24,6 +24,7 @@ type Produit = {
   prix_inconnu: boolean;
   seuil_alerte: number;
   quantite_reappro: number | null;
+  actif: boolean;
   photo_principale: string | null;
   stock: number;
   valeur_stock: number | null;
@@ -102,7 +103,7 @@ export default async function FicheProduit({
 
   const [p] = await sql<Produit[]>`
     select id, code, designation, categorie, categorie_lieu, unite, prix_unitaire,
-           prix_inconnu, seuil_alerte, quantite_reappro, photo_principale,
+           prix_inconnu, seuil_alerte, quantite_reappro, actif, photo_principale,
            stock, valeur_stock, sous_seuil, total_entrees, total_sorties,
            total_ajustements, dernier_mouvement
     from v_stock_produits where id = ${id}`;
@@ -354,6 +355,24 @@ export default async function FicheProduit({
     revalidatePath(`/stock/produit/${id}`);
   }
 
+  /**
+   * Retirer un produit du catalogue sans rien effacer.
+   *
+   * Un article qu'on ne rachète plus doit disparaître du choix du technicien —
+   * sinon il le sélectionne et le stock part en négatif — mais ses mouvements,
+   * son prix et les interventions où il a servi restent : le coût des passages
+   * passés ne doit pas bouger. `produits.actif` porte exactement cette
+   * différence, et `v_stock_produits` la transmet aux écrans.
+   */
+  async function basculerActif() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/stock/produit/${id}` as Route);
+    await sql`update produits set actif = not actif where id = ${id}`;
+    revalidatePath(`/stock/produit/${id}`);
+    revalidatePath("/stock");
+  }
+
   const LIBELLE_MOUVEMENT: Record<string, string> = {
     entree: "Entrée",
     sortie: "Sortie",
@@ -366,6 +385,13 @@ export default async function FicheProduit({
 
       <div className="px-5 py-4 flex flex-col gap-5">
         <Confirmation quoi={fait} />
+        {!p.actif && (
+          <p className="rounded-card bg-amber-soft px-4 py-3 text-[13px] text-amber text-pretty leading-snug">
+            <strong>Produit retiré du catalogue.</strong> Le technicien ne peut plus le
+            choisir. Rien n’est effacé : son stock, ses mouvements et les interventions où il
+            a servi restent tels quels.
+          </p>
+        )}
         {neuf && (
           <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug">
             Produit créé. Il reste à lui mettre une photo — appuyez sur la vignette —, un
@@ -945,6 +971,26 @@ export default async function FicheProduit({
               </label>
               <button className="h-[46px] rounded-[12px] bg-plum text-white font-display font-semibold text-[14.5px]">
                 Enregistrer
+              </button>
+            </form>
+
+            {/* On ne supprime pas un produit : on le retire. Le supprimer
+                effacerait les mouvements qui portent le coût des passages
+                passés. */}
+            <form action={basculerActif} className="carte px-3.5 py-3 flex items-center gap-3">
+              <span className="grow text-[13px] text-ink-soft text-pretty leading-snug">
+                {p.actif
+                  ? "Proposé au technicien quand il dit ce qu’il a utilisé."
+                  : "Retiré du choix du technicien. Les données sont gardées."}
+              </span>
+              <button
+                className={`h-[40px] px-3.5 rounded-[11px] text-[13px] shrink-0 ${
+                  p.actif
+                    ? "bg-surface-muted border border-line text-ink-soft"
+                    : "bg-plum text-white"
+                }`}
+              >
+                {p.actif ? "Retirer" : "Remettre"}
               </button>
             </form>
           </section>

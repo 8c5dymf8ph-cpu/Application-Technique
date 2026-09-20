@@ -155,6 +155,7 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
   profil: { ton: "green", texte: "Réglage enregistré." },
   adresse: { ton: "green", texte: "Adresse enregistrée." },
   declare: { ton: "green", texte: "Anomalie déclarée." },
+  supprime: { ton: "green", texte: "Anomalie supprimée." },
   "declare-sans-photo": {
     ton: "red",
     texte:

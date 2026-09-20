@@ -60,9 +60,16 @@ export function peutValider(role?: RoleUtilisateur): boolean {
   return role === "gouvernante" || role === "operations" || role === "admin";
 }
 
-/** Supprimer une anomalie efface une trace : deux personnes seulement. */
+/**
+ * Supprimer une anomalie efface une trace : trois personnes, pas plus.
+ *
+ * Victoria, Sarah P et Miguel. C'est la gouvernante qui déclare, donc c'est
+ * elle qui se trompe de chambre ou déclare deux fois le même robinet :
+ * l'obliger à attendre quelqu'un d'autre pour défaire son propre geste n'avait
+ * pas de sens. Le technicien, lui, traite — il ne décide pas de ce qui existe.
+ */
 export function peutSupprimer(role?: RoleUtilisateur): boolean {
-  return role === "operations" || role === "admin";
+  return role === "gouvernante" || role === "operations" || role === "admin";
 }
 
 export function jours(n: number): string {

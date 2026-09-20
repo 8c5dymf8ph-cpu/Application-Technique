@@ -56,13 +56,20 @@ export default async function Stock({
     from v_stock_produits where actif
     group by 1 order by 2 desc, 1`;
 
+  // Les produits qu'on ne rachète plus ne disparaissent pas : ils sortent du
+  // choix du technicien et se retrouvent ici, dans leur propre filtre. Leur
+  // stock et leurs mouvements sont intacts.
+  const [{ retires }] = await sql<{ retires: number }[]>`
+    select count(*)::int as retires from v_stock_produits where not actif`;
+
   const produits = await sql<Produit[]>`
     select id, code, designation, categorie, categorie_lieu, unite,
            prix_unitaire, prix_inconnu, seuil_alerte, photo_principale,
            stock, valeur_stock, sous_seuil, dernier_mouvement
     from v_stock_produits
-    where actif
+    where actif = (${lieu} <> 'retires')
       and (${lieu} = 'tous'
+        or ${lieu} = 'retires'
         or (${lieu} = 'alertes' and sous_seuil)
         or coalesce(categorie_lieu, 'Sans catégorie') = ${lieu})
       and (${terme} = ''
@@ -177,6 +184,9 @@ export default async function Stock({
             { valeur: "tous", libelle: "Tous", nombre: c.produits },
             { valeur: "alertes", libelle: "Sous le seuil", nombre: c.alertes },
             ...familles.map((f) => ({ valeur: f.lieu, libelle: f.lieu, nombre: f.nombre })),
+            ...(retires > 0
+              ? [{ valeur: "retires", libelle: "Retirés", nombre: retires }]
+              : []),
           ]}
         />
 

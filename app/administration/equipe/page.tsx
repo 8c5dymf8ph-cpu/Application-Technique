@@ -93,7 +93,17 @@ export default async function Equipe({
    * extérieures. `compte` dit si quelqu'un peut ouvrir l'application à ce nom,
    * `courriel` où part son récapitulatif de fin de passage.
    */
+  /**
+   * La liste ne dépend JAMAIS de la migration.
+   *
+   * Elle était vide tant que `peut_se_connecter` n'existait pas : on voyait
+   * « les 0 noms » et une bannière rouge, alors que les quinze intervenants
+   * étaient bien là. `v_intervenants` porte les mêmes colonnes avant et après
+   * la migration — seuls les RÉGLAGES l'attendent, pas les noms.
+   */
   const reglable = await colonneExiste("utilisateurs", "peut_se_connecter");
+  const courriels = await colonneExiste("prestataires", "email");
+
   const intervenants = reglable
     ? await sql<Intervenant[]>`
         select v.nom, v.prestataire_id, v.utilisateur_id,
@@ -107,7 +117,30 @@ export default async function Equipe({
           left join utilisateurs u on u.id = v.utilisateur_id
           left join prestataires p on p.id = v.prestataire_id
          where v.actif order by v.nom`
-    : [];
+    : courriels
+      ? await sql<Intervenant[]>`
+          select v.nom, v.prestataire_id, v.utilisateur_id,
+                 false                      as compte,
+                 coalesce(u.email, p.email) as courriel,
+                 (select count(*) from interventions i
+                   where i.technicien_id is not distinct from v.utilisateur_id
+                     and i.prestataire_id is not distinct from v.prestataire_id)::int
+                   as interventions
+            from v_intervenants v
+            left join utilisateurs u on u.id = v.utilisateur_id
+            left join prestataires p on p.id = v.prestataire_id
+           where v.actif order by v.nom`
+      : await sql<Intervenant[]>`
+          select v.nom, v.prestataire_id, v.utilisateur_id,
+                 false      as compte,
+                 u.email    as courriel,
+                 (select count(*) from interventions i
+                   where i.technicien_id is not distinct from v.utilisateur_id
+                     and i.prestataire_id is not distinct from v.prestataire_id)::int
+                   as interventions
+            from v_intervenants v
+            left join utilisateurs u on u.id = v.utilisateur_id
+           where v.actif order by v.nom`;
 
 
   /**
@@ -246,8 +279,14 @@ export default async function Equipe({
         {LISTES.map((g) => {
           const dedans = personnes.filter((p) => g.roles.includes(p.role));
           return (
-            <section key={g.cle} className="flex flex-col gap-2">
-              <h2 className="etiquette">{g.titre}</h2>
+            <details key={g.cle} className="flex flex-col gap-2">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-1">
+                <span className="etiquette">{g.titre}</span>
+                <span className="text-[12.5px] text-ink-faint tabular-nums">
+                  {dedans.filter((p) => p.actif).length} prénom
+                  {dedans.filter((p) => p.actif).length > 1 ? "s" : ""}
+                </span>
+              </summary>
               <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1">
                 {g.aide}
               </p>
@@ -308,78 +347,122 @@ export default async function Equipe({
                   Ajouter
                 </button>
               </form>
-            </section>
+            </details>
           );
         })}
 
         {/* Les intervenants techniques */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Intervenants techniques</h2>
+        <details className="flex flex-col gap-2">
+          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
+            <span className="etiquette">Intervenants techniques</span>
+            <span className="text-[12.5px] text-ink-faint tabular-nums">
+              {reglable
+                ? `${intervenants.filter((i) => i.compte).length} sur ${intervenants.length} avec un profil`
+                : `${intervenants.length} noms`}
+            </span>
+          </summary>
+
           {!reglable && (
-            <p className="rounded-card bg-red-soft px-4 py-3 text-[13px] text-red text-pretty leading-snug">
-              Cette liste attend une mise à jour de la base. Onglet <strong>Actions</strong> de
-              GitHub → <strong>Mettre à jour la base</strong> → <em>Run workflow</em>. Rien
-              n’est effacé.
+            <p className="rounded-card bg-amber-soft px-4 py-3 text-[13px] text-amber text-pretty leading-snug">
+              Les noms sont là, mais le réglage « profil » attend une mise à jour de la base :
+              onglet <strong>Actions</strong> de GitHub → <strong>Mettre à jour la base</strong>{" "}
+              → <em>Run workflow</em>. Rien n’est effacé, et les adresses se notent dès
+              maintenant.
             </p>
           )}
-          <p className="text-[12px] text-ink-faint text-pretty leading-snug -mt-1">
-            Les {intervenants.length} noms proposés dans l’écran technique. Cochez « profil »
-            pour que la personne puisse ouvrir l’application à son nom, et donnez son adresse
-            pour qu’elle reçoive son récapitulatif à la fin de chaque passage — vous êtes en
-            copie.
+
+          <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+            Les {intervenants.length} noms proposés dans l’écran technique. Ouvrez un nom pour
+            lui donner un profil — il pourra alors ouvrir l’application à son nom — et pour
+            noter l’adresse où part son récapitulatif de fin de passage. Vous êtes en copie.
           </p>
 
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-1.5">
             {intervenants.map((i) => (
-              <li key={i.nom} className="carte px-3.5 py-3 flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                  <span className="grow min-w-0">
-                    <span className="block text-[15.5px]">{i.nom}</span>
-                    <span className="block text-[12px] text-ink-faint">
-                      {i.prestataire_id ? "entreprise extérieure" : "inscrit"}
-                      {i.interventions > 0 &&
-                        ` · ${i.interventions} intervention${i.interventions > 1 ? "s" : ""}`}
+              <li key={i.nom}>
+                <details className="carte px-3.5 py-2.5">
+                  <summary className="list-none cursor-pointer flex items-center gap-3">
+                    <span className="grow min-w-0">
+                      <span className="block text-[15.5px]">{i.nom}</span>
+                      <span className="block text-[12px] text-ink-faint">
+                        {i.prestataire_id ? "entreprise extérieure" : "inscrit"}
+                        {i.interventions > 0 &&
+                          ` · ${i.interventions} intervention${i.interventions > 1 ? "s" : ""}`}
+                        {i.courriel ? " · adresse notée" : ""}
+                      </span>
                     </span>
-                  </span>
-                  <form action={basculerCompte}>
-                    <input type="hidden" name="nom" value={i.nom} />
-                    <input
-                      type="hidden"
-                      name="prestataire"
-                      value={i.prestataire_id ?? ""}
-                    />
-                    <button
-                      className={`h-[38px] px-3 rounded-[10px] text-[12.5px] ${
-                        i.compte
-                          ? "bg-plum-soft text-plum"
-                          : "bg-surface-muted border border-line text-ink-soft"
+                    <span
+                      className={`shrink-0 px-2.5 py-1 rounded-lg text-[12px] ${
+                        i.compte ? "bg-plum-soft text-plum" : "bg-surface-muted text-ink-faint"
                       }`}
                     >
                       {i.compte ? "profil ✓" : "pas de profil"}
-                    </button>
-                  </form>
-                </div>
+                    </span>
+                  </summary>
 
-                <form action={enregistrerCourriel} className="flex gap-2">
-                  <input type="hidden" name="nom" value={i.nom} />
-                  <input type="hidden" name="prestataire" value={i.prestataire_id ?? ""} />
-                  <input
-                    name="email"
-                    type="email"
-                    inputMode="email"
-                    autoComplete="off"
-                    defaultValue={i.courriel ?? ""}
-                    placeholder="Adresse pour le récapitulatif"
-                    className="grow min-w-0 h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
-                  />
-                  <button className="px-3 rounded-[11px] bg-surface-muted border border-line text-[13px]">
-                    Noter
-                  </button>
-                </form>
+                  <div className="mt-2.5 flex flex-col gap-2 border-t border-line pt-2.5">
+                    <form action={basculerCompte} className="flex items-center gap-3">
+                      <input type="hidden" name="nom" value={i.nom} />
+                      <input type="hidden" name="prestataire" value={i.prestataire_id ?? ""} />
+                      <span className="grow text-[13px] text-ink-soft text-pretty leading-snug">
+                        {i.compte
+                          ? "Apparaît au choix des profils."
+                          : "N’apparaît pas au choix des profils."}
+                      </span>
+                      <button
+                        disabled={!reglable}
+                        className={`h-[38px] px-3 rounded-[10px] text-[12.5px] shrink-0 ${
+                          reglable
+                            ? i.compte
+                              ? "bg-surface-muted border border-line text-ink-soft"
+                              : "bg-plum text-white"
+                            : "bg-surface-muted border border-line text-ink-faint"
+                        }`}
+                      >
+                        {i.compte ? "Retirer le profil" : "Donner un profil"}
+                      </button>
+                    </form>
+
+                    <form action={enregistrerCourriel} className="flex gap-2">
+                      <input type="hidden" name="nom" value={i.nom} />
+                      <input type="hidden" name="prestataire" value={i.prestataire_id ?? ""} />
+                      <input
+                        name="email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="off"
+                        defaultValue={i.courriel ?? ""}
+                        placeholder="Adresse pour le récapitulatif"
+                        className="grow min-w-0 h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                      />
+                      <button className="px-3 rounded-[11px] bg-surface-muted border border-line text-[13px]">
+                        Noter
+                      </button>
+                    </form>
+                  </div>
+                </details>
               </li>
             ))}
+            {intervenants.length === 0 && (
+              <li className="carte px-3.5 py-3 text-[13px] text-ink-faint">
+                Aucun intervenant actif.
+              </li>
+            )}
           </ul>
-        </section>
+
+          <form action={ajouterIntervenant} className="flex gap-2">
+            <input
+              name="nom"
+              autoComplete="off"
+              placeholder="Renfort ponctuel à ajouter…"
+              className="carte grow min-w-0 px-4 h-[46px] text-[16px] placeholder:text-ink-faint"
+            />
+            <button className="px-4 rounded-card bg-plum text-white text-[14.5px]">
+              Ajouter
+            </button>
+          </form>
+        </details>
+
       </div>
     </main>
   );
