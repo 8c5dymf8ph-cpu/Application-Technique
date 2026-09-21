@@ -58,6 +58,14 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    Une ligne sans adresse reste inactive — la contrainte l'impose, et c'est juste : une ligne
    active sans destinataire est une promesse en l'air.
 
+7septies. **Une alerte qui ne part pas doit le dire sur-le-champ.** L'alerte bouteille ne concerne
+   que l'emport PAR LE CLIENT — une casse ou une bouteille prise par le personnel ne regarde pas
+   la réception. Mais quand elle devait partir et n'est pas partie, l'écran se taisait : on
+   croyait la réception prévenue alors que rien n'avait bougé. L'écran du dossier dit maintenant
+   laquelle des quatre situations s'applique — partie, sans destinataire, alerte éteinte, ou
+   rédigée mais en attente faute de `RESEND_API_KEY`. Ne jamais laisser une alerte échouer en
+   silence.
+
 7quinquies. **Sans clé d'envoi, on ne prétend pas avoir envoyé.** `RESEND_API_KEY` absente : la
    file reste intacte et l'écran le dit. Un échec n'efface rien non plus — la ligne garde son
    erreur et repart au passage suivant. Ne jamais marquer `envoye_le` sur un message qui n'est
@@ -151,6 +159,13 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    matériel sorti. Revenir en haut de cent dix-neuf lignes ne disait pas ce qui avait changé.
    L'écran d'intervention se lit comme une liste de tâches — le jour en gros, l'avancement
    dessiné, ce qui presse en tête, ce qui est déjà déclaré en bas sous « Déjà déclarées ».
+
+14octies. **L'ordre de la liste est celui du bâtiment, pas celui de l'alphabet.** Trier d'abord
+   par priorité mettait l'urgent du cinquième avant le reste du rez-de-chaussée : on redescendait,
+   on remontait. Et trier les lieux par leur nom renvoyait « 4eme étage » — le palier, qui est un
+   lieu comme un autre — après la chambre 39, donc au milieu du troisième. L'ordre est donc
+   `etages.ordre`, puis le lieu dans l'étage, puis la priorité pour départager deux lignes du
+   même endroit ; en regardant « Tout », un intertitre marque le changement d'étage.
 
 14septies. **Les étages sont des onglets, sur le côté.** Cent dix-neuf lignes à faire défiler
    pour trouver le troisième étage, ce n'est pas une liste, c'est un rouleau. L'écran
@@ -334,12 +349,16 @@ croyait que rien n'avait été enregistré. `RelireAuRetour` marque le premier p
 la page au serveur si l'on revient ; l'écran de validation renvoie alors vers la liste, puisqu'il
 n'y a plus rien à décider. Le poser sur tout écran dont l'état change en le quittant.
 
-**Corriger une donnée n'est pas un geste de terrain.** La description, la priorité et la date de
-déclaration d'une anomalie se corrigent depuis sa fiche ; la date d'un passage depuis le passage,
-et elle déplace TOUTES ses interventions avec lui — un passage ne s'étale pas sur deux jours, et
-c'est la date qui permet à la facture de se rapprocher. Réservé à `suitLesDossiers` (Sarah P et
-Miguel). Le lieu et l'état d'une anomalie ne se corrigent jamais : le lieu ferait mentir
-l'historique de la chambre, l'état se décide en déclarant, en intervenant ou en validant.
+**Corriger une donnée n'est pas un geste de terrain.** La description, la priorité, la date de
+déclaration **et le lieu** d'une anomalie se corrigent depuis sa fiche ; la date d'un passage
+depuis le passage, et elle déplace TOUTES ses interventions avec lui — un passage ne s'étale pas
+sur deux jours, et c'est la date qui permet à la facture de se rapprocher. Réservé à
+`suitLesDossiers` (Sarah P et Miguel). **Le lieu se corrige parce que la reprise s'est trompée de
+porte** : l'ancienne application avait un champ libre, et « lavabo bouché » s'est retrouvé sur le
+palier du 4ème. Sans correction, l'historique de la chambre est faux pour toujours, et le
+comptage des récurrences avec lui. Le déplacement peut se heurter à
+`anomalie_unique_ouverte_par_lieu` : on rend le refus (code 23505) en clair, on ne l'avale pas.
+L'état, lui, ne se corrige jamais ici : il se décide en déclarant, en intervenant ou en validant.
 
 ## Photos
 

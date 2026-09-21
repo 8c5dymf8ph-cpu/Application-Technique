@@ -138,13 +138,28 @@ export default async function Signaler({
         values (${dossier.id}, ${l.id}, ${l.quantite})`;
     }
 
-    // L'alerte part dès le constat, sans attendre que quelqu'un la transmette :
-    // la réception doit pouvoir écrire au client pendant qu'il est encore là.
-    // Le message n'est jamais montré, il est le même pour tous les dossiers.
+    /**
+     * L'alerte part dès le constat, et on dit ce qu'elle devient.
+     *
+     * Elle ne concerne que la bouteille emportée PAR LE CLIENT : une casse ou
+     * une bouteille prise par le personnel ne regarde pas la réception. Mais
+     * quand elle devait partir et n'est pas partie — pas de destinataire, pas
+     * de clé d'envoi —, l'écran se taisait : on croyait la réception prévenue
+     * alors que rien n'avait bougé. Elle l'est maintenant, ou bien on sait
+     * pourquoi.
+     */
+    let verdict: string | null = null;
     if (nature === "emport" && responsable === "client") {
       const [alerte] = await sql<{ destinataires: string[]; actif: boolean }[]>`
         select destinataires, actif from alertes_destinataires
         where evenement = 'incident_bouteille'`;
+      verdict = !alerte?.actif
+        ? "alerte-eteinte"
+        : alerte.destinataires.length === 0
+          ? "alerte-sans-destinataire"
+          : process.env.RESEND_API_KEY
+            ? "alerte-partie"
+            : "alerte-sans-cle";
       if (alerte?.actif && alerte.destinataires.length > 0) {
         const [d] = await sql<
           {
@@ -166,7 +181,9 @@ export default async function Signaler({
       }
     }
 
-    redirect(`/bouteilles/dossier/${dossier.id}` as Route);
+    redirect(
+      `/bouteilles/dossier/${dossier.id}${verdict ? `?fait=${verdict}` : ""}` as Route,
+    );
   }
 
   const etages = [...new Set(chambres.map((c) => c.etage))];

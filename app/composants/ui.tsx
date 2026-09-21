@@ -156,7 +156,39 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
   adresse: { ton: "green", texte: "Adresse enregistrée." },
   declare: { ton: "green", texte: "Anomalie déclarée." },
   supprime: { ton: "green", texte: "Anomalie supprimée." },
+  "alerte-partie": {
+    ton: "green",
+    texte:
+      "La réception est prévenue : le message lui est parti, prêt à être " +
+      "transféré au client.",
+  },
+  "alerte-sans-destinataire": {
+    ton: "red",
+    texte:
+      "Dossier enregistré, mais PERSONNE n’a été prévenu : aucune adresse n’est " +
+      "notée pour l’alerte bouteille. Réglez-la dans Administration → " +
+      "Destinataires des alertes.",
+  },
+  "alerte-eteinte": {
+    ton: "red",
+    texte:
+      "Dossier enregistré, mais l’alerte bouteille est désactivée : la réception " +
+      "n’a rien reçu. Réactivez-la dans Administration → Destinataires des alertes.",
+  },
+  "alerte-sans-cle": {
+    ton: "red",
+    texte:
+      "Dossier enregistré et message rédigé, mais aucune clé d’envoi n’est " +
+      "configurée : il attend dans la file et ne partira pas tant que " +
+      "RESEND_API_KEY n’est pas renseignée dans Vercel.",
+  },
   modifie: { ton: "green", texte: "Modification enregistrée." },
+  "deja-ouverte": {
+    ton: "red",
+    texte:
+      "Rien n’a été changé : ce même problème est déjà ouvert dans le lieu " +
+      "choisi. Clôturez l’un des deux avant de les rapprocher.",
+  },
   intervenant: { ton: "green", texte: "Ajouté à la liste des intervenants." },
   retire: { ton: "green", texte: "Retiré de la liste. Son historique lui reste attaché." },
   remis: { ton: "green", texte: "Remis dans la liste des intervenants." },

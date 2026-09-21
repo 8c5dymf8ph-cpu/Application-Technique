@@ -184,23 +184,25 @@ export default async function Tournee({
   const faitesEnTout = uniques.filter((l) => l.traitee);
 
   /**
-   * Ce qui presse d'abord, ce qui est fait à la fin.
+   * L'ordre du bâtiment, pas l'ordre de l'alphabet.
    *
-   * Une liste de tâches se lit de haut en bas : ce qu'il reste à faire en
-   * premier, l'urgent en tête, et ce qui est déjà coché en dessous — barré,
-   * pour voir son avancement sans qu'il encombre.
+   * Trier d'abord par priorité mettait l'urgent du cinquième avant le reste du
+   * rez-de-chaussée : on redescendait, on remontait. Et trier les lieux par
+   * leur nom renvoyait « 4eme étage » — le palier, qui est un lieu comme un
+   * autre — après la chambre 39, donc au milieu du troisième.
+   *
+   * On suit donc l'étage (`ordre`, celui du bâtiment), puis le lieu dans
+   * l'étage, puis la priorité pour départager deux lignes du même endroit. On
+   * monte une fois, on fait l'étage, on continue. Ce qui est déjà déclaré
+   * passe à la fin, barré : c'est de l'avancement, pas du travail.
    */
   const rang: Record<string, number> = { urgente: 0, haute: 1, normale: 2, basse: 3 };
-  const ordonnees = [
-    ...restantes.sort(
-      (a, b) =>
-        (rang[a.priorite] ?? 2) - (rang[b.priorite] ?? 2) ||
-        a.emplacement.localeCompare(b.emplacement, "fr", { numeric: true }),
-    ),
-    ...faites.sort((a, b) =>
-      a.emplacement.localeCompare(b.emplacement, "fr", { numeric: true }),
-    ),
-  ];
+  const parLieu = (a: Ligne, b: Ligne) =>
+    a.ordre - b.ordre ||
+    a.emplacement.localeCompare(b.emplacement, "fr", { numeric: true }) ||
+    (rang[a.priorite] ?? 2) - (rang[b.priorite] ?? 2);
+
+  const ordonnees = [...restantes.sort(parLieu), ...faites.sort(parLieu)];
 
   const encadre = peutValider(profil.role);
   const supprimable = peutSupprimer(profil.role);
@@ -263,7 +265,10 @@ export default async function Tournee({
   }
 
   return (
-    <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+    /* Une coque, pas une page qui défile : l'en-tête et la colonne d'étages
+       restent, seule la liste bouge. C'est la seule façon pour les bandes de
+       tenir tout le bord de l'écran, du haut jusqu'en bas. */
+    <main className="h-dvh overflow-hidden flex flex-col max-w-md mx-auto">
       <Entete
         titre={nom}
         sous_titre="Ce qu’il y a à traiter"
@@ -273,11 +278,54 @@ export default async function Tournee({
         retour={encadre ? "/technique/intervenants" : "/"}
       />
 
-      {/* De la place sous la dernière ligne : le bouton d'ajout flotte au-dessus
-          du contenu et masquait ce qui se trouvait en bas. */}
-      <div
-        className={`px-5 pt-3 flex flex-col gap-4 grow ${encadre ? "pb-24" : "pb-4"}`}
-      >
+      <div className="flex grow min-h-0">
+        {/* Les étages, sur tout le bord, dans l'ordre du bâtiment. */}
+        {uniques.length > 0 && (
+          <nav
+            aria-label="Étages"
+            className="shrink-0 flex flex-col gap-[3px] py-1.5"
+          >
+            <Link
+              replace
+              href={`/technique/${encodeURIComponent(nom)}${q ? `?q=${encodeURIComponent(q)}` : ""}` as Route}
+              className={`w-[36px] flex-1 min-h-[40px] rounded-r-[10px] grid place-items-center text-[14px] font-medium ${
+                choisi === null ? "bg-ink text-white" : "bg-surface-muted text-ink-faint"
+              }`}
+              style={{ writingMode: "vertical-rl", rotate: "180deg" }}
+            >
+              Tout
+            </Link>
+            {etages.map((e, i) => {
+              const ton = TONS[i % TONS.length];
+              const actif = choisi === e.nom;
+              const p = new URLSearchParams({ etage: e.nom, ...(q ? { q } : {}) });
+              return (
+                <Link
+                  key={e.nom}
+                  replace
+                  href={`/technique/${encodeURIComponent(nom)}?${p}` as Route}
+                  aria-current={actif ? "page" : undefined}
+                  className={`flex-1 min-h-[40px] rounded-r-[10px] grid place-items-center text-[14px] ${ton.fond} ${ton.texte} ${
+                    actif ? "w-[42px] font-semibold shadow-sm" : "w-[36px] opacity-75"
+                  }`}
+                  style={{ writingMode: "vertical-rl", rotate: "180deg" }}
+                >
+                  {/* Le nom court : « 3ème étage » tient mal à la verticale. */}
+                  {e.nom.replace(" étage", "").replace("Rez-de-chaussée", "RDC")}
+                  {e.reste > 0 && ` · ${e.reste}`}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+
+        {/* Seule la liste défile, et de la place sous la dernière ligne : le
+            bouton d'ajout flotte au-dessus et masquait ce qui était en bas. */}
+        <div
+          className={`grow min-h-0 overflow-y-auto pl-3 pr-5 pt-3 flex flex-col gap-4 ${
+            encadre ? "pb-24" : "pb-4"
+          }`}
+        >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
 
         {/* Le jour, en gros : on ouvre l'écran pour savoir où on en est
@@ -328,54 +376,7 @@ export default async function Tournee({
         {uniques.length === 0 ? (
           <Vide>Rien à traiter pour {nom} aujourd’hui.</Vide>
         ) : (
-          <div className="flex gap-0 -mx-1">
-            {/* Les étages, sur le côté, dans l'ordre du bâtiment. */}
-            {/* Les bandes s'étalent sur toute la hauteur visible et se
-                partagent l'espace : une colonne de petits onglets serrés en
-                haut se vise mal avec le pouce. `replace` et non `push` —
-                changer d'étage n'est pas naviguer, et la flèche arrière ne
-                doit pas remonter le premier, puis le cinquième, puis le
-                premier. */}
-            <nav
-              aria-label="Étages"
-              className="shrink-0 sticky top-2 self-start h-[calc(100dvh-7.5rem)] flex flex-col gap-[3px] py-1"
-            >
-              <Link
-                replace
-                href={`/technique/${encodeURIComponent(nom)}${q ? `?q=${encodeURIComponent(q)}` : ""}` as Route}
-                className={`w-[34px] flex-1 min-h-[38px] rounded-l-[10px] grid place-items-center text-[12.5px] font-medium ${
-                  choisi === null
-                    ? "bg-ink text-white"
-                    : "bg-surface-muted text-ink-faint"
-                }`}
-                style={{ writingMode: "vertical-rl", rotate: "180deg" }}
-              >
-                Tout
-              </Link>
-              {etages.map((e, i) => {
-                const ton = TONS[i % TONS.length];
-                const actif = choisi === e.nom;
-                const p = new URLSearchParams({ etage: e.nom, ...(q ? { q } : {}) });
-                return (
-                  <Link
-                    key={e.nom}
-                    replace
-                    href={`/technique/${encodeURIComponent(nom)}?${p}` as Route}
-                    aria-current={actif ? "page" : undefined}
-                    className={`flex-1 min-h-[38px] rounded-l-[10px] grid place-items-center text-[12.5px] font-medium ${ton.fond} ${ton.texte} ${
-                      actif ? "w-[40px] -mr-1.5 shadow-sm font-semibold" : "w-[34px] opacity-75"
-                    }`}
-                    style={{ writingMode: "vertical-rl", rotate: "180deg" }}
-                  >
-                    {/* Le nom court : « 3ème étage » tient mal à la verticale. */}
-                    {e.nom.replace(" étage", "").replace("Rez-de-chaussée", "RDC")}
-                    {e.reste > 0 && ` · ${e.reste}`}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            <ul className="grow min-w-0 flex flex-col pl-3">
+            <ul className="flex flex-col">
               {ordonnees.map((l, i) => {
               const vientDEtreFaite = fait === l.anomalie_id;
               const premiereFaite = l.traitee && (i === 0 || !ordonnees[i - 1].traitee);
@@ -386,6 +387,16 @@ export default async function Tournee({
                   {premiereFaite && restantes.length > 0 && (
                     <p className="etiquette pt-5 pb-2 text-[12px]">Déjà déclarées</p>
                   )}
+                  {/* En regardant « Tout », l'étage change en cours de liste :
+                      sans un trait, on ne voit pas qu'on a changé de niveau. */}
+                  {choisi === null &&
+                    (i === 0 ||
+                      ordonnees[i - 1].etage !== l.etage ||
+                      (l.traitee && !ordonnees[i - 1].traitee)) && (
+                      <p className="etiquette pt-4 pb-1.5 text-[12px] text-plum">
+                        {l.etage}
+                      </p>
+                    )}
                   <div
                     className={`flex items-start gap-3 py-3 border-b border-line ${
                       vientDEtreFaite
@@ -510,8 +521,8 @@ export default async function Tournee({
                 </li>
               )}
             </ul>
-          </div>
         )}
+        </div>
       </div>
 
       {/* Déclarer ce qu'on voit en passant, sans quitter sa tournée. Un

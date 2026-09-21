@@ -6,7 +6,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { viderLaFileEnFond } from "@/lib/envoi";
 import { euros, jours } from "@/lib/domaine";
-import { Entete } from "@/app/composants/ui";
+import { Confirmation, Entete } from "@/app/composants/ui";
 import { Frise } from "@/app/composants/suivi";
 import { ChampCommentaire } from "@/app/composants/fil";
 import {
@@ -70,12 +70,15 @@ const LIBELLE: Record<string, string> = {
 
 export default async function DetailDossier({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
+  const { fait } = await searchParams;
 
   const [d] = await sql<Dossier[]>`
     select id, reference, emplacement, nature::text, responsable::text, client_nom,
@@ -173,6 +176,9 @@ export default async function DetailDossier({
       />
 
       <div className="px-5 py-4 flex flex-col gap-5">
+        {/* Ce que l'alerte est devenue : partie, en attente, ou pas envoyée
+            faute de destinataire. Le silence faisait croire à un envoi. */}
+        <Confirmation quoi={fait} />
         <section className="carte px-4 py-4 flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <div className="grow min-w-0">

@@ -79,14 +79,27 @@ export default async function DetailAnomalie({
 
   const PRIORITES = ["basse", "normale", "haute", "urgente"] as const;
 
+  // Les lieux, pour corriger celui d'une anomalie reprise de travers. Les
+  // paliers et les locaux en font partie : ce sont des lieux comme les autres.
+  const lieux = modifiable
+    ? await sql<{ id: string; code: string; etage: string }[]>`
+        select e.id, e.code, et.nom as etage
+          from emplacements e join etages et on et.id = e.etage_id
+         order by et.ordre, e.code`
+    : [];
+
   /**
    * Corriger une anomalie.
    *
-   * La description reprise de l'ancienne application porte des coquilles, et
-   * une date de déclaration fausse décale tout le comptage des récurrences.
-   * On corrige donc le texte, la priorité et la date — jamais le lieu ni le
-   * statut : le lieu ferait mentir l'historique de la chambre, et le statut se
-   * décide en déclarant, en intervenant ou en validant.
+   * La description reprise de l'ancienne application porte des coquilles, une
+   * date de déclaration fausse décale le comptage des récurrences, et **le
+   * lieu lui-même peut être faux** : l'ancienne application avait un champ
+   * libre, et « lavabo bouché » s'est retrouvé sur le palier du 4ème au lieu
+   * d'une chambre. Si on ne peut pas le corriger, l'historique de la chambre
+   * est faux pour toujours — et le comptage des récurrences avec lui.
+   *
+   * L'état, lui, ne se corrige jamais ici : il se décide en déclarant, en
+   * intervenant ou en validant.
    */
   async function modifier(donnees: FormData) {
     "use server";
@@ -96,20 +109,33 @@ export default async function DetailAnomalie({
     const description = String(donnees.get("description") ?? "").trim();
     const priorite = String(donnees.get("priorite") ?? "normale");
     const jour = String(donnees.get("jour") ?? "").trim();
+    const lieu = String(donnees.get("lieu") ?? "").trim();
     if (!description || !PRIORITES.includes(priorite as (typeof PRIORITES)[number])) return;
 
     // Une date vide ou mal formée ne doit pas effacer la date de déclaration :
     // `coalesce` garde celle qui est en place. L'heure d'origine est conservée
     // — elle sert à ranger deux déclarations du même jour.
     const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : null;
-    await sql`
-      update anomalies
-         set description = ${description},
-             priorite    = ${priorite}::priorite_anomalie,
-             declare_le  = coalesce(${dateValide}::date, declare_le::date)
-                             + declare_le::time,
-             maj_le      = now()
-       where id = ${id}`;
+    try {
+      await sql`
+        update anomalies
+           set description    = ${description},
+               priorite       = ${priorite}::priorite_anomalie,
+               emplacement_id = coalesce(${lieu || null}::uuid, emplacement_id),
+               declare_le     = coalesce(${dateValide}::date, declare_le::date)
+                                  + declare_le::time,
+               maj_le         = now()
+         where id = ${id}`;
+    } catch (e) {
+      // Le même problème ne peut pas être ouvert deux fois au même endroit :
+      // l'index le refuse, et c'est la base qui a raison. On le dit plutôt que
+      // d'avaler l'échec — mais seulement pour CE refus-là : une autre erreur
+      // doit remonter telle quelle, pas se déguiser en doublon.
+      const doublon =
+        typeof e === "object" && e !== null && (e as { code?: string }).code === "23505";
+      if (!doublon) throw e;
+      redirect(`/anomalie/${id}?fait=deja-ouverte` as Route);
+    }
     revalidatePath(`/anomalie/${id}`);
     redirect(`/anomalie/${id}?fait=modifie` as Route);
   }
@@ -254,10 +280,25 @@ export default async function DetailAnomalie({
                   />
                 </label>
               </div>
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Lieu</span>
+                <select
+                  name="lieu"
+                  defaultValue={lieux.find((x) => x.code === anomalie.emplacement)?.id ?? ""}
+                  className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
+                >
+                  {lieux.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.code} — {x.etage}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
-                Le lieu et l’état ne se corrigent pas ici : changer le lieu ferait mentir
-                l’historique de la chambre, et l’état se décide en déclarant, en intervenant ou
-                en validant.
+                Corriger le lieu déplace l’anomalie dans l’historique de la chambre et dans le
+                comptage des récurrences — à faire quand la reprise s’est trompée de porte, pas
+                pour autre chose. L’état ne se corrige pas ici : il se décide en déclarant, en
+                intervenant ou en validant.
               </p>
               <BoutonEnvoi
                 pendant="…"
