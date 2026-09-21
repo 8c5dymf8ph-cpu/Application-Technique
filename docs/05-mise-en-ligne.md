@@ -328,14 +328,18 @@ valeur qu'au déploiement suivant.** Modifier et fermer l'onglet ne change rien 
 croit que la correction n'a pas marché.
 
 1. **vercel.com** → le projet **application-technique**.
-2. Onglet **Settings** (en haut), puis **Environment Variables** dans la colonne de gauche.
-3. Trouver la ligne — par exemple `RESEND_API_KEY` — et ouvrir le menu **⋯** au bout de la ligne,
-   puis **Edit**. La valeur en place ne se relit pas, c'est normal : une clé ne se réaffiche
-   jamais. On la remplace en entier.
-4. Coller la nouvelle valeur, vérifier que les trois cases **Production**, **Preview** et
-   **Development** sont cochées, puis **Save**.
-5. **C'est l'étape qu'on oublie.** Onglet **Deployments**, la première ligne de la liste, menu
-   **⋯** au bout, **Redeploy**, puis confirmer. Deux minutes.
+2. Onglet **Settings** (en haut), puis **Environments** dans la colonne de gauche.
+   *Chercher « Environment Variables » dans cette colonne ne donne rien : les variables sont
+   rangées à l'intérieur de chaque environnement, pas à côté.*
+3. **Cliquer sur la ligne `Production`** — celle qui suit la branche `main` et porte l'adresse
+   `application-technique.vercel.app`. C'est celle qui sert en ligne.
+4. Trouver la ligne — par exemple `RESEND_API_KEY` — et ouvrir le menu **⋯** au bout, puis
+   **Edit**. La valeur en place ne se relit pas, c'est normal : une clé ne se réaffiche jamais.
+   On la remplace en entier.
+5. Coller la nouvelle valeur, puis **Save**.
+6. **C'est l'étape qu'on oublie.** Onglet **Deployments**, la première ligne de la liste, menu
+   **⋯** au bout, **Redeploy**, puis confirmer. Deux minutes. Vercel propose souvent de le faire
+   lui-même juste après l'enregistrement.
 
 Ensuite, sur l'application : `/administration` → **Envoyer maintenant**. Si la file se vide, la
 clé est bonne. Si elle reste en échec, l'écran rend le refus de Resend tel quel, avec la date de
@@ -343,6 +347,11 @@ l'essai — c'est ce texte qui dit quoi faire.
 
 Une clé qui change rend l'ancienne inutilisable : penser à supprimer l'ancienne chez Resend, pour
 ne pas la retrouver un jour sans savoir si elle sert encore.
+
+Pourquoi redéployer : un déploiement Vercel est figé, valeurs comprises — c'est ce qui rend le
+retour en arrière sûr. Nos clés sont lues à chaque requête, donc le changement prendrait sans
+doute effet tout de suite ; mais « sans doute » ne se vérifie pas à distance, et deux minutes de
+déploiement lèvent le doute.
 
 ---
 
