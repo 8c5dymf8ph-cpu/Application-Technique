@@ -5,6 +5,7 @@ import { profilActif } from "@/lib/profil";
 import { Confirmation, Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { RelireAuRetour } from "@/app/composants/relire-au-retour";
 import { enregistrerFichier, supprimerFichier } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -126,6 +127,10 @@ export default async function PhotosProduit({
       <Entete titre="Photos" sous_titre={p.designation} retour={fiche} />
 
       <div className="px-5 py-5 flex flex-col gap-5">
+        {/* Ajouter une photo change ce que cet écran doit montrer : en
+            revenant dessus, on doit voir la liste à jour, pas celle d'avant
+            l'ajout. */}
+        <RelireAuRetour cle={`photos-produit:${id}`} />
         <Confirmation quoi={fait} />
 
         <p className="text-[13px] text-ink-faint text-pretty leading-snug">
