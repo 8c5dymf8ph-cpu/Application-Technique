@@ -701,12 +701,6 @@ export default async function Administration({
           />
         </div>
 
-        <Link
-          href={"/" as Route}
-          className="text-[12.5px] text-plum underline underline-offset-4 self-start"
-        >
-          Retour à l’accueil
-        </Link>
       </div>
     </main>
   );

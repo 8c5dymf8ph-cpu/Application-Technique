@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
+import { Parcours } from "./composants/parcours";
 
 const display = Playfair_Display({
   subsets: ["latin"],
@@ -31,7 +32,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className={`${display.variable} ${body.variable}`}>
-      <body>{children}</body>
+      <body>
+        {/* Compte nos écrans, pour que le retour sache s'il y a quelque chose
+            derrière. Il doit voir tous les changements d'écran, y compris ceux
+            qui n'ont pas de bouton retour : sa place est ici. */}
+        <Parcours />
+        {children}
+      </body>
     </html>
   );
 }

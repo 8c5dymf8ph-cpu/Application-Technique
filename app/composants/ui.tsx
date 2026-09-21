@@ -5,14 +5,29 @@ import type { Route } from "next";
 /** Une adresse construite à partir d'un segment dynamique. */
 type Adresse = Route | (string & {});
 
+/**
+ * L'en-tête d'un écran : d'où l'on vient, où l'on est, et comment rentrer.
+ *
+ * Le retour remonte d'un cran. Il ne suffit pas : depuis le fil d'une anomalie
+ * ouverte au bout de cinq écrans, revenir à l'accueil demandait cinq appuis, et
+ * on finissait par fermer l'application pour la rouvrir. La maison, à droite,
+ * ramène d'un seul geste — de n'importe où, sans rien perdre : tout ce qui est
+ * enregistré l'est déjà.
+ *
+ * Elle est à l'opposé du retour, parce que ce sont deux gestes différents : le
+ * pouce ne doit pas hésiter entre les deux.
+ */
 export function Entete({
   titre,
   sous_titre,
   retour,
+  accueil = true,
 }: {
   titre: string;
   sous_titre?: string;
   retour?: Adresse;
+  /** L'accueil lui-même n'a pas besoin d'un bouton vers lui-même. */
+  accueil?: boolean;
 }) {
   return (
     <header className="bg-plum px-5 pb-[18px] pt-5 flex items-center gap-3">
@@ -22,10 +37,23 @@ export function Entete({
           classe="w-11 h-11 shrink-0 rounded-[13px] bg-white/15 grid place-items-center active:bg-white/25"
         />
       )}
-      <div className="min-w-0">
+      <div className="min-w-0 grow">
         <h1 className="font-display font-bold text-[21px] text-white leading-tight">{titre}</h1>
         {sous_titre && <p className="text-[11.5px] text-white/70 truncate">{sous_titre}</p>}
       </div>
+      {accueil && (
+        <Link
+          href={"/" as Route}
+          aria-label="Revenir à l’accueil"
+          className="w-11 h-11 shrink-0 rounded-[13px] bg-white/15 grid place-items-center active:bg-white/25"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
+               strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M4 10.5L12 4l8 6.5" />
+            <path d="M6 9.8V19a1 1 0 001 1h10a1 1 0 001-1V9.8" />
+          </svg>
+        </Link>
+      )}
     </header>
   );
 }

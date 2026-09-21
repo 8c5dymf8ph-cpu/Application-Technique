@@ -8,6 +8,7 @@ import { profilActif } from "@/lib/profil";
 import { LIBELLE_ROLE, peutValider, type RoleUtilisateur } from "@/lib/domaine";
 import { Confirmation, Entete } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { Depliant, LigneDepliante } from "@/app/composants/depliant";
 
 export const dynamic = "force-dynamic";
 
@@ -374,17 +375,15 @@ export default async function Equipe({
         {LISTES.map((g) => {
           const dedans = personnes.filter((p) => g.roles.includes(p.role));
           return (
-            <details key={g.cle} className="flex flex-col gap-2">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-1">
-                <span className="etiquette">{g.titre}</span>
-                <span className="text-[12.5px] text-ink-faint tabular-nums">
-                  {dedans.filter((p) => p.actif).length} prénom
-                  {dedans.filter((p) => p.actif).length > 1 ? "s" : ""}
-                </span>
-              </summary>
-              <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1">
-                {g.aide}
-              </p>
+            <Depliant
+              key={g.cle}
+              titre={g.titre}
+              aide={g.aide}
+              enCarte={false}
+              indice={`${dedans.filter((p) => p.actif).length} prénom${
+                dedans.filter((p) => p.actif).length > 1 ? "s" : ""
+              }`}
+            >
 
               <ul className="carte divide-y divide-line">
                 {dedans.map((p) => (
@@ -442,25 +441,23 @@ export default async function Equipe({
                   Ajouter
                 </button>
               </form>
-            </details>
+            </Depliant>
           );
         })}
 
         {/* Les intervenants techniques */}
         {/* Elle se rouvre après un ajout ou un retrait : sans cela, la page se
             rechargeait repliée et le geste paraissait n'avoir rien fait. */}
-        <details
-          open={["profil", "adresse", "intervenant", "retire", "remis"].includes(fait ?? "")}
-          className="flex flex-col gap-2"
+        <Depliant
+          titre="Intervenants techniques"
+          enCarte={false}
+          ouvert={["profil", "adresse", "intervenant", "retire", "remis"].includes(fait ?? "")}
+          indice={
+            reglable
+              ? `${actifs.filter((i) => i.compte).length}/${actifs.length} avec profil`
+              : `${actifs.length} noms`
+          }
         >
-          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
-            <span className="etiquette">Intervenants techniques</span>
-            <span className="text-[12.5px] text-ink-faint tabular-nums">
-              {reglable
-                ? `${actifs.filter((i) => i.compte).length} sur ${actifs.length} avec un profil`
-                : `${actifs.length} noms`}
-            </span>
-          </summary>
 
           {!reglable && (
             <p className="rounded-card bg-amber-soft px-4 py-3 text-[13px] text-amber text-pretty leading-snug">
@@ -482,17 +479,17 @@ export default async function Equipe({
           <ul className="flex flex-col gap-1.5">
             {actifs.map((i) => (
               <li key={i.nom}>
-                <details className="carte px-3.5 py-2.5">
-                  <summary className="list-none cursor-pointer flex items-center gap-3">
-                    <span className="grow min-w-0">
-                      <span className="block text-[15.5px]">{i.nom}</span>
-                      <span className="block text-[12px] text-ink-faint">
-                        {i.prestataire_id ? "entreprise extérieure" : "inscrit"}
-                        {i.interventions > 0 &&
-                          ` · ${i.interventions} intervention${i.interventions > 1 ? "s" : ""}`}
-                        {i.courriel ? " · adresse notée" : ""}
-                      </span>
-                    </span>
+                <LigneDepliante
+                  titre={i.nom}
+                  detail={
+                    <>
+                      {i.prestataire_id ? "entreprise extérieure" : "inscrit"}
+                      {i.interventions > 0 &&
+                        ` · ${i.interventions} intervention${i.interventions > 1 ? "s" : ""}`}
+                      {i.courriel ? " · adresse notée" : ""}
+                    </>
+                  }
+                  marque={
                     <span
                       className={`shrink-0 px-2.5 py-1 rounded-lg text-[12px] ${
                         i.compte ? "bg-plum-soft text-plum" : "bg-surface-muted text-ink-faint"
@@ -500,9 +497,9 @@ export default async function Equipe({
                     >
                       {i.compte ? "profil ✓" : "pas de profil"}
                     </span>
-                  </summary>
-
-                  <div className="mt-2.5 flex flex-col gap-2 border-t border-line pt-2.5">
+                  }
+                >
+                  <div className="flex flex-col gap-2 border-t border-line pt-2.5">
                     <form action={basculerCompte} className="flex items-center gap-3">
                       <input type="hidden" name="nom" value={i.nom} />
                       <input type="hidden" name="prestataire" value={i.prestataire_id ?? ""} />
@@ -565,7 +562,7 @@ export default async function Equipe({
                       </BoutonEnvoi>
                     </form>
                   </div>
-                </details>
+                </LigneDepliante>
               </li>
             ))}
             {actifs.length === 0 && (
@@ -591,12 +588,12 @@ export default async function Equipe({
           </form>
 
           {retires.length > 0 && (
-            <details className="carte px-3.5 py-3">
-              <summary className="list-none cursor-pointer text-[12.5px] text-plum underline underline-offset-4">
-                {retires.length} personne{retires.length > 1 ? "s" : ""} retirée
-                {retires.length > 1 ? "s" : ""} de la liste
-              </summary>
-              <ul className="mt-2 flex flex-col gap-2">
+            <Depliant
+              titre="Retirés de la liste"
+              aide="Leur travail reste attaché à leur nom. Un appui les remet."
+              indice={`${retires.length} personne${retires.length > 1 ? "s" : ""}`}
+            >
+              <ul className="flex flex-col gap-2">
                 {retires.map((i) => (
                   <li key={i.nom} className="flex items-center gap-3">
                     <span className="grow min-w-0">
@@ -621,9 +618,9 @@ export default async function Equipe({
                   </li>
                 ))}
               </ul>
-            </details>
+            </Depliant>
           )}
-        </details>
+        </Depliant>
 
       </div>
     </main>
