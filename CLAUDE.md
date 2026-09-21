@@ -400,6 +400,12 @@ d'entrée. Plusieurs par produit, dont une mise en avant, qui est
 celle que le technicien voit en choisissant son matériel. Sans photo, l'écran dessine la bouteille à sa
 couleur — il n'attend jamais une image pour fonctionner.
 
+**Un bouton dans un lien reste un lien.** La photo d'un article ouvrait sa fenêtre ET ajoutait
+l'article : `preventDefault()` et `stopPropagation()` n'y suffisaient pas. Elle est désormais
+placée À CÔTÉ du lien, jamais dedans — il n'y a plus rien à arrêter. Et à 92 px, le nom et les
+boutons de quantité ne tiennent plus sur la même ligne qu'elle : la carte d'un article retenu se
+lit sur deux lignes, le nom en haut, les gestes en dessous.
+
 **Une photo se regarde en grand, sans quitter l'écran.** Une vignette de 74 px ne dit pas si la
 fuite est réparée, et ouvrir un onglet faisait perdre sa place. `Vignettes` ouvre une fenêtre
 native — flèches, glissement du doigt, Échap — et prend `taille` : 104 px côté technicien, parce

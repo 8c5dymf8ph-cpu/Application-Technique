@@ -114,9 +114,49 @@ Elles ne vivent pas dans la base : elles vivent dans Supabase Storage.
 1. Créer un compte sur **resend.com**. L'offre gratuite donne 100 messages par jour et 3 000 par
    mois ; l'hôtel en enverra quelques-uns.
 2. **API Keys → Create**, copier la clé. Elle se saisit dans Vercel à l'étape suivante.
-3. Pour que les messages partent d'une adresse de l'hôtel, ajouter le domaine dans **Domains** et
-   poser les enregistrements DNS demandés. Sans cette étape, l'expéditeur reste
-   `onboarding@resend.dev`, ce qui suffit pour essayer.
+
+### Vérifier le domaine — ce que ça débloque, et ce que ça ne fait pas
+
+**Recevoir à `fom@hotelparisianer.com` ne demande rien.** Cette boîte existe déjà chez
+l'hébergeur de messagerie de l'hôtel et reçoit ce qu'on lui envoie. Rien à faire chez Resend
+pour ça.
+
+Ce que la vérification débloque, c'est **d'envoyer AU NOM du domaine**. Tant qu'aucun domaine
+n'est vérifié, Resend n'accepte qu'une seule destination : l'adresse du titulaire du compte.
+Tout message adressé à quelqu'un d'autre est refusé, avec ce texte, que `/administration`
+affiche en toutes lettres :
+
+> *You can only send testing emails to your own email address. To send emails to other
+> recipients, please verify a domain at resend.com/domains*
+
+**La marche à suivre.**
+
+1. Resend → **Domains → Add Domain**. Saisir le **nom complet** : `hotelparisianer.com`.
+   Pas `hotelparisianer` seul — Resend attend un domaine, pas un mot.
+2. Resend affiche alors **trois enregistrements DNS** à poser, et les donne tout faits :
+   - un **MX** sur le sous-domaine `send` — il sert aux retours (adresses mortes, refus) ;
+   - un **TXT** sur `send` aussi — le SPF, qui dit que Resend a le droit d'envoyer pour vous ;
+   - un **TXT** sur `resend._domainkey` — la clé DKIM, qui signe les messages.
+3. Les poser chez celui qui héberge le DNS de `hotelparisianer.com` — souvent le registrar
+   (OVH, Gandi, Ionos, GoDaddy…), parfois Cloudflare. On y cherche « Zone DNS » ou
+   « Enregistrements DNS », et on ajoute les trois lignes en recopiant exactement ce que Resend
+   affiche.
+   - Si le champ demande un nom **relatif**, écrire `send` et `resend._domainkey` ;
+   - s'il demande un nom **complet**, écrire `send.hotelparisianer.com` et
+     `resend._domainkey.hotelparisianer.com`.
+   - Ne pas toucher aux MX existants du domaine : celui de Resend est sur `send`, il ne
+     remplace pas la messagerie de l'hôtel.
+4. Revenir sur Resend → **Verify**. Le domaine passe à *Verified* — quelques minutes en
+   général, jusqu'à quelques heures si le DNS est lent.
+5. Dans Vercel, poser `MAIL_EXPEDITEUR` avec une adresse **de ce domaine** :
+   `Hôtel Parisianer <technique@hotelparisianer.com>`. Cette boîte n'a pas besoin d'exister —
+   c'est une adresse d'expédition. Redéployer.
+6. Ouvrir `/administration` → **Envoyer maintenant**. Les messages en attente repartent.
+
+**En attendant, pour essayer tout de suite** : mettre comme destinataire de l'alerte bouteille
+l'adresse du compte Resend lui-même, dans `/administration` → *Destinataires des alertes*. Le
+message partira sans rien vérifier, et l'on saura que toute la chaîne fonctionne — il ne
+restera qu'à changer le destinataire une fois le domaine en place.
 
 **Un message part dans la seconde qui suit son dépôt** : l'alerte bouteille doit joindre la
 réception pendant que le client est peut-être encore là. Une tâche planifiée repasse une fois par
@@ -142,7 +182,7 @@ déclencher un passage sans attendre.
 | `SUPABASE_SECRET_KEY` | Supabase → **Connect** → *Server* → `SUPABASE_SECRET_KEY` (`sb_secret_…`) | idem |
 | `SUPABASE_BUCKET` | `fichiers` | Vaut `fichiers` par défaut — à ne renseigner que si le seau porte un autre nom |
 | `RESEND_API_KEY` | Resend → API Keys | Rien ne part. Les messages s'accumulent dans la file sans se perdre |
-| `MAIL_EXPEDITEUR` | `Parisianer <technique@contacthotelparisianer.com>`, ou `onboarding@resend.dev` pour essayer | L'expéditeur par défaut de Resend est employé |
+| `MAIL_EXPEDITEUR` | `Hôtel Parisianer <technique@hotelparisianer.com>` — une adresse d'un domaine **vérifié** chez Resend | L'expéditeur reste `onboarding@resend.dev`, et Resend n'accepte alors que l'adresse du titulaire du compte |
 | `CRON_SECRET` | une longue chaîne au hasard, que vous inventez | `/api/envoi` refuse tout appel : la file ne se vide plus automatiquement |
 
    Prendre bien la chaîne du *pooling* et non la connexion directe : Vercel ouvre beaucoup de
@@ -196,6 +236,7 @@ L'application s'ouvre ensuite en plein écran, sans barre de navigateur.
 | Une photo ne s'enregistre pas | Le seau `fichiers` n'existe pas, ou porte un autre nom |
 | Rien ne part en mail | `RESEND_API_KEY` absente — l'écran `/administration` le dit |
 | Les mails partent mais tombent en spam | Le domaine n'est pas vérifié chez Resend |
+| « en échec » dans `/administration`, avec *you can only send testing emails…* | Aucun domaine vérifié : Resend n'accepte que l'adresse du titulaire du compte. Voir « Vérifier le domaine » plus haut |
 | « non autorisé » sur `/api/envoi` | `CRON_SECRET` absente |
 
 Rien de tout cela ne perd de données : la base garde tout, et la file de messages repart au

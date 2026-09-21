@@ -258,20 +258,27 @@ export default async function TraiterAnomalie({
 
           {retenus.length > 0 && (
             <ul className="flex flex-col gap-2">
+              {/* Deux lignes, pas une : à 92 px la photo, le nom et les
+                  boutons de quantité côte à côte écrasaient le nom sur un mot
+                  par ligne. Le nom en haut, les gestes en dessous. */}
               {retenus.map((p) => (
-                <li key={p.id} className="carte px-3.5 py-3 flex items-center gap-3">
-                  <PhotoProduit photo={p.photo} designation={p.designation} taille={76} />
-                  <span className="flex flex-col grow min-w-0">
-                    <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
-                      {p.designation}
+                <li key={p.id} className="carte px-3.5 py-3 flex flex-col gap-2.5">
+                  <div className="flex items-center gap-3.5">
+                    <PhotoProduit photo={p.photo} designation={p.designation} taille={92} />
+                    <span className="flex flex-col grow min-w-0">
+                      <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
+                        {p.designation}
+                      </span>
+                      <span className="text-[13.5px] text-ink-faint text-pretty">
+                        {p.code} · reste {p.stock} en réserve
+                      </span>
                     </span>
-                    <span className="text-[13.5px] text-ink-faint">
-                      {p.code} · reste {p.stock} en réserve
-                    </span>
-                  </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
                   {/* Combien il en a pris. On ne propose jamais plus que la
                       réserve : sortir ce qu'on n'a pas fausserait le stock. */}
-                  <span className="flex items-center gap-1 shrink-0">
+                  <span className="flex items-center gap-1 grow">
                     <Link
                       href={lien({
                         pris: ecrire(
@@ -310,14 +317,16 @@ export default async function TraiterAnomalie({
                   </span>
                   <Link
                     href={lien({ pris: ecrire(lu.filter((e) => e.id !== p.id)) })}
-                    aria-label="Retirer"
-                    className="w-11 h-11 shrink-0 rounded-[11px] bg-surface-muted grid place-items-center"
+                    aria-label="Retirer cet article"
+                    className="h-11 shrink-0 px-3.5 rounded-[11px] bg-surface-muted flex items-center gap-2 text-[13.5px] text-ink-soft"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
                          strokeWidth="2.2" strokeLinecap="round">
                       <path d="M6 12h12" />
                     </svg>
+                    Retirer
                   </Link>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -375,31 +384,36 @@ export default async function TraiterAnomalie({
                 // Il reste visible — sinon on le cherche sans comprendre — mais
                 // il ne s'ajoute pas, et il dit pourquoi.
                 const epuise = p.stock <= 0;
-                const dedans = (
-                  <>
-                    <PhotoProduit photo={p.photo} designation={p.designation} taille={76} />
-                    <span className="flex flex-col grow min-w-0">
-                      <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
-                        {p.designation}
-                      </span>
-                      <span className={`text-[14px] ${epuise ? "text-red" : "text-ink-faint"}`}>
-                        {epuise ? "épuisé — rien en réserve" : `reste ${p.stock} en réserve`}
-                      </span>
+                const nom_ = (
+                  <span className="flex flex-col grow min-w-0">
+                    <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
+                      {p.designation}
                     </span>
-                  </>
+                    <span className={`text-[14px] ${epuise ? "text-red" : "text-ink-faint"}`}>
+                      {epuise ? "épuisé — rien en réserve" : `reste ${p.stock} en réserve`}
+                    </span>
+                  </span>
                 );
                 return (
-                  <li key={p.id}>
+                  <li
+                    key={p.id}
+                    className={`px-3 py-3 rounded-card bg-surface-muted border border-line flex items-center gap-3.5 ${
+                      epuise ? "opacity-55" : ""
+                    }`}
+                  >
+                    {/* La photo est À CÔTÉ du lien, pas dedans : arrêter la
+                        propagation d'un clic ne suffisait pas — on l'ouvrait
+                        en grand ET l'article s'ajoutait. Hors du lien, il n'y
+                        a plus rien à arrêter. */}
+                    <PhotoProduit photo={p.photo} designation={p.designation} taille={92} />
                     {epuise ? (
-                      <div className="px-3 py-3 rounded-card bg-surface-muted border border-line flex items-center gap-3.5 opacity-55">
-                        {dedans}
-                      </div>
+                      nom_
                     ) : (
                       <Link
                         href={lien({ pris: ecrire([...lu, { id: p.id, qte: 1 }]) })}
-                        className="px-3 py-3 rounded-card bg-surface-muted border border-line flex items-center gap-3.5 active:bg-plum-soft"
+                        className="grow min-w-0 flex items-center gap-3.5 active:opacity-70"
                       >
-                        {dedans}
+                        {nom_}
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
                              strokeWidth="2.2" strokeLinecap="round" className="shrink-0">
                           <path d="M6 12h12" /><path d="M12 6v12" />
