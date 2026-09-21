@@ -10,6 +10,7 @@ import { deposerRecap } from "@/lib/recap";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
+import { RechercheVive } from "@/app/composants/recherche-vive";
 import type { Message } from "@/app/composants/fil";
 
 export const dynamic = "force-dynamic";
@@ -47,14 +48,14 @@ const PRESSE: Record<string, { ton: string; titre: string }> = {
  * mot quand on tient le téléphone d'une main.
  */
 const TONS = [
-  { fond: "bg-[#F6C9CE]", texte: "text-[#7A2B36]" },
-  { fond: "bg-[#C5DCEC]", texte: "text-[#1F4964]" },
-  { fond: "bg-[#F4E3B2]", texte: "text-[#6B5312]" },
-  { fond: "bg-[#D6CCEA]", texte: "text-[#43326E]" },
-  { fond: "bg-[#C8E4D2]", texte: "text-[#1F5236]" },
-  { fond: "bg-[#EBD3C0]", texte: "text-[#6A4324]" },
-  { fond: "bg-[#CFD6E4]", texte: "text-[#333F58]" },
-  { fond: "bg-[#EFD0E2]", texte: "text-[#6A2B55]" },
+  { fond: "bg-[#F6C9CE]", texte: "text-[#7A2B36]" }, // rose
+  { fond: "bg-[#C5DCEC]", texte: "text-[#1F4964]" }, // bleu
+  { fond: "bg-[#F4E3B2]", texte: "text-[#6B5312]" }, // jaune
+  { fond: "bg-[#D6CCEA]", texte: "text-[#43326E]" }, // violet
+  { fond: "bg-[#C8E4D2]", texte: "text-[#1F5236]" }, // vert
+  { fond: "bg-[#BFE3E2]", texte: "text-[#14524F]" }, // turquoise
+  { fond: "bg-[#F8D3BE]", texte: "text-[#8A3F1E]" }, // corail
+  { fond: "bg-[#EFD0E2]", texte: "text-[#6A2B55]" }, // mauve
 ];
 
 function Chevrons({ priorite }: { priorite: string }) {
@@ -76,7 +77,7 @@ export default async function Tournee({
   searchParams,
 }: {
   params: Promise<{ intervenant: string }>;
-  searchParams: Promise<{ fait?: string; etage?: string }>;
+  searchParams: Promise<{ fait?: string; etage?: string; q?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
@@ -88,7 +89,7 @@ export default async function Tournee({
   // Celle qu'on vient de déclarer : elle se retrouve cochée, mise en avant, et
   // l'ancre du navigateur amène l'écran dessus. Sans cela on revenait en haut
   // d'une liste de douze lignes sans savoir ce qui avait changé.
-  const { fait, etage } = await searchParams;
+  const { fait, etage, q = "" } = await searchParams;
 
   const tournee = await tourneeEnCours(intervenant);
 
@@ -164,7 +165,18 @@ export default async function Tournee({
   // se retrouverait devant une liste vide sans savoir où l'on est : l'onglet
   // choisi reste, même s'il ne reste rien dessus.
   const choisi = etage && etages.some((e) => e.nom === etage) ? etage : null;
-  const vues = choisi ? uniques.filter((l) => l.etage === choisi) : uniques;
+
+  // La recherche porte sur ce qu'on a sous les yeux : la description et le
+  // lieu. On cherche « mitigeur » ou « 27 », pas un numéro de référence.
+  const terme = q.trim().toLowerCase();
+  const correspond = (l: Ligne) =>
+    terme === "" ||
+    l.description.toLowerCase().includes(terme) ||
+    l.emplacement.toLowerCase().includes(terme);
+
+  const vues = uniques.filter(
+    (l) => (choisi === null || l.etage === choisi) && correspond(l),
+  );
 
   const faites = vues.filter((l) => l.traitee);
   const restantes = vues.filter((l) => !l.traitee);
@@ -280,9 +292,6 @@ export default async function Tournee({
                 {aujourdhui.getDate()}
                 <span className="text-[20px] text-ink-soft">.{jourCourt}</span>
               </span>
-              <span className="px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[10.5px] uppercase tracking-[0.06em]">
-                Aujourd’hui
-              </span>
             </span>
           </span>
           <span className="shrink-0 text-right">
@@ -294,9 +303,21 @@ export default async function Tournee({
           </span>
         </div>
 
+        {/* Chercher plutôt que faire défiler. On tape « mitigeur » ou « 27 » :
+            la description et le lieu, rien d'autre — un numéro de référence ne
+            se retient pas. La recherche garde l'étage regardé. */}
+        {uniques.length > 0 && (
+          <RechercheVive
+            valeur={q}
+            base={`/technique/${encodeURIComponent(nom)}`}
+            garde={choisi ? { etage: choisi } : {}}
+            placeholder="Chercher une anomalie, une chambre…"
+          />
+        )}
+
         {/* L'avancement, dessiné : un chiffre seul ne se lit pas en marchant. */}
         {uniques.length > 0 && (
-          <div className="h-[6px] rounded-full bg-surface-muted overflow-hidden -mt-2">
+          <div className="h-[6px] rounded-full bg-surface-muted overflow-hidden">
             <div
               className="h-full rounded-full bg-green transition-[width]"
               style={{ width: `${Math.round((faitesEnTout.length / uniques.length) * 100)}%` }}
@@ -309,13 +330,20 @@ export default async function Tournee({
         ) : (
           <div className="flex gap-0 -mx-1">
             {/* Les étages, sur le côté, dans l'ordre du bâtiment. */}
+            {/* Les bandes s'étalent sur toute la hauteur visible et se
+                partagent l'espace : une colonne de petits onglets serrés en
+                haut se vise mal avec le pouce. `replace` et non `push` —
+                changer d'étage n'est pas naviguer, et la flèche arrière ne
+                doit pas remonter le premier, puis le cinquième, puis le
+                premier. */}
             <nav
               aria-label="Étages"
-              className="shrink-0 sticky top-2 self-start flex flex-col gap-1 pt-1"
+              className="shrink-0 sticky top-2 self-start h-[calc(100dvh-7.5rem)] flex flex-col gap-[3px] py-1"
             >
               <Link
-                href={`/technique/${encodeURIComponent(nom)}` as Route}
-                className={`w-[30px] py-3 rounded-l-[9px] grid place-items-center text-[10.5px] font-medium ${
+                replace
+                href={`/technique/${encodeURIComponent(nom)}${q ? `?q=${encodeURIComponent(q)}` : ""}` as Route}
+                className={`w-[34px] flex-1 min-h-[38px] rounded-l-[10px] grid place-items-center text-[12.5px] font-medium ${
                   choisi === null
                     ? "bg-ink text-white"
                     : "bg-surface-muted text-ink-faint"
@@ -327,15 +355,15 @@ export default async function Tournee({
               {etages.map((e, i) => {
                 const ton = TONS[i % TONS.length];
                 const actif = choisi === e.nom;
+                const p = new URLSearchParams({ etage: e.nom, ...(q ? { q } : {}) });
                 return (
                   <Link
                     key={e.nom}
-                    href={
-                      `/technique/${encodeURIComponent(nom)}?etage=${encodeURIComponent(e.nom)}` as Route
-                    }
+                    replace
+                    href={`/technique/${encodeURIComponent(nom)}?${p}` as Route}
                     aria-current={actif ? "page" : undefined}
-                    className={`w-[30px] py-3 rounded-l-[9px] grid place-items-center text-[10.5px] font-medium ${ton.fond} ${ton.texte} ${
-                      actif ? "w-[34px] -mr-1 shadow-sm" : "opacity-70"
+                    className={`flex-1 min-h-[38px] rounded-l-[10px] grid place-items-center text-[12.5px] font-medium ${ton.fond} ${ton.texte} ${
+                      actif ? "w-[40px] -mr-1.5 shadow-sm font-semibold" : "w-[34px] opacity-75"
                     }`}
                     style={{ writingMode: "vertical-rl", rotate: "180deg" }}
                   >
@@ -356,7 +384,7 @@ export default async function Tournee({
                   {/* La bascule entre ce qui reste et ce qui est fait se voit :
                       sinon la liste paraît mélangée. */}
                   {premiereFaite && restantes.length > 0 && (
-                    <p className="etiquette pt-4 pb-1.5">Déjà déclarées</p>
+                    <p className="etiquette pt-5 pb-2 text-[12px]">Déjà déclarées</p>
                   )}
                   <div
                     className={`flex items-start gap-3 py-3 border-b border-line ${
@@ -394,7 +422,7 @@ export default async function Tournee({
                       className="grow min-w-0 flex flex-col gap-1 active:opacity-70"
                     >
                       <span
-                        className={`text-[16px] font-display font-semibold leading-snug text-pretty ${
+                        className={`text-[17.5px] font-display font-semibold leading-snug text-pretty ${
                           l.traitee ? "text-ink-faint line-through" : ""
                         }`}
                       >
@@ -404,7 +432,7 @@ export default async function Tournee({
                           sinon on croit qu'il y a un lave-vaisselle en 57. */}
                       <span className="flex flex-wrap items-center gap-1.5">
                         <span
-                          className={`px-1.5 py-0.5 rounded-md text-[11.5px] font-medium ${
+                          className={`px-2 py-0.5 rounded-md text-[13px] font-medium ${
                             l.traitee
                               ? "bg-surface-muted text-ink-faint"
                               : "bg-amber-soft text-amber"
@@ -412,9 +440,9 @@ export default async function Tournee({
                         >
                           {l.emplacement}
                         </span>
-                        <span className="text-[11.5px] text-ink-faint">{l.etage}</span>
+                        <span className="text-[12.5px] text-ink-faint">{l.etage}</span>
                         {l.traitee && (
-                          <span className="text-[11.5px] text-ink-faint">
+                          <span className="text-[12.5px] text-ink-faint">
                             · {l.materiel ?? "aucun matériel"}
                           </span>
                         )}
@@ -444,15 +472,14 @@ export default async function Tournee({
                         aria-label="Supprimer cette anomalie"
                         className="list-none cursor-pointer absolute top-[12px] right-0 w-8 h-8 grid place-items-center text-ink-faint group-open/sup:text-red group-open/sup:bg-red-soft rounded-lg"
                       >
-                        {/* Un balai : le geste qu'on fait quand une ligne
-                            n'aurait jamais dû être là. */}
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                        {/* Une poubelle : tout le monde sait ce que c'est. */}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
                              strokeLinejoin="round" aria-hidden>
-                          <path d="M16.5 3.5l4 4" />
-                          <path d="M18.5 5.5l-6.5 6.5" />
-                          <path d="M13 11l-1.5-1.5-5.5 5.5 4.5 4.5 5.5-5.5L14.5 12.5" />
-                          <path d="M6 15l-2.5 5.5L9 18" />
+                          <path d="M4 7h16" />
+                          <path d="M9.5 7V5.2A1.2 1.2 0 0110.7 4h2.6A1.2 1.2 0 0114.5 5.2V7" />
+                          <path d="M6.5 7l.8 11.3A1.8 1.8 0 009.1 20h5.8a1.8 1.8 0 001.8-1.7L17.5 7" />
+                          <path d="M10.5 11v5M13.5 11v5" />
                         </svg>
                       </summary>
                       <div className="ml-[38px] mb-2.5 rounded-card bg-red-soft px-3.5 py-3 flex flex-col gap-2">
@@ -476,8 +503,10 @@ export default async function Tournee({
               );
             })}
               {vues.length === 0 && (
-                <li className="py-8 text-[14px] text-ink-faint text-center text-pretty">
-                  Rien à traiter à cet étage.
+                <li className="py-8 text-[14.5px] text-ink-faint text-center text-pretty">
+                  {terme
+                    ? `Rien qui corresponde à « ${q.trim()} »${choisi ? ` à cet étage` : ""}.`
+                    : "Rien à traiter à cet étage."}
                 </li>
               )}
             </ul>

@@ -18,6 +18,7 @@ import type { Route } from "next";
 export function RechercheVive({
   valeur,
   base,
+  garde,
   placeholder,
 }: {
   valeur: string;
@@ -26,6 +27,12 @@ export function RechercheVive({
    * serveur — seulement des données —, alors l'adresse se compose ici.
    */
   base: string;
+  /**
+   * Ce qu'il faut garder dans l'adresse en plus de la recherche — l'étage
+   * regardé, par exemple. Sans cela, taper une lettre renvoyait à « Tout » :
+   * on cherchait dans l'étage et l'étage disparaissait sous les doigts.
+   */
+  garde?: Record<string, string>;
   placeholder: string;
 }) {
   const routeur = useRouter();
@@ -41,11 +48,16 @@ export function RechercheVive({
     const minuteur = setTimeout(() => {
       // `replace` et non `push` : chercher n'est pas naviguer, et le retour ne
       // doit pas repasser par chaque lettre tapée.
-      const suite = texte.trim() ? `?q=${encodeURIComponent(texte.trim())}` : "";
-      routeur.replace(`${base}${suite}` as Route, { scroll: false });
+      const p = new URLSearchParams(garde ?? {});
+      if (texte.trim()) p.set("q", texte.trim());
+      const suite = p.toString();
+      routeur.replace(`${base}${suite ? `?${suite}` : ""}` as Route, { scroll: false });
     }, 250);
     return () => clearTimeout(minuteur);
-  }, [texte, base, routeur]);
+    // `garde` est un objet reconstruit à chaque rendu : on le compare sur son
+    // contenu, sinon le minuteur repartirait à chaque frappe du parent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [texte, base, JSON.stringify(garde ?? {}), routeur]);
 
   return (
     <div className="relative">

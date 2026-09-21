@@ -156,10 +156,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    pour trouver le troisième étage, ce n'est pas une liste, c'est un rouleau. L'écran
    d'intervention porte une colonne d'onglets verticaux dans l'ordre du bâtiment, une couleur
    par étage et le reste à traiter sur chacun — on reconnaît sa bande avant de lire son nom,
-   comme la bouteille bleue et la bouteille rouge. L'onglet choisi reste même s'il ne reste
-   rien dessus, sinon on se retrouve devant une liste vide sans savoir où l'on est. Le
-   compteur du haut et « Fin d'intervention » portent sur TOUT le passage, jamais sur l'étage
-   regardé. **Le balai supprime**, au bout de la ligne, là où on la lit.
+   comme la bouteille bleue et la bouteille rouge. **Les bandes se partagent toute la hauteur
+   visible** : une colonne d'onglets serrés en haut se vise mal avec le pouce. L'onglet choisi
+   reste même s'il ne reste rien dessus, sinon on se retrouve devant une liste vide sans savoir
+   où l'on est. Le compteur du haut et « Fin d'intervention » portent sur TOUT le passage,
+   jamais sur l'étage regardé. **Choisir un étage se fait en `replace`, pas en `push`** :
+   changer d'étage n'est pas naviguer, et la flèche arrière remontait le premier étage, puis le
+   cinquième, puis le premier, au lieu de sortir de l'écran. Une **recherche** filtre sur la
+   description et le lieu — « mitigeur », « 27 » — en gardant l'étage regardé. **La poubelle
+   supprime**, au bout de la ligne, là où on la lit.
 
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
