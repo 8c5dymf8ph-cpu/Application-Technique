@@ -9,6 +9,7 @@ import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { profilActif } from "@/lib/profil";
 import { peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
+import { Depliant } from "@/app/composants/depliant";
 import { envoyerCourrielsEnAttente } from "@/lib/envoi";
 import { colonneExiste } from "@/lib/schema";
 import { depot, verifierDepot } from "@/lib/stockage";
@@ -304,18 +305,17 @@ export default async function Administration({
         )}
 
         {/* Ce que la base sait faire */}
-        <details
-          open={enAttente.length > 0 || fichiersEnAttente.length > 0 || Boolean(maj)}
-          className="flex flex-col gap-2"
-        >
-          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
-            <span className="etiquette">État de la base</span>
+        <Depliant
+          titre="État de la base"
+          enCarte={false}
+          ouvert={enAttente.length > 0 || fichiersEnAttente.length > 0 || Boolean(maj)}
+          indice={
             <span
-              className={`text-[12.5px] tabular-nums ${
+              className={
                 fichiersEnAttente.length === 0 && enAttente.length === 0
                   ? "text-green"
                   : "text-amber"
-              }`}
+              }
             >
               {fichiersEnAttente.length > 0
                 ? `${fichiersEnAttente.length} fichier${fichiersEnAttente.length > 1 ? "s" : ""} à jouer`
@@ -323,7 +323,8 @@ export default async function Administration({
                   ? "à jour"
                   : `${enAttente.length} mise${enAttente.length > 1 ? "s" : ""} à jour en attente`}
             </span>
-          </summary>
+          }
+        >
 
           {/* Le verdict de la dernière tentative. */}
           {maj && (
@@ -417,18 +418,19 @@ export default async function Administration({
               </li>
             ))}
           </ul>
-        </details>
+        </Depliant>
 
         {/* Les envois */}
-        <details open={attente.length > 0} className="flex flex-col gap-2">
-          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
-            <span className="etiquette">Courriels</span>
-            <span className="text-[12.5px] text-ink-faint">
-              {attente.length === 0
-                ? "rien en attente"
-                : `${attente.reduce((n, a) => n + a.nombre, 0)} en attente`}
-            </span>
-          </summary>
+        <Depliant
+          titre="Courriels"
+          enCarte={false}
+          ouvert={attente.length > 0}
+          indice={
+            attente.length === 0
+              ? "rien en attente"
+              : `${attente.reduce((n, a) => n + a.nombre, 0)} en attente`
+          }
+        >
 
           {!configure && (
             <p className="rounded-card bg-amber-soft px-4 py-3 text-[12.5px] text-amber text-pretty leading-snug">
@@ -581,7 +583,7 @@ export default async function Administration({
               </ul>
             </details>
           )}
-        </details>
+        </Depliant>
 
         {/* Où vont les photos et les factures */}
         {!verdict && (
@@ -623,14 +625,12 @@ export default async function Administration({
         )}
 
         {/* Qui reçoit quoi */}
-        <details className="flex flex-col gap-2">
-          <summary className="list-none flex items-center justify-between cursor-pointer py-1">
-            <span className="etiquette">Destinataires des alertes</span>
-            <span className="text-[12.5px] text-ink-faint">
-              {alertes.filter((a) => a.destinataires.length > 0).length} sur {alertes.length}{" "}
-              réglés
-            </span>
-          </summary>
+        <Depliant
+          titre="Destinataires des alertes"
+          aide="Qui reçoit quoi, et à quelle adresse"
+          enCarte={false}
+          indice={`${alertes.filter((a) => a.destinataires.length > 0).length}/${alertes.length} réglés`}
+        >
           {alertes.map((a) => {
             const e = EVENEMENT[a.evenement] ?? { titre: a.evenement, aide: "" };
             return (
@@ -670,7 +670,7 @@ export default async function Administration({
               </form>
             );
           })}
-        </details>
+        </Depliant>
 
         {/* Le reste du paramétrage */}
         <div className="flex flex-col gap-3">
