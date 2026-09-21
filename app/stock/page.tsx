@@ -6,6 +6,7 @@ import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Recherche, Stat } from "@/app/composants/suivi";
+import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +32,11 @@ type Produit = {
 export default async function Stock({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; lieu?: string }>;
+  searchParams: Promise<{ q?: string; lieu?: string; metier?: string; etat?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { q = "", lieu = "tous" } = await searchParams;
+  const { q = "", lieu = "tous", metier = "tous", etat = "tous" } = await searchParams;
   const administre = peutValider(profil.role);
   const terme = q.trim().toLowerCase();
 
@@ -55,10 +56,29 @@ export default async function Stock({
 
   // Les familles de lieu viennent des données, pas d'une liste écrite en dur :
   // le référentiel peut changer sans qu'on retouche l'écran.
-  const familles = await sql<{ lieu: string; nombre: number }[]>`
-    select coalesce(categorie_lieu, 'Sans catégorie') as lieu, count(*)::int as nombre
-    from v_stock_produits
-    group by 1 order by 2 desc, 1`;
+  // Deux orthographes de la même chose sont la même chose. La reprise a laissé
+  // « Salle de Bain » et « Salle de bain » : deux pastilles côte à côte pour un
+  // seul rayon, et un produit sur quatre invisible dans celle qu'on choisit. On
+  // regroupe sans casse, et on affiche l'écriture la plus fréquente.
+  const familles = await sql<{ cle: string; lieu: string; nombre: number }[]>`
+    select lower(coalesce(categorie_lieu, 'Sans catégorie')) as cle,
+           (array_agg(coalesce(categorie_lieu, 'Sans catégorie')
+                      order by n desc))[1]                   as lieu,
+           sum(n)::int                                       as nombre
+      from (select categorie_lieu, count(*)::int as n
+              from v_stock_produits group by 1) t
+     group by 1 order by 3 desc, 2`;
+
+  // Le métier : l'autre colonne de la liste de Miguel. Électricité, plomberie,
+  // serrurerie — on cherche « le mousseur » par le rayon, « un télérupteur »
+  // par le métier. Les deux filtres se croisent.
+  const metiers_filtre = await sql<{ cle: string; metier: string; nombre: number }[]>`
+    select lower(coalesce(categorie, 'Sans métier')) as cle,
+           (array_agg(coalesce(categorie, 'Sans métier') order by n desc))[1] as metier,
+           sum(n)::int                                                        as nombre
+      from (select categorie, count(*)::int as n
+              from v_stock_produits group by 1) t
+     group by 1 order by 3 desc, 2`;
 
   // Les produits qu'on ne rachète plus ne disparaissent pas : ils sortent du
   // choix du technicien et se retrouvent ici, dans leur propre filtre. Leur
@@ -75,16 +95,35 @@ export default async function Stock({
            prix_unitaire, prix_inconnu, seuil_alerte, photo_principale,
            stock, valeur_stock, sous_seuil, actif, dernier_mouvement
     from v_stock_produits
-    where (${lieu} <> 'retires' or not actif)
+    -- Trois filtres qui se croisent, chacun sur son axe : l'état, le rayon, le
+    -- métier. « Tous » ne filtre rien.
+    where (${etat} <> 'retires' or not actif)
+      and (${etat} = 'tous'
+        or ${etat} = 'retires'
+        or (${etat} = 'alertes' and sous_seuil and actif)
+        or (${etat} = 'rupture' and stock <= 0 and actif))
       and (${lieu} = 'tous'
-        or ${lieu} = 'retires'
-        or (${lieu} = 'alertes' and sous_seuil and actif)
-        or coalesce(categorie_lieu, 'Sans catégorie') = ${lieu})
+        or lower(coalesce(categorie_lieu, 'Sans catégorie')) = ${lieu})
+      and (${metier} = 'tous'
+        or lower(coalesce(categorie, 'Sans métier')) = ${metier})
       and (${terme} = ''
         or lower(designation) like ${"%" + terme + "%"}
         or lower(code) like ${"%" + terme + "%"}
         or lower(coalesce(categorie, '')) like ${"%" + terme + "%"})
-    order by actif desc, sous_seuil desc, designation`;
+    -- Par ordre alphabétique. Mettre les alertes en tête paraissait utile, mais
+    -- on cherche un produit par son nom : la place d'un article changeait selon
+    -- son stock du jour, et on ne savait plus où le prendre. Les compteurs du
+    -- haut et le filtre « sous le seuil » disent l'urgence, la liste dit où
+    -- trouver. Les retirés restent en bas.
+    --
+    -- L'ordre est posé ici, pas laissé à la collation : selon l'installation,
+    -- « BOUILLOIRE » passe avant ou après « Batteries », et « Économiseur »
+    -- se retrouve après « Z ». On range donc sur une clé sans casse ni accent,
+    -- qui donne le même ordre partout.
+    order by actif desc, lower(translate(
+      designation,
+      'ÀÁÂÃÄÅàáâãäåÇçÈÉÊËèéêëÌÍÎÏìíîïÑñÒÓÔÕÖØòóôõöøÙÚÛÜùúûüÝýÿ',
+      'AAAAAAaaaaaaCcEEEEeeeeIIIIiiiiNnOOOOOOooooooUUUUuuuuYyy'))`;
 
   // Les familles déjà employées, pour ne pas réinventer une catégorie à chaque
   // produit créé : le référentiel se construit par l'usage, pas par un écran.
@@ -138,8 +177,28 @@ export default async function Stock({
     redirect(`/stock/produit/${cree.id}?neuf=1` as Route);
   }
 
-  const lien = (l: string) =>
-    `/stock?${new URLSearchParams({ lieu: l, ...(q ? { q } : {}) })}` as Route;
+  // Chaque pastille change UN axe et garde les autres : on affine, on ne
+  // recommence pas.
+  const lien = (axe: "etat" | "lieu" | "metier", valeur: string) =>
+    `/stock?${new URLSearchParams({
+      etat,
+      lieu,
+      metier,
+      ...(q ? { q } : {}),
+      [axe]: valeur,
+    })}` as Route;
+
+  const nomLieu = familles.find((f) => f.cle === lieu)?.lieu;
+  const nomMetier = metiers_filtre.find((m) => m.cle === metier)?.metier;
+  const affines = [nomLieu, nomMetier].filter(Boolean) as string[];
+  // Enlever les DEUX axes d'un coup : n'en relâcher qu'un peut laisser la liste
+  // vide, et on appuie une seconde fois sans comprendre.
+  const sansAffinage = `/stock?${new URLSearchParams({
+    etat,
+    lieu: "tous",
+    metier: "tous",
+    ...(q ? { q } : {}),
+  })}` as Route;
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -168,52 +227,89 @@ export default async function Stock({
           </p>
         )}
 
-        <div className="flex gap-2">
-          <Link
-            href={"/stock/inventaire" as Route}
-            className="flex-1 h-[46px] rounded-card bg-plum-soft text-plum text-[14px] grid place-items-center font-medium"
-          >
-            Inventaire
-          </Link>
-          <Link
-            href={"/bouteilles/commandes" as Route}
-            className="flex-1 h-[46px] rounded-card bg-surface border border-line text-[14px] grid place-items-center"
-          >
-            Commandes
-          </Link>
-        </div>
+        {/* L'inventaire du matériel, et rien d'autre. « Commandes » menait aux
+            commandes de BOUTEILLES : elles ont leur écran, sous Bouteilles.
+            Un raccourci vers une autre section depuis une liste de produits
+            techniques ne s'explique pas, il se subit. */}
+        <Link
+          href={"/stock/inventaire" as Route}
+          className="h-[46px] rounded-card bg-plum-soft text-plum text-[14px] grid place-items-center font-medium"
+        >
+          Inventaire
+        </Link>
 
-        <Recherche valeur={q} placeholder="Chercher un produit…" caches={{ lieu }} />
+        <Recherche
+          valeur={q}
+          placeholder="Chercher un produit…"
+          caches={{ etat, lieu, metier }}
+        />
 
+        {/* L'état de l'article : ce qu'on regarde le plus souvent, donc visible
+            sans rien ouvrir. */}
         <Filtres
-          actif={lieu}
-          lien={lien}
+          actif={etat}
+          lien={(v) => lien("etat", v)}
           choix={[
             { valeur: "tous", libelle: "Tous", nombre: c.produits },
             { valeur: "alertes", libelle: "Sous le seuil", nombre: c.alertes },
-            ...familles.map((f) => ({ valeur: f.lieu, libelle: f.lieu, nombre: f.nombre })),
+            { valeur: "rupture", libelle: "À zéro", nombre: c.rupture },
             ...(retires > 0
               ? [{ valeur: "retires", libelle: "Retirés", nombre: retires }]
               : []),
           ]}
         />
 
-        {administre && (
-          <details className="carte px-4 py-3">
-            <summary
-              data-cible
-              className="flex items-center gap-2 cursor-pointer list-none text-[14.5px]"
-            >
-              <span className="w-7 h-7 rounded-full bg-plum-soft grid place-items-center shrink-0">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
-                     strokeWidth="2.2" strokeLinecap="round">
-                  <path d="M6 12h12" /><path d="M12 6v12" />
-                </svg>
-              </span>
-              Ajouter un produit
-            </summary>
+        {/* Les deux colonnes de la liste de Miguel : le rayon et le métier.
+            Elles se croisent — « plomberie » dans « salle de bain » — et se
+            replient, parce qu'on ne s'en sert pas à chaque visite. */}
+        <Depliant
+          titre="Rayon et métier"
+          aide={affines.length === 0 ? "Croiser les deux colonnes de la liste" : undefined}
+          ouvert={affines.length > 0}
+          indice={
+            affines.length > 0 ? (
+              <span className="text-plum">{affines.join(" · ")}</span>
+            ) : (
+              "tout"
+            )
+          }
+        >
+          <div className="flex flex-col gap-1">
+            <span className="etiquette">Rayon</span>
+            <Filtres
+              actif={lieu}
+              lien={(v) => lien("lieu", v)}
+              choix={[
+                { valeur: "tous", libelle: "Tous", nombre: c.produits },
+                ...familles.map((f) => ({
+                  valeur: f.cle,
+                  libelle: f.lieu,
+                  nombre: f.nombre,
+                })),
+              ]}
+            />
+          </div>
 
-            <form action={creer} className="flex flex-col gap-2.5 pt-3">
+          <div className="flex flex-col gap-1">
+            <span className="etiquette">Métier</span>
+            <Filtres
+              actif={metier}
+              lien={(v) => lien("metier", v)}
+              choix={[
+                { valeur: "tous", libelle: "Tous", nombre: c.produits },
+                ...metiers_filtre.map((m) => ({
+                  valeur: m.cle,
+                  libelle: m.metier,
+                  nombre: m.nombre,
+                })),
+              ]}
+            />
+          </div>
+        </Depliant>
+
+        {administre && (
+          <Depliant titre="Ajouter un produit">
+            <form action={creer} className="flex flex-col gap-2.5">
               <label className="flex flex-col gap-1">
                 <span className="etiquette">Désignation</span>
                 <input
@@ -333,12 +429,27 @@ export default async function Stock({
                 sa fiche — on y arrive directement.
               </p>
             </form>
-          </details>
+          </Depliant>
         )}
 
         {produits.length === 0 ? (
           <Vide>
-            {terme ? `Aucun produit ne correspond à « ${q} ».` : "Aucun produit ici."}
+            {/* Trois filtres qui se croisent peuvent se vider l'un l'autre :
+                la plomberie n'est rangée qu'en salle de bain. Une liste vide
+                doit dire CE QUI la vide, sinon on croit avoir perdu des
+                produits. */}
+            {terme ? (
+              `Aucun produit ne correspond à « ${q} ».`
+            ) : affines.length > 0 ? (
+              <>
+                Aucun produit en {affines.join(" et ")}.{" "}
+                <Link href={sansAffinage} className="underline underline-offset-4">
+                  {affines.length > 1 ? "Enlever les deux filtres" : "Enlever le filtre"}
+                </Link>
+              </>
+            ) : (
+              "Aucun produit ici."
+            )}
           </Vide>
         ) : (
           <ul className="flex flex-col gap-2">
