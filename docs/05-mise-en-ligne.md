@@ -151,7 +151,8 @@ croisent jamais celles de Microsoft.
 
 1. Resend → **Domains → Add Domain**. Saisir **`notifications.hotelparisianer.com`** — un
    sous-domaine qui n'existe pas encore et ne sert qu'à ça. (Et non `hotelparisianer` seul :
-   Resend attend un domaine entier.)
+   Resend attend un domaine entier.) **Choisir la région `eu-west-1` (Irlande)** : les messages
+   restent en Europe, et c'est elle qui décide de l'adresse du serveur MX ci-dessous.
 2. Resend affiche **trois lignes à ajouter**, toutes prêtes. Elles ressemblent à ceci — les
    valeurs exactes sont celles que VOTRE écran affiche, pas celles-ci :
 
@@ -180,6 +181,56 @@ croisent jamais celles de Microsoft.
    besoin d'exister** : c'est une adresse d'expédition, pas une boîte aux lettres. Redéployer.
 7. Ouvrir `/administration` → **Envoyer maintenant**. Ce qui attendait part.
 
+### Chez OVH, pas à pas
+
+Le domaine de l'hôtel est chez **OVH**. Tout se fait depuis l'espace client, sans passer par
+personne.
+
+**D'abord, vérifier qu'OVH tient bien la zone.** Espace client OVH → **Web Cloud** → *Noms de
+domaine* → `hotelparisianer.com` → onglet **Serveurs DNS**. S'ils ressemblent à `dns**.ovh.net`
+et `ns**.ovh.net`, c'est bien OVH qui décide : la suite s'applique. S'ils pointent ailleurs
+(Cloudflare, Microsoft…), c'est là-bas qu'il faut ajouter les lignes — la zone OVH ne serait pas
+lue.
+
+Ensuite, onglet **Zone DNS** → bouton **Ajouter une entrée**. Trois fois, une par ligne.
+
+**Ligne 1 — le MX.** Choisir le type **MX**.
+
+| Champ OVH | Ce qu'on saisit |
+|---|---|
+| Sous-domaine | `send.notifications` |
+| TTL | laisser *Par défaut* |
+| Priorité | `10` |
+| Cible | `feedback-smtp.eu-west-1.amazonses.com.` — avec le **point final** |
+
+> OVH peut afficher un avertissement en voyant un MX ajouté à la main : il prévient qu'un MX
+> s'ajoute d'ordinaire depuis la partie e-mail. C'est sans conséquence ici — celui-ci porte sur
+> `send.notifications`, pas sur le domaine, et la messagerie de l'hôtel n'est pas concernée.
+
+**Ligne 2 — le SPF.** Choisir le type **TXT**, et **pas** le type « SPF » proposé par OVH : son
+assistant réécrit la valeur à sa façon, et Resend ne la reconnaîtrait plus.
+
+| Champ OVH | Ce qu'on saisit |
+|---|---|
+| Sous-domaine | `send.notifications` |
+| Valeur | `v=spf1 include:amazonses.com ~all` |
+
+**Ligne 3 — la clé DKIM.** Type **TXT** là encore, jamais l'assistant « DKIM ».
+
+| Champ OVH | Ce qu'on saisit |
+|---|---|
+| Sous-domaine | `resend._domainkey.notifications` |
+| Valeur | la longue suite affichée par Resend, en entier, d'un seul tenant |
+
+> Si OVH refuse la valeur parce qu'elle est trop longue, la couper en deux morceaux entre
+> guillemets sur la même ligne : `"première moitié" "seconde moitié"`. C'est la façon normale
+> d'écrire une valeur TXT de plus de 255 caractères, et elle se relit comme si elle était
+> entière.
+
+**Enfin**, en haut de la zone DNS, OVH demande parfois de **confirmer les modifications** : les
+lignes ne sont posées qu'une fois cette confirmation donnée. OVH les applique en général en
+quelques minutes.
+
 ### Ce qu'il ne faut surtout pas faire
 
 - **Ne pas toucher aux enregistrements MX du domaine principal.** Ce sont eux qui amènent le
@@ -206,6 +257,11 @@ croisent jamais celles de Microsoft.
 > [coller ici les trois lignes affichées par Resend]
 >
 > Merci de me dire quand c'est en place, je ferai la vérification de mon côté.
+
+**Où lire l'adresse du compte Resend ?** Le plus simple : dans `/administration`, le message
+d'échec la contient — Resend écrit *« You can only send testing emails to your own email
+address (…) »*, et l'adresse est entre parenthèses. Sinon, c'est celle avec laquelle le compte a
+été créé : Resend → menu en haut à droite → **Settings → Profile**.
 
 **En attendant, pour essayer tout de suite et ne pas rester bloqué** : dans `/administration`
 → *Destinataires des alertes*, mettre comme destinataire **l'adresse du compte Resend
