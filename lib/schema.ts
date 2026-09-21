@@ -58,3 +58,24 @@ export async function regleContient(fonction: string, mot: string): Promise<bool
   if (r.presente) presentes.add(cle);
   return r.presente;
 }
+
+/**
+ * Cette vue est-elle déjà là ?
+ *
+ * Certaines migrations ne posent ni colonne ni règle : la 0013 réécrit les
+ * vues de stock et de coût pour écarter les lieux d'essai, et pose
+ * `v_mouvements_reels`. Son existence suffit à dire que la base sait déjà ne
+ * pas compter un essai. Même prudence que plus haut : on ne retient que les
+ * réponses positives.
+ */
+export async function vueExiste(vue: string): Promise<boolean> {
+  const cle = `vue:${vue}`;
+  if (presentes.has(cle)) return true;
+
+  const [r] = await sql<{ presente: boolean }[]>`
+    select count(*) > 0 as presente
+      from information_schema.views
+     where table_schema = 'public' and table_name = ${vue}`;
+  if (r.presente) presentes.add(cle);
+  return r.presente;
+}

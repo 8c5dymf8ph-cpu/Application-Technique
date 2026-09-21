@@ -2772,6 +2772,201 @@ left join specialites_intervenant s on s.prestataire_id = p.id
 left join types_intervention t      on t.id = s.type_intervention_id
 group by p.id;
 
+-- ===== supabase/migrations/0011_supprimer_une_anomalie.sql =====
+-- =============================================================================
+-- Migration 0011 : la gouvernante peut supprimer une anomalie
+-- =============================================================================
+-- La suppression était réservée à la chargée des opérations et à
+-- l'administrateur. Mais c'est la gouvernante qui déclare : c'est elle qui se
+-- trompe de chambre, qui déclare deux fois le même robinet, qui enregistre un
+-- essai sur une vraie chambre. Lui interdire de défaire son propre geste
+-- l'obligeait à attendre quelqu'un d'autre pour une ligne qui n'aurait jamais
+-- dû exister.
+--
+-- Les trois personnes sont Victoria, Sarah P et Miguel — c'est exactement
+-- `fn_peut_valider()`. Le technicien, lui, n'y a toujours pas accès : il
+-- traite, il ne décide pas de ce qui existe.
+--
+-- Ce qui reste vrai : supprimer efface une trace. L'écran le dit et demande
+-- confirmation, et ce qui a été SORTI du stock pour cette anomalie n'est pas
+-- annulé — `mouvements_stock.intervention_id` passe à nul, le mouvement reste.
+-- Le matériel a bien quitté la réserve.
+
+create or replace function fn_peut_supprimer() returns boolean
+language sql stable as $$
+  select fn_role_courant() in ('gouvernante','operations','admin');
+$$;
+
+comment on function fn_peut_supprimer() is
+  'Supprimer une anomalie efface une trace : la gouvernante, la chargée des '
+  'opérations et l''administrateur. Jamais un technicien.';
+
+-- ===== supabase/migrations/0012_reprendre_un_envoi_en_echec.sql =====
+-- =============================================================================
+-- Migration 0012 : savoir quand un envoi a été retenté
+-- =============================================================================
+-- Un message en échec garde son erreur jusqu'au prochain essai. C'est voulu —
+-- on ne perd pas la raison du refus. Mais l'écran affichait ce texte sans dire
+-- de quand il datait : on corrigeait le réglage, on rouvrait l'écran, la même
+-- erreur s'affichait, et on croyait que la correction n'avait rien changé.
+--
+-- Alors qu'en réalité rien n'avait été retenté. Et surtout, les messages déjà
+-- déposés portent les destinataires QU'ILS AVAIENT au moment du dépôt :
+-- changer le réglage ne les réadresse pas. C'est juste — un message est un
+-- fait, pas une intention — mais il fallait pouvoir les reprendre.
+--
+-- On note donc la date du dernier essai. L'écran peut alors dire « erreur du
+-- dernier essai, il y a deux jours » au lieu de laisser croire à un échec qui
+-- vient d'avoir lieu.
+
+alter table emails_envoyes
+  add column if not exists dernier_essai_le timestamptz;
+
+comment on column emails_envoyes.dernier_essai_le is
+  'Quand l''envoi a été tenté pour la dernière fois. Sert à dater l''erreur '
+  'affichée : sans elle, un refus d''il y a deux jours passe pour un refus '
+  'de maintenant.';
+
+-- Les messages déjà en échec ont bien été tentés : sans date, l'écran les
+-- présenterait comme jamais essayés. Leur date de dépôt est la meilleure
+-- approximation dont on dispose.
+update emails_envoyes
+   set dernier_essai_le = cree_le
+ where envoye_le is null and erreur is not null and dernier_essai_le is null;
+
+-- ===== supabase/migrations/0013_un_essai_ne_touche_pas_le_stock.sql =====
+-- =============================================================================
+-- Migration 0013 : un essai ne touche pas le stock
+-- =============================================================================
+-- Les chambres 06 et 07 sont là pour qu'on puisse répéter le geste complet sans
+-- salir les chiffres de l'hôtel. La 0008 les a créées et les a écartées des
+-- compteurs de l'accueil — mais elle s'est arrêtée là. Déclarer une anomalie en
+-- 06, cocher deux joints et appuyer sur « C'est fait » sortait deux joints de la
+-- réserve, pour de bon : le stock baissait, le seuil pouvait se déclencher, le
+-- coût du passage était compté. Miguel l'a constaté deux fois.
+--
+-- Or personne n'est allé chercher un joint sur l'étagère : il n'y a pas eu de
+-- sortie. Un mouvement passé dans un lieu d'essai n'est pas un mouvement de
+-- stock.
+--
+-- On ne l'efface pas pour autant : le technicien doit revoir ce qu'il a coché,
+-- et la gouvernante doit pouvoir le valider — c'est tout l'intérêt de répéter.
+-- La ligne reste donc, avec son lieu ; c'est le lieu qui dit qu'elle ne compte
+-- pas. Rien de nouveau n'est stocké : la vérité est déjà dans
+-- `emplacements.essai`.
+--
+-- Et comme la définition d'un « vrai mouvement » ne doit pas se répéter de vue
+-- en vue — une seule oubliée et les essais reviennent dans les chiffres —, elle
+-- est posée UNE FOIS ici. Les deux vues qui comptent (le stock, le coût d'une
+-- intervention) la lisent.
+--
+-- Les deux sorties déjà passées se corrigent d'elles-mêmes : elles portent la
+-- chambre d'essai, donc la nouvelle vue les écarte, hier comme aujourd'hui.
+
+-- -----------------------------------------------------------------------------
+-- Ce qui compte vraiment
+-- -----------------------------------------------------------------------------
+-- Une entrée de commande et un ajustement d'inventaire n'ont pas d'emplacement,
+-- ou portent la réserve : ils passent. Seules les sorties faites dans un lieu
+-- d'essai sont écartées.
+--
+-- `m.*` est figé à la création de la vue : une colonne ajoutée plus tard à
+-- `mouvements_stock` n'apparaîtra ici qu'en rejouant ce `create or replace`.
+create or replace view v_mouvements_reels as
+select m.*
+  from mouvements_stock m
+  left join emplacements e on e.id = m.emplacement_id
+ where not coalesce(e.essai, false);
+
+comment on view v_mouvements_reels is
+  'Les mouvements de stock qui comptent : tout sauf ce qui s''est passé dans un '
+  'lieu d''essai. C''est la seule définition — les vues de stock et de coût la '
+  'lisent plutôt que de refaire le filtre chacune de leur côté.';
+
+-- -----------------------------------------------------------------------------
+-- Le stock : mêmes colonnes, même ordre — seule la source change
+-- -----------------------------------------------------------------------------
+create or replace view v_stock_produits as
+select
+  p.id,
+  p.code,
+  p.designation,
+  p.categorie,
+  p.categorie_lieu,
+  p.unite,
+  p.prix_unitaire,
+  p.prix_unitaire is null                              as prix_inconnu,
+  p.seuil_alerte,
+  p.quantite_reappro,
+  ph.chemin                                            as photo_principale,
+  (select count(*) from photos_produit x where x.produit_id = p.id) as nb_photos,
+  p.actif,
+  coalesce(sum(m.quantite) filter (where m.type = 'entree'), 0)          as total_entrees,
+  coalesce(-sum(m.quantite) filter (where m.type = 'sortie'), 0)         as total_sorties,
+  coalesce(sum(m.quantite) filter (where m.type = 'regularisation'), 0)  as total_ajustements,
+  coalesce(sum(m.quantite), 0)                         as stock,
+  coalesce(sum(m.quantite), 0) * p.prix_unitaire       as valeur_stock,
+  coalesce(sum(m.quantite), 0) <= p.seuil_alerte       as sous_seuil,
+  max(m.date_mouvement)                                as dernier_mouvement,
+  pr.dernier_prix,
+  pr.variation_pct,
+  -- Le fournisseur préféré, et son adresse : c'est à lui que part la demande.
+  fo.fournisseur,
+  fo.email_fournisseur,
+  fo.nb_fournisseurs
+from produits p
+left join v_mouvements_reels m on m.produit_id = p.id
+left join v_prix_produit pr  on pr.produit_id = p.id
+left join lateral (
+  select chemin from photos_produit x
+  where x.produit_id = p.id order by x.principale desc, x.ordre limit 1
+) ph on true
+left join lateral (
+  select f.nom as fournisseur, f.email as email_fournisseur,
+         (select count(*)::int from article_fournisseurs y where y.produit_id = p.id)
+           as nb_fournisseurs
+  from article_fournisseurs af
+  join fournisseurs f on f.id = af.fournisseur_id
+  where af.produit_id = p.id
+  order by af.prefere desc, f.nom limit 1
+) fo on true
+group by p.id, ph.chemin, pr.dernier_prix, pr.variation_pct,
+         fo.fournisseur, fo.email_fournisseur, fo.nb_fournisseurs;
+
+-- -----------------------------------------------------------------------------
+-- Le coût d'une intervention : du matériel qui n'est pas sorti ne coûte rien
+-- -----------------------------------------------------------------------------
+-- Sinon un passage d'essai gonflerait le total du mois dans l'historique, et le
+-- récapitulatif annoncerait un coût pour une répétition.
+create or replace view v_interventions_cout as
+select
+  i.id                                     as intervention_id,
+  i.anomalie_id,
+  coalesce(mat.cout_materiel, 0)           as cout_materiel,
+  coalesce(mat.articles_sans_prix, 0)      as articles_sans_prix,
+  coalesce(cp.cout_prestataire, 0)         as cout_prestataire,
+  i.cout_divers,
+  coalesce(mat.cout_materiel, 0) + coalesce(cp.cout_prestataire, 0) + i.cout_divers as cout_total,
+  -- Vrai quand du matériel sans prix connu a été utilisé : le total affiché est
+  -- alors un minimum, ce que l'interface doit dire explicitement.
+  coalesce(mat.articles_sans_prix, 0) > 0  as cout_incomplet
+from interventions i
+left join lateral (
+  -- Les sorties sont négatives : on reprend la valeur absolue pour obtenir un coût
+  select
+    sum(abs(m.quantite) * p.prix_unitaire) filter (where p.prix_unitaire is not null) as cout_materiel,
+    count(*) filter (where p.prix_unitaire is null)                                   as articles_sans_prix
+  from v_mouvements_reels m
+  join produits p on p.id = m.produit_id
+  where m.intervention_id = i.id and m.type = 'sortie'
+) mat on true
+left join v_cout_prestataire cp on cp.intervention_id = i.id;
+
+-- Une vue applique les droits de l'appelant, jamais ceux de son propriétaire :
+-- sans cela elle contournerait les règles de sécurité.
+alter view v_mouvements_reels set (security_invoker = on);
+grant select on v_mouvements_reels to authenticated;
+
 -- ===== supabase/seed/01_referentiels.sql =====
 -- =============================================================================
 -- Référentiels de départ — Hôtel Parisianer

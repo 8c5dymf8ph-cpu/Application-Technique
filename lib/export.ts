@@ -111,7 +111,13 @@ export const EXPORTS: Export[] = [
     cle: "mouvements",
     titre: "Mouvements de stock",
     aide: "Entrées, sorties et ajustements. C’est d’ici que vient tout le stock.",
-    lignes: () => sql`
+    // Une sortie faite en chambre d'essai figure ici — le geste a bien eu lieu
+    // — mais elle n'a rien retiré de la réserve. Sans la colonne « Compté », la
+    // somme du tableur ne retomberait pas sur le stock, et on chercherait
+    // l'erreur ailleurs.
+    lignes: async () => {
+      const essai = await colonneExiste("emplacements", "essai");
+      return sql`
       select m.date_mouvement                         as "Date",
              m.type::text                             as "Type",
              m.motif::text                            as "Motif",
@@ -121,6 +127,9 @@ export const EXPORTS: Export[] = [
              m.prix_unitaire                          as "Prix unitaire de cette ligne",
              coalesce(u.nom, pr.nom)                  as "Par",
              e.code                                   as "Lieu",
+             ${essai
+               ? sql`case when coalesce(e.essai, false) then 'non (essai)' else 'oui' end`
+               : sql`'oui'::text`}                    as "Compté dans le stock",
              a.description                            as "Anomalie",
              m.commentaire                            as "Commentaire"
         from mouvements_stock m
@@ -130,7 +139,8 @@ export const EXPORTS: Export[] = [
         left join emplacements e   on e.id = m.emplacement_id
         left join interventions i  on i.id = m.intervention_id
         left join anomalies a      on a.id = i.anomalie_id
-       order by m.date_mouvement desc`,
+       order by m.date_mouvement desc`;
+    },
   },
   {
     cle: "produits",

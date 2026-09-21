@@ -10,6 +10,7 @@ import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { PhotoProduit } from "@/app/composants/photo-produit";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
 import { enregistrerPhoto } from "@/lib/stockage";
+import { colonneExiste } from "@/lib/schema";
 import { alerterSiSousSeuil } from "@/lib/seuil";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ type Anomalie = {
   catalogue_id: string | null;
   emplacement: string;
   etage: string;
+  essai: boolean;
   intervenant: string | null;
 };
 
@@ -38,9 +40,13 @@ export default async function TraiterAnomalie({
   const { id } = await params;
   const { par, q = "", pris = "" } = await searchParams;
 
+  // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'en est
+  // un. Une condition booléenne dans le SQL casserait l'écran entier.
+  const marque = await colonneExiste("emplacements", "essai");
   const [anomalie] = await sql<Anomalie[]>`
     select a.id, a.description, a.catalogue_id, e.code as emplacement,
-           et.nom as etage, null as intervenant
+           et.nom as etage, ${marque ? sql`e.essai` : sql`false`} as essai,
+           null as intervenant
     from anomalies a
     join emplacements e on e.id = a.emplacement_id
     join etages et      on et.id = e.etage_id
@@ -236,6 +242,18 @@ export default async function TraiterAnomalie({
         <p className="font-display font-semibold text-[19px] leading-snug text-pretty">
           {anomalie.description}
         </p>
+
+        {/* Une répétition se dit. Cocher du matériel ici ne sortira rien de la
+            réserve — personne n'ira chercher la pièce sur l'étagère — mais
+            rien à l'écran ne le laissait deviner, et le stock baissait pour de
+            bon. Tout le reste fonctionne comme dans une vraie chambre. */}
+        {anomalie.essai && (
+          <p className="rounded-xl border border-dashed border-ink-faint/50 bg-surface-muted px-3.5 py-3 text-[14px] leading-snug text-ink-faint text-pretty">
+            <span className="font-semibold text-ink">Chambre d’essai.</span> Tout
+            se passe comme d’habitude, mais le matériel coché ne sera pas déduit
+            du stock et ce passage ne comptera pas dans les chiffres de l’hôtel.
+          </p>
+        )}
 
         {/* Le technicien regarde le constat avant de monter : c'est le sujet de
             l'écran, pas une note de bas de page. */}

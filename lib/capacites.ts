@@ -1,4 +1,4 @@
-import { colonneExiste, regleContient } from "./schema";
+import { colonneExiste, regleContient, vueExiste } from "./schema";
 
 /**
  * Ce que la base sait déjà faire.
@@ -45,6 +45,11 @@ const ATTENDUES: Attendue[] = [
     titre: "Chambres d’essai 06 et 07",
     sans: "Les essais faits en 06 et 07 comptent dans les chiffres de l’hôtel.",
     verifier: () => colonneExiste("emplacements", "essai"),
+  },
+  {
+    titre: "Un essai ne touche pas le stock",
+    sans: "Du matériel coché pour une anomalie en 06 ou 07 est déduit de la réserve pour de bon, et compte dans le coût du passage.",
+    verifier: () => vueExiste("v_mouvements_reels"),
   },
   {
     titre: "Fournisseurs de bouteilles",

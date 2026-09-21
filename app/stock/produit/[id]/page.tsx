@@ -78,6 +78,7 @@ type Mouvement = {
   date_mouvement: string;
   qui: string | null;
   emplacement: string | null;
+  essai: boolean;
   anomalie: string | null;
   commentaire: string | null;
 };
@@ -146,10 +147,16 @@ export default async function FicheProduit({
     from v_achats_produit where produit_id = ${id}
     order by date_mouvement desc, mouvement_id desc limit 12`;
 
+  // Une sortie faite dans une chambre d'essai apparaît ici — c'est un geste
+  // qui a bien eu lieu — mais elle n'a pas bougé le stock. Sans la marquer,
+  // l'historique ne tombe plus juste : on additionne et on ne retrouve pas le
+  // total. `essai` n'existe qu'après la migration 0008.
+  const marqueEssai = await colonneExiste("emplacements", "essai");
   const mouvements = await sql<Mouvement[]>`
     select m.id, m.type::text, m.motif::text, m.quantite, m.date_mouvement,
            coalesce(u.nom, pr.nom)          as qui,
            e.code                            as emplacement,
+           ${marqueEssai ? sql`coalesce(e.essai, false)` : sql`false`} as essai,
            a.description                     as anomalie,
            m.commentaire
     from mouvements_stock m
@@ -1010,7 +1017,7 @@ export default async function FicheProduit({
                     <span
                       aria-hidden
                       className={`w-8 h-8 shrink-0 rounded-full grid place-items-center ${
-                        m.type === "regularisation"
+                        m.essai || m.type === "regularisation"
                           ? "bg-surface-muted"
                           : entree
                             ? "bg-green-soft"
@@ -1019,7 +1026,7 @@ export default async function FicheProduit({
                     >
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                            stroke={
-                             m.type === "regularisation"
+                             m.essai || m.type === "regularisation"
                                ? "#4F4B6B"
                                : entree
                                  ? "#357051"
@@ -1041,6 +1048,11 @@ export default async function FicheProduit({
                         {m.motif && ` · ${m.motif.replace("_", " ")}`}
                         {m.emplacement && ` · ${m.emplacement}`}
                         {m.qui && ` · ${m.qui}`}
+                        {m.essai && (
+                          <span className="ml-1.5 rounded-md bg-surface-muted px-1.5 py-0.5 text-[11px] text-ink-faint align-middle">
+                            essai · non déduit
+                          </span>
+                        )}
                       </span>
                       <span className="block text-[11px] text-ink-faint">
                         {new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
@@ -1050,11 +1062,13 @@ export default async function FicheProduit({
                     </span>
                     <span
                       className={`shrink-0 font-display font-semibold text-[15px] tabular-nums ${
-                        m.type === "regularisation"
-                          ? "text-ink-soft"
-                          : entree
-                            ? "text-green"
-                            : "text-red"
+                        m.essai
+                          ? "text-ink-faint line-through"
+                          : m.type === "regularisation"
+                            ? "text-ink-soft"
+                            : entree
+                              ? "text-green"
+                              : "text-red"
                       }`}
                     >
                       {entree ? "+" : "−"}

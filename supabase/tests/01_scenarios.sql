@@ -1258,5 +1258,72 @@ begin
     'un produit absent de l''inventaire ne doit produire aucun mouvement';
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 18 — Un essai ne touche pas le stock.
+-- Les chambres 06 et 07 servent à répéter le geste complet. Cocher du matériel
+-- pour une anomalie qui s'y trouve ne doit rien sortir de la réserve : personne
+-- n'est allé chercher la pièce sur l'étagère. La même sortie dans une vraie
+-- chambre, elle, doit compter — sinon on aurait juste cassé le stock.
+-- ===========================================================================
+do $$
+declare
+  v_produit uuid;
+  v_essai   uuid;
+  v_vrai    uuid;
+  v_ano     uuid;
+  v_inter   uuid;
+  v_avant   numeric;
+  v_apres   numeric;
+  v_sorties numeric;
+  v_cout    numeric;
+begin
+  select id into v_produit from produits where code = 'JNT-12';
+  select id into v_essai   from emplacements where essai limit 1;
+  select id into v_vrai    from emplacements where not essai and type = 'chambre' limit 1;
+  assert v_essai is not null, 'il faut au moins un lieu d''essai (migration 0008)';
+
+  select stock into v_avant from v_stock_produits where id = v_produit;
+  select total_sorties into v_sorties from v_stock_produits where id = v_produit;
+
+  -- Un passage d'essai, complet : une anomalie en 06, une intervention, du
+  -- matériel coché.
+  insert into anomalies (emplacement_id, description, constate_par)
+  values (v_essai, 'Répétition — mitigeur qui goutte',
+          '22222222-2222-2222-2222-222222222222')
+  returning id into v_ano;
+  insert into interventions (anomalie_id, prestataire_id, date_intervention)
+  values (v_ano, '99999999-9999-9999-9999-999999999999', current_date)
+  returning id into v_inter;
+  insert into mouvements_stock (produit_id, type, quantite, emplacement_id,
+                                intervention_id)
+  values (v_produit, 'sortie', -3, v_essai, v_inter);
+
+  -- La ligne existe : le technicien doit revoir ce qu'il a coché, et la
+  -- gouvernante doit pouvoir le valider. C'est tout l'intérêt de répéter.
+  assert (select count(*) from mouvements_stock
+           where intervention_id = v_inter) = 1,
+    'la sortie d''essai doit rester visible, rattachée à son intervention';
+
+  -- Mais elle ne compte pas : ni dans le stock, ni dans les sorties, ni dans
+  -- le coût du passage.
+  select stock into v_apres from v_stock_produits where id = v_produit;
+  assert v_apres = v_avant,
+    format('une sortie en lieu d''essai a bougé le stock : %s → %s', v_avant, v_apres);
+  assert (select total_sorties from v_stock_produits where id = v_produit) = v_sorties,
+    'une sortie en lieu d''essai ne doit pas compter dans les sorties';
+  select cout_materiel into v_cout from v_interventions_cout
+   where intervention_id = v_inter;
+  assert coalesce(v_cout, 0) = 0,
+    format('un passage d''essai ne coûte rien en matériel, or %s', v_cout);
+
+  -- La même sortie dans une vraie chambre, elle, compte.
+  insert into mouvements_stock (produit_id, type, quantite, emplacement_id)
+  values (v_produit, 'sortie', -3, v_vrai);
+  select stock into v_apres from v_stock_produits where id = v_produit;
+  assert v_apres = v_avant - 3,
+    format('une vraie sortie doit bouger le stock : %s → %s, attendu %s',
+           v_avant, v_apres, v_avant - 3);
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

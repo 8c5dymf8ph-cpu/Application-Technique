@@ -484,6 +484,16 @@ de l'accueil excluent ce qui s'y passe**. Sans elles, on essaie sur une vraie ch
 de l'hôtel s'en ressent. Les scénarios les écartent aussi : ils mesurent l'hôtel, pas
 l'entraînement.
 
+**Un essai ne sort rien de la réserve.** Cocher du matériel pour une anomalie en 06 le déduisait
+du stock pour de bon, et le comptait dans le coût du passage — or personne n'est allé chercher la
+pièce sur l'étagère. La ligne de mouvement RESTE, avec son lieu : le technicien doit revoir ce
+qu'il a coché et la gouvernante doit pouvoir le valider, c'est tout l'intérêt de répéter. C'est le
+lieu qui dit qu'elle ne compte pas. La définition d'un vrai mouvement est posée **une seule fois**,
+dans `v_mouvements_reels` (migration 0013) ; `v_stock_produits` et `v_interventions_cout` la
+lisent. Ne jamais refaire ce filtre vue par vue — une seule oubliée et les essais reviennent dans
+les chiffres. L'écran du matériel le dit avant de cocher, et l'historique du produit marque la
+ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
+
 ## Écrans
 
 - **Le retour ramène d'où l'on vient, pas à un parent supposé.** Chaque écran désignait son
