@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { RelireAuRetour } from "@/app/composants/relire-au-retour";
 import { Vignettes } from "@/app/composants/photos";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
@@ -106,6 +107,19 @@ export default async function ValiderLot({
     where r.tournee = ${lot.reference}
     order by (r.decision_gouvernante is not null), r.emplacement`;
 
+  /**
+   * Un lot entièrement décidé n'est plus un écran de saisie.
+   *
+   * Après le dernier avis, on repart sur l'accueil — mais la flèche de retour
+   * ramenait ici, et le navigateur ressortait la page telle qu'elle était : les
+   * trois boutons, l'anomalie à décider de nouveau. On croyait que rien n'avait
+   * été enregistré. Il n'y a plus rien à faire sur ce lot : on renvoie vers la
+   * liste, où il n'apparaît plus.
+   */
+  if (lot.nb_en_attente === 0 && lignes.every((l) => l.decision_gouvernante)) {
+    redirect("/gouvernante/valider" as Route);
+  }
+
   const photos = lignes.length
     ? await sql<{ anomalie_id: string; moment: string; chemin: string }[]>`
         select ph.anomalie_id, ph.moment::text, ph.chemin
@@ -183,6 +197,8 @@ export default async function ValiderLot({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {/* Revenir ici après avoir tout décidé reproposait de décider. */}
+      <RelireAuRetour cle={`valider:${tournee}`} />
       <Entete
         titre={lot.intervenant ?? "Lot"}
         sous_titre={`${new Date(lot.date_tournee).toLocaleDateString("fr-FR")} · ${

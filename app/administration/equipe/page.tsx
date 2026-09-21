@@ -26,6 +26,7 @@ type Intervenant = {
   compte: boolean;
   courriel: string | null;
   interventions: number;
+  actif: boolean;
 };
 
 /**
@@ -62,9 +63,9 @@ const LISTES: {
 export default async function Equipe({
   searchParams,
 }: {
-  searchParams: Promise<{ deja?: string; role?: string; fait?: string }>;
+  searchParams: Promise<{ deja?: string; role?: string; fait?: string; qui?: string }>;
 }) {
-  const { deja, role: roleDeja, fait } = await searchParams;
+  const { deja, role: roleDeja, fait, qui } = await searchParams;
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   // La composition de l'étage change souvent : la gouvernante doit pouvoir la
@@ -110,6 +111,7 @@ export default async function Equipe({
         select v.nom, v.prestataire_id, v.utilisateur_id,
                coalesce(u.peut_se_connecter, false) as compte,
                coalesce(u.email, p.email)           as courriel,
+               v.actif,
                (select count(*) from interventions i
                  where i.technicien_id is not distinct from v.utilisateur_id
                    and i.prestataire_id is not distinct from v.prestataire_id)::int
@@ -117,12 +119,13 @@ export default async function Equipe({
           from v_intervenants v
           left join utilisateurs u on u.id = v.utilisateur_id
           left join prestataires p on p.id = v.prestataire_id
-         where v.actif order by v.nom`
+         order by v.actif desc, v.nom`
     : courriels
       ? await sql<Intervenant[]>`
           select v.nom, v.prestataire_id, v.utilisateur_id,
                  false                      as compte,
                  coalesce(u.email, p.email) as courriel,
+                 v.actif,
                  (select count(*) from interventions i
                    where i.technicien_id is not distinct from v.utilisateur_id
                      and i.prestataire_id is not distinct from v.prestataire_id)::int
@@ -130,19 +133,66 @@ export default async function Equipe({
             from v_intervenants v
             left join utilisateurs u on u.id = v.utilisateur_id
             left join prestataires p on p.id = v.prestataire_id
-           where v.actif order by v.nom`
+           order by v.actif desc, v.nom`
       : await sql<Intervenant[]>`
           select v.nom, v.prestataire_id, v.utilisateur_id,
                  false      as compte,
                  u.email    as courriel,
+                 v.actif,
                  (select count(*) from interventions i
                    where i.technicien_id is not distinct from v.utilisateur_id
                      and i.prestataire_id is not distinct from v.prestataire_id)::int
                    as interventions
             from v_intervenants v
             left join utilisateurs u on u.id = v.utilisateur_id
-           where v.actif order by v.nom`;
+           order by v.actif desc, v.nom`;
 
+
+  const actifs = intervenants.filter((i) => i.actif);
+
+  /**
+   * Ceux qu'on a retirés de la liste.
+   *
+   * Ils ne peuvent pas venir de `v_intervenants` : la vue ne retient que les
+   * personnes dont `intervient_technique` est vrai, et c'est précisément ce
+   * qu'on a mis à faux pour les retirer. Ils en disparaissaient entièrement —
+   * on ne pouvait plus les remettre. On va donc les chercher là où ils sont.
+   */
+  const retires = reglable
+    ? await sql<Intervenant[]>`
+        select u.nom, null::uuid as prestataire_id, u.id as utilisateur_id,
+               false as compte, u.email as courriel,
+               (select count(*) from interventions i
+                 where i.technicien_id = u.id)::int as interventions,
+               false as actif
+          from utilisateurs u
+         where not u.intervient_technique and u.prestataire_id is null
+           and (u.role = 'technicien'
+                or exists (select 1 from interventions i where i.technicien_id = u.id))
+        union all
+        select p.nom, p.id, null::uuid, false, p.email,
+               (select count(*) from interventions i
+                 where i.prestataire_id = p.id)::int,
+               false
+          from prestataires p where not p.actif
+         order by 1`
+    : await sql<Intervenant[]>`
+        select u.nom, null::uuid as prestataire_id, u.id as utilisateur_id,
+               false as compte, u.email as courriel,
+               (select count(*) from interventions i
+                 where i.technicien_id = u.id)::int as interventions,
+               false as actif
+          from utilisateurs u
+         where not u.intervient_technique
+           and (u.role = 'technicien'
+                or exists (select 1 from interventions i where i.technicien_id = u.id))
+        union all
+        select p.nom, p.id, null::uuid, false, null,
+               (select count(*) from interventions i
+                 where i.prestataire_id = p.id)::int,
+               false
+          from prestataires p where not p.actif
+         order by 1`;
 
   /**
    * Ouvrir ou fermer un profil.
@@ -213,11 +263,50 @@ export default async function Equipe({
     if (!nom) return;
     // Un renfort ponctuel : il existe, il intervient, et il se retire d'un
     // appui quand il repart. Rien de ce qu'il a fait ne disparaît avec lui.
+    // Un prénom déjà connu est réactivé, jamais dupliqué : son historique lui
+    // revient.
     await sql`
       insert into utilisateurs (nom, role, intervient_technique, actif)
       values (${nom}, 'technicien', true, true)
       on conflict (nom) do update set intervient_technique = true, actif = true`;
     revalidatePath("/administration/equipe");
+    // L'ajout ne se voyait pas : la section se refermait en se rechargeant, et
+    // le nouveau nom se rangeait au milieu de quinze autres.
+    redirect(`/administration/equipe?fait=intervenant&qui=${encodeURIComponent(nom)}` as Route);
+  }
+
+  /**
+   * Retirer un intervenant de la liste — ou l'y remettre.
+   *
+   * On ne supprime jamais : l'hôtel change d'intervenants, et ce qu'ils ont
+   * fait reste attaché à leur nom des années après. Retirer, c'est sortir des
+   * listes de saisie, rien de plus.
+   *
+   * Un salarié garde son compte — Taibi reste réceptionniste, il cesse
+   * seulement d'être proposé comme intervenant. Une entreprise extérieure se
+   * désactive : c'est le lien qui sert au rapprochement des factures, on ne le
+   * casse pas.
+   */
+  async function basculerIntervenant(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/");
+    const nom = String(donnees.get("nom") ?? "").trim();
+    const prestataire = String(donnees.get("prestataire") ?? "").trim() || null;
+    const remettre = donnees.get("remettre") === "1";
+    if (!nom) return;
+
+    if (prestataire) {
+      await sql`
+        update prestataires set actif = ${remettre} where id = ${prestataire}::uuid`;
+    } else {
+      await sql`
+        update utilisateurs set intervient_technique = ${remettre} where nom = ${nom}`;
+    }
+    revalidatePath("/administration/equipe");
+    redirect(
+      `/administration/equipe?fait=${remettre ? "remis" : "retire"}&qui=${encodeURIComponent(nom)}` as Route,
+    );
   }
 
   async function ajouter(donnees: FormData) {
@@ -267,7 +356,7 @@ export default async function Equipe({
       <Entete titre="L’équipe" sous_titre="Qui constate, à qui l’on transmet" retour="/administration" />
 
       <div className="px-5 py-4 flex flex-col gap-6">
-        <Confirmation quoi={fait} />
+        <Confirmation quoi={fait} qui={qui} />
         {deja && (
           <p className="rounded-card bg-amber-soft px-4 py-3 text-[13.5px] text-amber text-pretty leading-snug">
             <strong>{deja}</strong> est déjà inscrit comme{" "}
@@ -358,13 +447,18 @@ export default async function Equipe({
         })}
 
         {/* Les intervenants techniques */}
-        <details className="flex flex-col gap-2">
+        {/* Elle se rouvre après un ajout ou un retrait : sans cela, la page se
+            rechargeait repliée et le geste paraissait n'avoir rien fait. */}
+        <details
+          open={["profil", "adresse", "intervenant", "retire", "remis"].includes(fait ?? "")}
+          className="flex flex-col gap-2"
+        >
           <summary className="list-none flex items-center justify-between cursor-pointer py-1">
             <span className="etiquette">Intervenants techniques</span>
             <span className="text-[12.5px] text-ink-faint tabular-nums">
               {reglable
-                ? `${intervenants.filter((i) => i.compte).length} sur ${intervenants.length} avec un profil`
-                : `${intervenants.length} noms`}
+                ? `${actifs.filter((i) => i.compte).length} sur ${actifs.length} avec un profil`
+                : `${actifs.length} noms`}
             </span>
           </summary>
 
@@ -380,13 +474,13 @@ export default async function Equipe({
           )}
 
           <p className="text-[12px] text-ink-faint text-pretty leading-snug">
-            Les {intervenants.length} noms proposés dans l’écran technique. Ouvrez un nom pour
+            Les {actifs.length} noms proposés dans l’écran technique. Ouvrez un nom pour
             lui donner un profil — il pourra alors ouvrir l’application à son nom — et pour
             noter l’adresse où part son récapitulatif de fin de passage. Vous êtes en copie.
           </p>
 
           <ul className="flex flex-col gap-1.5">
-            {intervenants.map((i) => (
+            {actifs.map((i) => (
               <li key={i.nom}>
                 <details className="carte px-3.5 py-2.5">
                   <summary className="list-none cursor-pointer flex items-center gap-3">
@@ -457,11 +551,24 @@ export default async function Equipe({
                         Noter
                       </BoutonEnvoi>
                     </form>
+
+                    {/* On ne supprime jamais quelqu'un : on le retire des
+                        listes de saisie. Ce qu'il a fait lui reste attaché. */}
+                    <form action={basculerIntervenant} className="self-start">
+                      <input type="hidden" name="nom" value={i.nom} />
+                      <input type="hidden" name="prestataire" value={i.prestataire_id ?? ""} />
+                      <BoutonEnvoi
+                        pendant="…"
+                        className="text-[12.5px] text-ink-faint underline underline-offset-4"
+                      >
+                        Retirer de la liste
+                      </BoutonEnvoi>
+                    </form>
                   </div>
                 </details>
               </li>
             ))}
-            {intervenants.length === 0 && (
+            {actifs.length === 0 && (
               <li className="carte px-3.5 py-3 text-[13px] text-ink-faint">
                 Aucun intervenant actif.
               </li>
@@ -475,10 +582,47 @@ export default async function Equipe({
               placeholder="Renfort ponctuel à ajouter…"
               className="carte grow min-w-0 px-4 h-[46px] text-[16px] placeholder:text-ink-faint"
             />
-            <button className="px-4 rounded-card bg-plum text-white text-[14.5px]">
+            <BoutonEnvoi
+              pendant="…"
+              className="px-4 rounded-card bg-plum text-white text-[14.5px]"
+            >
               Ajouter
-            </button>
+            </BoutonEnvoi>
           </form>
+
+          {retires.length > 0 && (
+            <details className="carte px-3.5 py-3">
+              <summary className="list-none cursor-pointer text-[12.5px] text-plum underline underline-offset-4">
+                {retires.length} personne{retires.length > 1 ? "s" : ""} retirée
+                {retires.length > 1 ? "s" : ""} de la liste
+              </summary>
+              <ul className="mt-2 flex flex-col gap-2">
+                {retires.map((i) => (
+                  <li key={i.nom} className="flex items-center gap-3">
+                    <span className="grow min-w-0">
+                      <span className="block text-[14.5px] text-ink-faint">{i.nom}</span>
+                      <span className="block text-[11.5px] text-ink-faint">
+                        {i.interventions > 0
+                          ? `${i.interventions} intervention${i.interventions > 1 ? "s" : ""} à son nom`
+                          : "aucune intervention"}
+                      </span>
+                    </span>
+                    <form action={basculerIntervenant} className="shrink-0">
+                      <input type="hidden" name="nom" value={i.nom} />
+                      <input type="hidden" name="prestataire" value={i.prestataire_id ?? ""} />
+                      <input type="hidden" name="remettre" value="1" />
+                      <BoutonEnvoi
+                        pendant="…"
+                        className="h-[36px] px-3 rounded-[10px] bg-plum-soft text-plum text-[12.5px]"
+                      >
+                        Remettre
+                      </BoutonEnvoi>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </details>
 
       </div>

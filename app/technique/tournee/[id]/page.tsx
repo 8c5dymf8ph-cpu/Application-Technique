@@ -7,8 +7,9 @@ import { colonneExiste } from "@/lib/schema";
 import { enregistrerFichier } from "@/lib/stockage";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
-import { euros, jourISO, peutValider } from "@/lib/domaine";
-import { Entete } from "@/app/composants/ui";
+import { euros, jourISO, peutValider, suitLesDossiers } from "@/lib/domaine";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { Confirmation, Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
 import { deposerRecap } from "@/lib/recap";
 
@@ -66,11 +67,14 @@ type Emetteur = {
 
 export default async function DetailTournee({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ fait?: string }>;
 }) {
   const profil = await exigerEncadrement();
   const { id } = await params;
+  const { fait } = await searchParams;
 
   const [lot] = await sql<Lot[]>`
     select id, reference, intervenant, date_tournee, cloturee_le,
@@ -132,6 +136,36 @@ export default async function DetailTournee({
       join v_recap_interventions r on r.intervention_id = fi.intervention_id
      where r.tournee = ${lot.reference}
      limit 1`;
+
+  /**
+   * Redater un passage.
+   *
+   * Ce qui identifie un passage, c'est QUI est venu et QUEL JOUR — « FAIT LE »
+   * et « PAR » dans l'ancienne application. Une date reprise de travers, et la
+   * facture ne se rapproche plus de rien. Il faut donc pouvoir la corriger.
+   *
+   * Un passage ne s'étale pas sur deux jours : déplacer le passage déplace
+   * TOUTES ses interventions avec lui, sinon la tournée dirait un jour et ses
+   * lignes un autre. Réservé à Sarah P et Miguel : c'est une correction de
+   * données, pas un geste de terrain.
+   */
+  async function redater(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !suitLesDossiers(profil_.role)) {
+      redirect(`/technique/tournee/${id}` as Route);
+    }
+    const jour = String(donnees.get("jour") ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(jour)) return;
+    await sql`update tournees set date_tournee = ${jour}::date where id = ${id}`;
+    await sql`
+      update interventions
+         set date_intervention = ${jour}::date
+       where tournee_id = ${id}`;
+    revalidatePath(`/technique/tournee/${id}`);
+    revalidatePath("/technique/historique");
+    redirect(`/technique/tournee/${id}?fait=modifie` as Route);
+  }
 
   /**
    * Ce que l'intervenant facture.
@@ -218,6 +252,37 @@ export default async function DetailTournee({
       />
 
       <div className="px-5 py-4 flex flex-col gap-5">
+        <Confirmation quoi={fait} />
+
+        {/* Corriger la date d'un passage. Une date reprise de travers, et la
+            facture ne se rapproche plus de rien. Réservé à Sarah P et Miguel. */}
+        {suitLesDossiers(profil.role) && (
+          <details className="carte px-4 py-3">
+            <summary className="list-none cursor-pointer text-[12.5px] text-plum underline underline-offset-4">
+              Corriger la date de ce passage
+            </summary>
+            <form action={redater} className="mt-3 flex flex-col gap-2">
+              <input
+                type="date"
+                name="jour"
+                defaultValue={jourISO(lot.date_tournee)}
+                className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
+              />
+              <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+                Les {lot.nb_interventions} intervention{lot.nb_interventions > 1 ? "s" : ""} du
+                passage suivent la même date : un passage ne s’étale pas sur deux jours. Le coût
+                et les avis ne changent pas.
+              </p>
+              <BoutonEnvoi
+                pendant="…"
+                className="h-[44px] rounded-[12px] bg-plum text-white font-display font-semibold text-[14px]"
+              >
+                Enregistrer la date
+              </BoutonEnvoi>
+            </form>
+          </details>
+        )}
+
         {/* Le coût, décomposé : c'est la question qu'on pose à un passage. */}
         <section className="carte px-4 py-4 flex flex-col gap-3">
           <div className="flex items-baseline gap-3">

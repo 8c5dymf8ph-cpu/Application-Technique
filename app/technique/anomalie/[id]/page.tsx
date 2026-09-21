@@ -165,7 +165,9 @@ export default async function TraiterAnomalie({
       returning id`;
     // Déjà déclarée pendant ce passage : on ne double ni la sortie de stock,
     // ni les photos, ni l'avis.
-    if (!intervention) redirect(`/technique/${encodeURIComponent(nom)}`);
+    if (!intervention) {
+      redirect(`/technique/${encodeURIComponent(nom)}?fait=${id}#a-${id}` as Route);
+    }
 
     // L'écran grise les articles épuisés, mais un lien recopié ou une réserve
     // vidée entre-temps passerait à travers : on revérifie ici.
@@ -203,7 +205,11 @@ export default async function TraiterAnomalie({
       values (${intervention.id}, 'technicien', 'fait',
               ${intervenant.utilisateur_id}, ${profil_.id}, ${mot})`;
 
-    redirect(`/technique/${encodeURIComponent(nom)}`);
+    // On revient sur la liste À L'ENDROIT de ce qu'on vient de déclarer :
+    // l'ancre amène l'écran sur la ligne, et elle s'affiche cochée et mise en
+    // avant. Revenir en haut d'une liste de douze ne disait pas ce qui avait
+    // changé.
+    redirect(`/technique/${encodeURIComponent(nom)}?fait=${id}#a-${id}` as Route);
   }
 
   // L'adresse est construite à la volée : le typage des routes ne couvre pas

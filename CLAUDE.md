@@ -146,6 +146,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    d'elle ; chaque vignette porte sa croix pour retirer une photo ratée. Un écran qui n'attend
    qu'un fichier (`multiple={false}`) remplace, lui.
 
+14sexies. **Après « C'est fait », on revient SUR la ligne, pas en haut de la liste.** Le renvoi
+   porte l'ancre de l'anomalie : l'écran s'ouvre dessus, cochée, barrée, sur fond vert, avec le
+   matériel sorti. Revenir en haut de cent dix-neuf lignes ne disait pas ce qui avait changé.
+   L'écran d'intervention se lit comme une liste de tâches — le jour en gros, l'avancement
+   dessiné, ce qui presse en tête, ce qui est déjà déclaré en bas sous « Déjà déclarées ».
+
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
    explicite, pas une absence de réponse. **Un article épuisé ne se choisit pas** : il reste
@@ -286,6 +292,12 @@ gouvernante, y compris ce qu'elle n'a pas validé.
 
 **La liste des intervenants se tient depuis l'application.** Un renfort ponctuel s'ajoute et se
 retire d'un appui dans `/administration/equipe` ; ce qu'il a fait reste attaché à son nom.
+Retirer, c'est `intervient_technique = false` pour une personne et `actif = false` pour une
+entreprise — jamais une suppression. **Les retirés ne se lisent pas dans `v_intervenants`** :
+la vue ne retient que `intervient_technique`, et ils en disparaissaient entièrement, sans plus
+aucun moyen de les remettre. Ils ont leur propre requête, et leur propre repli. Un geste qui
+ajoute ou retire rouvre la section et affiche le nom : sans cela la page se rechargeait repliée
+et l'appui paraissait n'avoir rien fait.
 
 **On ne supprime jamais une personne, on la désactive.** L'étage change souvent ; `actif` la
 retire des listes de saisie et son prénom reste sur les dossiers qu'elle a constatés, des années
@@ -300,6 +312,20 @@ et dans la politique de suppression. L'écran dit ce que la suppression emporte 
 interventions — avant de la proposer. **Ce qui est sorti du stock n'est pas rendu** :
 `mouvements_stock.intervention_id` passe à nul, le mouvement reste ; le matériel a bien quitté la
 réserve. Un problème résolu se clôt, il ne se supprime pas.
+
+**Un écran de décision n'est pas un écran de lecture.** Le routeur garde la page qu'on quitte et
+la ressort telle quelle à la flèche arrière — c'est ce qui rend la position de lecture. Mais
+après avoir validé le dernier avis d'un lot, revenir en arrière reproposait de décider : on
+croyait que rien n'avait été enregistré. `RelireAuRetour` marque le premier passage et redemande
+la page au serveur si l'on revient ; l'écran de validation renvoie alors vers la liste, puisqu'il
+n'y a plus rien à décider. Le poser sur tout écran dont l'état change en le quittant.
+
+**Corriger une donnée n'est pas un geste de terrain.** La description, la priorité et la date de
+déclaration d'une anomalie se corrigent depuis sa fiche ; la date d'un passage depuis le passage,
+et elle déplace TOUTES ses interventions avec lui — un passage ne s'étale pas sur deux jours, et
+c'est la date qui permet à la facture de se rapprocher. Réservé à `suitLesDossiers` (Sarah P et
+Miguel). Le lieu et l'état d'une anomalie ne se corrigent jamais : le lieu ferait mentir
+l'historique de la chambre, l'état se décide en déclarant, en intervenant ou en validant.
 
 ## Photos
 

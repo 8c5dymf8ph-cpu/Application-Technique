@@ -1,12 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
+import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { peutValider } from "@/lib/domaine";
+import { peutSupprimer, peutValider } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { deposerRecap } from "@/lib/recap";
-import { Entete, Indices, Vide } from "@/app/composants/ui";
+import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
@@ -19,16 +20,44 @@ type Ligne = {
   etage: string;
   description: string;
   statut: string;
+  priorite: string;
   traitee: boolean;
   materiel: string | null;
   photos: number;
   commentaires: number;
 };
 
+/**
+ * La priorité, lisible d'un coup d'œil.
+ *
+ * Deux chevrons pour ce qui presse, rien pour le reste : une liste où tout
+ * porte un signe ne dit plus rien. C'est ce qui décide par quoi on commence.
+ */
+const PRESSE: Record<string, { ton: string; titre: string }> = {
+  urgente: { ton: "text-red", titre: "Urgent" },
+  haute: { ton: "text-amber", titre: "Prioritaire" },
+};
+
+function Chevrons({ priorite }: { priorite: string }) {
+  const p = PRESSE[priorite];
+  if (!p) return null;
+  return (
+    <span className={`shrink-0 ${p.ton}`} title={p.titre} aria-label={p.titre}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M6 13l6-5 6 5" />
+        <path d="M6 18l6-5 6 5" />
+      </svg>
+    </span>
+  );
+}
+
 export default async function Tournee({
   params,
+  searchParams,
 }: {
   params: Promise<{ intervenant: string }>;
+  searchParams: Promise<{ fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
@@ -36,6 +65,11 @@ export default async function Tournee({
   const nom = decodeURIComponent((await params).intervenant);
   const intervenant = (await intervenants()).find((i) => i.nom === nom);
   if (!intervenant) notFound();
+
+  // Celle qu'on vient de déclarer : elle se retrouve cochée, mise en avant, et
+  // l'ancre du navigateur amène l'écran dessus. Sans cela on revenait en haut
+  // d'une liste de douze lignes sans savoir ce qui avait changé.
+  const { fait } = await searchParams;
 
   const tournee = await tourneeEnCours(intervenant);
 
@@ -51,7 +85,7 @@ export default async function Tournee({
         from anomalies a
     )
     select a.id as anomalie_id, e.code as emplacement, et.nom as etage,
-           a.description, a.statut::text,
+           a.description, a.statut::text, a.priorite::text,
            (i.id is not null) as traitee,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
@@ -63,7 +97,7 @@ export default async function Tournee({
     join accompagnement ac on ac.id = a.id
     left join interventions i on i.anomalie_id = a.id and i.tournee_id = ${tournee.id}
     union all
-    select a.id, e.code, et.nom, a.description, a.statut::text, true,
+    select a.id, e.code, et.nom, a.description, a.statut::text, a.priorite::text, true,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
              where m.intervention_id = i.id and m.type = 'sortie'),
@@ -89,8 +123,34 @@ export default async function Tournee({
         order by date_commentaire`
     : [];
   const fil = (anomalie: string) => fils.filter((f) => f.anomalie_id === anomalie);
+
   const faites = uniques.filter((l) => l.traitee);
-  const chambres = [...new Set(uniques.map((l) => l.emplacement))];
+  const restantes = uniques.filter((l) => !l.traitee);
+
+  /**
+   * Ce qui presse d'abord, ce qui est fait à la fin.
+   *
+   * Une liste de tâches se lit de haut en bas : ce qu'il reste à faire en
+   * premier, l'urgent en tête, et ce qui est déjà coché en dessous — barré,
+   * pour voir son avancement sans qu'il encombre.
+   */
+  const rang: Record<string, number> = { urgente: 0, haute: 1, normale: 2, basse: 3 };
+  const ordonnees = [
+    ...restantes.sort(
+      (a, b) =>
+        (rang[a.priorite] ?? 2) - (rang[b.priorite] ?? 2) ||
+        a.emplacement.localeCompare(b.emplacement, "fr", { numeric: true }),
+    ),
+    ...faites.sort((a, b) =>
+      a.emplacement.localeCompare(b.emplacement, "fr", { numeric: true }),
+    ),
+  ];
+
+  const encadre = peutValider(profil.role);
+  const supprimable = peutSupprimer(profil.role);
+
+  const aujourdhui = new Date();
+  const jourCourt = aujourdhui.toLocaleDateString("fr-FR", { weekday: "short" });
 
   /**
    * Se déraviser.
@@ -118,6 +178,23 @@ export default async function Tournee({
     revalidatePath(`/technique/${encodeURIComponent(nom)}`);
   }
 
+  /**
+   * Supprimer une anomalie sans quitter la liste.
+   *
+   * Une chambre déclarée de travers se voit en arrivant devant la porte, pas
+   * depuis un écran d'administration : il faut pouvoir l'effacer là où on la
+   * lit. Trois personnes seulement — Victoria, Sarah P, Miguel — et jamais un
+   * technicien : il traite, il ne décide pas de ce qui existe.
+   */
+  async function supprimer(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!peutSupprimer(profil_?.role)) redirect(`/technique/${encodeURIComponent(nom)}` as Route);
+    await sql`delete from anomalies where id = ${String(donnees.get("anomalie"))}`;
+    revalidatePath(`/technique/${encodeURIComponent(nom)}`);
+    redirect(`/technique/${encodeURIComponent(nom)}?fait=supprime` as Route);
+  }
+
   async function cloturer() {
     "use server";
     await sql`update tournees set cloturee_le = now() where id = ${tournee.id}`;
@@ -133,95 +210,210 @@ export default async function Tournee({
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
         titre={nom}
-        sous_titre={`${tournee.reference.split("-").slice(-2, -1)} · ${faites.length} sur ${uniques.length}`}
+        sous_titre="Ce qu’il y a à traiter"
         // Un intervenant n'a pas accès à /technique : l'y renvoyer le
         // ramènerait aussitôt sur cette même page. Pour lui, le filet est
         // l'accueil ; pour l'encadrement, la liste des intervenants.
-        retour={peutValider(profil.role) ? "/technique/intervenants" : "/"}
+        retour={encadre ? "/technique/intervenants" : "/"}
       />
 
-      <div className="px-5 py-4 flex flex-col gap-4 grow">
+      {/* De la place sous la dernière ligne : le bouton d'ajout flotte au-dessus
+          du contenu et masquait ce qui se trouvait en bas. */}
+      <div
+        className={`px-5 pt-3 flex flex-col gap-4 grow ${encadre ? "pb-24" : "pb-4"}`}
+      >
+        {fait === "supprime" && <Confirmation quoi="supprime" />}
+
+        {/* Le jour, en gros : on ouvre l'écran pour savoir où on en est
+            aujourd'hui, et une tournée ne court jamais d'un jour sur l'autre. */}
+        <div className="flex items-end gap-3 border-b-[2.5px] border-ink pb-2.5">
+          <span className="grow min-w-0">
+            <span className="block text-[12.5px] text-ink-faint">
+              {aujourdhui.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+            </span>
+            <span className="flex items-baseline gap-2">
+              <span className="font-display font-semibold text-[30px] leading-none">
+                {aujourdhui.getDate()}
+                <span className="text-[20px] text-ink-soft">.{jourCourt}</span>
+              </span>
+              <span className="px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[10.5px] uppercase tracking-[0.06em]">
+                Aujourd’hui
+              </span>
+            </span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className="block font-display font-semibold text-[19px] tabular-nums">
+              {faites.length}<span className="text-ink-faint">/{uniques.length}</span>
+            </span>
+            <span className="block text-[11px] text-ink-faint">traitées</span>
+          </span>
+        </div>
+
+        {/* L'avancement, dessiné : un chiffre seul ne se lit pas en marchant. */}
+        {uniques.length > 0 && (
+          <div className="h-[6px] rounded-full bg-surface-muted overflow-hidden -mt-2">
+            <div
+              className="h-full rounded-full bg-green transition-[width]"
+              style={{ width: `${Math.round((faites.length / uniques.length) * 100)}%` }}
+            />
+          </div>
+        )}
+
         {uniques.length === 0 ? (
           <Vide>Rien à traiter pour {nom} aujourd’hui.</Vide>
         ) : (
-          chambres.map((chambre) => {
-            const dedans = uniques.filter((l) => l.emplacement === chambre);
-            return (
-              <section key={chambre} className="flex flex-col gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-[3px] h-4 rounded-sm bg-amber" />
-                  <h2 className="font-display font-semibold text-[19px]">{chambre}</h2>
-                  <span className="text-[13px] text-ink-faint">{dedans[0].etage}</span>
-                </div>
-                <ul className="carte divide-y divide-line">
-                  {dedans.map((l) => (
-                    <li key={l.anomalie_id}>
-                      <div className="px-3.5 py-3.5 flex items-start gap-3">
-                        {/* La case coche ET décoche : tant que la tournée n'est
-                            pas rendue, on peut revenir sur ce qu'on a déclaré. */}
-                        {l.traitee ? (
-                          <form action={deselectionner} className="w-[30px] h-[30px] mt-0.5 shrink-0">
-                            <input type="hidden" name="anomalie" value={l.anomalie_id} />
-                            <button
-                              aria-label="Annuler ma déclaration"
-                              className="w-[30px] h-[30px] rounded-lg bg-green grid place-items-center active:opacity-70"
-                            >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                   stroke="#fff" strokeWidth="2.6" strokeLinecap="round"
-                                   strokeLinejoin="round">
-                                <path d="M5 12.5l4.5 4.5L19 7.5" />
-                              </svg>
-                            </button>
-                          </form>
-                        ) : (
-                          <Link
-                            href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
-                            aria-label="Traiter cette anomalie"
-                            className="w-[30px] h-[30px] mt-0.5 shrink-0 rounded-lg border-[2px] border-[#C9C5D8]"
-                          />
-                        )}
-                        <Link
-                          href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
-                          className="flex flex-col gap-1.5 grow min-w-0 active:opacity-70"
+          <ul className="flex flex-col">
+            {ordonnees.map((l, i) => {
+              const vientDEtreFaite = fait === l.anomalie_id;
+              const premiereFaite = l.traitee && (i === 0 || !ordonnees[i - 1].traitee);
+              return (
+                <li key={l.anomalie_id} id={`a-${l.anomalie_id}`} className="scroll-mt-4 relative">
+                  {/* La bascule entre ce qui reste et ce qui est fait se voit :
+                      sinon la liste paraît mélangée. */}
+                  {premiereFaite && restantes.length > 0 && (
+                    <p className="etiquette pt-4 pb-1.5">Déjà déclarées</p>
+                  )}
+                  <div
+                    className={`flex items-start gap-3 py-3 border-b border-line ${
+                      vientDEtreFaite
+                        ? "bg-green-soft -mx-2 px-2 rounded-[10px] border-transparent"
+                        : ""
+                    }`}
+                  >
+                    {/* La case coche ET décoche : tant que la tournée n'est pas
+                        rendue, on peut revenir sur ce qu'on a déclaré. */}
+                    {l.traitee ? (
+                      <form action={deselectionner} className="shrink-0 mt-[1px]">
+                        <input type="hidden" name="anomalie" value={l.anomalie_id} />
+                        <button
+                          aria-label="Annuler ma déclaration"
+                          className="w-[26px] h-[26px] rounded-[7px] bg-plum grid place-items-center active:opacity-70"
                         >
-                          <span className="flex items-start gap-2">
-                            <span
-                              className={`grow min-w-0 text-[16.5px] leading-snug text-pretty ${
-                                l.traitee ? "text-ink-faint line-through" : ""
-                              }`}
-                            >
-                              {l.description}
-                            </span>
-                            <span className="mt-[2px] flex items-center gap-1.5 shrink-0">
-                              <Indices photos={l.photos} eteint={l.traitee} />
-                            </span>
-                          </span>
-                          {l.traitee && (
-                            <span className="text-[13px] text-ink-faint">
-                              {l.materiel ?? "Aucun matériel"}
-                            </span>
-                          )}
-                        </Link>
-                        <span className="shrink-0 self-start mt-0.5">
-                          <ApercuFil messages={fil(l.anomalie_id)} eteint={l.traitee} />
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                               stroke="#fff" strokeWidth="2.8" strokeLinecap="round"
+                               strokeLinejoin="round">
+                            <path d="M5 12.5l4.5 4.5L19 7.5" />
+                          </svg>
+                        </button>
+                      </form>
+                    ) : (
+                      <Link
+                        href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
+                        aria-label="Traiter cette anomalie"
+                        className="w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] border-[2px] border-[#C9C5D8] active:bg-plum-soft"
+                      />
+                    )}
+
+                    <Link
+                      href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
+                      className="grow min-w-0 flex flex-col gap-1 active:opacity-70"
+                    >
+                      <span
+                        className={`text-[16px] font-display font-semibold leading-snug text-pretty ${
+                          l.traitee ? "text-ink-faint line-through" : ""
+                        }`}
+                      >
+                        {l.description}
+                      </span>
+                      {/* Une anomalie ne se montre jamais séparée de son lieu :
+                          sinon on croit qu'il y a un lave-vaisselle en 57. */}
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`px-1.5 py-0.5 rounded-md text-[11.5px] font-medium ${
+                            l.traitee
+                              ? "bg-surface-muted text-ink-faint"
+                              : "bg-amber-soft text-amber"
+                          }`}
+                        >
+                          {l.emplacement}
                         </span>
+                        <span className="text-[11.5px] text-ink-faint">{l.etage}</span>
+                        {l.traitee && (
+                          <span className="text-[11.5px] text-ink-faint">
+                            · {l.materiel ?? "aucun matériel"}
+                          </span>
+                        )}
+                      </span>
+                    </Link>
+
+                    <span
+                      className={`shrink-0 mt-[1px] flex items-center gap-1.5 ${
+                        supprimable && !l.traitee ? "pr-7" : ""
+                      }`}
+                    >
+                      {!l.traitee && <Chevrons priorite={l.priorite} />}
+                      <Indices photos={l.photos} eteint={l.traitee} />
+                      <ApercuFil messages={fil(l.anomalie_id)} eteint={l.traitee} />
+                    </span>
+                  </div>
+
+                  {/* Supprimer là où on la lit : une chambre déclarée de
+                      travers se voit devant la porte, pas depuis un écran
+                      d'administration. Jamais pour un technicien. */}
+                  {supprimable && !l.traitee && (
+                    <details className="group/sup">
+                      {/* Un « Supprimer » écrit sous chacune des cent dix-neuf
+                          lignes noie la liste. Trois points au bout de la
+                          ligne, et le mot n'apparaît qu'une fois ouvert. */}
+                      <summary
+                        aria-label="Autres actions"
+                        className="list-none cursor-pointer absolute top-[14px] right-0 w-7 h-7 grid place-items-center text-ink-faint group-open/sup:text-red"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <circle cx="5" cy="12" r="1.7" />
+                          <circle cx="12" cy="12" r="1.7" />
+                          <circle cx="19" cy="12" r="1.7" />
+                        </svg>
+                      </summary>
+                      <div className="ml-[38px] mb-2.5 rounded-card bg-red-soft px-3.5 py-3 flex flex-col gap-2">
+                        <p className="text-[12.5px] text-red text-pretty leading-snug">
+                          Efface l’anomalie, son fil et ses photos. À réserver à ce qui n’aurait
+                          jamais dû être déclaré — une erreur de chambre, un doublon.
+                        </p>
+                        <form action={supprimer}>
+                          <input type="hidden" name="anomalie" value={l.anomalie_id} />
+                          <BoutonEnvoi
+                            pendant="…"
+                            className="h-[40px] w-full rounded-[11px] bg-red text-white font-display font-semibold text-[13.5px]"
+                          >
+                            Supprimer définitivement
+                          </BoutonEnvoi>
+                        </form>
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })
+                    </details>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
+
+      {/* Déclarer ce qu'on voit en passant, sans quitter sa tournée. Un
+          technicien n'y a pas droit : le catalogue est fermé et la déclaration
+          est un geste d'encadrement. */}
+      {encadre && (
+        <Link
+          href={"/gouvernante/declarer" as Route}
+          aria-label="Déclarer une anomalie"
+          className={`fixed right-5 z-20 w-[58px] h-[58px] rounded-full bg-plum text-white grid place-items-center shadow-lg active:opacity-80 ${
+            faites.length > 0 ? "bottom-[92px]" : "bottom-6"
+          }`}
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+            <path d="M6 12h12" /><path d="M12 6v12" />
+          </svg>
+        </Link>
+      )}
 
       {faites.length > 0 && (
         <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
           <form action={cloturer}>
             <BoutonEnvoi
-                pendant="Clôture…"
-                className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px]"
-              >
+              pendant="Clôture…"
+              className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px]"
+            >
               Fin d’intervention — {faites.length} anomalie{faites.length > 1 ? "s" : ""}
             </BoutonEnvoi>
           </form>

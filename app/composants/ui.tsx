@@ -156,6 +156,10 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
   adresse: { ton: "green", texte: "Adresse enregistrée." },
   declare: { ton: "green", texte: "Anomalie déclarée." },
   supprime: { ton: "green", texte: "Anomalie supprimée." },
+  modifie: { ton: "green", texte: "Modification enregistrée." },
+  intervenant: { ton: "green", texte: "Ajouté à la liste des intervenants." },
+  retire: { ton: "green", texte: "Retiré de la liste. Son historique lui reste attaché." },
+  remis: { ton: "green", texte: "Remis dans la liste des intervenants." },
   "declare-sans-photo": {
     ton: "red",
     texte:
@@ -170,7 +174,7 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
   },
 };
 
-export function Confirmation({ quoi }: { quoi?: string }) {
+export function Confirmation({ quoi, qui }: { quoi?: string; qui?: string }) {
   const mot = quoi ? MOTS[quoi] : undefined;
   if (!mot) return null;
   return (
@@ -180,6 +184,7 @@ export function Confirmation({ quoi }: { quoi?: string }) {
       }`}
       role="status"
     >
+      {qui ? <strong>{qui} — </strong> : null}
       {mot.texte}
     </p>
   );

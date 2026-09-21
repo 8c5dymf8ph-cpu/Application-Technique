@@ -4,13 +4,16 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import {
+  jourISO,
   jours,
   LIBELLE_STATUT,
   peutSupprimer,
+  suitLesDossiers,
   TON_STATUT,
   type StatutAnomalie,
 } from "@/lib/domaine";
-import { Entete } from "@/app/composants/ui";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { Confirmation, Entete } from "@/app/composants/ui";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
 import { enregistrerPhoto } from "@/lib/stockage";
@@ -26,19 +29,25 @@ type Anomalie = {
   etage: string;
   constate_par: string | null;
   jours_depuis: number;
+  declare_le: string | Date;
+  priorite: string;
 };
 
 export default async function DetailAnomalie({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
+  const { fait } = await searchParams;
 
   const [anomalie] = await sql<Anomalie[]>`
-    select anomalie_id as id, reference, description, statut, emplacement,
+    select anomalie_id as id, reference, description, statut, emplacement, declare_le,
+           (select x.priorite::text from anomalies x where x.id = v.anomalie_id) as priorite,
            (select et.nom from etages et join emplacements e on e.etage_id = et.id
              where e.id = v.emplacement_id) as etage,
            constate_par, jours_depuis
@@ -63,6 +72,47 @@ export default async function DetailAnomalie({
              as photos`;
 
   const supprimable = peutSupprimer(profil.role);
+  // Corriger une anomalie, c'est corriger une donnée, pas faire un geste de
+  // terrain : Sarah P et Miguel. La gouvernante déclare et supprime ce qui
+  // n'aurait pas dû exister ; elle ne réécrit pas l'historique.
+  const modifiable = suitLesDossiers(profil.role);
+
+  const PRIORITES = ["basse", "normale", "haute", "urgente"] as const;
+
+  /**
+   * Corriger une anomalie.
+   *
+   * La description reprise de l'ancienne application porte des coquilles, et
+   * une date de déclaration fausse décale tout le comptage des récurrences.
+   * On corrige donc le texte, la priorité et la date — jamais le lieu ni le
+   * statut : le lieu ferait mentir l'historique de la chambre, et le statut se
+   * décide en déclarant, en intervenant ou en validant.
+   */
+  async function modifier(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!suitLesDossiers(profil_?.role)) redirect(`/anomalie/${id}` as Route);
+
+    const description = String(donnees.get("description") ?? "").trim();
+    const priorite = String(donnees.get("priorite") ?? "normale");
+    const jour = String(donnees.get("jour") ?? "").trim();
+    if (!description || !PRIORITES.includes(priorite as (typeof PRIORITES)[number])) return;
+
+    // Une date vide ou mal formée ne doit pas effacer la date de déclaration :
+    // `coalesce` garde celle qui est en place. L'heure d'origine est conservée
+    // — elle sert à ranger deux déclarations du même jour.
+    const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : null;
+    await sql`
+      update anomalies
+         set description = ${description},
+             priorite    = ${priorite}::priorite_anomalie,
+             declare_le  = coalesce(${dateValide}::date, declare_le::date)
+                             + declare_le::time,
+             maj_le      = now()
+       where id = ${id}`;
+    revalidatePath(`/anomalie/${id}`);
+    redirect(`/anomalie/${id}?fait=modifie` as Route);
+  }
 
   /**
    * Supprimer une anomalie.
@@ -122,6 +172,7 @@ export default async function DetailAnomalie({
       />
 
       <div className="px-5 py-5 flex flex-col gap-6">
+        <Confirmation quoi={fait} />
         <div className="flex flex-col gap-2">
           <h1 className="font-display font-semibold text-[19px] leading-snug text-pretty">
             {anomalie.description}
@@ -162,6 +213,61 @@ export default async function DetailAnomalie({
             Ajouter au fil
           </button>
         </form>
+
+        {modifiable && (
+          <details className="border-t border-line pt-5">
+            <summary className="list-none cursor-pointer text-[13px] text-plum underline underline-offset-4">
+              Corriger cette anomalie
+            </summary>
+            <form action={modifier} className="mt-3 carte px-3.5 py-3 flex flex-col gap-2.5">
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Description</span>
+                <textarea
+                  name="description"
+                  rows={2}
+                  defaultValue={anomalie.description}
+                  className="w-full rounded-[11px] border border-line bg-surface px-3 py-2.5 text-[15px] leading-snug resize-none"
+                />
+              </label>
+              <div className="flex gap-2">
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">Priorité</span>
+                  <select
+                    name="priorite"
+                    defaultValue={anomalie.priorite}
+                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
+                  >
+                    {PRIORITES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">Déclarée le</span>
+                  <input
+                    type="date"
+                    name="jour"
+                    defaultValue={jourISO(anomalie.declare_le)}
+                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
+                  />
+                </label>
+              </div>
+              <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+                Le lieu et l’état ne se corrigent pas ici : changer le lieu ferait mentir
+                l’historique de la chambre, et l’état se décide en déclarant, en intervenant ou
+                en validant.
+              </p>
+              <BoutonEnvoi
+                pendant="…"
+                className="h-[44px] rounded-[12px] bg-plum text-white font-display font-semibold text-[14px]"
+              >
+                Enregistrer
+              </BoutonEnvoi>
+            </form>
+          </details>
+        )}
 
         {supprimable && (
           <details className="border-t border-line pt-5">
