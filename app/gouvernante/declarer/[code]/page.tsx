@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
@@ -161,6 +162,9 @@ export default async function Declarer({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {/* Déjà déclaré : la flèche arrière ne rouvre pas le formulaire rempli —
+          on le renverrait en croyant qu'il n'était pas parti. */}
+      <QuitterSiRevenu cle="anomalie" vers="/gouvernante/declarer" />
       <Entete
         titre={emplacement.code}
         sous_titre={emplacement.etage}

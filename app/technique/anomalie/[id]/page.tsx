@@ -10,6 +10,7 @@ import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { PhotoProduit } from "@/app/composants/photo-produit";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
 import { enregistrerPhoto } from "@/lib/stockage";
+import { alerterSiSousSeuil } from "@/lib/seuil";
 
 export const dynamic = "force-dynamic";
 
@@ -196,6 +197,10 @@ export default async function TraiterAnomalie({
         values (${id}, ${intervention.id}, ${chemin}, 'apres', ${profil_.id})`;
     }
 
+    // La sortie peut faire passer un article sous son seuil : c'est le moment
+    // de le dire, pas au prochain inventaire.
+    if (articles.length > 0) await alerterSiSousSeuil(articles.map((a) => a.id));
+
     // Le mot du technicien reste attaché à sa décision : la gouvernante le
     // lira en validant, et le sien s'ajoutera dessous sans l'effacer.
     const mot = String(donnees.get("commentaire") ?? "").trim() || null;
@@ -255,10 +260,12 @@ export default async function TraiterAnomalie({
             <ul className="flex flex-col gap-2">
               {retenus.map((p) => (
                 <li key={p.id} className="carte px-3.5 py-3 flex items-center gap-3">
-                  <PhotoProduit photo={p.photo} designation={p.designation} taille={52} />
+                  <PhotoProduit photo={p.photo} designation={p.designation} taille={76} />
                   <span className="flex flex-col grow min-w-0">
-                    <span className="text-[15.5px] leading-snug text-pretty">{p.designation}</span>
-                    <span className="text-[12.5px] text-ink-faint">
+                    <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
+                      {p.designation}
+                    </span>
+                    <span className="text-[13.5px] text-ink-faint">
                       {p.code} · reste {p.stock} en réserve
                     </span>
                   </span>
@@ -370,12 +377,12 @@ export default async function TraiterAnomalie({
                 const epuise = p.stock <= 0;
                 const dedans = (
                   <>
-                    <PhotoProduit photo={p.photo} designation={p.designation} taille={44} />
+                    <PhotoProduit photo={p.photo} designation={p.designation} taille={76} />
                     <span className="flex flex-col grow min-w-0">
-                      <span className="text-[15.5px] leading-snug text-pretty">
+                      <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
                         {p.designation}
                       </span>
-                      <span className={`text-[13px] ${epuise ? "text-red" : "text-ink-faint"}`}>
+                      <span className={`text-[14px] ${epuise ? "text-red" : "text-ink-faint"}`}>
                         {epuise ? "épuisé — rien en réserve" : `reste ${p.stock} en réserve`}
                       </span>
                     </span>
@@ -384,16 +391,16 @@ export default async function TraiterAnomalie({
                 return (
                   <li key={p.id}>
                     {epuise ? (
-                      <div className="px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 opacity-55">
+                      <div className="px-3 py-3 rounded-card bg-surface-muted border border-line flex items-center gap-3.5 opacity-55">
                         {dedans}
                       </div>
                     ) : (
                       <Link
                         href={lien({ pris: ecrire([...lu, { id: p.id, qte: 1 }]) })}
-                        className="px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 active:bg-plum-soft"
+                        className="px-3 py-3 rounded-card bg-surface-muted border border-line flex items-center gap-3.5 active:bg-plum-soft"
                       >
                         {dedans}
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
                              strokeWidth="2.2" strokeLinecap="round" className="shrink-0">
                           <path d="M6 12h12" /><path d="M12 6v12" />
                         </svg>

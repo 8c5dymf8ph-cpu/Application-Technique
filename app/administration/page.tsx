@@ -14,7 +14,13 @@ import { depot, verifierDepot } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
-type Attente = { categorie: string; nombre: number; plus_ancien: string; en_erreur: number };
+type Attente = {
+  categorie: string;
+  nombre: number;
+  plus_ancien: string;
+  en_erreur: number;
+  derniere_erreur: string | null;
+};
 type Envoye = {
   id: string;
   categorie: string;
@@ -40,15 +46,23 @@ const EVENEMENT: Record<string, { titre: string; aide: string }> = {
   },
   seuil_stock: {
     titre: "Produit sous le seuil",
-    aide: "Qui doit savoir qu’il faut recommander.",
+    aide:
+      "Qui doit savoir qu’il faut recommander. Le message part quand un article " +
+      "passe sous son seuil, un seul par fournisseur même si plusieurs tombent " +
+      "en même temps.",
   },
   recap_technicien: {
     titre: "Lot rendu par l’intervenant",
-    aide: "Envoyé à la fin d’un passage : ce que l’intervenant déclare avoir fait.",
+    aide:
+      "Envoyé à la fin d’un passage : ce que l’intervenant déclare avoir fait. " +
+      "L’adresse notée sur SON profil, dans L’équipe, s’ajoute à celles-ci — " +
+      "elle ne les remplace pas : vous restez en copie.",
   },
   recap_intervention: {
     titre: "Récapitulatif complet",
-    aide: "Envoyé à la dernière validation : les deux avis, et ce qui n’a pas été validé.",
+    aide:
+      "Envoyé à la dernière validation : les deux avis, et ce qui n’a pas été validé. " +
+      "Celui-ci ne concerne que l’hôtel : l’intervenant ne le reçoit pas.",
   },
 };
 
@@ -62,9 +76,14 @@ export default async function Administration({
   if (!peutValider(profil.role)) redirect("/");
   const { envoi, essai, maj } = await searchParams;
 
+  // La dernière erreur, en clair. « 3 en échec » sans le motif n'aide
+  // personne : c'est Resend qui dit pourquoi il refuse, et c'est ce texte-là
+  // qui donne le geste à faire (vérifier un domaine, corriger une adresse).
   const attente = await sql<Attente[]>`
     select categorie, count(*)::int as nombre, min(cree_le) as plus_ancien,
-           count(*) filter (where erreur is not null)::int as en_erreur
+           count(*) filter (where erreur is not null)::int as en_erreur,
+           (array_agg(erreur order by cree_le desc)
+              filter (where erreur is not null))[1] as derniere_erreur
     from emails_envoyes where envoye_le is null
     group by categorie order by 2 desc`;
 
@@ -326,6 +345,25 @@ export default async function Administration({
                       {new Date(a.plus_ancien).toLocaleDateString("fr-FR")}
                       {a.en_erreur > 0 && ` · ${a.en_erreur} en échec`}
                     </span>
+                    {a.derniere_erreur && (
+                      <span className="mt-1 block rounded-[9px] bg-red-soft px-2.5 py-1.5 text-[11.5px] text-red text-pretty leading-snug break-words">
+                        {a.derniere_erreur}
+                        {/* Le refus le plus courant, et le seul geste qui le
+                            lève : sans domaine vérifié, Resend n'accepte que
+                            votre propre adresse. */}
+                        {/(verify a domain|testing emails|domain is not verified)/i.test(
+                          a.derniere_erreur,
+                        ) && (
+                          <span className="mt-1.5 block">
+                            Tant qu’aucun domaine n’est vérifié, Resend n’accepte que votre
+                            propre adresse. Vérifiez le domaine de l’hôtel dans Resend →
+                            Domains, puis renseignez <strong>MAIL_EXPEDITEUR</strong> dans
+                            Vercel avec une adresse de ce domaine. Les messages en attente
+                            repartiront d’eux-mêmes.
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </span>
                   <span
                     className={`shrink-0 min-w-[30px] h-[30px] px-2 rounded-lg grid place-items-center text-[14px] tabular-nums ${

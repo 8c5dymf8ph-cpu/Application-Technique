@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { viderLaFileEnFond } from "@/lib/envoi";
 import { euros, jours } from "@/lib/domaine";
 import { Confirmation, Entete } from "@/app/composants/ui";
+import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 import { Frise } from "@/app/composants/suivi";
 import { ChampCommentaire } from "@/app/composants/fil";
 import {
@@ -179,6 +180,9 @@ export default async function DetailDossier({
         {/* Ce que l'alerte est devenue : partie, en attente, ou pas envoyée
             faute de destinataire. Le silence faisait croire à un envoi. */}
         <Confirmation quoi={fait} />
+        {/* On arrive ici en sortant du formulaire : il ne doit plus se rouvrir
+            par la flèche arrière, rempli comme avant l'envoi. */}
+        {fait && <MarquerValide cle="bouteille" />}
         <section className="carte px-4 py-4 flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <div className="grow min-w-0">

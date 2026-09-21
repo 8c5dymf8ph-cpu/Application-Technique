@@ -4,6 +4,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { personnes, profilActif } from "@/lib/profil";
 import { euros , aujourdhuiISO } from "@/lib/domaine";
+import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { Entete } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampCommentaire } from "@/app/composants/fil";
@@ -198,6 +199,8 @@ export default async function Signaler({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {/* Déjà déclaré : la flèche arrière ne rouvre pas le formulaire rempli. */}
+      <QuitterSiRevenu cle="bouteille" vers="/bouteilles" />
       <Entete
         titre={remplacement ? "Remplacer" : casse ? "Casse" : "Perte"}
         sous_titre={chambre ? `${chambre.code} · ${chambre.etage}` : "Choisir la chambre"}

@@ -66,6 +66,19 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    rédigée mais en attente faute de `RESEND_API_KEY`. Ne jamais laisser une alerte échouer en
    silence.
 
+7octies. **Un échec d'envoi se lit, motif compris.** « 3 en échec » sans le texte du refus
+   n'apprend rien : c'est Resend qui dit pourquoi, et c'est ce texte qui donne le geste à
+   faire. `/administration` rend la dernière erreur de chaque catégorie telle quelle, et
+   reconnaît le refus le plus courant — sans domaine vérifié, Resend n'accepte que l'adresse du
+   titulaire du compte. Ne jamais afficher un compteur d'échecs sans son motif.
+
+7nonies. **L'alerte de seuil part quand le seuil est franchi, une fois.** Le réglage existait
+   dans `/administration` depuis le début, mais **aucune ligne de code ne déposait de message** :
+   on le réglait et on attendait. `alerterSiSousSeuil()` est appelée après une sortie de stock ;
+   elle ne se répète pas tant que l'article reste sous son seuil — sinon chaque sortie d'un
+   article durablement bas renverrait un message et on cesserait de les lire — et repart quand
+   il remonte puis redescend. Un réglage qui ne commande rien est pire qu'un réglage absent.
+
 7quinquies. **Sans clé d'envoi, on ne prétend pas avoir envoyé.** `RESEND_API_KEY` absente : la
    file reste intacte et l'écran le dit. Un échec n'efface rien non plus — la ligne garde son
    erreur et repart au passage suivant. Ne jamais marquer `envoye_le` sur un message qui n'est
@@ -314,6 +327,12 @@ relie un compte à son entreprise : la tournée ouverte reste rattachée au pres
 `v_intervenants` ne compte pas la personne deux fois. `peut_se_connecter` décide de l'affichage,
 et se règle dans `/administration/equipe` — l'hôtel change d'intervenants.
 
+**L'adresse du profil d'un intervenant S'AJOUTE aux destinataires réglés, elle ne les remplace
+pas.** `alertes_destinataires` porte le côté hôtel ; `deposerRecap()` y ajoute l'adresse de
+l'intervenant pour le message « lot rendu » seulement. Le récapitulatif complet ne concerne que
+l'hôtel. Les deux écrans le disent, parce que la question se pose naturellement en réglant l'un
+sans l'autre.
+
 **Chaque intervenant peut recevoir son récapitulatif de fin de passage**, à l'adresse notée sur
 la même ligne. Le message « lot rendu » part chez lui ET chez Miguel : il est en copie, jamais
 court-circuité. Le récapitulatif complet, lui, ne concerne que l'hôtel — il porte l'avis de la
@@ -341,6 +360,14 @@ et dans la politique de suppression. L'écran dit ce que la suppression emporte 
 interventions — avant de la proposer. **Ce qui est sorti du stock n'est pas rendu** :
 `mouvements_stock.intervention_id` passe à nul, le mouvement reste ; le matériel a bien quitté la
 réserve. Un problème résolu se clôt, il ne se supprime pas.
+
+**Un formulaire validé n'est plus un écran de saisie.** On déclare une perte, on arrive sur le
+dossier, on revient en arrière — et le formulaire revient, rempli comme avant l'envoi. Rien ne
+dit qu'il est déjà parti : on corrige, on renvoie, et le dossier existe deux fois. L'écran
+d'arrivée pose une marque (`<MarquerValide>`), le formulaire la trouve en se remontant,
+**l'efface** et repart d'où l'on vient (`<QuitterSiRevenu>`). L'effacer au passage est ce qui
+distingue le retour en arrière d'une nouvelle saisie : rouvrir l'écran plus tard fonctionne
+normalement.
 
 **Un écran de décision n'est pas un écran de lecture.** Le routeur garde la page qu'on quitte et
 la ressort telle quelle à la flèche arrière — c'est ce qui rend la position de lecture. Mais
