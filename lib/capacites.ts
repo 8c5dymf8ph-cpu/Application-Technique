@@ -52,6 +52,11 @@ const ATTENDUES: Attendue[] = [
     verifier: () => vueExiste("v_mouvements_reels"),
   },
   {
+    titre: "Corriger un dossier bouteille",
+    sans: "La date, la chambre et les types d’un dossier ne se corrigent pas : un dossier d’il y a trois semaines arrive daté d’aujourd’hui, et une erreur de chambre reste pour toujours.",
+    verifier: () => regleContient("fn_corriger_dossier_bouteille", "dotation"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),

@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { viderLaFileEnFond } from "@/lib/envoi";
 import { euros, jours } from "@/lib/domaine";
 import { Confirmation, Entete } from "@/app/composants/ui";
+import { peutValider } from "@/lib/domaine";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 import { Frise } from "@/app/composants/suivi";
 import { ChampCommentaire } from "@/app/composants/fil";
@@ -154,15 +155,19 @@ export default async function DetailDossier({
     viderLaFileEnFond();
   }
 
+  /**
+   * Ce qui se règle sans rien déplacer : le montant, un mot de plus.
+   *
+   * Tout ce qui touche au parc — la date, la chambre, les types — est sur
+   * l'écran de correction : corriger l'un d'eux déplace des bouteilles.
+   */
   async function modifier(donnees: FormData) {
     "use server";
-    const nom = String(donnees.get("client") ?? "").trim() || null;
     const note = String(donnees.get("commentaire") ?? "").trim() || null;
     const mt = donnees.get("montant") ? Number(donnees.get("montant")) : null;
     await sql`
       update incidents_bouteille
-         set client_nom = ${nom},
-             commentaire = coalesce(${note}, commentaire),
+         set commentaire = coalesce(${note}, commentaire),
              montant = ${mt}
        where id = ${id}`;
     revalidatePath(`/bouteilles/dossier/${id}`);
@@ -170,9 +175,12 @@ export default async function DetailDossier({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {/* Le numéro d'abord. C'est lui qu'on cite au téléphone, lui qu'on
+          cherche dans la liste, lui qui figure dans le message à la réception
+          — la chambre, elle, se répète sur dix dossiers. */}
       <Entete
-        titre={`Chambre ${d.emplacement}`}
-        sous_titre={`Dossier n° ${d.reference} · ${LIBELLE[d.statut]}`}
+        titre={`Dossier n° ${d.reference}`}
+        sous_titre={`Chambre ${d.emplacement} · ${LIBELLE[d.statut]}`}
         retour="/bouteilles/dossiers"
       />
 
@@ -332,15 +340,6 @@ export default async function DetailDossier({
           <h2 className="etiquette">Corriger</h2>
           <form action={modifier} className="carte px-3.5 py-3 flex flex-col gap-2.5">
             <label className="flex flex-col gap-1">
-              <span className="etiquette">Nom du client</span>
-              <input
-                name="client"
-                autoComplete="off"
-                defaultValue={d.client_nom ?? ""}
-                className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
               <span className="etiquette">Montant retenu</span>
               <input
                 name="montant"
@@ -360,6 +359,36 @@ export default async function DetailDossier({
               Enregistrer
             </button>
           </form>
+
+          {/* Ce qui touche au PARC — la date, la chambre, les types — a son
+              écran : corriger l'un d'eux déplace des bouteilles, ce n'est pas
+              un champ qu'on modifie au passage. */}
+          {peutValider(profil.role) && (
+            <Link
+              href={`/bouteilles/dossier/${id}/corriger` as Route}
+              className="carte px-4 py-3.5 flex items-center gap-3 active:bg-surface-muted"
+            >
+              <span
+                aria-hidden
+                className="w-8 h-8 shrink-0 rounded-full bg-plum-soft grid place-items-center"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
+                     strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17z" />
+                </svg>
+              </span>
+              <span className="grow flex flex-col">
+                <span className="text-[15px]">Corriger la déclaration</span>
+                <span className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+                  La date, la chambre, les bouteilles, les prénoms — ou supprimer le dossier
+                </span>
+              </span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8C86A8"
+                   strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          )}
         </section>
 
         <Link

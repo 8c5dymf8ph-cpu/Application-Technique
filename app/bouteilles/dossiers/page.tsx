@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, jours } from "@/lib/domaine";
-import { Entete, Vide } from "@/app/composants/ui";
+import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Frise, Recherche, Stat } from "@/app/composants/suivi";
 
 export const dynamic = "force-dynamic";
@@ -57,11 +57,11 @@ const TON: Record<string, { fond: string; texte: string; barre: string }> = {
 export default async function Dossiers({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filtre?: string }>;
+  searchParams: Promise<{ q?: string; filtre?: string; fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { q = "", filtre = "ouvert" } = await searchParams;
+  const { q = "", filtre = "ouvert", fait } = await searchParams;
 
   const [c] = await sql<
     { ouverts: number; urgents: number; du_mois: number; resolus: number; perdus: number;
@@ -146,6 +146,11 @@ export default async function Dossiers({
       <Entete titre="Dossiers" sous_titre="Bouteilles emportées et cassées" retour="/bouteilles" />
 
       <div className="px-5 py-4 flex flex-col gap-3.5">
+        {/* On arrive ici après avoir supprimé un dossier : sans un mot, on ne
+            sait pas si la suppression a eu lieu ou si l'on s'est trompé
+            d'écran. */}
+        <Confirmation quoi={fait} />
+
         <div className="flex gap-2">
           <Stat valeur={c.ouverts} libelle="En cours" />
           <Stat valeur={c.urgents} libelle="Urgents" ton={c.urgents > 0 ? "alerte" : undefined} />

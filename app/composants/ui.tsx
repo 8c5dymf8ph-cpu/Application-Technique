@@ -216,6 +216,18 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
     texte: "Mise en avant. C’est celle que le technicien voit en premier.",
   },
   "photo-retiree": { ton: "green", texte: "Photo supprimée." },
+  "dossier-supprime": {
+    ton: "green",
+    texte:
+      "Dossier supprimé. Les bouteilles qu’il avait déplacées sont revenues : " +
+      "le parc est exactement ce qu’il était.",
+  },
+  "sans-type": {
+    ton: "red",
+    texte:
+      "Rien n’a été enregistré : un dossier porte au moins une bouteille. " +
+      "Cochez la filtrée, la gazeuse, ou les deux.",
+  },
   "deja-ouverte": {
     ton: "red",
     texte:

@@ -1325,5 +1325,96 @@ begin
            v_avant, v_apres, v_avant - 3);
 end $$;
 
+-- ===========================================================================
+-- SCÉNARIO 19 — Un dossier bouteille se corrige, et ses mouvements suivent.
+-- Le parc n'est pas un chiffre stocké : c'est la somme des mouvements. Changer
+-- la chambre ou la date d'un dossier sans déplacer ce qu'il a produit rendrait
+-- le parc faux — la 27 aurait rendu une bouteille que la 28 n'a jamais perdue.
+-- Et un dossier supprimé n'a jamais rien déplacé : le parc redevient ce qu'il
+-- était, contrairement au matériel d'une intervention, qui a bien quitté
+-- l'étagère.
+-- ===========================================================================
+do $$
+declare
+  v_27 uuid; v_28 uuid; v_filtree uuid; v_gazeuse uuid; v_dossier uuid;
+  v_27_avant bigint; v_27_apres bigint;
+  v_detenu_avant bigint; v_clients_avant bigint;
+  n int;
+begin
+  select id into v_27 from emplacements where code = '27';
+  select id into v_28 from emplacements where code = '28';
+  select id into v_filtree  from bouteille_types where code = 'filtree';
+  select id into v_gazeuse  from bouteille_types where code = 'petillante';
+
+  -- Tout se mesure en écart, et par rapport à CE bloc : les scénarios
+  -- précédents ont déjà fait bouger des bouteilles dans la même transaction.
+  select coalesce(sum(quantite_reelle), 0) into v_27_avant
+    from v_bouteilles_par_emplacement where emplacement_id = v_27;
+  select sum(parc_detenu), sum(chez_clients) into v_detenu_avant, v_clients_avant
+    from v_stock_bouteilles;
+
+  insert into incidents_bouteille (emplacement_id, nature, client_nom, constate_le)
+  values (v_27, 'emport', 'Client d''essai', now()) returning id into v_dossier;
+  insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+  values (v_dossier, v_filtree, 1), (v_dossier, v_gazeuse, 1);
+
+  assert (select count(*) from mouvements_bouteilles where incident_id = v_dossier) = 4,
+    'un dossier de deux types doit produire 2 emports et 2 re-dotations';
+
+  -- La date : on saisit un dossier d'il y a trois semaines.
+  update incidents_bouteille set constate_le = now() - interval '21 days'
+   where id = v_dossier;
+  assert (select count(*) from mouvements_bouteilles
+           where incident_id = v_dossier
+             and date_mouvement < now() - interval '20 days') = 4,
+    'les mouvements doivent porter la date du constat, corrigée comprise';
+
+  -- Le lieu : ce n'était pas la 27, c'était la 28.
+  update incidents_bouteille set emplacement_id = v_28 where id = v_dossier;
+  select coalesce(sum(quantite_reelle), 0) into v_27_apres
+    from v_bouteilles_par_emplacement where emplacement_id = v_27;
+  assert v_27_apres = v_27_avant,
+    format('la 27 doit revenir exactement à son état d''avant : %s puis %s',
+           v_27_avant, v_27_apres);
+
+  -- Un type retiré emporte ses mouvements : sinon la bouteille reste partie.
+  delete from incident_lignes_bouteille
+   where incident_id = v_dossier and bouteille_type_id = v_gazeuse;
+  assert (select count(*) from mouvements_bouteilles
+           where incident_id = v_dossier and bouteille_type_id = v_gazeuse) = 0,
+    'retirer une ligne doit retirer ce qu''elle avait déplacé';
+
+  -- Une quantité corrigée vaut pour l'emport ET pour la re-dotation.
+  update incident_lignes_bouteille set quantite = 3
+   where incident_id = v_dossier and bouteille_type_id = v_filtree;
+  assert (select count(*) from mouvements_bouteilles
+           where incident_id = v_dossier and quantite = 3) = 2,
+    'la quantité doit suivre sur les deux mouvements';
+
+  -- La re-dotation se dédit — la réserve était vide — et revient, sans doubler.
+  update incidents_bouteille set redoter = false where id = v_dossier;
+  assert (select count(*) from mouvements_bouteilles
+           where incident_id = v_dossier and type = 'dotation') = 0,
+    'se dédire de la re-dotation doit retirer son mouvement';
+  update incidents_bouteille set redoter = true where id = v_dossier;
+  select count(*) into n from mouvements_bouteilles
+   where incident_id = v_dossier and type = 'dotation';
+  assert n = 1, format('la re-dotation doit revenir une seule fois, or %s', n);
+
+  -- Supprimé : le parc redevient exactement ce qu'il était avant ce bloc.
+  delete from incidents_bouteille where id = v_dossier;
+  assert (select sum(parc_detenu) from v_stock_bouteilles) = v_detenu_avant
+     and (select sum(chez_clients) from v_stock_bouteilles) = v_clients_avant,
+    format('après suppression, détenu %s (attendu %s) et chez les clients %s (attendu %s)',
+           (select sum(parc_detenu) from v_stock_bouteilles), v_detenu_avant,
+           (select sum(chez_clients) from v_stock_bouteilles), v_clients_avant);
+  select coalesce(sum(quantite_reelle), 0) into v_27_apres
+    from v_bouteilles_par_emplacement where emplacement_id = v_27;
+  assert v_27_apres = v_27_avant,
+    'la chambre d''origine doit être intacte : le dossier n''a jamais existé';
+  assert (select count(*) from mouvements_bouteilles where incident_id = v_dossier) = 0,
+    'la suppression doit emporter les mouvements du dossier';
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

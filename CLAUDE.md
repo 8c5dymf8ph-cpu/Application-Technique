@@ -17,6 +17,16 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    Une chambre peut perdre la filtrée ET la gazeuse d'un coup : c'est **un** dossier, un
    montant, un mail. Les types sont des lignes (`incident_lignes_bouteille`), et ce sont elles
    qui déclenchent les mouvements. Ne jamais remettre un `bouteille_type_id` sur l'en-tête.
+2ter. **Un dossier se corrige, et ses mouvements le suivent.** On reprend l'historique — des
+   dossiers d'il y a des semaines, saisis aujourd'hui — et on se trompe de chambre. Le parc
+   n'est pas un chiffre stocké : corriger l'en-tête sans déplacer ce que le dossier a produit
+   le rendrait faux, la 27 aurait rendu une bouteille que la 28 n'a jamais perdue. La migration
+   0014 pose les déclencheurs : la date, le lieu, les quantités et la re-dotation suivent, et
+   retirer une ligne emporte ses mouvements. **La nature ne se corrige pas** — un emport n'est
+   pas une casse : on supprime et on redéclare. Supprimer un dossier emporte ses mouvements
+   (`on delete cascade`), et c'est juste : contrairement au matériel d'une intervention, qui a
+   réellement quitté l'étagère, une bouteille déclarée par erreur n'a jamais bougé. Réservé à
+   `peutValider`, comme pour une anomalie.
 2bis. **Une bouteille emportée sort du parc détenu, sans être perdue pour autant.** `parc_detenu`
    (réserve + chambres) est ce que l'hôtel a réellement : il baisse dès l'emport. `chez_client`
    est une position d'attente, et `parc_theorique` ne sert qu'au rapprochement d'inventaire.
@@ -406,11 +416,22 @@ intervention**, prises par le technicien. Les deux sont facultatives et les deux
 dans l'historique du lieu. Le technicien voit les photos du constat avant d'intervenir.
 
 **Miguel ajoute lui-même les photos** : celles des bouteilles depuis `/administration/bouteilles`,
-celles des produits **en appuyant sur la vignette du produit** — elle ouvre la galerie, où l'on
-consulte, ajoute et supprime. Pas de section « Photos » séparée : l'image est sa propre porte
-d'entrée. Plusieurs par produit, dont une mise en avant, qui est
-celle que le technicien voit en choisissant son matériel. Sans photo, l'écran dessine la bouteille à sa
-couleur — il n'attend jamais une image pour fonctionner.
+celles des produits **en appuyant sur la vignette du produit** — elle mène à
+`/stock/produit/[id]/photos`, où l'on consulte, ajoute, met en avant et supprime. L'image est sa
+propre porte d'entrée. Sans photo, l'écran dessine la bouteille à sa couleur — il n'attend jamais
+une image pour fonctionner.
+
+**Une galerie n'est pas un panneau replié.** Elles vivaient dans un tiroir qui montait du bas de
+la fiche et défilait dans lui-même : ce qu'on venait de choisir et le bouton d'enregistrement
+tombaient hors de vue, alors on rechoisissait la même photo — quatre fois. Un écran règle les
+trois défauts d'un coup : en-tête, retour vers la fiche, confirmation en haut, et **on y reste
+après l'ajout**, les nouvelles photos sous la confirmation.
+
+**Le technicien les voit TOUTES, pas seulement celle mise en avant.** On en ajoutait quatre et il
+n'en voyait qu'une : les trois autres n'existaient nulle part pour lui, alors que ce sont elles
+qui montrent le filetage, le dos, la référence imprimée. `PhotoProduit` prend la liste entière,
+avec les flèches et le glissement du doigt, et une pastille sur la vignette dit combien il y en
+a — sans elle, rien n'indique qu'il y a autre chose à regarder.
 
 **Un bouton dans un lien reste un lien.** La photo d'un article ouvrait sa fenêtre ET ajoutait
 l'article : `preventDefault()` et `stopPropagation()` n'y suffisaient pas. Elle est désormais
@@ -463,6 +484,15 @@ profil ne fonctionne pas ». `lib/capacites.ts` liste les capacités et leur son
 cette liste au lieu d'afficher un bouton mort. Ajouter une migration qui change ce que l'on peut
 faire, c'est ajouter une ligne ici.
 
+**Le stock se lit par ordre alphabétique.** Mettre les alertes en tête paraissait utile, mais la
+place d'un article changeait selon son stock du jour et on ne savait plus où le prendre : la
+liste dit **où trouver**, les compteurs et le filtre « sous le seuil » disent l'urgence. L'ordre
+est posé dans la requête, sans casse ni accent — la collation d'une installation à l'autre place
+« BOUILLOIRE » avant ou après « Batteries ». Les deux colonnes de catégories de l'hôtel — le
+**rayon** (`categorie_lieu`) et le **métier** (`categorie`) — se croisent dans un dépliant, et
+les rayons se regroupent sans tenir compte de la casse : la reprise a laissé « Salle de Bain » et
+« Salle de bain », donc deux pastilles pour un seul rayon.
+
 ## Sortir ses données
 
 **Ce qu'on ne peut pas exporter n'est pas vraiment à soi.** `/administration/export` sort huit
@@ -496,13 +526,30 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
 
 ## Écrans
 
+- **La maison ramène à l'accueil, de n'importe où.** Depuis le fil d'une anomalie ouverte au
+  bout de cinq écrans, rentrer demandait cinq appuis — on finissait par fermer l'application
+  pour la rouvrir. Elle est dans l'en-tête, à l'opposé du retour : deux gestes différents, le
+  pouce ne doit pas hésiter.
+- **Un dépliant se voit comme tel.** `list-none` retirait le triangle du navigateur sans rien
+  mettre à la place : il restait un titre qui ne ressemblait pas à un bouton, et on ne trouvait
+  pas les intervenants. `Depliant` et `LigneDepliante` (`app/composants/depliant.tsx`) posent un
+  chevron qui pivote, un titre assez grand pour le pouce, et le compte à droite — « 4 prénoms »
+  se lit plus vite qu'on n'ouvre. Les groupes CSS y sont **nommés** (`group/section`,
+  `group/ligne`) : sans cela, ouvrir une section fait pivoter tous les chevrons qu'elle contient.
 - **Le retour ramène d'où l'on vient, pas à un parent supposé.** Chaque écran désignait son
   parent en dur : consulter une ancienne intervention depuis l'historique d'une chambre, puis
   revenir, renvoyait à l'historique complet et non à l'endroit quitté. Le composant `Retour`
   refait le geste de la flèche du navigateur ; l'adresse passée à `Entete` n'est plus qu'un
   filet, pour l'ouverture directe d'un lien partagé ou l'application lancée depuis l'écran
-  d'accueil. Il ne sort jamais de l'application : le point de départ de l'onglet est mémorisé,
-  `history.length` seul ne distinguant pas nos pages de ce qui précédait.
+  d'accueil. Il ne sort jamais de l'application.
+
+  **Ni `history.length` ni `document.referrer` ne répondent à « y a-t-il un de nos écrans
+  derrière ? ».** La première ne dit pas ce qui nous appartient. Le second ne change JAMAIS
+  pendant une navigation Next — il garde la valeur du dernier chargement complet : ouvrir
+  l'application une fois depuis un lien reçu dans un message la fixait sur l'origine de ce
+  message, et chaque retour, ensuite, poussait le parent écrit en dur. `Parcours`
+  (`app/composants/parcours.tsx`), posé dans la mise en page, compte NOS écrans : avancer
+  allonge l'historique, remplacer ne le touche pas, revenir non plus mais `popstate` a eu lieu.
 - **En déclarant, la gouvernante ne voit que ce qui reste à traiter** dans le lieu — à faire, en
   cours, achat à faire. L'historique complet est derrière un lien, jamais dans le chemin de saisie.
   Il a toute sa place ailleurs : historique du lieu, rapports.
