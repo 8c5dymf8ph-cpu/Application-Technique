@@ -32,6 +32,11 @@ const ATTENDUES: Attendue[] = [
     verifier: () => regleContient("fn_peut_supprimer", "gouvernante"),
   },
   {
+    titre: "Date du dernier essai d’envoi",
+    sans: "L’erreur d’un courriel s’affiche sans dire de quand elle date : un refus d’il y a deux jours passe pour un refus de maintenant.",
+    verifier: () => colonneExiste("emails_envoyes", "dernier_essai_le"),
+  },
+  {
     titre: "Qui émet des factures",
     sans: "Une facture de Farid ou de Rachid ne peut pas être rattachée à leur nom.",
     verifier: () => colonneExiste("factures", "technicien_id"),

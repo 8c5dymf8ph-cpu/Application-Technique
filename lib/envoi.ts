@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { sql } from "./db";
+import { colonneExiste } from "./schema";
 
 /**
  * L'envoi des courriels en attente.
@@ -83,6 +84,11 @@ export async function envoyerCourrielsEnAttente(limite = 25): Promise<Resultat> 
     return resultat;
   }
 
+  // La date du dernier essai date l'erreur affichée. Tant que la migration
+  // 0012 n'est pas jouée la colonne n'existe pas, et Postgres refuse la
+  // requête entière : deux écritures, pas une condition.
+  const date = await colonneExiste("emails_envoyes", "dernier_essai_le");
+
   for (const c of attente) {
     // Un message sans destinataire ne partira jamais : on le marque en échec
     // plutôt que de le représenter indéfiniment.
@@ -101,6 +107,8 @@ export async function envoyerCourrielsEnAttente(limite = 25): Promise<Resultat> 
     } catch (e) {
       erreur = e instanceof Error ? e.message : String(e);
     }
+
+    if (date) await sql`update emails_envoyes set dernier_essai_le = now() where id = ${c.id}`;
 
     if (erreur === null) {
       await sql`

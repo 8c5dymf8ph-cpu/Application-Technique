@@ -79,6 +79,18 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    article durablement bas renverrait un message et on cesserait de les lire — et repart quand
    il remonte puis redescend. Un réglage qui ne commande rien est pire qu'un réglage absent.
 
+7decies. **Un message porte les destinataires qu'il avait AU DÉPÔT.** C'est juste — un message
+   est un fait, pas une intention — mais quand on corrige une adresse après coup, les messages
+   déjà en file gardent l'ancienne et échouent indéfiniment : on croit que la correction n'a
+   servi à rien. `/administration` montre donc **à qui** chaque file est adressée, et offre deux
+   issues sur une file en échec : **réadresser** aux destinataires réglés aujourd'hui — en
+   gardant, pour le « lot rendu », l'adresse propre à l'intervenant, qui ne figure dans aucun
+   réglage — ou **abandonner**, ce qui EFFACE les messages. Jamais un `envoye_le` posé sur un
+   message qui n'est pas parti : ce serait prétendre l'avoir envoyé. L'erreur affichée porte
+   enfin la date du dernier essai (`dernier_essai_le`, migration 0012) : sans elle, un refus
+   d'il y a deux jours passe pour un refus de maintenant, et on recorrige ce qui était déjà
+   corrigé.
+
 7quinquies. **Sans clé d'envoi, on ne prétend pas avoir envoyé.** `RESEND_API_KEY` absente : la
    file reste intacte et l'écran le dit. Un échec n'efface rien non plus — la ligne garde son
    erreur et repart au passage suivant. Ne jamais marquer `envoye_le` sur un message qui n'est

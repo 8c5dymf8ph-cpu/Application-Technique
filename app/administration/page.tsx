@@ -10,6 +10,7 @@ import { profilActif } from "@/lib/profil";
 import { peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 import { envoyerCourrielsEnAttente } from "@/lib/envoi";
+import { colonneExiste } from "@/lib/schema";
 import { depot, verifierDepot } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,8 @@ type Attente = {
   plus_ancien: string;
   en_erreur: number;
   derniere_erreur: string | null;
+  dernier_essai: string | null;
+  a_qui: string[] | null;
 };
 type Envoye = {
   id: string;
@@ -79,13 +82,30 @@ export default async function Administration({
   // La dernière erreur, en clair. « 3 en échec » sans le motif n'aide
   // personne : c'est Resend qui dit pourquoi il refuse, et c'est ce texte-là
   // qui donne le geste à faire (vérifier un domaine, corriger une adresse).
-  const attente = await sql<Attente[]>`
-    select categorie, count(*)::int as nombre, min(cree_le) as plus_ancien,
-           count(*) filter (where erreur is not null)::int as en_erreur,
-           (array_agg(erreur order by cree_le desc)
-              filter (where erreur is not null))[1] as derniere_erreur
-    from emails_envoyes where envoye_le is null
-    group by categorie order by 2 desc`;
+  const dateEssai = await colonneExiste("emails_envoyes", "dernier_essai_le");
+  const attente = dateEssai
+    ? await sql<Attente[]>`
+        select categorie, count(*)::int as nombre, min(cree_le) as plus_ancien,
+               count(*) filter (where erreur is not null)::int as en_erreur,
+               (array_agg(erreur order by cree_le desc)
+                  filter (where erreur is not null))[1] as derniere_erreur,
+               max(dernier_essai_le) as dernier_essai,
+               (select array_agg(distinct a) from emails_envoyes e2,
+                       unnest(e2.destinataires) a
+                 where e2.envoye_le is null and e2.categorie = e.categorie) as a_qui
+        from emails_envoyes e where envoye_le is null
+        group by categorie order by 2 desc`
+    : await sql<Attente[]>`
+        select categorie, count(*)::int as nombre, min(cree_le) as plus_ancien,
+               count(*) filter (where erreur is not null)::int as en_erreur,
+               (array_agg(erreur order by cree_le desc)
+                  filter (where erreur is not null))[1] as derniere_erreur,
+               null::timestamptz as dernier_essai,
+               (select array_agg(distinct a) from emails_envoyes e2,
+                       unnest(e2.destinataires) a
+                 where e2.envoye_le is null and e2.categorie = e.categorie) as a_qui
+        from emails_envoyes e where envoye_le is null
+        group by categorie order by 2 desc`;
 
   const derniers = await sql<Envoye[]>`
     select id, categorie, sujet, destinataires, envoye_le, succes, erreur
@@ -152,6 +172,88 @@ export default async function Administration({
     );
   }
 
+  /**
+   * Quel réglage commande quelle catégorie de message.
+   *
+   * Les deux noms diffèrent : `alertes_destinataires` range par ÉVÉNEMENT,
+   * `emails_envoyes` par CATÉGORIE de message. Le lien n'était écrit nulle
+   * part, et sans lui on ne peut pas réadresser une file.
+   */
+  const REGLAGE: Record<string, string> = {
+    alerte_bouteille: "incident_bouteille",
+    recap_technicien: "recap_technicien",
+    recap_intervention: "recap_intervention",
+    seuil_stock: "seuil_stock",
+  };
+
+  /**
+   * Réadresser une file aux destinataires réglés aujourd'hui.
+   *
+   * Un message porte les destinataires qu'il avait AU MOMENT du dépôt : c'est
+   * juste, un message est un fait, pas une intention. Mais quand on corrige
+   * une adresse après coup, les messages déjà déposés gardent l'ancienne et
+   * échouent indéfiniment — on croit que la correction n'a servi à rien.
+   *
+   * Pour le « lot rendu », l'adresse de l'intervenant a été ajoutée au dépôt
+   * et ne figure dans aucun réglage : on la garde.
+   */
+  async function readresser(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/");
+    const categorie = String(donnees.get("categorie"));
+    const evenement = REGLAGE[categorie];
+    if (!evenement) return;
+
+    const [regle] = await sql<{ destinataires: string[] }[]>`
+      select destinataires from alertes_destinataires
+      where evenement = ${evenement} and actif`;
+    if (!regle || regle.destinataires.length === 0) {
+      redirect("/administration?envoi=sans-destinataire" as Route);
+    }
+
+    await sql`
+      update emails_envoyes e
+         set destinataires = (
+               select array_agg(distinct a)
+                 from unnest(
+                   ${regle.destinataires}::text[]
+                   || case when ${categorie} = 'recap_technicien'
+                           -- L'adresse propre à l'intervenant, posée au dépôt :
+                           -- elle n'est dans aucun réglage, on ne la perd pas.
+                           then coalesce((
+                             select array_agg(x) from unnest(e.destinataires) x
+                              where x in (
+                                select email from utilisateurs where email is not null
+                                union all
+                                select email from prestataires where email is not null)
+                           ), '{}'::text[])
+                           else '{}'::text[] end
+                 ) as a),
+             erreur = null
+       where e.envoye_le is null and e.categorie = ${categorie}`;
+    revalidatePath("/administration");
+    redirect("/administration?envoi=readresse" as Route);
+  }
+
+  /**
+   * Abandonner ce qui ne partira jamais.
+   *
+   * Une file qui garde éternellement des messages en échec finit par ne plus
+   * rien vouloir dire. Abandonner les EFFACE : on ne marque jamais `envoye_le`
+   * sur un message qui n'est pas parti, ce serait prétendre l'avoir envoyé.
+   */
+  async function abandonner(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/");
+    await sql`
+      delete from emails_envoyes
+       where envoye_le is null and categorie = ${String(donnees.get("categorie"))}`;
+    revalidatePath("/administration");
+    redirect("/administration?envoi=abandonne" as Route);
+  }
+
   async function enregistrerAlerte(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -184,12 +286,20 @@ export default async function Administration({
         {envoi && (
           <p
             className={`rounded-card px-4 py-3 text-[13px] text-pretty ${
-              envoi === "sans-cle" ? "bg-amber-soft text-amber" : "bg-green-soft text-green"
+              envoi === "sans-cle" || envoi === "sans-destinataire"
+                ? "bg-amber-soft text-amber"
+                : "bg-green-soft text-green"
             }`}
           >
             {envoi === "sans-cle"
               ? "Aucune clé d’envoi n’est configurée : rien n’est parti, et la file est intacte."
-              : `Passage terminé : ${envoi}.`}
+              : envoi === "readresse"
+                ? "Les messages en attente sont réadressés aux destinataires réglés aujourd’hui. Appuyez sur « Envoyer maintenant » pour les faire partir."
+                : envoi === "abandonne"
+                  ? "Les messages en attente de cette catégorie ont été effacés. Rien n’a été envoyé, et rien ne le prétend."
+                  : envoi === "sans-destinataire"
+                    ? "Aucune adresse n’est réglée pour cette alerte : il n’y a personne à qui réadresser. Réglez-la plus bas, puis réessayez."
+                    : `Passage terminé : ${envoi}.`}
           </p>
         )}
 
@@ -335,7 +445,8 @@ export default async function Administration({
           ) : (
             <ul className="carte divide-y divide-line">
               {attente.map((a) => (
-                <li key={a.categorie} className="px-3.5 py-2.5 flex items-center gap-3">
+                <li key={a.categorie} className="px-3.5 py-2.5 flex flex-col gap-1.5">
+                  <div className="flex items-center gap-3">
                   <span className="grow min-w-0">
                     <span className="block text-[13.5px] leading-snug text-pretty">
                       {LIBELLE[a.categorie] ?? a.categorie}
@@ -345,8 +456,29 @@ export default async function Administration({
                       {new Date(a.plus_ancien).toLocaleDateString("fr-FR")}
                       {a.en_erreur > 0 && ` · ${a.en_erreur} en échec`}
                     </span>
+                    {/* À QUI ces messages sont adressés. Un message porte les
+                        destinataires qu'il avait au dépôt : sans les voir, on
+                        corrige le réglage et on ne comprend pas que rien ne
+                        change. */}
+                    {a.a_qui && a.a_qui.length > 0 && (
+                      <span className="block text-[11.5px] text-ink-faint break-words">
+                        à {a.a_qui.join(", ")}
+                      </span>
+                    )}
                     {a.derniere_erreur && (
                       <span className="mt-1 block rounded-[9px] bg-red-soft px-2.5 py-1.5 text-[11.5px] text-red text-pretty leading-snug break-words">
+                        {a.dernier_essai && (
+                          <span className="block opacity-80 mb-0.5">
+                            Refus du dernier essai,{" "}
+                            {new Date(a.dernier_essai).toLocaleString("fr-FR", {
+                              day: "numeric",
+                              month: "long",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}{" "}
+                            — il ne change pas tant qu’on ne réessaie pas.
+                          </span>
+                        )}
                         {a.derniere_erreur}
                         {/* Le refus le plus courant, et le seul geste qui le
                             lève : sans domaine vérifié, Resend n'accepte que
@@ -372,6 +504,34 @@ export default async function Administration({
                   >
                     {a.nombre}
                   </span>
+                  </div>
+
+                  {/* Deux issues quand une file s'obstine : la réadresser aux
+                      destinataires réglés aujourd'hui, ou l'abandonner. Sans
+                      elles, un message mal adressé échoue indéfiniment et
+                      l'écran ne veut plus rien dire. */}
+                  {a.en_erreur > 0 && REGLAGE[a.categorie] && (
+                    <div className="flex gap-2 pt-1">
+                      <form action={readresser} className="grow">
+                        <input type="hidden" name="categorie" value={a.categorie} />
+                        <BoutonEnvoi
+                          pendant="…"
+                          className="w-full h-[38px] rounded-[10px] bg-plum text-white text-[12.5px]"
+                        >
+                          Réadresser aux destinataires actuels
+                        </BoutonEnvoi>
+                      </form>
+                      <form action={abandonner} className="shrink-0">
+                        <input type="hidden" name="categorie" value={a.categorie} />
+                        <BoutonEnvoi
+                          pendant="…"
+                          className="h-[38px] px-3 rounded-[10px] bg-surface-muted border border-line text-ink-soft text-[12.5px]"
+                        >
+                          Abandonner
+                        </BoutonEnvoi>
+                      </form>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
