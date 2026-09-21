@@ -186,13 +186,32 @@ croisent jamais celles de Microsoft.
 Le domaine de l'hôtel est chez **OVH**. Tout se fait depuis l'espace client, sans passer par
 personne.
 
-**D'abord, vérifier qu'OVH tient bien la zone.** Espace client OVH → **Web Cloud** → *Noms de
-domaine* → `hotelparisianer.com` → onglet **Serveurs DNS**. S'ils ressemblent à `dns**.ovh.net`
+**Attention au bon site.** `ovhcloud.com` mène à la **boutique**, pour acheter un domaine : en
+y cherchant `hotelparisianer.com` on lit « Indisponible », ce qui veut simplement dire qu'il est
+déjà à l'hôtel. Il n'y a rien à acheter. Ce qu'il faut, c'est l'**espace client** :
+
+> **www.ovh.com/manager** — ou, depuis `ovh.com`, le lien **« Espace client »** en haut à droite.
+
+Une fois connecté, l'espace client est découpé en « univers ». En haut à gauche, un sélecteur
+propose *Bare Metal Cloud*, *Hosted Private Cloud*, *Public Cloud*, **Web Cloud**, *Telecom* :
+choisir **Web Cloud**. Dans la colonne de gauche, **Noms de domaine**, puis cliquer sur
+`hotelparisianer.com`. L'adresse ressemble alors à
+`ovh.com/manager/#/web/domain/hotelparisianer.com`.
+
+> **Si `hotelparisianer.com` n'apparaît pas dans la liste**, c'est que ce compte OVH n'est pas
+> celui qui détient le domaine — il a été pris par une agence, un prestataire ou un
+> prédécesseur. Il faut alors les identifiants de ce compte-là, ou demander une délégation de
+> gestion. Le nom du titulaire se lit sur **who.is**, champ *Registrant*.
+
+**D'abord, vérifier qu'OVH tient bien la zone.** Sur la page du domaine, une rangée d'onglets :
+*Informations générales*, **Serveurs DNS**, **Zone DNS**, *Redirection*, *DynHost*… Ouvrir
+**Serveurs DNS**. S'ils ressemblent à `dns**.ovh.net`
 et `ns**.ovh.net`, c'est bien OVH qui décide : la suite s'applique. S'ils pointent ailleurs
 (Cloudflare, Microsoft…), c'est là-bas qu'il faut ajouter les lignes — la zone OVH ne serait pas
 lue.
 
-Ensuite, onglet **Zone DNS** → bouton **Ajouter une entrée**. Trois fois, une par ligne.
+Ensuite, revenir sur l'onglet **Zone DNS** → bouton **Ajouter une entrée**, en haut à droite du
+tableau. Trois fois, une par ligne.
 
 **Ligne 1 — le MX.** Choisir le type **MX**.
 
