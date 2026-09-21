@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { capacites } from "@/lib/capacites";
+import { appliquerLesMigrations, migrationsEnAttente } from "@/lib/migrations";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { profilActif } from "@/lib/profil";
 import { peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
@@ -53,12 +55,12 @@ const EVENEMENT: Record<string, { titre: string; aide: string }> = {
 export default async function Administration({
   searchParams,
 }: {
-  searchParams: Promise<{ envoi?: string; essai?: string }>;
+  searchParams: Promise<{ envoi?: string; essai?: string; maj?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   if (!peutValider(profil.role)) redirect("/");
-  const { envoi, essai } = await searchParams;
+  const { envoi, essai, maj } = await searchParams;
 
   const attente = await sql<Attente[]>`
     select categorie, count(*)::int as nombre, min(cree_le) as plus_ancien,
@@ -90,6 +92,32 @@ export default async function Administration({
    */
   const verdict = essai === "1" ? await verifierDepot() : null;
   const total = attente.reduce((n, a) => n + a.nombre, 0);
+
+  /**
+   * Jouer les migrations manquantes, depuis l'écran.
+   *
+   * L'application a déjà la chaîne de connexion. Lui demander d'aller sur
+   * GitHub, de trouver l'onglet Actions et de lire un journal pour savoir si
+   * une colonne existe, c'est trois allers-retours pendant lesquels des
+   * boutons restent grisés sans explication.
+   *
+   * Réservé à l'administrateur : c'est une écriture de schéma, pas un réglage.
+   */
+  async function mettreLaBaseAJour() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || profil_.role !== "admin") redirect("/administration" as Route);
+    const faites = await appliquerLesMigrations();
+    const bilan =
+      faites.length === 0
+        ? "rien-a-faire"
+        : faites.some((f) => f.etat === "échec")
+          ? `echec:${faites.find((f) => f.etat === "échec")!.fichier}:${
+              faites.find((f) => f.etat === "échec")!.erreur?.slice(0, 180) ?? ""
+            }`
+          : `ok:${faites.filter((f) => f.etat === "appliquée").length}`;
+    redirect(`/administration?maj=${encodeURIComponent(bilan)}` as Route);
+  }
 
   async function envoyerMaintenant() {
     "use server";
@@ -127,6 +155,7 @@ export default async function Administration({
   // chercher un bug dans l'écran : ici on dit que c'est la base qui attend.
   const etat = await capacites();
   const enAttente = etat.filter((c) => !c.prete);
+  const fichiersEnAttente = await migrationsEnAttente();
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -146,26 +175,95 @@ export default async function Administration({
         )}
 
         {/* Ce que la base sait faire */}
-        <details open={enAttente.length > 0} className="flex flex-col gap-2">
+        <details
+          open={enAttente.length > 0 || fichiersEnAttente.length > 0 || Boolean(maj)}
+          className="flex flex-col gap-2"
+        >
           <summary className="list-none flex items-center justify-between cursor-pointer py-1">
             <span className="etiquette">État de la base</span>
             <span
               className={`text-[12.5px] tabular-nums ${
-                enAttente.length === 0 ? "text-green" : "text-amber"
+                fichiersEnAttente.length === 0 && enAttente.length === 0
+                  ? "text-green"
+                  : "text-amber"
               }`}
             >
-              {enAttente.length === 0
-                ? "à jour"
-                : `${enAttente.length} mise${enAttente.length > 1 ? "s" : ""} à jour en attente`}
+              {fichiersEnAttente.length > 0
+                ? `${fichiersEnAttente.length} fichier${fichiersEnAttente.length > 1 ? "s" : ""} à jouer`
+                : enAttente.length === 0
+                  ? "à jour"
+                  : `${enAttente.length} mise${enAttente.length > 1 ? "s" : ""} à jour en attente`}
             </span>
           </summary>
 
-          {enAttente.length > 0 && (
-            <p className="rounded-card bg-amber-soft px-4 py-3 text-[13px] text-amber text-pretty leading-snug">
-              Sur GitHub : onglet <strong>Actions</strong> → <strong>Mettre à jour la base</strong>{" "}
-              → <em>Run workflow</em>. Rien n’est effacé, et ce qui est déjà appliqué n’est pas
-              rejoué. Revenez ici ensuite : la ligne doit passer au vert.
+          {/* Le verdict de la dernière tentative. */}
+          {maj && (
+            <p
+              className={`rounded-card px-4 py-3 text-[13px] text-pretty leading-snug ${
+                maj.startsWith("echec:")
+                  ? "bg-red-soft text-red"
+                  : "bg-green-soft text-green"
+              }`}
+              role="status"
+            >
+              {maj === "rien-a-faire" ? (
+                "La base était déjà à jour : aucun fichier à jouer."
+              ) : maj.startsWith("ok:") ? (
+                <>
+                  <strong>{maj.slice(3)} mise(s) à jour appliquée(s).</strong> Les lignes
+                  ci-dessous disent ce que la base sait faire maintenant.
+                </>
+              ) : (
+                <>
+                  <strong>Échec sur {maj.split(":")[1]}.</strong> Rien n’a été laissé à
+                  moitié : ce fichier a été annulé en entier, et les suivants n’ont pas été
+                  tentés. {maj.split(":").slice(2).join(":")}
+                </>
+              )}
             </p>
+          )}
+
+          {/* Mettre à jour depuis ici : l'application a déjà la connexion, et
+              passer par GitHub laissait des boutons grisés sans explication.
+              Le bloc suit les FICHIERS en attente, pas la liste des capacités :
+              un fichier peut ne rien changer à ce qu'on sait faire et devoir
+              être joué quand même. */}
+          {(fichiersEnAttente.length > 0 || enAttente.length > 0) && (
+            <div className="rounded-card bg-amber-soft px-4 py-3.5 flex flex-col gap-2.5">
+              <p className="text-[13px] text-amber text-pretty leading-snug">
+                {fichiersEnAttente.length > 0 ? (
+                  <>
+                    <strong>
+                      {fichiersEnAttente.length} fichier
+                      {fichiersEnAttente.length > 1 ? "s" : ""} à jouer.
+                    </strong>{" "}
+                    Rien n’est effacé, chaque fichier passe entièrement ou pas du tout, et ce
+                    qui est déjà appliqué n’est pas rejoué.
+                  </>
+                ) : (
+                  <>
+                    Les fichiers de mise à jour ne sont pas dans ce déploiement. Passez par
+                    GitHub : onglet <strong>Actions</strong> →{" "}
+                    <strong>Mettre à jour la base</strong> → <em>Run workflow</em>.
+                  </>
+                )}
+              </p>
+              {fichiersEnAttente.length > 0 && profil.role === "admin" && (
+                <form action={mettreLaBaseAJour}>
+                  <BoutonEnvoi
+                    pendant="Mise à jour…"
+                    className="h-[46px] w-full rounded-[12px] bg-amber text-white font-display font-semibold text-[14.5px]"
+                  >
+                    Mettre la base à jour
+                  </BoutonEnvoi>
+                </form>
+              )}
+              {fichiersEnAttente.length > 0 && profil.role !== "admin" && (
+                <p className="text-[12px] text-amber">
+                  Miguel peut la lancer depuis cet écran.
+                </p>
+              )}
+            </div>
           )}
 
           <ul className="carte divide-y divide-line">

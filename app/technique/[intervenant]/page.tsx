@@ -18,6 +18,7 @@ type Ligne = {
   anomalie_id: string;
   emplacement: string;
   etage: string;
+  ordre: number;
   description: string;
   statut: string;
   priorite: string;
@@ -38,6 +39,24 @@ const PRESSE: Record<string, { ton: string; titre: string }> = {
   haute: { ton: "text-amber", titre: "Prioritaire" },
 };
 
+/**
+ * Une couleur par étage, dans l'ordre du bâtiment.
+ *
+ * On ne lit pas « 3ème étage » : on reconnaît sa bande. C'est la même idée que
+ * la bouteille bleue et la bouteille rouge — la couleur va plus vite que le
+ * mot quand on tient le téléphone d'une main.
+ */
+const TONS = [
+  { fond: "bg-[#F6C9CE]", texte: "text-[#7A2B36]" },
+  { fond: "bg-[#C5DCEC]", texte: "text-[#1F4964]" },
+  { fond: "bg-[#F4E3B2]", texte: "text-[#6B5312]" },
+  { fond: "bg-[#D6CCEA]", texte: "text-[#43326E]" },
+  { fond: "bg-[#C8E4D2]", texte: "text-[#1F5236]" },
+  { fond: "bg-[#EBD3C0]", texte: "text-[#6A4324]" },
+  { fond: "bg-[#CFD6E4]", texte: "text-[#333F58]" },
+  { fond: "bg-[#EFD0E2]", texte: "text-[#6A2B55]" },
+];
+
 function Chevrons({ priorite }: { priorite: string }) {
   const p = PRESSE[priorite];
   if (!p) return null;
@@ -57,7 +76,7 @@ export default async function Tournee({
   searchParams,
 }: {
   params: Promise<{ intervenant: string }>;
-  searchParams: Promise<{ fait?: string }>;
+  searchParams: Promise<{ fait?: string; etage?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
@@ -69,7 +88,7 @@ export default async function Tournee({
   // Celle qu'on vient de déclarer : elle se retrouve cochée, mise en avant, et
   // l'ancre du navigateur amène l'écran dessus. Sans cela on revenait en haut
   // d'une liste de douze lignes sans savoir ce qui avait changé.
-  const { fait } = await searchParams;
+  const { fait, etage } = await searchParams;
 
   const tournee = await tourneeEnCours(intervenant);
 
@@ -84,7 +103,7 @@ export default async function Tournee({
                where f.anomalie_id = a.id)::int as commentaires
         from anomalies a
     )
-    select a.id as anomalie_id, e.code as emplacement, et.nom as etage,
+    select a.id as anomalie_id, e.code as emplacement, et.nom as etage, et.ordre,
            a.description, a.statut::text, a.priorite::text,
            (i.id is not null) as traitee,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
@@ -97,7 +116,7 @@ export default async function Tournee({
     join accompagnement ac on ac.id = a.id
     left join interventions i on i.anomalie_id = a.id and i.tournee_id = ${tournee.id}
     union all
-    select a.id, e.code, et.nom, a.description, a.statut::text, a.priorite::text, true,
+    select a.id, e.code, et.nom, et.ordre, a.description, a.statut::text, a.priorite::text, true,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
              where m.intervention_id = i.id and m.type = 'sortie'),
@@ -124,8 +143,33 @@ export default async function Tournee({
     : [];
   const fil = (anomalie: string) => fils.filter((f) => f.anomalie_id === anomalie);
 
-  const faites = uniques.filter((l) => l.traitee);
-  const restantes = uniques.filter((l) => !l.traitee);
+  /**
+   * Les étages, en onglets sur le côté.
+   *
+   * Cent dix-neuf lignes à faire défiler pour trouver le troisième étage, ce
+   * n'est pas une liste : c'est un rouleau. Les étages deviennent des onglets
+   * verticaux, dans l'ordre du bâtiment, avec ce qui reste à traiter sur
+   * chacun. On monte au troisième, on appuie sur « 3ème étage », on a sa
+   * tournée de l'étage.
+   */
+  const etages = [...new Map(uniques.map((l) => [l.etage, l.ordre])).entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(([nom_, ordre]) => ({
+      nom: nom_,
+      ordre,
+      reste: uniques.filter((l) => l.etage === nom_ && !l.traitee).length,
+    }));
+
+  // Un étage vidé de ses anomalies disparaîtrait de ses propres onglets et on
+  // se retrouverait devant une liste vide sans savoir où l'on est : l'onglet
+  // choisi reste, même s'il ne reste rien dessus.
+  const choisi = etage && etages.some((e) => e.nom === etage) ? etage : null;
+  const vues = choisi ? uniques.filter((l) => l.etage === choisi) : uniques;
+
+  const faites = vues.filter((l) => l.traitee);
+  const restantes = vues.filter((l) => !l.traitee);
+  // La clôture porte sur TOUT le passage, pas sur l'étage regardé.
+  const faitesEnTout = uniques.filter((l) => l.traitee);
 
   /**
    * Ce qui presse d'abord, ce qui est fait à la fin.
@@ -243,7 +287,8 @@ export default async function Tournee({
           </span>
           <span className="shrink-0 text-right">
             <span className="block font-display font-semibold text-[19px] tabular-nums">
-              {faites.length}<span className="text-ink-faint">/{uniques.length}</span>
+              {faitesEnTout.length}
+              <span className="text-ink-faint">/{uniques.length}</span>
             </span>
             <span className="block text-[11px] text-ink-faint">traitées</span>
           </span>
@@ -254,7 +299,7 @@ export default async function Tournee({
           <div className="h-[6px] rounded-full bg-surface-muted overflow-hidden -mt-2">
             <div
               className="h-full rounded-full bg-green transition-[width]"
-              style={{ width: `${Math.round((faites.length / uniques.length) * 100)}%` }}
+              style={{ width: `${Math.round((faitesEnTout.length / uniques.length) * 100)}%` }}
             />
           </div>
         )}
@@ -262,8 +307,48 @@ export default async function Tournee({
         {uniques.length === 0 ? (
           <Vide>Rien à traiter pour {nom} aujourd’hui.</Vide>
         ) : (
-          <ul className="flex flex-col">
-            {ordonnees.map((l, i) => {
+          <div className="flex gap-0 -mx-1">
+            {/* Les étages, sur le côté, dans l'ordre du bâtiment. */}
+            <nav
+              aria-label="Étages"
+              className="shrink-0 sticky top-2 self-start flex flex-col gap-1 pt-1"
+            >
+              <Link
+                href={`/technique/${encodeURIComponent(nom)}` as Route}
+                className={`w-[30px] py-3 rounded-l-[9px] grid place-items-center text-[10.5px] font-medium ${
+                  choisi === null
+                    ? "bg-ink text-white"
+                    : "bg-surface-muted text-ink-faint"
+                }`}
+                style={{ writingMode: "vertical-rl", rotate: "180deg" }}
+              >
+                Tout
+              </Link>
+              {etages.map((e, i) => {
+                const ton = TONS[i % TONS.length];
+                const actif = choisi === e.nom;
+                return (
+                  <Link
+                    key={e.nom}
+                    href={
+                      `/technique/${encodeURIComponent(nom)}?etage=${encodeURIComponent(e.nom)}` as Route
+                    }
+                    aria-current={actif ? "page" : undefined}
+                    className={`w-[30px] py-3 rounded-l-[9px] grid place-items-center text-[10.5px] font-medium ${ton.fond} ${ton.texte} ${
+                      actif ? "w-[34px] -mr-1 shadow-sm" : "opacity-70"
+                    }`}
+                    style={{ writingMode: "vertical-rl", rotate: "180deg" }}
+                  >
+                    {/* Le nom court : « 3ème étage » tient mal à la verticale. */}
+                    {e.nom.replace(" étage", "").replace("Rez-de-chaussée", "RDC")}
+                    {e.reste > 0 && ` · ${e.reste}`}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <ul className="grow min-w-0 flex flex-col pl-3">
+              {ordonnees.map((l, i) => {
               const vientDEtreFaite = fait === l.anomalie_id;
               const premiereFaite = l.traitee && (i === 0 || !ordonnees[i - 1].traitee);
               return (
@@ -356,13 +441,18 @@ export default async function Tournee({
                           lignes noie la liste. Trois points au bout de la
                           ligne, et le mot n'apparaît qu'une fois ouvert. */}
                       <summary
-                        aria-label="Autres actions"
-                        className="list-none cursor-pointer absolute top-[14px] right-0 w-7 h-7 grid place-items-center text-ink-faint group-open/sup:text-red"
+                        aria-label="Supprimer cette anomalie"
+                        className="list-none cursor-pointer absolute top-[12px] right-0 w-8 h-8 grid place-items-center text-ink-faint group-open/sup:text-red group-open/sup:bg-red-soft rounded-lg"
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                          <circle cx="5" cy="12" r="1.7" />
-                          <circle cx="12" cy="12" r="1.7" />
-                          <circle cx="19" cy="12" r="1.7" />
+                        {/* Un balai : le geste qu'on fait quand une ligne
+                            n'aurait jamais dû être là. */}
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+                             strokeLinejoin="round" aria-hidden>
+                          <path d="M16.5 3.5l4 4" />
+                          <path d="M18.5 5.5l-6.5 6.5" />
+                          <path d="M13 11l-1.5-1.5-5.5 5.5 4.5 4.5 5.5-5.5L14.5 12.5" />
+                          <path d="M6 15l-2.5 5.5L9 18" />
                         </svg>
                       </summary>
                       <div className="ml-[38px] mb-2.5 rounded-card bg-red-soft px-3.5 py-3 flex flex-col gap-2">
@@ -385,7 +475,13 @@ export default async function Tournee({
                 </li>
               );
             })}
-          </ul>
+              {vues.length === 0 && (
+                <li className="py-8 text-[14px] text-ink-faint text-center text-pretty">
+                  Rien à traiter à cet étage.
+                </li>
+              )}
+            </ul>
+          </div>
         )}
       </div>
 
@@ -397,7 +493,7 @@ export default async function Tournee({
           href={"/gouvernante/declarer" as Route}
           aria-label="Déclarer une anomalie"
           className={`fixed right-5 z-20 w-[58px] h-[58px] rounded-full bg-plum text-white grid place-items-center shadow-lg active:opacity-80 ${
-            faites.length > 0 ? "bottom-[92px]" : "bottom-6"
+            faitesEnTout.length > 0 ? "bottom-[92px]" : "bottom-6"
           }`}
         >
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -407,14 +503,15 @@ export default async function Tournee({
         </Link>
       )}
 
-      {faites.length > 0 && (
+      {faitesEnTout.length > 0 && (
         <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
           <form action={cloturer}>
             <BoutonEnvoi
               pendant="Clôture…"
               className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px]"
             >
-              Fin d’intervention — {faites.length} anomalie{faites.length > 1 ? "s" : ""}
+              Fin d’intervention — {faitesEnTout.length} anomalie
+              {faitesEnTout.length > 1 ? "s" : ""}
             </BoutonEnvoi>
           </form>
         </div>

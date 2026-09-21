@@ -152,6 +152,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    L'écran d'intervention se lit comme une liste de tâches — le jour en gros, l'avancement
    dessiné, ce qui presse en tête, ce qui est déjà déclaré en bas sous « Déjà déclarées ».
 
+14septies. **Les étages sont des onglets, sur le côté.** Cent dix-neuf lignes à faire défiler
+   pour trouver le troisième étage, ce n'est pas une liste, c'est un rouleau. L'écran
+   d'intervention porte une colonne d'onglets verticaux dans l'ordre du bâtiment, une couleur
+   par étage et le reste à traiter sur chacun — on reconnaît sa bande avant de lire son nom,
+   comme la bouteille bleue et la bouteille rouge. L'onglet choisi reste même s'il ne reste
+   rien dessus, sinon on se retrouve devant une liste vide sans savoir où l'on est. Le
+   compteur du haut et « Fin d'intervention » portent sur TOUT le passage, jamais sur l'étage
+   regardé. **Le balai supprime**, au bout de la ligne, là où on la lit.
+
 14. **Le technicien dit toujours s'il a utilisé du matériel**, anomalie par anomalie, en le
    choisissant dans la liste des produits avec leurs photos. « Aucun matériel » est une réponse
    explicite, pas une absence de réponse. **Un article épuisé ne se choisit pas** : il reste
@@ -365,6 +374,17 @@ l'ancien `SUPABASE_SERVICE_ROLE_KEY` — Supabase les a renommées, les deux res
 le dépôt distant depuis un poste. Le disque de Vercel repart à zéro à chaque déploiement — une
 photo qui y serait écrite serait perdue, et `/administration` le signale en rouge. Rien d'autre
 dans l'application ne connaît autre chose qu'un nom de fichier.
+
+**L'application se met à jour elle-même.** `/administration` joue les migrations manquantes, sur
+un bouton, réservé à l'administrateur. Aller sur GitHub, trouver l'onglet Actions et lire un
+journal pour savoir si une colonne existe, c'était trois allers-retours pendant lesquels des
+boutons restaient grisés sans explication. `lib/migrations.ts` lit `supabase/migrations/`,
+compare à `migrations_appliquees` — la même table que le script de GitHub, donc les deux chemins
+se complètent — et joue chaque fichier **dans une transaction** : il passe entièrement ou pas du
+tout, et un échec arrête la série au lieu de migrer à moitié. L'écran nomme le fichier fautif et
+rend l'erreur telle quelle. `outputFileTracingIncludes` fait partir les fichiers `.sql` avec le
+déploiement : sans cette ligne Vercel ne garde que ce que le code importe, et le bouton ne
+trouverait rien à jouer.
 
 **L'application dit elle-même ce que la base sait faire.** Le code part en ligne avant la
 migration : entre les deux, un bouton est grisé sans que rien n'explique pourquoi — « donner un
