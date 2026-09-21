@@ -320,6 +320,30 @@ déclencher un passage sans attendre.
 
 4. **Deploy**. Au bout de deux minutes, une adresse en `.vercel.app` s'affiche.
 
+### Changer une variable plus tard
+
+L'application est déjà en ligne et une valeur a changé — une clé Resend refaite, un mot de passe
+Supabase renouvelé. Le chemin est le même, mais il y a un piège : **Vercel ne prend la nouvelle
+valeur qu'au déploiement suivant.** Modifier et fermer l'onglet ne change rien ; on attend, et on
+croit que la correction n'a pas marché.
+
+1. **vercel.com** → le projet **application-technique**.
+2. Onglet **Settings** (en haut), puis **Environment Variables** dans la colonne de gauche.
+3. Trouver la ligne — par exemple `RESEND_API_KEY` — et ouvrir le menu **⋯** au bout de la ligne,
+   puis **Edit**. La valeur en place ne se relit pas, c'est normal : une clé ne se réaffiche
+   jamais. On la remplace en entier.
+4. Coller la nouvelle valeur, vérifier que les trois cases **Production**, **Preview** et
+   **Development** sont cochées, puis **Save**.
+5. **C'est l'étape qu'on oublie.** Onglet **Deployments**, la première ligne de la liste, menu
+   **⋯** au bout, **Redeploy**, puis confirmer. Deux minutes.
+
+Ensuite, sur l'application : `/administration` → **Envoyer maintenant**. Si la file se vide, la
+clé est bonne. Si elle reste en échec, l'écran rend le refus de Resend tel quel, avec la date de
+l'essai — c'est ce texte qui dit quoi faire.
+
+Une clé qui change rend l'ancienne inutilisable : penser à supprimer l'ancienne chez Resend, pour
+ne pas la retrouver un jour sans savoir si elle sert encore.
+
 ---
 
 ## 4. Vérifier, dans cet ordre
