@@ -129,34 +129,89 @@ affiche en toutes lettres :
 > *You can only send testing emails to your own email address. To send emails to other
 > recipients, please verify a domain at resend.com/domains*
 
-**La marche à suivre.**
+### Ce qu'est un enregistrement DNS, en deux phrases
 
-1. Resend → **Domains → Add Domain**. Saisir le **nom complet** : `hotelparisianer.com`.
-   Pas `hotelparisianer` seul — Resend attend un domaine, pas un mot.
-2. Resend affiche alors **trois enregistrements DNS** à poser, et les donne tout faits :
-   - un **MX** sur le sous-domaine `send` — il sert aux retours (adresses mortes, refus) ;
-   - un **TXT** sur `send` aussi — le SPF, qui dit que Resend a le droit d'envoyer pour vous ;
-   - un **TXT** sur `resend._domainkey` — la clé DKIM, qui signe les messages.
-3. Les poser chez celui qui héberge le DNS de `hotelparisianer.com` — souvent le registrar
-   (OVH, Gandi, Ionos, GoDaddy…), parfois Cloudflare. On y cherche « Zone DNS » ou
-   « Enregistrements DNS », et on ajoute les trois lignes en recopiant exactement ce que Resend
-   affiche.
-   - Si le champ demande un nom **relatif**, écrire `send` et `resend._domainkey` ;
-   - s'il demande un nom **complet**, écrire `send.hotelparisianer.com` et
-     `resend._domainkey.hotelparisianer.com`.
-   - Ne pas toucher aux MX existants du domaine : celui de Resend est sur `send`, il ne
-     remplace pas la messagerie de l'hôtel.
-4. Revenir sur Resend → **Verify**. Le domaine passe à *Verified* — quelques minutes en
-   général, jusqu'à quelques heures si le DNS est lent.
-5. Dans Vercel, poser `MAIL_EXPEDITEUR` avec une adresse **de ce domaine** :
-   `Hôtel Parisianer <technique@hotelparisianer.com>`. Cette boîte n'a pas besoin d'exister —
-   c'est une adresse d'expédition. Redéployer.
-6. Ouvrir `/administration` → **Envoyer maintenant**. Les messages en attente repartent.
+Le DNS d'un domaine, c'est son annuaire public : il dit où se trouve le site, où va le
+courrier, et qui a le droit d'envoyer au nom du domaine. Il est tenu par **un seul**
+prestataire — le registrar chez qui `hotelparisianer.com` a été acheté (OVH, Gandi, Ionos,
+GoDaddy…), ou Cloudflare, ou Microsoft si le domaine y a été délégué.
 
-**En attendant, pour essayer tout de suite** : mettre comme destinataire de l'alerte bouteille
-l'adresse du compte Resend lui-même, dans `/administration` → *Destinataires des alertes*. Le
-message partira sans rien vérifier, et l'on saura que toute la chaîne fonctionne — il ne
-restera qu'à changer le destinataire une fois le domaine en place.
+**Rien de ce qui s'y trouve n'est secret** : n'importe qui sur Internet peut lire le DNS d'un
+domaine. Ce n'est pas comme une clé d'API. Vous pouvez donc recopier sans crainte ce que Resend
+affiche, ou me le montrer si un doute subsiste.
+
+Ce n'est pas Microsoft 365 qui décide : **M365 gère les boîtes**, le DNS dit seulement au monde
+où les trouver. Ajouter des lignes pour Resend ne touche pas aux boîtes de l'hôtel.
+
+### La marche à suivre, avec Microsoft 365
+
+**Utiliser un sous-domaine, pas le domaine principal.** C'est ce que Resend recommande, et ici
+c'est surtout ce qui met la messagerie de l'hôtel complètement à l'abri : les lignes posées ne
+croisent jamais celles de Microsoft.
+
+1. Resend → **Domains → Add Domain**. Saisir **`notifications.hotelparisianer.com`** — un
+   sous-domaine qui n'existe pas encore et ne sert qu'à ça. (Et non `hotelparisianer` seul :
+   Resend attend un domaine entier.)
+2. Resend affiche **trois lignes à ajouter**, toutes prêtes. Elles ressemblent à ceci — les
+   valeurs exactes sont celles que VOTRE écran affiche, pas celles-ci :
+
+   | Type | Nom | Valeur |
+   |---|---|---|
+   | `MX` | `send.notifications` | `feedback-smtp.eu-west-1.amazonses.com` (priorité 10) |
+   | `TXT` | `send.notifications` | `v=spf1 include:amazonses.com ~all` |
+   | `TXT` | `resend._domainkey.notifications` | `p=MIGfMA0GCSq…` (une longue suite) |
+
+3. **Qui les pose ?** Celui qui tient le DNS. Si vous ne savez pas qui c'est, tapez
+   `hotelparisianer.com` sur **who.is** : le champ *Registrar* donne le nom. Si l'hôtel a un
+   prestataire informatique, c'est lui — le message tout prêt est plus bas.
+4. Dans l'interface du DNS, chercher **« Zone DNS »**, « Enregistrements DNS » ou « DNS
+   records », puis **Ajouter un enregistrement**, trois fois. Recopier exactement.
+   - Si le champ *Nom* attend une valeur **relative**, écrire `send.notifications` et
+     `resend._domainkey.notifications` ;
+   - s'il attend le **nom complet**, écrire `send.notifications.hotelparisianer.com` et
+     `resend._domainkey.notifications.hotelparisianer.com`.
+   - En cas de doute : regarder une ligne déjà présente. Si elle affiche `@` ou `www`, le champ
+     est relatif ; si elle affiche `hotelparisianer.com`, il est complet.
+5. Revenir sur Resend → **Verify**. Le domaine passe à *Verified* — quelques minutes d'ordinaire,
+   jusqu'à quelques heures si le DNS est lent. Le bouton peut se represser autant de fois qu'on
+   veut.
+6. Dans Vercel → Settings → Environment Variables, poser `MAIL_EXPEDITEUR` :
+   `Hôtel Parisianer <technique@notifications.hotelparisianer.com>`. **Cette boîte n'a pas
+   besoin d'exister** : c'est une adresse d'expédition, pas une boîte aux lettres. Redéployer.
+7. Ouvrir `/administration` → **Envoyer maintenant**. Ce qui attendait part.
+
+### Ce qu'il ne faut surtout pas faire
+
+- **Ne pas toucher aux enregistrements MX du domaine principal.** Ce sont eux qui amènent le
+  courrier aux boîtes Microsoft 365 de l'hôtel. Y toucher couperait la messagerie de tout le
+  monde. Ceux de Resend sont sur le sous-domaine `send.notifications`, ils ne les croisent pas.
+- **Ne jamais ajouter un second enregistrement SPF à la racine.** Le domaine en a déjà un pour
+  Microsoft (`v=spf1 include:spf.protection.outlook.com -all`). Deux SPF à la racine, et
+  l'ensemble devient invalide : les mails de l'hôtel partiraient en spam. Avec un sous-domaine,
+  la question ne se pose pas — c'est précisément pourquoi on en prend un.
+- **Ne pas remplacer une ligne existante** : on en **ajoute** trois, on n'en modifie aucune.
+
+### Le message à transmettre, si quelqu'un d'autre tient le DNS
+
+> Bonjour,
+>
+> Nous mettons en service une application interne qui envoie des notifications par courriel.
+> Le service d'envoi est Resend, et il demande que trois enregistrements soient ajoutés à la
+> zone DNS de `hotelparisianer.com`.
+>
+> **Ils portent tous sur un sous-domaine dédié, `notifications.hotelparisianer.com`.** Ils
+> n'ont donc aucun contact avec les MX ni avec le SPF de Microsoft 365 : la messagerie de
+> l'hôtel n'est pas concernée, rien n'est à modifier, il n'y a que trois lignes à ajouter.
+>
+> [coller ici les trois lignes affichées par Resend]
+>
+> Merci de me dire quand c'est en place, je ferai la vérification de mon côté.
+
+**En attendant, pour essayer tout de suite et ne pas rester bloqué** : dans `/administration`
+→ *Destinataires des alertes*, mettre comme destinataire **l'adresse du compte Resend
+lui-même**. Le message partira sans qu'aucun domaine soit vérifié — c'est la seule destination
+que Resend accepte en l'état. On saura ainsi que toute la chaîne fonctionne, et il ne restera
+qu'à remettre `fom@hotelparisianer.com` le jour où le sous-domaine est en place.
 
 **Un message part dans la seconde qui suit son dépôt** : l'alerte bouteille doit joindre la
 réception pendant que le client est peut-être encore là. Une tâche planifiée repasse une fois par
@@ -182,7 +237,7 @@ déclencher un passage sans attendre.
 | `SUPABASE_SECRET_KEY` | Supabase → **Connect** → *Server* → `SUPABASE_SECRET_KEY` (`sb_secret_…`) | idem |
 | `SUPABASE_BUCKET` | `fichiers` | Vaut `fichiers` par défaut — à ne renseigner que si le seau porte un autre nom |
 | `RESEND_API_KEY` | Resend → API Keys | Rien ne part. Les messages s'accumulent dans la file sans se perdre |
-| `MAIL_EXPEDITEUR` | `Hôtel Parisianer <technique@hotelparisianer.com>` — une adresse d'un domaine **vérifié** chez Resend | L'expéditeur reste `onboarding@resend.dev`, et Resend n'accepte alors que l'adresse du titulaire du compte |
+| `MAIL_EXPEDITEUR` | `Hôtel Parisianer <technique@notifications.hotelparisianer.com>` — une adresse d'un domaine **vérifié** chez Resend | L'expéditeur reste `onboarding@resend.dev`, et Resend n'accepte alors que l'adresse du titulaire du compte |
 | `CRON_SECRET` | une longue chaîne au hasard, que vous inventez | `/api/envoi` refuse tout appel : la file ne se vide plus automatiquement |
 
    Prendre bien la chaîne du *pooling* et non la connexion directe : Vercel ouvre beaucoup de
