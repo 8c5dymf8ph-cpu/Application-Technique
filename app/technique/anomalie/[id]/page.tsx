@@ -25,7 +25,14 @@ type Anomalie = {
   intervenant: string | null;
 };
 
-type Produit = { id: string; designation: string; code: string; stock: number; photo: string | null };
+type Produit = {
+  id: string;
+  designation: string;
+  code: string;
+  stock: number;
+  /** TOUTES ses photos, la mise en avant d'abord — pas seulement celle-là. */
+  photos: string[];
+};
 
 export default async function TraiterAnomalie({
   params,
@@ -118,7 +125,11 @@ export default async function TraiterAnomalie({
        where m.type = 'sortie' and m.date_mouvement > now() - interval '18 months'
        group by m.produit_id
     )
-    select p.id, p.designation, p.code, p.stock, p.photo_principale as photo
+    select p.id, p.designation, p.code, p.stock,
+           coalesce((select array_agg(x.chemin order by x.principale desc, x.ordre,
+                                      x.ajoutee_le)
+                       from photos_produit x where x.produit_id = p.id),
+                    '{}') as photos
       from v_stock_produits p
       left join deja_servi d on d.produit_id = p.id
       left join courant   c on c.produit_id = p.id
@@ -130,8 +141,12 @@ export default async function TraiterAnomalie({
 
   const retenus = choisis.length
     ? await sql<Produit[]>`
-        select id, designation, code, stock, photo_principale as photo
-        from v_stock_produits where id = any(${choisis}) order by designation`
+        select p.id, p.designation, p.code, p.stock,
+               coalesce((select array_agg(x.chemin order by x.principale desc, x.ordre,
+                                          x.ajoutee_le)
+                           from photos_produit x where x.produit_id = p.id),
+                        '{}') as photos
+        from v_stock_produits p where p.id = any(${choisis}) order by p.designation`
     : [];
 
   async function enregistrer(donnees: FormData) {
@@ -282,7 +297,7 @@ export default async function TraiterAnomalie({
               {retenus.map((p) => (
                 <li key={p.id} className="carte px-3.5 py-3 flex flex-col gap-2.5">
                   <div className="flex items-center gap-3.5">
-                    <PhotoProduit photo={p.photo} designation={p.designation} taille={92} />
+                    <PhotoProduit photos={p.photos} designation={p.designation} taille={92} />
                     <span className="flex flex-col grow min-w-0">
                       <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
                         {p.designation}
@@ -423,7 +438,7 @@ export default async function TraiterAnomalie({
                         propagation d'un clic ne suffisait pas — on l'ouvrait
                         en grand ET l'article s'ajoutait. Hors du lien, il n'y
                         a plus rien à arrêter. */}
-                    <PhotoProduit photo={p.photo} designation={p.designation} taille={92} />
+                    <PhotoProduit photos={p.photos} designation={p.designation} taille={92} />
                     {epuise ? (
                       nom_
                     ) : (

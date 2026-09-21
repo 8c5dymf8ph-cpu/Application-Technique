@@ -7,9 +7,7 @@ import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete , Confirmation } from "@/app/composants/ui";
-import { ChampPhotos } from "@/app/composants/photos";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
-import { enregistrerFichier, supprimerFichier } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
@@ -110,9 +108,10 @@ export default async function FicheProduit({
     from v_stock_produits where id = ${id}`;
   if (!p) notFound();
 
-  const photos = await sql<{ id: string; chemin: string; principale: boolean }[]>`
-    select id, chemin, principale from photos_produit
-    where produit_id = ${id} order by principale desc, ordre, ajoutee_le`;
+  // La fiche n'a plus besoin que du nombre : les photos se regardent et se
+  // règlent sur leur écran.
+  const photos = await sql<{ id: string }[]>`
+    select id from photos_produit where produit_id = ${id}`;
 
   // Culligan ne vend que des bouteilles : il n'a rien à faire dans la liste
   // qu'on propose en ouvrant la fiche d'un joint. Tant que la migration 0005
@@ -201,63 +200,8 @@ export default async function FicheProduit({
     revalidatePath(`/stock/produit/${id}`);
   }
 
-  async function ajouterPhotos(donnees: FormData) {
-    "use server";
-    const profil_ = await profilActif();
-    if (!profil_) redirect("/profil");
-    const [{ n }] = await sql<{ n: number }[]>`
-      select count(*)::int as n from photos_produit where produit_id = ${id}`;
-    let rang = n;
-    let posees = 0;
-    let refusees = 0;
-    for (const fichier of donnees.getAll("photos")) {
-      if (!(fichier instanceof File) || fichier.size === 0) continue;
-      const chemin = await enregistrerFichier(fichier);
-      // Une photo refusée disparaissait sans un mot : on croyait l'avoir
-      // ajoutée, et la vignette ne changeait pas.
-      if (!chemin) {
-        refusees += 1;
-        continue;
-      }
-      await sql`
-        insert into photos_produit (produit_id, chemin, principale, ordre, ajoutee_par)
-        values (${id}, ${chemin}, ${rang === 0}, ${rang}, ${profil_.id})`;
-      rang += 1;
-      posees += 1;
-    }
-    // Renavigue plutôt que revalider : le panneau des photos se referme.
-    const mot = refusees > 0 ? "photo-refusee" : posees > 1 ? "photos" : "photo";
-    redirect(`/stock/produit/${id}?fait=${mot}` as Route);
-  }
 
-  async function mettreEnAvant(donnees: FormData) {
-    "use server";
-    const photo = String(donnees.get("photo"));
-    await sql`update photos_produit set principale = false where produit_id = ${id}`;
-    await sql`update photos_produit set principale = true where id = ${photo}`;
-    // Renavigue plutôt que revalider : le panneau des photos se referme.
-    redirect(`/stock/produit/${id}` as Route);
-  }
 
-  async function retirerPhoto(donnees: FormData) {
-    "use server";
-    const photo = String(donnees.get("photo"));
-    // On retire le fichier du dépôt aussi : une photo supprimée de l'écran mais
-    // gardée en stockage se paierait au gigaoctet.
-    const [ligne] = await sql<{ chemin: string }[]>`
-      select chemin from photos_produit where id = ${photo}`;
-    await sql`delete from photos_produit where id = ${photo}`;
-    if (ligne) await supprimerFichier(ligne.chemin);
-    // S'il reste des photos, la première reprend la place.
-    await sql`
-      update photos_produit set principale = true
-       where id = (select id from photos_produit where produit_id = ${id}
-                   order by ordre, ajoutee_le limit 1)
-         and not exists (select 1 from photos_produit
-                          where produit_id = ${id} and principale)`;
-    // Renavigue plutôt que revalider : le panneau des photos se referme.
-    redirect(`/stock/produit/${id}` as Route);
-  }
 
   async function rattacher(donnees: FormData) {
     "use server";
@@ -410,79 +354,26 @@ export default async function FicheProduit({
         <section className="carte px-4 py-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             {/* La photo ouvre sa propre galerie : consulter, ajouter, retirer. */}
-            <details className="shrink-0 group/photos open:relative open:z-40">
-              <summary
-                data-cible
-                className="list-none cursor-pointer relative z-20 block group-open/photos:ring-4 group-open/photos:ring-plum/30 rounded-[11px]"
-                aria-label={
-                  photos.length === 0
-                    ? "Ajouter une photo"
-                    : `${photos.length} photo${photos.length > 1 ? "s" : ""} — ouvrir`
-                }
-              >
-                <VignetteProduit photo={p.photo_principale} taille={68} />
-                <span className="absolute -bottom-1 -right-1 min-w-[22px] h-[22px] px-1 rounded-full bg-plum text-white text-[11px] grid place-items-center tabular-nums">
-                  {photos.length > 0 ? photos.length : "+"}
-                </span>
-              </summary>
-
-              <div className="fixed inset-0 z-10 bg-ink/40 hidden group-open/photos:block" />
-              <div className="fixed inset-x-0 bottom-0 z-30 max-w-md mx-auto bg-surface rounded-t-[20px] px-5 pt-4 pb-6 hidden group-open/photos:flex flex-col gap-3 max-h-[80dvh] overflow-y-auto">
-                <span className="w-10 h-1 rounded-full bg-line self-center" aria-hidden />
-                <h3 className="font-display font-semibold text-[16px]">Photos du produit</h3>
-
-                {photos.length === 0 ? (
-                  <p className="text-[13px] text-ink-faint text-pretty">
-                    Aucune photo. C’est elle que le technicien voit quand il choisit son
-                    matériel — souvent ce qui lui évite de se tromper d’article.
-                  </p>
-                ) : (
-                  <ul className="flex flex-wrap gap-2">
-                    {photos.map((ph) => (
-                      <li key={ph.id} className="flex flex-col gap-1">
-                        <a href={`/photo/${ph.chemin}`} target="_blank" rel="noreferrer">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={`/photo/${ph.chemin}`}
-                            alt=""
-                            className={`w-[92px] h-[92px] object-cover rounded-[11px] border-2 ${
-                              ph.principale ? "border-plum" : "border-line"
-                            }`}
-                          />
-                        </a>
-                        <span className="flex gap-1">
-                          {!ph.principale && (
-                            <form action={mettreEnAvant} className="grow">
-                              <input type="hidden" name="photo" value={ph.id} />
-                              <button className="w-full h-[30px] rounded-[8px] bg-plum-soft text-plum text-[10.5px] min-h-0">
-                                En avant
-                              </button>
-                            </form>
-                          )}
-                          <form action={retirerPhoto} className={ph.principale ? "grow" : ""}>
-                            <input type="hidden" name="photo" value={ph.id} />
-                            <button className="w-full h-[30px] px-2 rounded-[8px] bg-surface border border-line text-ink-faint text-[10.5px] min-h-0">
-                              Supprimer
-                            </button>
-                          </form>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <form action={ajouterPhotos} className="flex flex-col gap-2">
-                  <ChampPhotos nom="photos" libelle={photos.length === 0 ? "Ajouter une ou plusieurs photos" : "En ajouter"} />
-                  <button className="h-[46px] rounded-[12px] bg-plum text-white font-display font-semibold text-[14.5px]">
-                    Enregistrer
-                  </button>
-                </form>
-
-                <span className="text-[11.5px] text-ink-faint text-center">
-                  Appuyez de nouveau sur la vignette, en haut, pour refermer.
-                </span>
-              </div>
-            </details>
+            {/* La vignette mène aux photos, elle ne les déplie plus sur place.
+                Le panneau qui montait du bas défilait dans lui-même : ce qu'on
+                venait de choisir et le bouton d'enregistrement tombaient hors
+                de vue, alors on rechoisissait la même photo. Elles ont leur
+                écran. */}
+            <Link
+              href={`/stock/produit/${id}/photos` as Route}
+              data-cible
+              aria-label={
+                photos.length === 0
+                  ? "Ajouter une photo"
+                  : `${photos.length} photo${photos.length > 1 ? "s" : ""} — ouvrir`
+              }
+              className="shrink-0 relative block rounded-[11px]"
+            >
+              <VignetteProduit photo={p.photo_principale} taille={68} />
+              <span className="absolute -bottom-1 -right-1 min-w-[22px] h-[22px] px-1 rounded-full bg-plum text-white text-[11px] grid place-items-center tabular-nums">
+                {photos.length > 0 ? photos.length : "+"}
+              </span>
+            </Link>
 
             <div className="grow min-w-0 flex flex-col gap-1.5">
               <span className="flex items-center gap-2 flex-wrap">
