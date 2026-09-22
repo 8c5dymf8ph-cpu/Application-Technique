@@ -158,6 +158,17 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    le laisser sorti fausserait le stock. Ne jamais présenter à la gouvernante un travail que
    personne n'a déclaré terminé.
 
+10sexies. **Ce qui attend la gouvernante, c'est une anomalie en `attente_validation`, rien
+   d'autre.** L'écran « À valider » en annonçait 343 alors que la base n'en portait AUCUNE :
+   `v_tournees.nb_en_attente` comptait toute intervention « sans avis de gouvernante », et
+   l'historique repris en porte des centaines — du travail fait et clos dans l'ancienne
+   application, où la colonne de vérification n'a été tenue qu'à partir de 2026. L'import
+   l'avait vu et les avait closes ; la vue comptait autrement, et l'arriéré revenait par la
+   fenêtre. Une règle appliquée à un endroit et pas à l'autre ne vaut rien. Les deux conditions
+   se cumulent et ne se remplacent pas : **le lot est rendu** (10bis) ET l'anomalie lui a été
+   remise. Un passage `reprise` n'envoie jamais de récapitulatif, même complet — un message
+   arrivant aujourd'hui pour un passage d'avril ne se comprend pas.
+
 10ter. **Un intervenant ne voit que sa tournée.** Ni le coût d'un passage, ni les factures, ni la
    valeur du stock, ni l'historique : il vient traiter des anomalies. Désigner qui intervient est
    une décision d'encadrement — Victoria, Miguel, Sarah P, c'est-à-dire `peutValider`. La règle

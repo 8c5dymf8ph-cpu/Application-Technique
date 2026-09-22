@@ -1,4 +1,4 @@
-import { colonneExiste, regleContient, vueExiste } from "./schema";
+import { colonneExiste, regleContient, vueContient, vueExiste } from "./schema";
 
 /**
  * Ce que la base sait déjà faire.
@@ -60,6 +60,11 @@ const ATTENDUES: Attendue[] = [
     titre: "Un passage suit sa date",
     sans: "Corriger la date d’une intervention la laisse accrochée au passage du mauvais jour : la facture ne se rapproche plus.",
     verifier: () => regleContient("fn_regrouper_les_passages", "INT-REPRISE-"),
+  },
+  {
+    titre: "Ce qui attend vraiment la gouvernante",
+    sans: "L’écran « À valider » annonce des centaines d’anomalies à valider — de l’historique clos dans l’ancienne application, que personne n’a jamais eu à vérifier.",
+    verifier: () => vueContient("v_tournees", "attente_validation"),
   },
   {
     titre: "Fournisseurs de bouteilles",

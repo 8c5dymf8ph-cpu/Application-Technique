@@ -79,3 +79,24 @@ export async function vueExiste(vue: string): Promise<boolean> {
   if (r.presente) presentes.add(cle);
   return r.presente;
 }
+
+/**
+ * Cette vue porte-t-elle déjà cette condition ?
+ *
+ * Certaines migrations ne posent rien de nouveau : la 0016 se contente de
+ * réécrire `v_tournees` pour ne plus compter comme « à valider » ce que
+ * personne n'attend. `vueExiste` répond oui avant comme après. On lit donc sa
+ * définition. Même prudence : on ne retient que les réponses positives.
+ */
+export async function vueContient(vue: string, mot: string): Promise<boolean> {
+  const cle = `vue:${vue}:${mot}`;
+  if (presentes.has(cle)) return true;
+
+  const [r] = await sql<{ presente: boolean }[]>`
+    select count(*) > 0 as presente
+      from pg_views
+     where schemaname = 'public' and viewname = ${vue}
+       and definition like ${"%" + mot + "%"}`;
+  if (r.presente) presentes.add(cle);
+  return r.presente;
+}

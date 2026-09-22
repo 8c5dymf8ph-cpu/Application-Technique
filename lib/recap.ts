@@ -114,8 +114,13 @@ export async function deposerRecap(tournee: string, complet: boolean, renvoi = f
 
 /** Le récapitulatif complet part dès que plus aucune ligne n'attend un avis. */
 export async function deposerRecapSiComplet(tournee: string) {
-  const [t] = await sql<{ prete: boolean; deja: string | null }[]>`
-    select prete_pour_recap as prete, mail_recap_envoye_le as deja
+  const [t] = await sql<{ prete: boolean; deja: string | null; reprise: boolean }[]>`
+    select prete_pour_recap as prete, mail_recap_envoye_le as deja, reprise
     from v_tournees where id = ${tournee}`;
-  if (t?.prete && !t.deja) await deposerRecap(tournee, true);
+  // Un passage repris de l'ancienne application n'envoie rien : le travail a
+  // eu lieu il y a des mois, et un récapitulatif arrivant aujourd'hui pour
+  // avril ne se comprend pas. `v_tournees_a_recap` posait déjà la règle, mais
+  // aucun code ne la lisait — donner un avis sur une ligne reprise aurait
+  // suffi à déclencher le message.
+  if (t?.prete && !t.deja && !t.reprise) await deposerRecap(tournee, true);
 }
