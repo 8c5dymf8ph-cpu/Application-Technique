@@ -68,6 +68,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    Une ligne sans adresse reste inactive — la contrainte l'impose, et c'est juste : une ligne
    active sans destinataire est une promesse en l'air.
 
+7undecies. **Une action serveur n'appelle pas une autre action serveur déclarée à côté
+   d'elle.** « Transmettre à la réception » changeait le statut du dossier puis appelait
+   `mettreEnFile`, une fonction `"use server"` imbriquée dans le même écran : à l'exécution elle
+   n'existait pas. L'action plantait APRÈS l'écriture — le dossier passait à « transmis » et
+   **aucun message n'était déposé**, en silence. Le dépôt vit maintenant dans
+   `lib/alerte-bouteille.ts`, une fonction de module que les deux écrans appellent : celui de
+   déclaration et celui du dossier, qui en avaient chacun leur copie. Ce qu'une action appelle
+   doit être une fonction ordinaire, jamais une action voisine.
+
 7septies. **Une alerte qui ne part pas doit le dire sur-le-champ.** L'alerte bouteille ne concerne
    que l'emport PAR LE CLIENT — une casse ou une bouteille prise par le personnel ne regarde pas
    la réception. Mais quand elle devait partir et n'est pas partie, l'écran se taisait : on
@@ -550,6 +559,18 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   message, et chaque retour, ensuite, poussait le parent écrit en dur. `Parcours`
   (`app/composants/parcours.tsx`), posé dans la mise en page, compte NOS écrans : avancer
   allonge l'historique, remplacer ne le touche pas, revenir non plus mais `popstate` a eu lieu.
+- **Un écran annoncé doit exister.** `/gouvernante/historique` disait « arrive dans la
+  prochaine étape » alors que la tuile de l'accueil y menait avec son compte de lieux
+  récurrents : la pire impasse est celle qui annonce quelque chose. Il répond maintenant à deux
+  questions et pas à d'autres — **où est-ce que ça revient ?** (`v_frequence_anomalie_lieu`, la
+  raison d'être du catalogue fermé) et **que s'est-il passé ici ?**, le chemin vers l'historique
+  d'un lieu, qu'on ne pouvait atteindre qu'en passant par l'écran de déclaration.
+- **Un dossier bouteille montre où il en est avant ce qu'il contient.** Cinq boutons de cinq
+  couleurs côte à côte ne disaient pas lequel était le pas suivant — et « Facturé », plein et
+  vert, ressemblait au geste principal alors qu'il clôt le dossier. La frise dessine l'avancement,
+  une phrase le dit en mots, UN bouton porte le pas suivant, et les trois issues sont groupées
+  sous « Clore le dossier ». La gouvernante garde ses trois issues : on les range, on n'en retire
+  aucune.
 - **En déclarant, la gouvernante ne voit que ce qui reste à traiter** dans le lieu — à faire, en
   cours, achat à faire. L'historique complet est derrière un lien, jamais dans le chemin de saisie.
   Il a toute sa place ailleurs : historique du lieu, rapports.

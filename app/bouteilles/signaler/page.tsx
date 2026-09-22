@@ -10,8 +10,7 @@ import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampCommentaire } from "@/app/composants/fil";
 import { TotalBouteilles } from "@/app/composants/total-bouteilles";
 import { ChoixPrenom } from "@/app/composants/prenom";
-import { corpsAlerteBouteille, objetAlerteBouteille, type LigneBouteille } from "@/lib/courriel";
-import { viderLaFileEnFond } from "@/lib/envoi";
+import { deposerAlerteBouteille } from "@/lib/alerte-bouteille";
 
 export const dynamic = "force-dynamic";
 
@@ -149,38 +148,15 @@ export default async function Signaler({
      * alors que rien n'avait bougé. Elle l'est maintenant, ou bien on sait
      * pourquoi.
      */
-    let verdict: string | null = null;
-    if (nature === "emport" && responsable === "client") {
-      const [alerte] = await sql<{ destinataires: string[]; actif: boolean }[]>`
-        select destinataires, actif from alertes_destinataires
-        where evenement = 'incident_bouteille'`;
-      verdict = !alerte?.actif
-        ? "alerte-eteinte"
-        : alerte.destinataires.length === 0
-          ? "alerte-sans-destinataire"
-          : process.env.RESEND_API_KEY
-            ? "alerte-partie"
-            : "alerte-sans-cle";
-      if (alerte?.actif && alerte.destinataires.length > 0) {
-        const [d] = await sql<
-          {
-            reference: number; emplacement: string; client_nom: string | null;
-            constate_par: string | null; transmis_a: string | null;
-            constate_le: string; lignes: LigneBouteille[]; montant: number;
-          }[]
-        >`
-          select reference, emplacement, client_nom, constate_par, transmis_a,
-                 constate_le, lignes, montant
-          from v_dossiers_bouteille where id = ${dossier.id}`;
-        await sql`
-          insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
-          values ('alerte_bouteille', ${dossier.id}, ${alerte.destinataires},
-                  ${objetAlerteBouteille(d)}, ${corpsAlerteBouteille(d)})`;
-        // La réception doit l'avoir tout de suite : le client est peut-être
-        // encore là. On ne fait pas attendre l'écran pour autant.
-        viderLaFileEnFond();
-      }
-    }
+    // L'alerte ne concerne que l'emport PAR LE CLIENT : une casse ou une
+    // bouteille prise par le personnel ne regarde pas la réception. Le dépôt
+    // et le verdict sont écrits une seule fois, dans `lib/alerte-bouteille.ts`
+    // — l'écran du dossier s'en sert aussi, et les deux copies avaient fini
+    // par diverger.
+    const verdict =
+      nature === "emport" && responsable === "client"
+        ? await deposerAlerteBouteille(dossier.id)
+        : null;
 
     redirect(
       `/bouteilles/dossier/${dossier.id}${verdict ? `?fait=${verdict}` : ""}` as Route,

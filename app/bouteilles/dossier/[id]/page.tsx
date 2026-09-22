@@ -9,28 +9,13 @@ import { euros, jours } from "@/lib/domaine";
 import { Confirmation, Entete } from "@/app/composants/ui";
 import { peutValider } from "@/lib/domaine";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Frise } from "@/app/composants/suivi";
 import { ChampCommentaire } from "@/app/composants/fil";
-import {
-  corpsAlerteBouteille,
-  objetAlerteBouteille,
-  type LigneBouteille,
-} from "@/lib/courriel";
+import { deposerAlerteBouteille } from "@/lib/alerte-bouteille";
+import type { LigneBouteille } from "@/lib/courriel";
 
 export const dynamic = "force-dynamic";
-
-type DossierCourriel = {
-  reference: number;
-  emplacement: string;
-  client_nom: string | null;
-  constate_par: string | null;
-  transmis_a: string | null;
-  constate_le: string;
-  lignes: LigneBouteille[];
-  montant: number;
-  facturable_client: boolean;
-  nature: string;
-};
 
 type Dossier = {
   id: string;
@@ -91,6 +76,34 @@ export default async function DetailDossier({
     from v_dossiers_bouteille where id = ${id}`;
   if (!d) notFound();
 
+  /**
+   * Ce qu'il reste à faire, en une phrase.
+   *
+   * La frise dessine où l'on en est, mais elle ne dit pas quoi faire : on
+   * voyait quatre pastilles et cinq boutons de cinq couleurs, sans savoir
+   * lequel était le pas suivant. Un dossier n'a qu'un pas naturel à la fois ;
+   * les autres issues restent possibles, plus bas et plus discrètes.
+   */
+  const prochaine = !d.dossier_ouvert
+    ? `Dossier clos — ${LIBELLE[d.statut].toLowerCase()}.`
+    : d.statut === "signale" && d.nature === "emport" && d.facturable_client
+      ? "À transmettre à la réception, qui préviendra le client."
+      : d.statut === "signale"
+        ? "Reste à décider de son sort."
+        : d.statut === "transmis"
+          ? "La réception a le message. Dites-nous quand le client a été contacté."
+          : "Le client est au courant. Reste à savoir si la bouteille revient.";
+
+  // On reconnaît une bouteille à sa couleur en chambre, pas à son nom. La vue
+  // du dossier ne porte pas la couleur ; on la prend au référentiel plutôt que
+  // de faire une migration pour deux lignes.
+  const couleurs = new Map(
+    (
+      await sql<{ code: string; couleur: string | null }[]>`
+        select code, couleur from bouteille_types`
+    ).map((b) => [b.code, b.couleur]),
+  );
+
   // À qui l'alerte est destinée. Jamais au client : c'est la réception qui lui
   // écrit, avec le texte préparé ci-dessous.
   const [alerte] = await sql<{ destinataires: string[]; actif: boolean }[]>`
@@ -109,7 +122,7 @@ export default async function DetailDossier({
            set statut = 'transmis', transmis_le = now(), transmis_a = ${profil_.id},
                notifie_le = coalesce(notifie_le, now())
          where id = ${id} and statut = 'signale'`;
-      await mettreEnFile(id);
+      await deposerAlerteBouteille(id);
     } else if (etape === "contacte") {
       await sql`
         update incidents_bouteille
@@ -124,35 +137,6 @@ export default async function DetailDossier({
          where id = ${id} and statut in ('signale', 'transmis', 'client_contacte')`;
     }
     revalidatePath(`/bouteilles/dossier/${id}`);
-  }
-
-  /**
-   * Rédiger le message et le mettre en file. Il n'est jamais montré : il est
-   * standardisé, il n'y a rien à y relire ni à y corriger.
-   */
-  async function mettreEnFile(dossier: string) {
-    "use server";
-    const [alerte_] = await sql<{ destinataires: string[]; actif: boolean }[]>`
-      select destinataires, actif from alertes_destinataires
-      where evenement = 'incident_bouteille'`;
-    if (!alerte_?.actif || alerte_.destinataires.length === 0) return;
-
-    const [d_] = await sql<DossierCourriel[]>`
-      select reference, emplacement, client_nom, constate_par, transmis_a,
-             constate_le, lignes, montant, facturable_client, nature::text
-      from v_dossiers_bouteille where id = ${dossier}`;
-    if (!d_ || !d_.facturable_client || d_.nature !== "emport") return;
-
-    // Une seule mise en file par dossier : on ne renvoie pas le même message
-    // parce que quelqu'un a rouvert l'écran.
-    await sql`
-      insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
-      select 'alerte_bouteille', ${dossier}::uuid, ${alerte_.destinataires},
-             ${objetAlerteBouteille(d_)}, ${corpsAlerteBouteille(d_)}
-      where not exists (
-        select 1 from emails_envoyes e
-        where e.reference_id = ${dossier}::uuid and e.categorie = 'alerte_bouteille')`;
-    viderLaFileEnFond();
   }
 
   /**
@@ -191,33 +175,11 @@ export default async function DetailDossier({
         {/* On arrive ici en sortant du formulaire : il ne doit plus se rouvrir
             par la flèche arrière, rempli comme avant l'envoi. */}
         {fait && <MarquerValide cle="bouteille" />}
-        <section className="carte px-4 py-4 flex flex-col gap-3">
-          <div className="flex items-start gap-3">
-            <div className="grow min-w-0">
-              <p className="font-display font-semibold text-[16px]">
-                {d.client_nom ?? <span className="text-ink-faint italic">Client non nommé</span>}
-              </p>
-              <p className="text-[12px] text-ink-faint">
-                {d.nature === "casse" ? "Bouteille cassée" : "Bouteille emportée"} ·{" "}
-                {jours(d.jours_ouvert)}
-              </p>
-            </div>
-            <span className="font-display font-semibold text-[19px] tabular-nums shrink-0">
-              {euros(d.montant)}
-            </span>
-          </div>
-
-          <ul className="flex flex-col gap-1">
-            {d.lignes.map((l) => (
-              <li key={l.code} className="flex items-baseline gap-2 text-[13.5px]">
-                <span className="grow">{l.libelle}</span>
-                <span className="tabular-nums text-ink-faint">
-                  {l.quantite} × {euros(l.prix)}
-                </span>
-              </li>
-            ))}
-          </ul>
-
+        {/* Où en est le dossier, avant tout le reste : c'est la question
+            qu'on se pose en l'ouvrant. La frise le dessine, et la phrase en
+            dessous le dit en mots — une frise seule se lit vite mais ne
+            s'explique pas. */}
+        <section className="carte px-4 py-4 flex flex-col gap-3.5">
           <Frise
             etapes={[
               { libelle: "Constaté", faite: d.etape_constate },
@@ -226,17 +188,76 @@ export default async function DetailDossier({
               { libelle: "Réglé", faite: d.etape_resolue },
             ]}
           />
+          <p className="text-[13px] text-ink-soft text-pretty leading-snug text-center">
+            {prochaine}
+          </p>
+        </section>
 
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]">
+        {/* Ce que le dossier dit : quelles bouteilles, combien, et chez qui. */}
+        <section className="carte px-4 py-4 flex flex-col gap-3.5">
+          <ul className="flex flex-col gap-2">
+            {d.lignes.map((l) => (
+              <li key={l.code} className="flex items-center gap-3">
+                {/* La bouteille à sa couleur : bleue pour la filtrée, rouge
+                    pour la gazeuse. On la reconnaît à ça en chambre. */}
+                <span
+                  aria-hidden
+                  className="w-[20px] h-[30px] shrink-0 rounded-[6px] border-2"
+                  style={{
+                    borderColor: couleurs.get(l.code) ?? "#8C86A8",
+                    background: (couleurs.get(l.code) ?? "#8C86A8") + "22",
+                  }}
+                />
+                <span className="grow min-w-0 flex flex-col">
+                  <span className="text-[15px] leading-snug">{l.libelle}</span>
+                  <span className="text-[11.5px] text-ink-faint tabular-nums">
+                    {l.quantite} × {euros(l.prix)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex items-baseline justify-between border-t border-line pt-3">
+            <span className="text-[13px] text-ink-soft">
+              {d.facturable_client ? "À retenir au client" : "À la charge de l’hôtel"}
+            </span>
+            <span className="font-display font-semibold text-[21px] tabular-nums">
+              {euros(d.montant)}
+            </span>
+          </div>
+
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[12.5px]">
+            <dt className="text-ink-faint">Chambre</dt>
+            <dd>{d.emplacement}</dd>
+
+            <dt className="text-ink-faint">Client</dt>
+            <dd>
+              {d.client_nom ?? (
+                <span className="text-ink-faint">pas de nom noté</span>
+              )}
+            </dd>
+
+            <dt className="text-ink-faint">Nature</dt>
+            <dd>
+              {d.nature === "casse" ? "Bouteille cassée" : "Bouteille emportée"} ·{" "}
+              {jours(d.jours_ouvert)}
+            </dd>
+
+            {/* « — » à la place d'un prénom ne se lit pas : on dit en toutes
+                lettres que personne n'a été noté, parce que c'est une chose à
+                corriger, pas un blanc typographique. */}
             <dt className="text-ink-faint">Constaté par</dt>
             <dd>
-              {d.constate_par ?? "—"} · {new Date(d.constate_le).toLocaleDateString("fr-FR")}
+              {d.constate_par ?? <span className="text-ink-faint">personne de noté</span>} ·{" "}
+              {new Date(d.constate_le).toLocaleDateString("fr-FR")}
             </dd>
+
             {d.transmis_le && (
               <>
                 <dt className="text-ink-faint">Transmis à</dt>
                 <dd>
-                  {d.transmis_a ?? "—"} ·{" "}
+                  {d.transmis_a ?? <span className="text-ink-faint">personne de noté</span>} ·{" "}
                   {new Date(d.transmis_le).toLocaleDateString("fr-FR")}
                 </dd>
               </>
@@ -277,60 +298,82 @@ export default async function DetailDossier({
                 {new Date(d.notifie_le).toLocaleDateString("fr-FR")}.
               </p>
             )}
-            {d.statut === "signale" && d.facturable_client && d.nature === "emport" && (
-              <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
-                Transmettre envoie le message à{" "}
-                {alerte?.actif && alerte.destinataires.length > 0
-                  ? alerte.destinataires.join(", ")
-                  : "la réception"}
-                , rédigé et prêt à être transféré au client. Le texte est le même pour tous les
-                dossiers : il n’y a rien à relire ni à corriger.
-              </p>
-            )}
-            <form action={avancer} className="flex flex-wrap gap-2">
+
+            {/* UN pas à la fois, en grand. Cinq boutons de cinq couleurs côte
+                à côte ne disaient pas lequel était le suivant — et « Facturé »,
+                plein et vert, ressemblait au geste principal alors qu'il clôt
+                le dossier. */}
+            <form action={avancer} className="flex flex-col gap-2">
               {d.statut === "signale" && (
-                <button
-                  name="etape"
-                  value="transmis"
-                  className="grow h-[46px] px-3 rounded-[12px] bg-plum text-white text-[13.5px] font-medium"
-                >
-                  Transmettre à la réception
-                </button>
+                <>
+                  {d.facturable_client && d.nature === "emport" && (
+                    <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+                      Le message part à{" "}
+                      {alerte?.actif && alerte.destinataires.length > 0
+                        ? alerte.destinataires.join(", ")
+                        : "la réception"}
+                      , rédigé et prêt à être transféré au client. Le texte est le même pour
+                      tous les dossiers : il n’y a rien à relire ni à corriger.
+                    </p>
+                  )}
+                  <BoutonEnvoi
+                    name="etape"
+                    value="transmis"
+                    pendant="Envoi…"
+                    className="h-[52px] px-3 rounded-[13px] bg-plum text-white font-display font-semibold text-[15px]"
+                  >
+                    Transmettre à la réception
+                  </BoutonEnvoi>
+                </>
               )}
-              {d.statut !== "client_contacte" && d.nature === "emport" && (
-                <button
+
+              {d.statut === "transmis" && d.nature === "emport" && (
+                <BoutonEnvoi
                   name="etape"
                   value="contacte"
-                  className="grow h-[46px] px-3 rounded-[12px] bg-blue-soft text-blue text-[13.5px] font-medium"
+                  pendant="…"
+                  className="h-[52px] px-3 rounded-[13px] bg-blue text-white font-display font-semibold text-[15px]"
                 >
-                  Client contacté
-                </button>
+                  Le client a été contacté
+                </BoutonEnvoi>
               )}
-              {d.nature === "emport" && (
-                <button
-                  name="etape"
-                  value="restitue"
-                  className="grow h-[46px] px-3 rounded-[12px] bg-green-soft text-green text-[13.5px] font-medium"
-                >
-                  Restituée
-                </button>
-              )}
-              {d.facturable_client && (
-                <button
-                  name="etape"
-                  value="facture"
-                  className="grow h-[46px] px-3 rounded-[12px] bg-green text-white text-[13.5px] font-medium"
-                >
-                  Facturé
-                </button>
-              )}
-              <button
-                name="etape"
-                value="non_facture"
-                className="grow h-[46px] px-3 rounded-[12px] bg-red-soft text-red text-[13.5px] font-medium"
-              >
-                Perte sèche
-              </button>
+
+              {/* Les issues closent le dossier : groupées, plus petites, et
+                  dites comme telles. Elles restent toutes les trois — la
+                  gouvernante n'a pas deux choix, elle en a trois. */}
+              <div className="flex flex-col gap-2 border-t border-line pt-3 mt-1">
+                <span className="etiquette">Clore le dossier</span>
+                <div className="flex flex-wrap gap-2">
+                  {d.nature === "emport" && (
+                    <BoutonEnvoi
+                      name="etape"
+                      value="restitue"
+                      pendant="…"
+                      className="grow h-[44px] px-3 rounded-[12px] bg-green-soft text-green text-[13.5px] font-medium"
+                    >
+                      Restituée
+                    </BoutonEnvoi>
+                  )}
+                  {d.facturable_client && (
+                    <BoutonEnvoi
+                      name="etape"
+                      value="facture"
+                      pendant="…"
+                      className="grow h-[44px] px-3 rounded-[12px] bg-surface border border-line text-ink-soft text-[13.5px] font-medium"
+                    >
+                      Facturée au client
+                    </BoutonEnvoi>
+                  )}
+                  <BoutonEnvoi
+                    name="etape"
+                    value="non_facture"
+                    pendant="…"
+                    className="grow h-[44px] px-3 rounded-[12px] bg-red-soft text-red text-[13.5px] font-medium"
+                  >
+                    Perte sèche
+                  </BoutonEnvoi>
+                </div>
+              </div>
             </form>
           </section>
         )}
