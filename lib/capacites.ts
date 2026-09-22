@@ -1,4 +1,10 @@
-import { colonneExiste, regleContient, vueContient, vueExiste } from "./schema";
+import {
+  colonneExiste,
+  inventaireDeRepriseRetire,
+  regleContient,
+  vueContient,
+  vueExiste,
+} from "./schema";
 
 /**
  * Ce que la base sait déjà faire.
@@ -65,6 +71,11 @@ const ATTENDUES: Attendue[] = [
     titre: "Ce qui attend vraiment la gouvernante",
     sans: "L’écran « À valider » annonce des centaines d’anomalies à valider — de l’historique clos dans l’ancienne application, que personne n’a jamais eu à vérifier.",
     verifier: () => vueContient("v_tournees", "attente_validation"),
+  },
+  {
+    titre: "Le stock réel, sans les ajustements de l’ancienne application",
+    sans: "Le stock porte encore vingt-deux régularisations qui visaient le chiffre affiché par l’ancienne application — un chiffre faux, puisqu’elle ignorait 249 mouvements sur 261.",
+    verifier: () => inventaireDeRepriseRetire(),
   },
   {
     titre: "Fournisseurs de bouteilles",

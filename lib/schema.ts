@@ -100,3 +100,26 @@ export async function vueContient(vue: string, mot: string): Promise<boolean> {
   if (r.presente) presentes.add(cle);
   return r.presente;
 }
+
+/**
+ * Le recalage de reprise a-t-il été retiré ?
+ *
+ * La 0017 ne pose ni colonne, ni règle, ni vue : elle efface des données —
+ * les vingt-deux régularisations qui visaient le stock affiché par l'ancienne
+ * application. La capacité se lit donc à une ABSENCE.
+ *
+ * On peut la retenir quand même, et pour la même raison que les autres : une
+ * fois l'inventaire de reprise effacé, rien ne le recrée. C'est la réponse
+ * « pas encore fait » qu'il ne faut jamais garder.
+ */
+export async function inventaireDeRepriseRetire(): Promise<boolean> {
+  const cle = "inventaire:reprise:retire";
+  if (presentes.has(cle)) return true;
+
+  const [r] = await sql<{ retire: boolean }[]>`
+    select not exists (
+      select 1 from inventaires
+       where id = 'cccccccc-0000-0000-0000-000000000001') as retire`;
+  if (r.retire) presentes.add(cle);
+  return r.retire;
+}

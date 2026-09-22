@@ -44,6 +44,21 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    afficher « déclarée faite par X — non validée par la gouvernante ».
 4. **Un écart d'inventaire passe toujours par une régularisation tracée**, jamais par une
    écriture directe du stock.
+4bis. **Le stock repris est la somme des mouvements, pas le chiffre de l'ancienne
+   application.** L'import posait vingt-deux régularisations pour recaler chaque produit sur ce
+   qu'affichait l'ancienne application — or elle ignorait 249 mouvements sur 261
+   (`EstHistorique`) et son chiffre était faux. Viser ce chiffre, c'était réintroduire
+   `Stock_Initial` sous le nom de « régularisation », et couvrir l'écart d'un comptage que
+   personne n'avait fait. Les entrées viennent du tableau des mouvements, les sorties de
+   l'export des anomalies, et **le signe du tableau est une information** : « Entrée −8 », ce
+   sont huit pièces reparties chez le fournisseur, donc une sortie — `abs()` en faisait une
+   entrée et le stock portait seize pièces de trop. Là où la somme passe sous zéro (cinq
+   produits), l'étagère n'était pas vide quand le tableau a commencé : l'écran dit **« à
+   compter »** et non « épuisé », parce que ce n'est pas un stock vide, c'est un stock faux, et
+   que le seul chemin est un inventaire. **Un comptage reste vrai quand le théorique change** :
+   la 0017 recalcule l'écart des inventaires de l'application, elle n'efface pas ce qui a été
+   compté.
+
 5. **Le technicien ne saisit aucun prix.** Il coche l'anomalie faite et le matériel utilisé, rien
    de plus. Ne jamais ajouter de champ de montant sur un écran technicien.
 6. **Un produit sans prix n'est pas compté pour zéro.** Les vues de coût exposent

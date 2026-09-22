@@ -42,11 +42,8 @@ insert into produits (code, designation, categorie, categorie_lieu, prix_unitair
 insert into produits (code, designation, categorie, categorie_lieu, prix_unitaire, seuil_alerte) values ('EPS410B', 'Télérupteur électrique (YesssElectrique)', 'Électricité', 'Chambre', 40.92, 0) on conflict (code) do nothing;
 insert into produits (code, designation, categorie, categorie_lieu, prix_unitaire, seuil_alerte) values ('EPN510', 'Télérupteurs (Mécaniques) Paris Elec ou YesssElectrique', 'Électricité', 'Chambre', 37.02, 6.0) on conflict (code) do nothing;
 insert into produits (code, designation, categorie, categorie_lieu, prix_unitaire, seuil_alerte) values ('Stop nuisibles', 'Traitement chimique', 'Divers', 'General', 80.0, 0) on conflict (code) do nothing;
--- Inventaire de reprise ------------------------------------------------
-insert into inventaires (id, type, libelle, statut, ouvert_par, valide_par, valide_le, commentaire) select 'cccccccc-0000-0000-0000-000000000001', 'materiel', 'Reprise de l''ancienne application', 'valide', u.id, u.id, now(), 'Recale chaque produit sur le stock affiché avant la bascule, sans effacer l''historique des mouvements.'
-  from utilisateurs u where u.nom = 'Miguel' on conflict (id) do nothing;
 -- Mouvements de stock --------------------------------------------------
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-16', u.id, pt.id, e.id, i.id, null, 'Intervention 56 - flexible douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-16', u.id, pt.id, e.id, i.id, 'Intervention 56 - flexible douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = 'Miguel'
   left join prestataires pt on pt.nom = null
@@ -54,7 +51,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-16', u.id, pt.id, e.id, i.id, null, 'Intervention 46 - Vérifier s''il ne faut pas changer entièrement la colonne de douche'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-16', u.id, pt.id, e.id, i.id, 'Intervention 46 - Vérifier s''il ne faut pas changer entièrement la colonne de douche'
   from produits pr
   left join utilisateurs u  on u.nom = 'Miguel'
   left join prestataires pt on pt.nom = null
@@ -62,7 +59,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-15', u.id, pt.id, e.id, i.id, null, 'Intervention 46 - Flexible de douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-15', u.id, pt.id, e.id, i.id, 'Intervention 46 - Flexible de douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -70,7 +67,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-15', u.id, pt.id, e.id, i.id, null, 'Intervention 44 - flexible douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-06-15', u.id, pt.id, e.id, i.id, 'Intervention 44 - flexible douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -78,7 +75,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2026-03-06', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2026-03-06', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -86,7 +83,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2026-03-06', u.id, pt.id, e.id, i.id, null, '2131130'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2026-03-06', u.id, pt.id, e.id, i.id, '2131130'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -94,7 +91,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-02-06', u.id, pt.id, e.id, i.id, null, 'Intervention 18 - flexible douche qui fuit'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-02-06', u.id, pt.id, e.id, i.id, 'Intervention 18 - flexible douche qui fuit'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -102,7 +99,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-02-06', u.id, pt.id, e.id, i.id, null, 'Intervention 2eme étage - spot à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-02-06', u.id, pt.id, e.id, i.id, 'Intervention 2eme étage - spot à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -110,15 +107,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW05';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'regularisation', 'inventaire', -1.0, timestamptz '2026-05-28', u.id, pt.id, e.id, i.id, 'cccccccc-0000-0000-0000-000000000001', 'Il en reste que 5'
-  from produits pr
-  left join utilisateurs u  on u.nom = 'Victoria'
-  left join prestataires pt on pt.nom = null
-  left join emplacements e  on e.code = null
-  left join anomalies a     on a.sharepoint_id = null
-  left join interventions i on i.anomalie_id = a.id
-  where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2026-05-28', u.id, pt.id, e.id, i.id, null, 'Intervention 06 - Spot à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2026-05-28', u.id, pt.id, e.id, i.id, 'Intervention 06 - Spot à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -126,7 +115,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-05-21', u.id, pt.id, e.id, i.id, null, 'Flexible à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-05-21', u.id, pt.id, e.id, i.id, 'Flexible à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -134,7 +123,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1040
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 5.0, timestamptz '2026-05-20', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 5.0, timestamptz '2026-05-20', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -142,7 +131,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-05', u.id, pt.id, e.id, i.id, null, 'changement du séche cheveux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-05', u.id, pt.id, e.id, i.id, 'changement du séche cheveux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Miguel'
   left join prestataires pt on pt.nom = null
@@ -150,7 +139,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1036
   left join interventions i on i.anomalie_id = a.id
   where pr.code = '8222107';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-29', u.id, pt.id, e.id, i.id, null, 'spot à changer (le premier devant la porte d’entrée)'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-29', u.id, pt.id, e.id, i.id, 'spot à changer (le premier devant la porte d’entrée)'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -158,7 +147,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1034
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, null, 'remplacement bras de liseuse (coté gauche)'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, 'remplacement bras de liseuse (coté gauche)'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -166,7 +155,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 992
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, null, 'Flexible douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, 'Flexible douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -174,7 +163,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1002
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Modélé inconnu (flexible)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, null, 'flexible douche qui fuit'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, 'flexible douche qui fuit'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -182,7 +171,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1019
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, null, 'flexible douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-23', u.id, pt.id, e.id, i.id, 'flexible douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -190,7 +179,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1031
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-22', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-22', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -198,7 +187,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 455
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-22', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-22', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -206,7 +195,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 984
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-22', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-22', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -214,7 +203,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1018
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-17', u.id, pt.id, e.id, i.id, null, 'Pommeau de douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-17', u.id, pt.id, e.id, i.id, 'Pommeau de douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = 'Miguel'
   left join prestataires pt on pt.nom = null
@@ -222,7 +211,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1016
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Hansgrohe';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-16', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-16', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -230,7 +219,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 784
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-16', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-16', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -238,7 +227,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 996
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-16', u.id, pt.id, e.id, i.id, null, 'télérupteur à changer - spot et leds'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-04-16', u.id, pt.id, e.id, i.id, 'télérupteur à changer - spot et leds'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -246,7 +235,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 1003
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-31', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-31', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -254,7 +243,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 983
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-17', u.id, pt.id, e.id, i.id, null, 'Spot à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-17', u.id, pt.id, e.id, i.id, 'Spot à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -262,7 +251,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 845
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-17', u.id, pt.id, e.id, i.id, null, 'spot à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-17', u.id, pt.id, e.id, i.id, 'spot à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -270,7 +259,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 976
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-17', u.id, pt.id, e.id, i.id, null, 'Batterie du bloc secours à changer (celui en face de la sortie de secours)'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-03-17', u.id, pt.id, e.id, i.id, 'Batterie du bloc secours à changer (celui en face de la sortie de secours)'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -278,7 +267,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 977
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-02-23', u.id, pt.id, e.id, i.id, null, 'Liseuse côté gauche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-02-23', u.id, pt.id, e.id, i.id, 'Liseuse côté gauche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -286,7 +275,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 946
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2026-02-20', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2026-02-20', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -294,7 +283,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-05-02', u.id, pt.id, e.id, i.id, null, 'Flexible à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-05-02', u.id, pt.id, e.id, i.id, 'Flexible à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'MR NEGRONI'
@@ -302,7 +291,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 901
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Modélé inconnu (flexible)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, null, 'Changement flexible liseuse droite'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, 'Changement flexible liseuse droite'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -310,7 +299,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 483
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, null, 'Changement flexible liseuse droite'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, 'Changement flexible liseuse droite'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -318,7 +307,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 504
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, null, 'Changement flexible liseuse droite'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, 'Changement flexible liseuse droite'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -326,7 +315,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 516
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, null, 'Télérupteur appliques changé'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, 'Télérupteur appliques changé'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -334,7 +323,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 517
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, null, 'spot chambre à remplacer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, 'spot chambre à remplacer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -342,7 +331,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 643
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, null, 'spot chambre à remplacer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-01-13', u.id, pt.id, e.id, i.id, 'spot chambre à remplacer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -350,7 +339,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 703
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-08-01', u.id, pt.id, e.id, i.id, null, 'Il faut changer la bouilloire'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2026-08-01', u.id, pt.id, e.id, i.id, 'Il faut changer la bouilloire'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -358,7 +347,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 588
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'ALI170281 (Aficom)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 6.0, timestamptz '2025-12-27', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 6.0, timestamptz '2025-12-27', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -366,7 +355,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 6.0, timestamptz '2025-12-26', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 6.0, timestamptz '2025-12-26', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -374,7 +363,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA90731TPM (enjoliveur porte carte)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-23', u.id, pt.id, e.id, i.id, null, 'Liseuse côté gauche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-23', u.id, pt.id, e.id, i.id, 'Liseuse côté gauche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -382,7 +371,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 788
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-23', u.id, pt.id, e.id, i.id, null, 'Serrer le bras liseuse côté droit'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-23', u.id, pt.id, e.id, i.id, 'Serrer le bras liseuse côté droit'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -390,7 +379,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 882
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Spot à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Spot à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -398,7 +387,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 412
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Télérupteur à changer - appliques murales sautent'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Télérupteur à changer - appliques murales sautent'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -406,7 +395,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 473
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Télérupteur à changer - spot et leds'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Télérupteur à changer - spot et leds'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -414,7 +403,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 484
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Télérupteur à changer - spot et leds'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Télérupteur à changer - spot et leds'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -422,7 +411,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 507
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Spot à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Spot à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -430,7 +419,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 508
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Télérupteur à changer - appliques murales sautent'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Télérupteur à changer - appliques murales sautent'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -438,7 +427,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 691
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Télérupteur à changer - appliques murales sautent'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Télérupteur à changer - appliques murales sautent'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -446,7 +435,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 773
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, null, 'Spot à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-12', u.id, pt.id, e.id, i.id, 'Spot à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -454,7 +443,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 774
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-12', u.id, pt.id, e.id, i.id, null, 'Liseuse côté droit à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-12', u.id, pt.id, e.id, i.id, 'Liseuse côté droit à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -462,7 +451,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 745
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-12', u.id, pt.id, e.id, i.id, null, 'Spot noir à changer - en face de la chambre 38'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-12', u.id, pt.id, e.id, i.id, 'Spot noir à changer - en face de la chambre 38'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Serafino'
@@ -470,7 +459,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 820
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-26', u.id, pt.id, e.id, i.id, null, 'Changement du séche cheveux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-26', u.id, pt.id, e.id, i.id, 'Changement du séche cheveux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -478,7 +467,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 576
   left join interventions i on i.anomalie_id = a.id
   where pr.code = '8222107';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-26', u.id, pt.id, e.id, i.id, null, 'Il faut changer la bouilloire'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-26', u.id, pt.id, e.id, i.id, 'Il faut changer la bouilloire'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -486,7 +475,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 729
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'ALI170281 (Aficom)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, null, 'flexible douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, 'flexible douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -494,7 +483,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 443
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORNBRACHT-28322970-33';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, null, 'flexible douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, 'flexible douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -502,7 +491,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 469
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORNBRACHT-28322970-33';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, null, 'Refixer la liseuse de gauche'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, 'Refixer la liseuse de gauche'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -510,7 +499,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 544
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, null, 'flexible liseuse côté droit à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, 'flexible liseuse côté droit à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -518,7 +507,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 615
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, null, 'flexible liseuse côté droit à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, 'flexible liseuse côté droit à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -526,7 +515,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 709
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, null, 'flexible liseuse côté droit à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-11-16', u.id, pt.id, e.id, i.id, 'flexible liseuse côté droit à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -534,7 +523,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 728
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AP-1902-B0002';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-03-11', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-03-11', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -542,7 +531,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EURO W4 (EUROPROH)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-11', u.id, pt.id, e.id, i.id, null, 'URGENT! PRIORITE Coffre à reprogrammer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-11', u.id, pt.id, e.id, i.id, 'URGENT! PRIORITE Coffre à reprogrammer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Technicien EUROPROH'
@@ -550,7 +539,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 457
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EURO W4 (EUROPROH)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-11', u.id, pt.id, e.id, i.id, null, 'Coffre fort HS'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-03-11', u.id, pt.id, e.id, i.id, 'Coffre fort HS'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Technicien EUROPROH'
@@ -558,7 +547,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 510
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EURO W4 (EUROPROH)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 7.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 7.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -566,7 +555,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -574,7 +563,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA) - Local TGBT';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null, 'Batterie du bloc secours à changer (celui en face de l''ascenseur)'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, 'Batterie du bloc secours à changer (celui en face de l''ascenseur)'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Technicien TELEC'
@@ -582,7 +571,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 823
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null, 'Batterie du bloc secours à changer (celui en face de la chambre 44)'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, 'Batterie du bloc secours à changer (celui en face de la chambre 44)'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Technicien TELEC'
@@ -590,7 +579,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 824
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null, 'bloc secour/batterie à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, 'bloc secour/batterie à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Technicien TELEC'
@@ -598,7 +587,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 839
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null, 'bloc secour/batterie a changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, 'bloc secour/batterie a changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Technicien TELEC'
@@ -606,7 +595,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 840
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, null, 'bloc secour/batterie a changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-10-23', u.id, pt.id, e.id, i.id, 'bloc secour/batterie a changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Technicien TELEC'
@@ -614,7 +603,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 848
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA) - Local TGBT';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-10', u.id, pt.id, e.id, i.id, null, 'Détection de punaises de lit au niveau de la tête de lit constaté le 30/09/25 par la societe Ecoflair'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-10', u.id, pt.id, e.id, i.id, 'Détection de punaises de lit au niveau de la tête de lit constaté le 30/09/25 par la societe Ecoflair'
   from produits pr
   left join utilisateurs u  on u.nom = 'Rachid'
   left join prestataires pt on pt.nom = null
@@ -622,7 +611,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 759
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Stop nuisibles';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 37.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 37.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -630,7 +619,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -638,7 +627,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 376
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -646,7 +635,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 384
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -654,7 +643,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 394
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -662,7 +651,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 407
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -670,7 +659,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 420
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -678,7 +667,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 433
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -686,7 +675,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 444
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -694,7 +683,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 452
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -702,7 +691,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 465
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -710,7 +699,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 480
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -718,7 +707,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 488
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -726,7 +715,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 500
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -734,7 +723,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 514
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -742,7 +731,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 520
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -750,7 +739,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 527
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -758,7 +747,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 542
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -766,7 +755,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 556
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -774,7 +763,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 563
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -782,7 +771,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 570
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -790,7 +779,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 581
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -798,7 +787,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 597
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -806,7 +795,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 605
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -814,7 +803,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 618
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -822,7 +811,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 631
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -830,7 +819,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 640
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -838,7 +827,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 648
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -846,7 +835,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 661
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -854,7 +843,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 681
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -862,7 +851,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 697
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -870,7 +859,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 713
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -878,7 +867,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 722
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -886,7 +875,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 736
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -894,7 +883,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 760
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -902,7 +891,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 769
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -910,7 +899,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 782
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -918,7 +907,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 795
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, null, 'Demande de vérification s''il y a la présence de punaises'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-30', u.id, pt.id, e.id, i.id, 'Demande de vérification s''il y a la présence de punaises'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'EcoFlair'
@@ -926,7 +915,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 811
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Ecoflair';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 8.0, timestamptz '2025-09-25', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -8.0, timestamptz '2025-09-25', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -934,7 +923,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPS410B';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 8.0, timestamptz '2025-09-25', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 8.0, timestamptz '2025-09-25', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -942,7 +931,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPS410B';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 8.0, timestamptz '2025-09-25', u.id, pt.id, e.id, i.id, null, 'échange de télérupteur électrique contre des télérupteurs mécaniques effectué avec YesssElectrique'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 8.0, timestamptz '2025-09-25', u.id, pt.id, e.id, i.id, 'échange de télérupteur électrique contre des télérupteurs mécaniques effectué avec YesssElectrique'
   from produits pr
   left join utilisateurs u  on u.nom = 'Miguel'
   left join prestataires pt on pt.nom = null
@@ -950,7 +939,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-22', u.id, pt.id, e.id, i.id, null, 'Il faut changer la bouilloire'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-22', u.id, pt.id, e.id, i.id, 'Il faut changer la bouilloire'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -958,7 +947,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 693
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'ALI170281 (Aficom)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-18', u.id, pt.id, e.id, i.id, null, 'Flexible fuit au niveau du pommeau de douche'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-18', u.id, pt.id, e.id, i.id, 'Flexible fuit au niveau du pommeau de douche'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -966,7 +955,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 421
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORNBRACHT-28322970-33';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-18', u.id, pt.id, e.id, i.id, null, 'flexible douche qui fuit'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-18', u.id, pt.id, e.id, i.id, 'flexible douche qui fuit'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -974,7 +963,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 571
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORNBRACHT-28322970-33';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-18', u.id, pt.id, e.id, i.id, null, 'Flexible de douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-09-18', u.id, pt.id, e.id, i.id, 'Flexible de douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -982,7 +971,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 686
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORNBRACHT-28322970-33';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 2.0, timestamptz '2025-09-15', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 2.0, timestamptz '2025-09-15', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -990,7 +979,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, null, 'Spot plafond au fond à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, 'Spot plafond au fond à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -998,7 +987,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 463
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1006,7 +995,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 478
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, null, 'télérupteur pour spots plafond à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, 'télérupteur pour spots plafond à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1014,7 +1003,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 676
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPS410B';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, null, 'télérupteur pour spots plafond à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, 'télérupteur pour spots plafond à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1022,7 +1011,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 733
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPS410B';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, null, 'Spot plafond derrière la réception à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-12-09', u.id, pt.id, e.id, i.id, 'Spot plafond derrière la réception à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1030,7 +1019,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 869
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-09-09', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-09-09', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1038,7 +1027,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPS410B';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 7.0, timestamptz '2025-07-08', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 7.0, timestamptz '2025-07-08', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1046,7 +1035,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORNBRACHT-28322970-33';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-07-08', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-07-08', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1054,7 +1043,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORN-0000';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1062,7 +1051,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO54505';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 6.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 6.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1070,7 +1059,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW05';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 14.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 14.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1078,7 +1067,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1086,7 +1075,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 486
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1094,7 +1083,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 579
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1102,7 +1091,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 809
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'Spot à changer (celui de droite)'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'Spot à changer (celui de droite)'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1110,7 +1099,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 828
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'Spot côté à changer devant la camera'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'Spot côté à changer devant la camera'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1118,7 +1107,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 835
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'bloc secour/batterie a changer (en face de la chambre 14)'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'bloc secour/batterie a changer (en face de la chambre 14)'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1126,7 +1115,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 855
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'NI-Cd 2,4V 1,5AH (URA)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'Spot côté à changer à côté du miroir'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'Spot côté à changer à côté du miroir'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1134,7 +1123,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 866
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, null, 'Spot côté à changer derriere la réception'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-08', u.id, pt.id, e.id, i.id, 'Spot côté à changer derriere la réception'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1142,7 +1131,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 867
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW30';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-07-22', u.id, pt.id, e.id, i.id, null, 'Changement du séche cheveux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-07-22', u.id, pt.id, e.id, i.id, 'Changement du séche cheveux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1150,7 +1139,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 780
   left join interventions i on i.anomalie_id = a.id
   where pr.code = '8222107';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-06-24', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-06-24', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -1158,7 +1147,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 577
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-06-24', u.id, pt.id, e.id, i.id, null, 'Fil de d''aspirateur à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-06-24', u.id, pt.id, e.id, i.id, 'Fil de d''aspirateur à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -1166,7 +1155,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 833
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'CABLE1532MM';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-06-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-06-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1174,7 +1163,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'CABLE1532MM';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-05-30', u.id, pt.id, e.id, i.id, null, 'Flexible douche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-05-30', u.id, pt.id, e.id, i.id, 'Flexible douche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Hedi'
@@ -1182,7 +1171,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 373
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Modélé inconnu (flexible)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-05-20', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-05-20', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1190,7 +1179,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 659
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-05-14', u.id, pt.id, e.id, i.id, null, 'remplacer l''économiseur d''énergie pour éclairage principal'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-05-14', u.id, pt.id, e.id, i.id, 'remplacer l''économiseur d''énergie pour éclairage principal'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1198,7 +1187,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 678
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 7.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 7.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1206,7 +1195,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Hansgrohe';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1214,7 +1203,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'AMS Brass Toilet roll holder (ams-sw034-PB)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1222,7 +1211,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Aliseo (030706)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1230,7 +1219,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DO467WW05';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1238,7 +1227,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Transfo Spot';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1246,7 +1235,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Interupteur';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 10.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1254,7 +1243,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Inconnu-2';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1262,7 +1251,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Applique';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1270,7 +1259,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Butée (dorée)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1278,7 +1267,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Rousseau';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1286,7 +1275,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Aliseo (030692)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1294,7 +1283,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DORNBRACHT-28322970-33';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1302,7 +1291,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'DAIKIN';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 15.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 15.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1310,7 +1299,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EFA21031 (économisseur)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1318,7 +1307,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Modélé inconnu (flexible)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, 'télérupteur lumière néons et spots plafond sautent'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, 'télérupteur lumière néons et spots plafond sautent'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1326,7 +1315,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 553
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, null, 'télérupteur lumière néons et spots plafond sautent'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-04-18', u.id, pt.id, e.id, i.id, 'télérupteur lumière néons et spots plafond sautent'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1334,7 +1323,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 758
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-08-04', u.id, pt.id, e.id, i.id, null, 'flexible liseuse côté droit à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-08-04', u.id, pt.id, e.id, i.id, 'flexible liseuse côté droit à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Juan'
@@ -1342,7 +1331,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 523
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-08-04', u.id, pt.id, e.id, i.id, null, 'flexible liseuse côté gauche à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-08-04', u.id, pt.id, e.id, i.id, 'flexible liseuse côté gauche à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'Juan'
@@ -1350,7 +1339,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 614
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 20.0, timestamptz '2025-03-22', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 20.0, timestamptz '2025-03-22', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1358,7 +1347,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 24.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 24.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1366,7 +1355,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1374,7 +1363,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 498
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux - salle de bain'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux - salle de bain'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1382,7 +1371,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 568
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1390,7 +1379,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 677
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1398,7 +1387,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 720
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1406,7 +1395,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 734
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1414,7 +1403,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 754
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux - salle de bain'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux - salle de bain'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1422,7 +1411,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 755
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1430,7 +1419,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 767
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1438,7 +1427,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 779
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1446,7 +1435,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 793
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1454,7 +1443,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 807
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, null, 'Changement des rideaux - salle de bain'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -2.0, timestamptz '2025-03-14', u.id, pt.id, e.id, i.id, 'Changement des rideaux - salle de bain'
   from produits pr
   left join utilisateurs u  on u.nom = 'Victoria'
   left join prestataires pt on pt.nom = null
@@ -1462,7 +1451,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 808
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'Silva';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-02-17', u.id, pt.id, e.id, i.id, null, 'change bonde lavabo'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-02-17', u.id, pt.id, e.id, i.id, 'change bonde lavabo'
   from produits pr
   left join utilisateurs u  on u.nom = 'FARID'
   left join prestataires pt on pt.nom = null
@@ -1470,7 +1459,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 497
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPS410B';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 4.0, timestamptz '2025-01-30', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 4.0, timestamptz '2025-01-30', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1478,7 +1467,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'ALI170281 (Aficom)';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-30', u.id, pt.id, e.id, i.id, null, 'flexible liseuse côté SDB à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-30', u.id, pt.id, e.id, i.id, 'flexible liseuse côté SDB à changer'
   from produits pr
   left join utilisateurs u  on u.nom = 'FARID'
   left join prestataires pt on pt.nom = null
@@ -1486,7 +1475,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 627
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-22', u.id, pt.id, e.id, i.id, null, 'La lumiere du plafond saute - Télérupteur à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-22', u.id, pt.id, e.id, i.id, 'La lumiere du plafond saute - Télérupteur à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1494,7 +1483,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 476
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-22', u.id, pt.id, e.id, i.id, null, 'Télérupteur spot et led à changer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-22', u.id, pt.id, e.id, i.id, 'Télérupteur spot et led à changer'
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = 'ALAIN'
@@ -1502,7 +1491,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 560
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-21', u.id, pt.id, e.id, i.id, null, 'changement du flexible de la liseuse de droite'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-21', u.id, pt.id, e.id, i.id, 'changement du flexible de la liseuse de droite'
   from produits pr
   left join utilisateurs u  on u.nom = 'FARID'
   left join prestataires pt on pt.nom = null
@@ -1510,7 +1499,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 411
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-21', u.id, pt.id, e.id, i.id, null, 'flexible liseuse côté gauche à resserer'
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2025-01-21', u.id, pt.id, e.id, i.id, 'flexible liseuse côté gauche à resserer'
   from produits pr
   left join utilisateurs u  on u.nom = 'FARID'
   left join prestataires pt on pt.nom = null
@@ -1518,7 +1507,7 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = 524
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'SE1241LTB';
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id, commentaire) select pr.id, 'entree', null, 4.0, timestamptz '2025-01-20', u.id, pt.id, e.id, i.id, null, null
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 4.0, timestamptz '2025-01-20', u.id, pt.id, e.id, i.id, null
   from produits pr
   left join utilisateurs u  on u.nom = null
   left join prestataires pt on pt.nom = null
@@ -1526,6 +1515,70 @@ insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
   left join anomalies a     on a.sharepoint_id = null
   left join interventions i on i.anomalie_id = a.id
   where pr.code = 'EPN510';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 5.0, timestamptz '2024-12-20', u.id, pt.id, e.id, i.id, null
+  from produits pr
+  left join utilisateurs u  on u.nom = null
+  left join prestataires pt on pt.nom = null
+  left join emplacements e  on e.code = null
+  left join anomalies a     on a.sharepoint_id = null
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = '8222107';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2024-12-13', u.id, pt.id, e.id, i.id, 'Changement du séche cheveux'
+  from produits pr
+  left join utilisateurs u  on u.nom = 'Victoria'
+  left join prestataires pt on pt.nom = null
+  left join emplacements e  on e.code = '15'
+  left join anomalies a     on a.sharepoint_id = 439
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = '8222107';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2024-12-13', u.id, pt.id, e.id, i.id, 'Changement du séche cheveux'
+  from produits pr
+  left join utilisateurs u  on u.nom = 'Victoria'
+  left join prestataires pt on pt.nom = null
+  left join emplacements e  on e.code = '28'
+  left join anomalies a     on a.sharepoint_id = 539
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = '8222107';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2024-12-13', u.id, pt.id, e.id, i.id, 'Changement du séche cheveux'
+  from produits pr
+  left join utilisateurs u  on u.nom = 'Victoria'
+  left join prestataires pt on pt.nom = null
+  left join emplacements e  on e.code = '32'
+  left join anomalies a     on a.sharepoint_id = 561
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = '8222107';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'entree', null, 3.0, timestamptz '2024-11-12', u.id, pt.id, e.id, i.id, null
+  from produits pr
+  left join utilisateurs u  on u.nom = null
+  left join prestataires pt on pt.nom = null
+  left join emplacements e  on e.code = null
+  left join anomalies a     on a.sharepoint_id = null
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = '8222107';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2024-10-12', u.id, pt.id, e.id, i.id, 'Remplacement bras de liseuse (coté gauche)'
+  from produits pr
+  left join utilisateurs u  on u.nom = null
+  left join prestataires pt on pt.nom = 'ALAIN'
+  left join emplacements e  on e.code = '03'
+  left join anomalies a     on a.sharepoint_id = 397
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = 'SE1241LTB';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2024-10-12', u.id, pt.id, e.id, i.id, 'Remplacement du télérupteur (TETE DE LIT appliques)'
+  from produits pr
+  left join utilisateurs u  on u.nom = null
+  left join prestataires pt on pt.nom = 'ALAIN'
+  left join emplacements e  on e.code = '25'
+  left join anomalies a     on a.sharepoint_id = 512
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = 'EPS410B';
+insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement, utilisateur_id, prestataire_id, emplacement_id, intervention_id, commentaire) select pr.id, 'sortie', null, -1.0, timestamptz '2024-10-12', u.id, pt.id, e.id, i.id, 'Remplacement du télérupteur (TETE DE LIT)'
+  from produits pr
+  left join utilisateurs u  on u.nom = null
+  left join prestataires pt on pt.nom = 'ALAIN'
+  left join emplacements e  on e.code = '34'
+  left join anomalies a     on a.sharepoint_id = 567
+  left join interventions i on i.anomalie_id = a.id
+  where pr.code = 'EPS410B';
 
 commit;
 

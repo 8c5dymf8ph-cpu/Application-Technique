@@ -102,6 +102,11 @@ export function JaugeStock({
 
 /** L'état en un mot, pour les endroits où la barre ne tient pas. */
 export function EtatStock({ stock, seuil }: { stock: number; seuil: number }) {
+  // Un stock négatif n'est pas un stock épuisé : c'est un stock faux. Les
+  // sorties dépassent les entrées connues parce que l'étagère n'était pas vide
+  // quand le tableau des mouvements a commencé. « Épuisé » laisserait croire
+  // qu'il n'y a plus rien ; ce qu'il faut, c'est aller compter.
+  const acompter = stock < 0;
   const rupture = stock <= 0;
   const sous = stock <= seuil;
   return (
@@ -114,7 +119,7 @@ export function EtatStock({ stock, seuil }: { stock: number; seuil: number }) {
             : "bg-green-soft text-green"
       }`}
     >
-      {rupture ? "Épuisé" : sous ? "Seuil bas" : "En stock"}
+      {acompter ? "À compter" : rupture ? "Épuisé" : sous ? "Seuil bas" : "En stock"}
     </span>
   );
 }

@@ -7,11 +7,21 @@
 À jouer APRÈS l'import des anomalies : les sorties se rattachent aux
 interventions par l'identifiant SharePoint de l'anomalie.
 
-Les 261 mouvements sont repris tels quels — qui a pris quoi, quand, pour quelle
-chambre. Comme l'ancienne application ignorait 249 d'entre eux (colonne
-`EstHistorique`), leur somme ne redonne pas le stock affiché : une ligne de
-régularisation par produit, datée de la reprise, recale l'écart. L'historique
-est donc conservé sans que le stock mente.
+Les mouvements sont repris tels quels — qui a pris quoi, quand, pour quelle
+chambre. Le stock est leur somme, et rien d'autre : les entrées viennent de ce
+tableau, les sorties de celui-ci et de l'export des anomalies.
+
+Ce que l'import ne fait PLUS : recaler chaque produit sur le stock qu'affichait
+l'ancienne application. Elle ignorait 249 mouvements sur 261 (colonne
+`EstHistorique`) et son chiffre était donc faux ; le recaler revenait à
+réintroduire `Stock_Initial` sous un autre nom, et à couvrir l'écart d'une
+régularisation que personne n'avait comptée. Un stock faux avec une ligne
+d'explication reste un stock faux. Les ajustements de l'ancienne application
+sont écartés pour la même raison.
+
+Là où les sorties dépassent les entrées, c'est que l'étagère n'était pas vide
+quand le tableau a commencé : cela se répare en comptant, par un inventaire
+dans l'application, pas en devinant ici.
 """
 import collections
 import datetime
@@ -71,6 +81,30 @@ def code_lieu(brut):
             if unicodedata.category(c) != "Mn")).strip())
 
 
+def descendus_sous_zero(produits, mouvements, produit_de):
+    """Les produits dont les sorties dépassent les entrées connues.
+
+    Ce n'est pas une erreur d'import : le tableau des mouvements commence à une
+    date, et ce qui était déjà sur l'étagère n'y figure pas. On les nomme pour
+    qu'ils soient comptés, au lieu de combler le trou par une écriture.
+    """
+    faits = []
+    for p in produits:
+        total = 0.0
+        for m in mouvements:
+            if produit_de(m) is not p:
+                continue
+            t = str(m["TypeMouvement"]).strip()
+            qte = montant(m.get("Quantite")) or 0
+            if t == "Entrée":
+                total += qte          # une entrée négative retranche : c'est un retour
+            elif t == "Sortie":
+                total -= abs(qte)
+        if total < 0:
+            faits.append((p["_code"], int(total)))
+    return faits
+
+
 def main(chemin_produits: str, chemin_mouvements: str) -> None:
     produits = charger(chemin_produits)
     mouvements = [m for m in charger(chemin_mouvements) if m.get("TypeMouvement")]
@@ -117,17 +151,6 @@ def main(chemin_produits: str, chemin_mouvements: str) -> None:
             f" {q(p.get('Categorie_2'))}, {prix if prix is not None else 'null'},"
             f" {seuil}) on conflict (code) do nothing;")
 
-    # --- Inventaire de reprise, pour porter les régularisations -------------
-    print("\n-- Inventaire de reprise ------------------------------------------------")
-    print(
-        "insert into inventaires (id, type, libelle, statut, ouvert_par, valide_par, valide_le,"
-        " commentaire) select "
-        f"'{INVENTAIRE_REPRISE}', 'materiel', 'Reprise de l''ancienne application', 'valide',"
-        " u.id, u.id, now(),"
-        " 'Recale chaque produit sur le stock affiché avant la bascule, sans effacer"
-        " l''historique des mouvements.'\n"
-        "  from utilisateurs u where u.nom = 'Miguel' on conflict (id) do nothing;")
-
     # --- Mouvements --------------------------------------------------------
     print("\n-- Mouvements de stock --------------------------------------------------")
     retenus = 0
@@ -145,13 +168,26 @@ def main(chemin_produits: str, chemin_mouvements: str) -> None:
 
         type_source = str(m["TypeMouvement"]).strip()
         qte = montant(m.get("Quantite")) or 0
+
+        # Une entrée NÉGATIVE existe : le 25/09/2025, huit télérupteurs sont
+        # ressortis d'une livraison. `abs()` en faisait une entrée de huit — le
+        # stock portait seize pièces de trop, et rien ne le disait. Le signe du
+        # tableau est une information, pas une faute de frappe.
+        #
+        # Une entrée ne peut pas être négative : `signe_coherent` l'interdit, et
+        # à juste titre — une entrée ajoute. Ce que le tableau décrit, ce sont
+        # des pièces reparties chez le fournisseur : c'est une sortie.
         if type_source == "Entrée":
-            type_cible, qte, motif = "entree", abs(qte), None
+            type_cible, motif = ("entree" if qte > 0 else "sortie"), None
         elif type_source == "Sortie":
             type_cible, qte, motif = "sortie", -abs(qte), None
         else:
-            type_cible, motif = "regularisation", "inventaire"
-            qte = montant(m.get("Ecart")) if m.get("Ecart") is not None else qte
+            # Les ajustements de l'ancienne application ne sont pas repris :
+            # son stock était faux, et corriger un chiffre faux par un écart
+            # jamais compté ne donne pas un chiffre juste. Ce qui manque à
+            # l'étagère se compte, dans un inventaire de l'application.
+            rapport["ajustements_ancienne_application"][str(m.get("Produit"))] += 1
+            continue
         if not qte:
             rapport["quantite_nulle"][str(m.get("Produit"))] += 1
             continue
@@ -160,14 +196,13 @@ def main(chemin_produits: str, chemin_mouvements: str) -> None:
         externe = cle(nom) in PRESTATAIRES
         lieu = code_lieu(m.get("LOCALISATION"))
         anomalie = nettoyer(m.get("Intervention_ID"))
-        inventaire = f"'{INVENTAIRE_REPRISE}'" if motif == "inventaire" else "null"
 
         print(
             "insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,"
-            " utilisateur_id, prestataire_id, emplacement_id, intervention_id, inventaire_id,"
+            " utilisateur_id, prestataire_id, emplacement_id, intervention_id,"
             " commentaire) select "
             f"pr.id, '{type_cible}', {q(motif)}, {qte}, timestamptz '{date}', u.id, pt.id,"
-            f" e.id, i.id, {inventaire}, {q(m.get('Commentaire'))}"
+            f" e.id, i.id, {q(m.get('Commentaire'))}"
             f"\n  from produits pr"
             f"\n  left join utilisateurs u  on u.nom = {qnom('' if externe else nom)}"
             f"\n  left join prestataires pt on pt.nom = {qnom(nom if externe else '')}"
@@ -177,37 +212,18 @@ def main(chemin_produits: str, chemin_mouvements: str) -> None:
             f"\n  where pr.code = {q(p['_code'])};")
         retenus += 1
 
-    # --- Recalage : l'historique reste, le stock devient juste ---------------
-    print("\n-- Recalage de reprise --------------------------------------------------")
-    print("-- L'ancienne application ignorait les mouvements marqués « historique » ;")
-    print("-- son stock affiché vaut donc Stock_Initial plus les seuls mouvements")
-    print("-- récents. On vise ce chiffre, et l'écart devient une régularisation.")
-    cibles = []
-    for p in produits:
-        code = p["_code"]
-        recents = sum(
-            (montant(m.get("Quantite")) or 0) * (-1 if str(m["TypeMouvement"]).strip() == "Sortie" else 1)
-            for m in mouvements
-            if produit_de(m) is p and m.get("EstHistorique") is not True
-            and str(m["TypeMouvement"]).strip() in ("Entrée", "Sortie"))
-        cibles.append((code, (montant(p.get("Stock_Initial")) or 0) + recents))
-
-    valeurs = ",\n  ".join(f"({q(c)}, {v})" for c, v in cibles)
-    print(f"""with cible (code, stock_vise) as (values
-  {valeurs}
-)
-insert into mouvements_stock (produit_id, type, motif, quantite, date_mouvement,
-                              utilisateur_id, inventaire_id, commentaire)
-select p.id, 'regularisation', 'inventaire',
-       c.stock_vise - coalesce(sum(m.quantite), 0),
-       now(), u.id, '{INVENTAIRE_REPRISE}',
-       'Reprise : recalage sur le stock affiché avant la bascule'
-from produits p
-join cible c on c.code = p.code
-left join mouvements_stock m on m.produit_id = p.id
-left join utilisateurs u on u.nom = 'Miguel'
-group by p.id, c.stock_vise, u.id
-having c.stock_vise - coalesce(sum(m.quantite), 0) <> 0;""")
+    # --- Ce que le tableau ne dit pas ---------------------------------------
+    # Pas de recalage. L'ancienne application affichait `Stock_Initial` plus
+    # les seuls mouvements récents — elle en ignorait 249 sur 261 — et viser ce
+    # chiffre revenait à réintroduire `Stock_Initial`, que la règle 17 écarte.
+    #
+    # Ce qui reste est vrai : la somme des mouvements. Là où elle passe sous
+    # zéro, l'étagère n'était pas vide quand le tableau a commencé — six
+    # produits sont dans ce cas. Cela se répare en comptant, par un inventaire
+    # dans l'application, et la régularisation porte alors un écart que
+    # quelqu'un a réellement constaté.
+    for code, manquant in sorted(descendus_sous_zero(produits, mouvements, produit_de)):
+        rapport["stock_negatif_a_compter"][code] = manquant
 
     print("\ncommit;")
 
