@@ -485,6 +485,14 @@ rend l'erreur telle quelle. `outputFileTracingIncludes` fait partir les fichiers
 déploiement : sans cette ligne Vercel ne garde que ce que le code importe, et le bouton ne
 trouverait rien à jouer.
 
+**L'application dit quelle version est en ligne.** « Les modifications ne sont pas là » et « le
+code est poussé » peuvent être vrais en même temps : entre les deux il y a un déploiement, qui
+peut ne pas avoir eu lieu, avoir échoué, ou être servi depuis le cache du téléphone. Sans repère,
+on compare des écrans de mémoire et on se trompe. `/administration` affiche le commit déployé et
+**le titre de son message**, qui se lit en français — la comparaison prend une seconde.
+`lib/version.ts` le lit dans les variables système de Vercel, et dit « inconnue » plutôt que
+d'inventer quand le projet ne les expose pas.
+
 **L'application dit elle-même ce que la base sait faire.** Le code part en ligne avant la
 migration : entre les deux, un bouton est grisé sans que rien n'explique pourquoi — « donner un
 profil ne fonctionne pas ». `lib/capacites.ts` liste les capacités et leur sonde

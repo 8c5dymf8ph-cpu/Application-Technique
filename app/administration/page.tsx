@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { capacites } from "@/lib/capacites";
+import { version } from "@/lib/version";
 import { appliquerLesMigrations, migrationsEnAttente } from "@/lib/migrations";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { profilActif } from "@/lib/profil";
@@ -131,6 +132,7 @@ export default async function Administration({
    * serait payé pour rien.
    */
   const verdict = essai === "1" ? await verifierDepot() : null;
+  const v = version();
   const total = attente.reduce((n, a) => n + a.nombre, 0);
 
   /**
@@ -701,6 +703,38 @@ export default async function Administration({
           />
         </div>
 
+        {/* Quelle version est en ligne.
+            « Les modifications ne sont pas là » et « le code est poussé »
+            peuvent être vrais en même temps : entre les deux il y a un
+            déploiement, qui peut ne pas avoir eu lieu, avoir échoué, ou être
+            servi depuis le cache du téléphone. Le titre du commit se lit en
+            français : on compare en une seconde, au lieu de se fier à sa
+            mémoire des écrans. */}
+        <section className="flex flex-col gap-1 pt-2 border-t border-line">
+          <span className="etiquette">Version en ligne</span>
+          {v.locale ? (
+            <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+              Application lancée depuis un poste, pas depuis le déploiement.
+            </p>
+          ) : v.court ? (
+            <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+              <span className="tabular-nums">{v.court}</span>
+              {v.branche ? ` · ${v.branche}` : ""}
+              {v.titre ? (
+                <>
+                  <br />
+                  <span className="text-ink-soft">{v.titre}</span>
+                </>
+              ) : null}
+            </p>
+          ) : (
+            <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+              Inconnue : Vercel n’expose pas les variables système pour ce projet.
+              Settings → Environment Variables → « Automatically expose System
+              Environment Variables ».
+            </p>
+          )}
+        </section>
       </div>
     </main>
   );
