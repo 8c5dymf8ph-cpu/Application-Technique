@@ -259,6 +259,24 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    couvre tout le passage ; `facture_interventions` la rattache à chaque intervention,
    `montant_affecte` nul valant répartition à parts égales.
 
+16sexies. **Une date lue dans un tableur n'est pas une date.** L'export donnait les dates en
+   TEXTE, dans deux formats mélangés — « 17/12/2024 » et « 2025-09-12 » — et l'import a dû
+   deviner : **270 dates de déclaration et 229 dates d'intervention** avaient le jour et le mois
+   inversés. Une date d'intervention fausse met le passage au mauvais jour, et la facture ne se
+   rapproche plus. L'export nettoyé les rend en vraies dates ; `outils/reprendre_export.py` les
+   réaligne sur une base VIVANTE, et la migration 0015 fait suivre les passages
+   (`fn_regrouper_les_passages()`, rejouable). Ne jamais faire deviner un format de date à
+   l'import : le corriger à la source est le seul chemin qui ne laisse pas de trace fausse.
+
+16septies. **Une reprise d'export ne touche que ce que le tableau possède.** Depuis l'import,
+   l'application a produit des photos, des commentaires, des dossiers bouteille, des entrées de
+   stock, des factures, et des anomalies déclarées directement. Le rattachement se fait sur
+   `anomalies.sharepoint_id` : une anomalie sans cet identifiant vient de l'application et reste
+   hors de portée. Et **une reprise ne remplace jamais une valeur par du vide** — l'export écrit
+   « ALAIN », la table dit « Alain » ; la jointure est donc insensible à la casse, et si un nom
+   ne se rattache à personne on garde ce que la base sait déjà. Écraser l'intervenant d'un
+   passage parce qu'une capitalisation diffère serait une perte, pas une correction.
+
 16quinquies. **Un passage existe dès qu'un intervenant est venu un jour donné.** L'import n'avait
    créé une tournée que pour les lignes portant un InterventionID exploitable : 419 interventions
    sur 528 n'avaient aucun passage, et l'historique n'en montrait qu'un cinquième. La migration
@@ -284,8 +302,14 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
 supabase/migrations/   schéma, vues, règles, sécurité — jouées dans l'ordre
 supabase/seed/         référentiels (étages, emplacements, types, dotations)
 supabase/tests/        scénarios métier, à rejouer après toute modification du schéma
-donnees/installation/  les trois fichiers à jouer en production, produits par
-                       outils/preparer_installation.sh — jamais édités à la main
+donnees/installation/  les fichiers à jouer en production, dans l'ordre d'ordre.txt,
+                       produits par outils/preparer_installation.sh — jamais
+                       édités à la main. Le DERNIER regroupe les passages : la
+                       migration qui le fait est jouée avant les données, elle
+                       n'a rien à regrouper à ce moment-là
+donnees/export/        l'export « TEST Tech 3 » de l'hôtel, source de tout côté
+                       technique. `importer_anomalies.py` en fait une base
+                       neuve, `reprendre_export.py` aligne une base vivante
 donnees/demo_*.sql     données inventées, pour regarder les écrans. Jamais en production.
 ```
 

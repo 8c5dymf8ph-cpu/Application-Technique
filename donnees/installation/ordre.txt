@@ -14,3 +14,4 @@
 3-stock-b.sql
 4-bouteilles.sql
 5-equipe.sql
+6-passages.sql

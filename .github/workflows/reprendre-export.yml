@@ -1,0 +1,81 @@
+# Aligne la base de l'hôtel sur un nouvel export « TEST Tech 3 ».
+#
+# À lancer après avoir déposé un export nettoyé et regénéré
+# donnees/reprise_export.sql. Ne joue QUE ce que le tableau possède : les
+# photos, le fil de commentaires, les dossiers bouteille, le stock et les
+# anomalies déclarées dans l'application ne sont ni lus ni modifiés.
+#
+# Le fichier passe entièrement ou pas du tout : il est dans une transaction.
+#
+# Se déclenche à la main : onglet Actions → « Reprendre l'export » → Run.
+name: Reprendre l'export
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Taper REPRENDRE pour confirmer"
+        required: true
+        default: ""
+
+jobs:
+  reprendre:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Vérifier la confirmation
+        run: |
+          if [ "${{ inputs.confirmation }}" != "REPRENDRE" ]; then
+            echo "Taper REPRENDRE dans la case de confirmation." >&2
+            exit 1
+          fi
+
+      - name: Vérifier que la clé de connexion est posée
+        run: |
+          if [ -z "${{ secrets.INSTALL_DATABASE_URL }}" ]; then
+            echo "Le secret INSTALL_DATABASE_URL est absent." >&2
+            echo "Settings → Secrets and variables → Actions." >&2
+            exit 1
+          fi
+
+      - name: Compter ce qu'il y a avant
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          psql "$PGURL" --quiet --no-psqlrc --no-align --tuples-only -c "
+            select 'anomalies : '     || count(*) from anomalies
+            union all
+            select 'interventions : ' || count(*) from interventions
+            union all
+            select 'passages : '      || count(*) from tournees"
+
+      # Les migrations d'abord : la reprise appelle fn_regrouper_les_passages(),
+      # posée par la 0015. Sans elle, le fichier s'arrête sur une fonction
+      # inconnue — et comme il est dans une transaction, il ne laisse rien à
+      # moitié fait.
+      - name: Appliquer les migrations manquantes
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: ./outils/appliquer_migrations.sh
+
+      - name: Reprendre l'export
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          psql "$PGURL" --quiet --no-psqlrc \
+            --set ON_ERROR_STOP=1 -f donnees/reprise_export.sql
+
+      - name: Compter ce qu'il y a après
+        env:
+          PGURL: ${{ secrets.INSTALL_DATABASE_URL }}
+        run: |
+          psql "$PGURL" --quiet --no-psqlrc --no-align --tuples-only -c "
+            select 'anomalies : '     || count(*) from anomalies
+            union all
+            select 'interventions : ' || count(*) from interventions
+            union all
+            select 'passages : '      || count(*) from tournees
+            union all
+            select 'interventions sans passage : ' || count(*)
+              from interventions where tournee_id is null"

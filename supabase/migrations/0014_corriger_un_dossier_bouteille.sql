@@ -148,6 +148,13 @@ for each row execute function fn_corriger_ligne_bouteille();
 -- était.
 drop policy if exists ecriture_operationnelle on incidents_bouteille;
 
+-- Postgres ne connaît pas `create policy if not exists` : on retire d'abord,
+-- pour que rejouer ce fichier ne casse pas la série. Un `create` qui échoue au
+-- second passage arrête toutes les migrations suivantes.
+drop policy if exists ecriture_dossiers     on incidents_bouteille;
+drop policy if exists modification_dossiers on incidents_bouteille;
+drop policy if exists suppression_dossiers  on incidents_bouteille;
+
 create policy ecriture_dossiers on incidents_bouteille
   for insert to authenticated with check (fn_peut_ecrire());
 

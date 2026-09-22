@@ -19,11 +19,13 @@ CONSTATS = {
         "(select count(*) || ' produits sur 36' from produits)",
     "4-bouteilles.sql":
         "(select count(*) || ' dossiers de bouteille sur 17' from incidents_bouteille)",
+    "6-passages.sql":
+        "(select count(*) || ' passages reconstitués' from tournees where reprise)",
     "5-equipe.sql":
         "(select case when exists (select 1 from prestataires where nom = 'ALAIN')"
         " then 'noms NON corrigés' else 'noms corrigés — installation terminée' end)",
 }
-CONSTAT_ANOMALIES = "(select count(*) || ' anomalies sur 670' from anomalies)"
+CONSTAT_ANOMALIES = "(select count(*) || ' anomalies sur 674' from anomalies)"
 
 
 def ordre(nom: str):

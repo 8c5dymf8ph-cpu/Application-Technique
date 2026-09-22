@@ -29,7 +29,8 @@ with attendus (rang, fichier) as (
       (11, '3-stock-a.sql'),
       (12, '3-stock-b.sql'),
       (13, '4-bouteilles.sql'),
-      (14, '5-equipe.sql')
+      (14, '5-equipe.sql'),
+      (15, '6-passages.sql')
 ),
 faits as (
   select fichier from installation_journal

@@ -57,6 +57,11 @@ const ATTENDUES: Attendue[] = [
     verifier: () => regleContient("fn_corriger_dossier_bouteille", "dotation"),
   },
   {
+    titre: "Un passage suit sa date",
+    sans: "Corriger la date d’une intervention la laisse accrochée au passage du mauvais jour : la facture ne se rapproche plus.",
+    verifier: () => regleContient("fn_regrouper_les_passages", "INT-REPRISE-"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),
