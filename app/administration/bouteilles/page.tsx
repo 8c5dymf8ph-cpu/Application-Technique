@@ -96,10 +96,10 @@ export default async function ReglagesBouteilles() {
                 <img
                   src={`/photo/${t.photo}`}
                   alt={t.libelle}
-                  className="w-[72px] h-[92px] object-contain rounded-[11px] border border-line bg-surface-muted shrink-0"
+                  className="w-[104px] h-[132px] object-contain rounded-[11px] border border-line bg-surface-muted shrink-0"
                 />
               ) : (
-                <span className="w-[72px] h-[92px] rounded-[11px] border border-dashed border-line bg-surface-muted grid place-items-center text-[10.5px] text-ink-faint text-center px-1 shrink-0">
+                <span className="w-[104px] h-[132px] rounded-[11px] border border-dashed border-line bg-surface-muted grid place-items-center text-[10.5px] text-ink-faint text-center px-1 shrink-0">
                   Pas de photo
                 </span>
               )}

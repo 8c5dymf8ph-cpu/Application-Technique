@@ -27,6 +27,12 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    (`on delete cascade`), et c'est juste : contrairement au matériel d'une intervention, qui a
    réellement quitté l'étagère, une bouteille déclarée par erreur n'a jamais bougé. Réservé à
    `peutValider`, comme pour une anomalie.
+2quater. **Une chambre est dotée d'UNE bouteille de chaque type : la quantité ne se demande
+   pas.** Les boutons + et − posaient une question qui n'a jamais d'autre réponse que « une », et
+   laissaient croire qu'il fallait y répondre. On marque la bouteille manquante, c'est tout — le
+   modèle garde `quantite` pour les cas anciens, mais aucun écran ne la règle. Et les bouteilles
+   se voient : 150 px à la déclaration, parce qu'on les reconnaît à leur couleur et à leur forme,
+   pas à leur nom.
 2bis. **Une bouteille emportée sort du parc détenu, sans être perdue pour autant.** `parc_detenu`
    (réserve + chambres) est ce que l'hôtel a réellement : il baisse dès l'emport. `chez_client`
    est une position d'attente, et `parc_theorique` ne sert qu'au rapprochement d'inventaire.
@@ -585,6 +591,11 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
 - **La bulle de commentaires s'ouvre.** Elle affichait un nombre et rien d'autre : on voyait
   qu'il y avait eu des mots sans pouvoir les lire. `ApercuFil` les montre dans une fenêtre
   native — pas un écran de plus, on ne perd pas sa place.
+- **Une ancienneté porte sa date entre parenthèses.** « il y a 6 mois » se lit d'un coup d'œil
+  et suffit la plupart du temps — mais pour rapprocher un dossier d'un passage, d'une facture ou
+  d'une conversation, il faut le jour, et le recalculer de tête n'a pas de sens quand il tient en
+  huit caractères. `depuis()` de `lib/domaine.ts` rend « il y a 6 mois (12/06/2026) » ; aujourd'hui
+  et hier s'en passent, la date n'y apprend rien.
 - **Les listes longues se replient.** Les étages, les sections d'un écran : sur un téléphone tenu
   d'une main, faire défiler trois écrans avant d'atteindre le cinquième étage est un défaut.
 

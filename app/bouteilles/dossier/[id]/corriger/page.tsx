@@ -149,12 +149,10 @@ export default async function CorrigerDossier({
     // Les types concernés : une chambre peut perdre la filtrée ET la gazeuse.
     // Une ligne retirée emporte ses mouvements — c'est le déclencheur de la
     // migration 0014 qui s'en charge, jamais cet écran.
+    // Une chambre est dotée d'UNE bouteille de chaque type : il n'y a pas de
+    // quantité à corriger, seulement les types concernés.
     const voulus = new Map<string, number>();
-    for (const t of donnees.getAll("type")) {
-      const code = String(t);
-      const q = Math.max(1, Math.min(99, Number(donnees.get(`quantite-${code}`)) || 1));
-      voulus.set(code, q);
-    }
+    for (const t of donnees.getAll("type")) voulus.set(String(t), 1);
     if (voulus.size === 0) redirect(`${ici}?fait=sans-type` as Route);
 
     const [...ids] = voulus.keys();
@@ -258,22 +256,13 @@ export default async function CorrigerDossier({
                         à son nom. */}
                     <span
                       aria-hidden
-                      className="w-[18px] h-[26px] shrink-0 rounded-[5px] border-2"
+                      className="w-[30px] h-[46px] shrink-0 rounded-[7px] border-2"
                       style={{
                         borderColor: t.couleur ?? "#8C86A8",
                         background: (t.couleur ?? "#8C86A8") + "33",
                       }}
                     />
                     <span className="grow text-[15px]">{t.libelle}</span>
-                    <input
-                      type="number"
-                      name={`quantite-${t.id}`}
-                      min={1}
-                      max={99}
-                      defaultValue={parType.get(t.id) ?? 1}
-                      aria-label={`Combien de ${t.libelle}`}
-                      className="w-[64px] h-[42px] px-2 rounded-[10px] border border-line bg-surface text-[16px] text-center tabular-nums"
-                    />
                   </label>
                 );
               })}

@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { viderLaFileEnFond } from "@/lib/envoi";
-import { euros, jours } from "@/lib/domaine";
+import { depuis, euros } from "@/lib/domaine";
 import { Confirmation, Entete } from "@/app/composants/ui";
 import { peutValider } from "@/lib/domaine";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
@@ -211,7 +211,9 @@ export default async function DetailDossier({
                 <span className="grow min-w-0 flex flex-col">
                   <span className="text-[15px] leading-snug">{l.libelle}</span>
                   <span className="text-[11.5px] text-ink-faint tabular-nums">
-                    {l.quantite} × {euros(l.prix)}
+                    {/* Une chambre n'a qu'une bouteille de chaque type :
+                        « 1 × 17,50 € » ne dit rien de plus que le prix. */}
+                    {l.quantite > 1 ? `${l.quantite} × ${euros(l.prix)}` : euros(l.prix)}
                   </span>
                 </span>
               </li>
@@ -241,7 +243,7 @@ export default async function DetailDossier({
             <dt className="text-ink-faint">Nature</dt>
             <dd>
               {d.nature === "casse" ? "Bouteille cassée" : "Bouteille emportée"} ·{" "}
-              {jours(d.jours_ouvert)}
+              {depuis(d.jours_ouvert, d.constate_le)}
             </dd>
 
             {/* « — » à la place d'un prénom ne se lit pas : on dit en toutes

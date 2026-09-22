@@ -81,6 +81,23 @@ export function jours(n: number): string {
   return annees === 1 ? "il y a un an" : `il y a ${annees} ans`;
 }
 
+/**
+ * L'ancienneté, suivie de la date exacte entre parenthèses.
+ *
+ * « il y a 6 mois » se lit d'un coup d'œil et dit ce qu'on veut savoir la
+ * plupart du temps — mais pas toujours : pour rapprocher un dossier d'un
+ * passage, d'une facture ou d'une conversation, il faut le jour. Chercher la
+ * date ailleurs sur l'écran, ou la recalculer de tête, n'a pas de sens quand
+ * elle tient en huit caractères.
+ *
+ * Aujourd'hui et hier s'en passent : la date n'y apprend rien.
+ */
+export function depuis(n: number, date: string | Date | null): string {
+  const mot = jours(n);
+  if (n <= 1 || !date) return mot;
+  return `${mot} (${new Date(date).toLocaleDateString("fr-FR")})`;
+}
+
 export function euros(n: number | null): string {
   if (n === null || n === undefined) return "—";
   return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });

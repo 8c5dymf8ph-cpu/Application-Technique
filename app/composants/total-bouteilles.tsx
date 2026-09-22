@@ -17,8 +17,8 @@ function Bouteille({ couleur, choisie }: { couleur: string; choisie: boolean }) 
   return (
     <svg
       viewBox="0 0 48 96"
-      width="46"
-      height="92"
+      width="75"
+      height="150"
       aria-hidden
       className="shrink-0"
       style={{ opacity: choisie ? 1 : 0.55 }}
@@ -46,8 +46,8 @@ function Bouteille({ couleur, choisie }: { couleur: string; choisie: boolean }) 
 /**
  * Le choix des bouteilles, et le total qui suit.
  *
- * Un appui sur la bouteille en met une ; un second l'enlève. Les deux peuvent
- * être choisies ensemble, et le contour prend la couleur de la bouteille —
+ * Un appui marque la bouteille manquante ; un second l'enlève. Les deux
+ * peuvent l'être ensemble, et le contour prend la couleur de la bouteille —
  * bleu pour la filtrée, rouge pour la gazeuse — parce que c'est ainsi qu'on les
  * reconnaît en chambre, pas à leur nom.
  *
@@ -64,8 +64,10 @@ export function TotalBouteilles({
 }) {
   const [quantites, setQuantites] = useState<Record<string, number>>({});
   const total = types.reduce((s, t) => s + (quantites[t.id] ?? 0) * t.prix, 0);
+  // Zéro ou une : il n'y a jamais deux bouteilles du même type dans une
+  // chambre.
   const poser = (id: string, n: number) =>
-    setQuantites((q) => ({ ...q, [id]: Math.max(0, Math.min(20, n)) }));
+    setQuantites((q) => ({ ...q, [id]: n > 0 ? 1 : 0 }));
 
   return (
     <>
@@ -93,7 +95,7 @@ export function TotalBouteilles({
                   <img
                     src={`/photo/${t.photo}`}
                     alt=""
-                    className="h-[92px] w-auto max-w-full object-contain"
+                    className="h-[150px] w-auto max-w-full object-contain"
                     style={{ opacity: n > 0 ? 1 : 0.55 }}
                   />
                 ) : (
@@ -118,29 +120,22 @@ export function TotalBouteilles({
                 <span className="text-[11px] text-ink-faint">{t.detail}</span>
               </button>
 
-              {/* Plusieurs bouteilles du même type, c'est rare : la quantité ne
-                  s'ouvre qu'une fois la bouteille choisie. */}
+              {/* Pas de quantité à régler : une chambre est dotée d'UNE
+                  bouteille de chaque type. Les boutons + et − posaient une
+                  question qui n'a jamais de réponse autre que « une », et
+                  laissaient croire qu'il fallait y répondre. Choisie ou pas,
+                  c'est tout. */}
               {n > 0 && (
-                <span className="flex items-center gap-1 mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => poser(t.id, n - 1)}
-                    aria-label="Une de moins"
-                    className="w-9 h-9 rounded-[10px] bg-surface border border-line grid place-items-center text-[17px] leading-none"
-                  >
-                    −
-                  </button>
-                  <span className="w-7 text-center font-display font-semibold text-[17px] tabular-nums">
-                    {n}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => poser(t.id, n + 1)}
-                    aria-label="Une de plus"
-                    className="w-9 h-9 rounded-[10px] bg-surface border border-line grid place-items-center text-[17px] leading-none"
-                  >
-                    +
-                  </button>
+                <span
+                  className="flex items-center gap-1.5 mt-0.5 text-[12.5px] font-medium"
+                  style={{ color: t.couleur }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+                       strokeLinejoin="round" aria-hidden>
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                  manquante
                 </span>
               )}
               <input type="hidden" name={`qte-${t.id}`} value={n} />

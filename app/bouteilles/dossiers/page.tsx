@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros, jours } from "@/lib/domaine";
+import { depuis, euros } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Frise, Recherche, Stat } from "@/app/composants/suivi";
 
@@ -210,9 +210,8 @@ export default async function Dossiers({
                           )}
                         </p>
                         <p className="text-[11.5px] text-ink-faint">
-                          {d.quantite > 1 && `${d.quantite} × `}
                           {d.bouteille} · {d.nature === "casse" ? "cassée" : "emportée"} ·{" "}
-                          {jours(d.jours_ouvert)}
+                          {depuis(d.jours_ouvert, d.constate_le)}
                         </p>
                       </div>
                       <div className="shrink-0 text-right flex flex-col items-end gap-1">
