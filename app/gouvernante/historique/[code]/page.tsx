@@ -9,6 +9,7 @@ import {
 } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import Link from "next/link";
+import type { Route } from "next";
 import { Vignettes } from "@/app/composants/photos";
 import { profilActif } from "@/lib/profil";
 import { revalidatePath } from "next/cache";
@@ -42,6 +43,9 @@ type Passage = {
   gouvernante: string | null;
   decision_gouvernante: string | null;
   materiel: string | null;
+  /** La facture qui couvre ce passage, s'il y en a une. */
+  facture: string | null;
+  facture_id: string | null;
 };
 type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" };
 type Compte = { anomalie_id: string; nb: number };
@@ -85,9 +89,12 @@ export default async function HistoriqueDuLieu({
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
              where m.intervention_id = r.intervention_id and m.type = 'sortie')
-             as materiel
+             as materiel,
+           f.reference as facture, f.id as facture_id
       from v_recap_interventions r
       join anomalies a on a.id = r.anomalie_id
+      left join facture_interventions fi on fi.intervention_id = r.intervention_id
+      left join factures f               on f.id = fi.facture_id
      where a.emplacement_id = ${emplacement.id}
      order by r.date_intervention`;
   const parPassage = (id: string) => passages.filter((p) => p.anomalie_id === id);
@@ -219,6 +226,20 @@ export default async function HistoriqueDuLieu({
                       {new Date(p.date_intervention).toLocaleDateString("fr-FR")}
                       {p.materiel ? ` · ${p.materiel}` : " · aucun matériel"}
                       <br />
+                      {/* Rapprochée d'une facture, ou pas : sans ce signe, on
+                          ne peut pas distinguer ce qui est déjà couvert de ce
+                          qui attend encore sa pièce. */}
+                      {p.facture_id && (
+                        <>
+                          <Link
+                            href={`/technique/facture/${p.facture_id}` as Route}
+                            className="text-blue underline underline-offset-2"
+                          >
+                            facture {p.facture ?? "sans numéro"}
+                          </Link>
+                          {" · "}
+                        </>
+                      )}
                       {p.decision_gouvernante === "validee" ? (
                         <span className="text-green">
                           validé par {p.gouvernante ?? "la gouvernante"}

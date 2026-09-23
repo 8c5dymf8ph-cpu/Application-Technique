@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import { Parcours } from "./composants/parcours";
+import { RelireEnRevenant } from "./composants/relire-en-revenant";
 
 const display = Playfair_Display({
   subsets: ["latin"],
@@ -37,6 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             derrière. Il doit voir tous les changements d'écran, y compris ceux
             qui n'ont pas de bouton retour : sa place est ici. */}
         <Parcours />
+        {/* Revenir sur un écran, c'est le redemander au serveur. Posé ICI et
+            pas écran par écran : dix-sept écrans écrivaient sans la
+            protection, et on retrouvait le formulaire qu'on venait
+            d'envoyer — « un contrôle Z partiel ». */}
+        <RelireEnRevenant />
         {children}
       </body>
     </html>

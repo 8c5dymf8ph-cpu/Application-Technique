@@ -3,17 +3,21 @@
 import { useRef } from "react";
 
 /**
- * Un document qui s'ouvre SUR l'écran, pas à côté.
+ * Un document, ouvert de la façon qui convient à son format.
  *
- * La facture s'ouvrait dans un onglet : on quittait l'application, et pour
- * revenir il fallait refermer l'onglet — sur un téléphone, c'est trois gestes
- * et on perd la place où l'on était. Un `<dialog>` natif suffit : rien à
- * charger, la touche Échap referme, et l'écran de dessous reste là où on l'a
- * laissé. C'est déjà ce que font `Vignettes` pour les photos et `ApercuFil`
- * pour les commentaires — un document n'a pas de raison d'être l'exception.
+ * Une IMAGE s'ouvre sur l'écran : un `<dialog>` natif suffit, on ne quitte
+ * pas l'application et Échap referme.
  *
- * Un PDF s'affiche dans un cadre, une image telle quelle : c'est l'extension
- * qui décide, parce que c'est tout ce qu'on connaît du fichier.
+ * Un PDF, non. Essayé, et raté : dans un cadre de la taille d'un téléphone il
+ * arrive trop zoomé, on ne voit que la première page, et sur un ordinateur ce
+ * n'est pas mieux. Le lecteur PDF du téléphone fait tout cela correctement —
+ * pages, pincement, rotation, recherche — et il n'y a aucune raison de le
+ * refaire moins bien dans une fenêtre de 94 % de large. Une facture se lit,
+ * elle ne se survole pas : sortir un instant de l'application pour la lire
+ * vraiment est le bon compromis.
+ *
+ * L'écran le dit avant l'appui, pour qu'on ne soit pas surpris de changer
+ * d'onglet.
  */
 export function VoirDocument({
   chemin,
@@ -31,6 +35,21 @@ export function VoirDocument({
   const fenetre = useRef<HTMLDialogElement>(null);
   const adresse = `/photo/${chemin}`;
   const pdf = /\.pdf($|\?)/i.test(chemin);
+
+  // Un PDF part au lecteur du téléphone : il fait mieux que nous.
+  if (pdf) {
+    return (
+      <a
+        href={adresse}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={ariaLabel ?? `Ouvrir ${titre}`}
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
 
   return (
     <>
@@ -56,13 +75,11 @@ export function VoirDocument({
             <span className="grow min-w-0 font-display font-semibold text-[15px] truncate">
               {titre}
             </span>
-            {/* Ouvrir en grand reste possible — mais ce n'est plus le seul
-                chemin, et ça ne se déclenche plus tout seul. */}
             <a
               href={adresse}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 text-[12px] text-plum underline underline-offset-4 active:opacity-60"
+              className="shrink-0 text-[12px] text-plum underline underline-offset-4"
             >
               Plein écran
             </a>
@@ -70,7 +87,7 @@ export function VoirDocument({
               type="button"
               onClick={() => fenetre.current?.close()}
               aria-label="Fermer"
-              className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center active:opacity-70 transition-opacity"
+              className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    strokeWidth="2.2" strokeLinecap="round" aria-hidden>
@@ -79,19 +96,16 @@ export function VoirDocument({
             </button>
           </div>
           <div className="grow min-h-0 overflow-auto bg-surface-muted">
-            {pdf ? (
-              <iframe
-                src={adresse}
-                title={titre}
-                className="w-full h-[78dvh] border-0 bg-white"
-              />
-            ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={adresse} alt={titre} className="w-full h-auto" />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={adresse} alt={titre} className="w-full h-auto" />
           </div>
         </div>
       </dialog>
     </>
   );
+}
+
+/** Vrai quand le fichier est un PDF : l'écran peut le dire avant l'appui. */
+export function estUnPdf(chemin: string | null | undefined): boolean {
+  return !!chemin && /\.pdf($|\?)/i.test(chemin);
 }

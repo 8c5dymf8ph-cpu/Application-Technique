@@ -52,13 +52,18 @@ export default async function Declarer({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ q?: string; choix?: string; jour?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    choix?: string;
+    jour?: string;
+    presse?: string;
+  }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
 
   const { code } = await params;
-  const { q = "", choix, jour } = await searchParams;
+  const { q = "", choix, jour, presse } = await searchParams;
   /**
    * La date du constat.
    *
@@ -67,6 +72,11 @@ export default async function Declarer({
    * l'a résolue : un historique où le problème naît après sa réparation.
    */
   const jourDuConstat = jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : undefined;
+
+  /** La priorité choisie en créant le libellé, s'il vient d'être créé. */
+  const presseChoisie = ["basse", "normale", "haute", "urgente"].includes(presse ?? "")
+    ? presse!
+    : null;
   const lieu = decodeURIComponent(code);
 
   const [emplacement] = await sql<{ id: string; code: string; etage: string }[]>`
@@ -149,7 +159,9 @@ export default async function Declarer({
     if (libelle.length < 3) {
       redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?q=${encodeURIComponent(libelle)}`);
     }
-    const type = String(donnees.get("type") ?? "") || null;
+    const choixType = String(donnees.get("type") ?? "");
+    const type = choixType && choixType !== "aucun" ? choixType : null;
+    const priorite = String(donnees.get("priorite") ?? "normale");
 
     // `on conflict` : le libellé est unique. Si quelqu'un vient de l'ajouter,
     // on récupère le sien plutôt que de refuser — c'est le même problème.
@@ -164,7 +176,9 @@ export default async function Declarer({
     redirect(
       `/gouvernante/declarer/${encodeURIComponent(lieu)}?q=${encodeURIComponent(
         libelle,
-      )}&choix=${entree.id}${jourDuConstat ? `&jour=${jourDuConstat}` : ""}`,
+      )}&choix=${entree.id}&presse=${priorite}${
+        jourDuConstat ? `&jour=${jourDuConstat}` : ""
+      }`,
     );
   }
 
@@ -183,9 +197,10 @@ export default async function Declarer({
     try {
       const [creee] = await sql<{ id: string }[]>`
         insert into anomalies (emplacement_id, catalogue_id, type_id, description,
-                               constate_par, saisie_par, declare_le)
+                               constate_par, saisie_par, declare_le, priorite)
         select ${emp.id}, c.id, c.type_id, c.libelle, ${profil_.id}, ${profil_.id},
-               coalesce(${jourDuConstat ?? null}::date, current_date)
+               coalesce(${jourDuConstat ?? null}::date, current_date),
+               coalesce(${presseChoisie}::priorite_anomalie, 'normale')
         from catalogue_anomalies c where c.id = ${catalogue_id}
         returning id`;
       anomalie_id = creee.id;
@@ -326,23 +341,53 @@ export default async function Declarer({
                 portera le même mot — c’est ce qui permet de compter les
                 récurrences.
               </p>
-              <input type="hidden" name="libelle" value={q.trim()} />
-              <p className="font-display font-semibold text-[15.5px] text-pretty">
-                « {q.trim()} »
-              </p>
+              {/* Le libellé se corrige avant d'entrer au catalogue : ce
+                  qu'on a tapé pour chercher n'est pas toujours ce qu'on veut
+                  y laisser pour toujours. */}
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Le libellé, tel qu’il restera</span>
+                <input
+                  name="libelle"
+                  defaultValue={q.trim()}
+                  autoComplete="off"
+                  required
+                  minLength={3}
+                  className="h-[48px] rounded-[12px] border border-line px-3 bg-surface text-[16px]"
+                />
+              </label>
+              {/* Le métier ne se devine pas : un même mot peut être un travail
+                  électrique ou de plomberie, et rien ne dit lequel. Aucun
+                  choix par défaut — on demande. */}
               <label className="flex flex-col gap-1">
                 <span className="etiquette">De quel métier</span>
                 <select
                   name="type"
                   defaultValue=""
+                  required
                   className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px]"
                 >
-                  <option value="">Sans métier</option>
+                  <option value="" disabled>
+                    Choisir le métier
+                  </option>
                   {types.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.nom}
                     </option>
                   ))}
+                  <option value="aucun">Aucun en particulier</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Ça presse ?</span>
+                <select
+                  name="priorite"
+                  defaultValue="normale"
+                  className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px]"
+                >
+                  <option value="basse">Quand ce sera possible</option>
+                  <option value="normale">Normale</option>
+                  <option value="haute">Prioritaire</option>
+                  <option value="urgente">Urgent</option>
                 </select>
               </label>
               <BoutonEnvoi

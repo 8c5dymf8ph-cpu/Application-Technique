@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
@@ -67,7 +69,26 @@ export default async function Accueil() {
   return (
     <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
       <div className="flex flex-col gap-[2px]">
-        <p className="text-[14px] text-ink-faint">Bonjour {profil.nom}</p>
+        <div className="flex items-center gap-3">
+          <p className="text-[14px] text-ink-faint grow min-w-0 truncate">
+            Bonjour {profil.nom}
+          </p>
+        {/* Changer de profil se fait ICI, en haut, pas au bout d'une page.
+            L'application est partagée : on la prend des mains de quelqu'un
+            d'autre, et la première chose qu'on vérifie est le nom affiché. Le
+            lien vivait tout en bas, après les tuiles — il fallait faire
+            défiler pour corriger ce qu'on lisait en haut. */}
+        <Link
+          href={"/profil" as Route}
+          aria-label={`Profil : ${profil.nom}. Changer de profil`}
+          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface border border-line"
+        >
+          <span className="w-8 h-8 rounded-full bg-plum grid place-items-center font-display font-semibold text-[12.5px] text-white">
+            {profil.nom.slice(0, 2).toUpperCase()}
+          </span>
+          <span className="text-[12.5px] text-ink-soft">Changer</span>
+        </Link>
+        </div>
         <h1 className="font-display font-bold text-[32px] leading-tight tracking-tight">
           Hôtel Parisianer
         </h1>
@@ -128,12 +149,6 @@ export default async function Accueil() {
         )}
       </nav>
 
-      <a
-        href="/profil"
-        className="text-[13px] text-ink-faint underline underline-offset-4 self-center mt-auto pt-6"
-      >
-        Changer de profil
-      </a>
     </main>
   );
 }
@@ -147,7 +162,26 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
   return (
     <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
       <div className="flex flex-col gap-[2px]">
-        <p className="text-[15px] text-ink-faint">Bonjour {profil.nom}</p>
+        <div className="flex items-center gap-3">
+          <p className="text-[15px] text-ink-faint grow min-w-0 truncate">
+            Bonjour {profil.nom}
+          </p>
+        {/* Changer de profil se fait ICI, en haut, pas au bout d'une page.
+            L'application est partagée : on la prend des mains de quelqu'un
+            d'autre, et la première chose qu'on vérifie est le nom affiché. Le
+            lien vivait tout en bas, après les tuiles — il fallait faire
+            défiler pour corriger ce qu'on lisait en haut. */}
+        <Link
+          href={"/profil" as Route}
+          aria-label={`Profil : ${profil.nom}. Changer de profil`}
+          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface border border-line"
+        >
+          <span className="w-8 h-8 rounded-full bg-plum grid place-items-center font-display font-semibold text-[12.5px] text-white">
+            {profil.nom.slice(0, 2).toUpperCase()}
+          </span>
+          <span className="text-[12.5px] text-ink-soft">Changer</span>
+        </Link>
+        </div>
         <h1 className="font-display font-bold text-[32px] leading-tight tracking-tight">
           Hôtel Parisianer
         </h1>
@@ -170,12 +204,6 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
         />
       </nav>
 
-      <a
-        href="/profil"
-        className="text-[14px] text-ink-faint underline underline-offset-4 self-center mt-auto pt-6"
-      >
-        Changer de profil
-      </a>
     </main>
   );
 }

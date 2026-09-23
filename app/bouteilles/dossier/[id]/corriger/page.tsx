@@ -8,7 +8,6 @@ import { Confirmation, Entete } from "@/app/composants/ui";
 import { Depliant } from "@/app/composants/depliant";
 import { ChoixPrenom } from "@/app/composants/prenom";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
-import { RelireAuRetour } from "@/app/composants/relire-au-retour";
 
 export const dynamic = "force-dynamic";
 
@@ -195,7 +194,6 @@ export default async function CorrigerDossier({
             valeurs, comme si la correction n'avait pas eu lieu. Corriger deux
             fois n'est pas grave (c'est une mise à jour, pas un doublon), mais
             lire de vieilles valeurs, si. */}
-        <RelireAuRetour cle={`corriger-dossier:${id}`} />
         <Confirmation quoi={fait} />
 
         <form action={enregistrer} className="flex flex-col gap-5">

@@ -153,6 +153,13 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    la raison d'être du catalogue fermé : sans libellés normalisés, ce comptage n'existe pas.
 9. **Une anomalie hors catalogue ne se crée que par un admin**, depuis un ordinateur. La règle est
    dans la RLS : ne pas la déplacer dans l'interface.
+9quater. **Créer un libellé, c'est aussi dire de quel métier il est.** « Poignée de porte qui
+   grince » peut être un travail de menuiserie ou d'électricité selon ce qu'il y a derrière, et
+   rien ne permet de le deviner : un métier posé par défaut range au hasard, et la section
+   spécialisée d'un intervenant (règle 15) devient fausse. Le formulaire demande donc les trois
+   choses — le libellé, corrigeable avant d'entrer au catalogue pour toujours, le métier, sans
+   valeur par défaut, et si ça presse.
+
 9bis. **Le libellé qui manque se crée — et il REJOINT le catalogue.** Le catalogue fermé est ce
    qui rend le comptage des récurrences possible (règle 8) ; mais un catalogue qu'on ne peut pas
    enrichir depuis le terrain finit par mentir — on déclare « autre chose » à la place, ou on ne
@@ -357,6 +364,16 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    — les lignes qui ne sont PAS sur cette facture — et c'est ce que le bouton rattache : une
    journée à moitié rattachée reste actionnable, et dit combien de ses lignes y sont déjà.
 
+16undecies. **Un montant de facture ne se montre JAMAIS par anomalie.** Serafino facture son
+   mois — 396 € pour tout juin, pas pour chaque robinet. Diviser ce chiffre par le nombre
+   d'anomalies produit un montant que personne n'a convenu, et le poser sur une ligne le fait
+   passer pour un prix : « je ne comprends pas pourquoi elle partage le montant entre toutes les
+   anomalies, c'est trompeur ». La répartition RESTE dans le modèle — `v_cout_prestataire`, il
+   faut bien pouvoir totaliser un passage — mais elle ne s'affiche nulle part ligne à ligne. Sur
+   une ligne on lit le MATÉRIEL, qui est un vrai prix ; la facture se lit sur le passage et sur
+   la facture, là où elle a un sens. (Remplace 16nonies, qui expliquait la répartition au lieu de
+   la retirer : une explication ne rattrape pas un chiffre qui n'aurait pas dû être là.)
+
 16nonies. **Une clé de répartition n'est pas un prix.** Serafino facture son mois : 396 € pour
    toutes les interventions de juin, pas pour chaque robinet. Le montant se répartit quand même
    entre les interventions couvertes — il faut bien pouvoir dire ce qu'un passage a coûté — mais
@@ -458,6 +475,13 @@ dépôt disparaissait sans un mot : on croyait l'avoir ajoutée et la vignette n
 Les actions passent un `?fait=` dans l'adresse et `<Confirmation>` le rend — vert pour ce qui est
 enregistré, rouge pour ce qui ne l'est pas. Ne jamais avaler un échec de `enregistrerFichier()`
 avec un `continue` muet.
+
+**Vérifier dans un navigateur se fait sur `next start`, jamais sur `next dev`.** Dans cet
+environnement, le serveur de développement ne parvient pas à hydrater : aucun composant client ne
+répond, et on conclut qu'un bouton est cassé alors qu'il marche. Mesuré : `fibres React sur un
+bouton` vaut 0 en `dev` et 2 sur une build — sur le MÊME commit, avant comme après une
+modification. `npm run build && npx next start -p <port>` avant toute vérification au navigateur ;
+et un seul serveur à la fois, `dev` et `start` se partageant `.next` se corrompent mutuellement.
 
 **Le code part en ligne avant la migration.** Vercel redéploie à chaque poussée ; une migration
 s'applique à la main, plus tard. Entre les deux, l'application tourne sur un schéma plus ancien
@@ -761,12 +785,42 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   d'une conversation, il faut le jour, et le recalculer de tête n'a pas de sens quand il tient en
   huit caractères. `depuis()` de `lib/domaine.ts` rend « il y a 6 mois (12/06/2026) » ; aujourd'hui
   et hier s'en passent, la date n'y apprend rien.
+- **Un PDF part au lecteur du téléphone ; une image s'ouvre sur l'écran.** Le `<dialog>` a été
+  essayé pour les deux, et raté pour le PDF : dans un cadre de la largeur d'un téléphone il
+  arrive trop zoomé, on ne voit que la première page, et sur un ordinateur ce n'est pas mieux. Le
+  lecteur du téléphone fait tout cela correctement — pages, pincement, rotation — et il n'y a
+  aucune raison de le refaire moins bien. `estUnPdf()` décide, et l'écran dit « s'ouvre dans le
+  lecteur PDF » AVANT l'appui, pour qu'on ne soit pas surpris de changer d'onglet.
 - **Un document se regarde SUR l'écran, comme une photo.** La facture s'ouvrait dans un onglet
   et « Le fil » dans un écran de plus : on quittait l'application, et revenir demandait trois
   gestes. `VoirDocument` (`app/composants/fenetre.tsx`) ouvre un `<dialog>` natif — PDF dans un
   cadre, image telle quelle, Échap et l'appui à côté referment — et « Plein écran » reste offert
   sans être le seul chemin. Le fil passe par `ApercuFil`, qui existait déjà. Rien n'a de raison
   d'être l'exception : photos, documents et commentaires s'ouvrent tous par-dessus.
+- **Revenir sur un écran, c'est le redemander au serveur — et c'est posé UNE fois.** Le routeur
+  ressort la page telle qu'il l'avait mise de côté : on rapproche une facture, on joue les
+  migrations, on déclare une perte, on revient, et l'écran rend le formulaire rempli, le bouton
+  encore actif, le travail encore à faire. « Le retour en arrière fonctionne comme un contrôle Z
+  partiel. » C'était corrigé écran par écran, à la main : **dix-sept écrans écrivaient sans la
+  protection**. Une règle appliquée à un endroit et pas à l'autre ne vaut rien —
+  `RelireEnRevenant` vit donc dans la mise en page, clé sur le chemin, et vaut pour tout.
+  `router.refresh()` garde la position de défilement : c'est un aller-retour, et ce qui s'affiche
+  est vrai. Ne plus jamais poser ça écran par écran.
+- **« Le fil » reste « Le fil », et au même endroit.** Le remplacer par un lien « La fiche » quand
+  il n'y avait pas encore de commentaire déplaçait la cible d'une ligne à l'autre selon qu'il y
+  avait eu des mots ou non — on ne savait plus où appuyer — et renvoyait vers un écran de plus,
+  d'où le retour ne ramenait pas là où on avait appuyé. `ApercuFil` prend `libelle` et `fiche` :
+  le bouton est toujours là, la fenêtre s'ouvre toujours, et elle dit « rien n'a encore été
+  écrit » avec le chemin vers la fiche dedans.
+- **Changer de profil se fait EN HAUT.** L'application est partagée : on la prend des mains de
+  quelqu'un d'autre, et la première chose qu'on vérifie est le nom affiché. Le lien vivait tout en
+  bas, après les tuiles — il fallait faire défiler pour corriger ce qu'on lisait en haut. C'est
+  une pastille avec les initiales, sur la ligne du « Bonjour ».
+- **Un calendrier a besoin de place SOUS son champ.** Le navigateur l'ouvre accroché au champ,
+  vers le bas ; une date de facture se saisit en bas d'un formulaire, et seule la première rangée
+  du calendrier restait atteignable. `scroll-margin-block-end` demande au navigateur de réserver
+  58 vh sous le champ quand il y défile, et `.place-pour-le-calendrier` donne à l'écran de quoi
+  défiler. Les deux ensemble : sans la seconde, il n'y a nulle part où remonter.
 - **Un geste doit se voir AU MOMENT où on le fait.** Un écran tactile n'a pas de survol : entre
   l'appui et la réponse, il ne se passe parfois rien pendant une seconde, et on réappuie.
   `BoutonEnvoi` couvre les envois, pas les liens ni les onglets d'étage. La marque était là mais

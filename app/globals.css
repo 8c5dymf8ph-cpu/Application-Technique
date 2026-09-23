@@ -61,3 +61,27 @@ button, summary, a, [role="button"], label[data-cible] {
 
 /* Un bouton désactivé ne bouge pas : il dit déjà qu'il n'attend rien. */
 button:disabled { transition: none; }
+
+/* Le calendrier a besoin de place SOUS le champ.
+ *
+ * Le navigateur ouvre son calendrier accroché au champ, vers le bas. Quand le
+ * champ est dans le dernier tiers de l'écran — et une date de facture l'est
+ * toujours, elle se saisit en bas d'un formulaire — le calendrier sort de la
+ * fenêtre et seule sa première rangée reste atteignable.
+ *
+ * Le navigateur fait défiler jusqu'au champ quand il prend le focus, et
+ * `scroll-margin` lui dit combien d'espace réserver autour. On lui en demande
+ * beaucoup dessous : le champ remonte alors dans le premier tiers, et le
+ * calendrier a toute la hauteur devant lui.
+ */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"] {
+  scroll-margin-block-start: 20vh;
+  scroll-margin-block-end: 58vh;
+}
+
+/* Et il faut qu'il y ait quelque part où défiler : un écran qui s'arrête juste
+ * sous son dernier champ ne peut pas le remonter. */
+.place-pour-le-calendrier { padding-bottom: 46vh; }

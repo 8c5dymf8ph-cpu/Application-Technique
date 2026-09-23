@@ -205,7 +205,7 @@ export default async function Recapitulatif({
         retour="/bouteilles"
       />
 
-      <div className="px-5 py-5 flex flex-col gap-4">
+      <div className="px-5 py-5 place-pour-le-calendrier flex flex-col gap-4">
         {/* La période. Elle se règle, et trois raccourcis couvrent ce qu'on
             demande neuf fois sur dix. */}
         <form method="get" className="carte px-4 py-3.5 flex flex-col gap-3">

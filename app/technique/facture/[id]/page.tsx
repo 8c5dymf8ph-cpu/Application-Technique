@@ -7,8 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { euros, jourISO, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
-import { VoirDocument } from "@/app/composants/fenetre";
-import { RelireAuRetour } from "@/app/composants/relire-au-retour";
+import { estUnPdf, VoirDocument } from "@/app/composants/fenetre";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { enregistrerFichier } from "@/lib/stockage";
 
@@ -212,9 +211,8 @@ export default async function DetailFacture({
       {/* L'écran change en le quittant — on rattache, on détache, on saisit un
           montant. Sans cela, la flèche arrière ressort la page telle qu'elle
           était et on croit que rien n'a été enregistré. */}
-      <RelireAuRetour cle={`facture-${id}`} />
 
-      <div className="px-5 py-4 flex flex-col gap-5">
+      <div className="px-5 py-4 place-pour-le-calendrier flex flex-col gap-5">
         {/* La pièce, consultable SUR l'écran. Elle s'ouvrait dans un onglet :
             on quittait l'application, et revenir demandait trois gestes. */}
         {f.fichier_url ? (
@@ -231,9 +229,12 @@ export default async function DetailFacture({
               </svg>
             </span>
             <span className="grow min-w-0">
-              <span className="block text-[14.5px]">Ouvrir la facture</span>
+              <span className="block text-[14.5px]">
+                {estUnPdf(f.fichier_url) ? "Ouvrir la facture (PDF)" : "Voir la facture"}
+              </span>
               <span className="block text-[11.5px] text-ink-faint">
                 {euros(f.montant_ht)} HT · {euros(f.montant_ttc)} TTC
+                {estUnPdf(f.fichier_url) ? " · s’ouvre dans le lecteur PDF" : ""}
               </span>
             </span>
           </VoirDocument>
@@ -273,21 +274,12 @@ export default async function DetailFacture({
                 </span>
               </div>
             </div>
-            {/* La facture ne se négocie pas ligne à ligne : Serafino facture
-                son mois, pas chaque robinet. Le montant se répartit quand même
-                entre les interventions, parce qu'il faut bien pouvoir dire ce
-                qu'un passage a coûté — mais c'est une CLÉ DE RÉPARTITION, pas
-                un prix, et l'écran doit le dire plutôt que de laisser croire à
-                un calcul mystérieux. */}
-            {facture > 0 && rattachees.length > 1 && (
-              <p className="text-[12.5px] text-ink-faint text-pretty">
-                Le montant de la facture est réparti à parts égales entre les{" "}
-                {rattachees.length} interventions qu’elle couvre, soit{" "}
-                {euros(facture / rattachees.length)} chacune. C’est une clé de
-                répartition, pas un prix négocié ligne à ligne : elle sert
-                seulement à dire ce qu’un passage a coûté.
-              </p>
-            )}
+            {/* Pas de montant par anomalie, ni ici ni ailleurs. Serafino
+                facture son MOIS — 396 € pour tout juin, pas pour chaque
+                robinet. Diviser ce chiffre par le nombre d'anomalies produit
+                un montant que personne n'a jamais convenu, et le montrer le
+                fait passer pour un prix. La facture couvre le passage : c'est
+                à ce niveau qu'elle se lit. */}
             {/* Un produit sans prix n'est pas compté pour zéro (règle 6). */}
             {incomplet && (
               <p className="text-[12.5px] text-amber text-pretty">

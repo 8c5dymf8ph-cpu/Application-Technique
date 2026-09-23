@@ -57,7 +57,7 @@ export default async function ChoixIntervenant() {
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="Technique" sous_titre="Qui intervient ?" retour="/technique" />
-      <div className="px-5 py-5 flex flex-col gap-2">
+      <div className="px-5 py-5 place-pour-le-calendrier flex flex-col gap-2">
         {/* Une seule liste, dépliée. Le pli séparait « l'équipe » des
             « intervenants extérieurs » et refermait les dix derniers : on
             croyait qu'il n'y avait que cinq noms. Et la distinction était

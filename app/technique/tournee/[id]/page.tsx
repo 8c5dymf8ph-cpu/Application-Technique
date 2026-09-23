@@ -456,9 +456,15 @@ export default async function DetailTournee({
                     <p className="grow min-w-0 text-[14px] leading-snug text-pretty">
                       {l.description}
                     </p>
-                    {Number(l.cout_total ?? 0) > 0 && (
+                    {/* Le MATÉRIEL de cette ligne, et rien d'autre. Le
+                        `cout_total` y ajoutait la part de facture — une
+                        division du montant du passage par le nombre
+                        d'anomalies, que personne n'a jamais convenue. Sur une
+                        ligne, ça se lit comme un prix. La facture couvre le
+                        passage : elle se lit en bas, sur le passage. */}
+                    {Number(l.cout_materiel ?? 0) > 0 && (
                       <span className="shrink-0 text-[13px] tabular-nums">
-                        {euros(l.cout_total)}
+                        {euros(l.cout_materiel)}
                       </span>
                     )}
                   </div>
@@ -504,17 +510,17 @@ export default async function DetailTournee({
                         voir
                       </VoirDocument>
                     )}
-                    <span className="ml-auto flex items-center gap-2">
-                      {fil(l.anomalie_id).length > 0 ? (
-                        <ApercuFil messages={fil(l.anomalie_id)} />
-                      ) : (
-                        <Link
-                          href={`/anomalie/${l.anomalie_id}` as Route}
-                          className="text-[11.5px] text-plum underline underline-offset-4 active:opacity-60 transition-opacity"
-                        >
-                          La fiche
-                        </Link>
-                      )}
+                    {/* « Le fil », toujours au même endroit et toujours en
+                        fenêtre. Le remplacer par « La fiche » quand il n'y
+                        avait rien déplaçait la cible d'une ligne à l'autre, et
+                        renvoyait sur un écran de plus — d'où l'on ne revenait
+                        pas là où on avait appuyé. */}
+                    <span className="ml-auto">
+                      <ApercuFil
+                        messages={fil(l.anomalie_id)}
+                        libelle="Le fil"
+                        fiche={`/anomalie/${l.anomalie_id}`}
+                      />
                     </span>
                   </div>
 

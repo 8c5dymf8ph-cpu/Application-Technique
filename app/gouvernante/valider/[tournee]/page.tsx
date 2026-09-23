@@ -7,7 +7,6 @@ import { profilActif } from "@/lib/profil";
 import { euros, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
-import { RelireAuRetour } from "@/app/composants/relire-au-retour";
 import { Vignettes } from "@/app/composants/photos";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
@@ -233,7 +232,6 @@ export default async function ValiderLot({
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       {/* Revenir ici après avoir tout décidé reproposait de décider. */}
-      <RelireAuRetour cle={`valider:${tournee}`} />
       <Entete
         titre={lot.intervenant ?? "Lot"}
         sous_titre={`${new Date(lot.date_tournee).toLocaleDateString("fr-FR")} · ${
