@@ -88,6 +88,13 @@ export default async function HubTechnique() {
             badge={c.alertes}
             ton="bg-green-soft"
           />
+          {/* En dernier : c'est de l'analyse, elle vient après les gestes. */}
+          <Tuile
+            href="/technique/tableau"
+            titre="Tableau de bord"
+            detail="Ce qui arrive, ce que ça coûte, ce qui part de la réserve"
+            ton="bg-surface"
+          />
         </div>
 
         {c.a_valider > 0 && (

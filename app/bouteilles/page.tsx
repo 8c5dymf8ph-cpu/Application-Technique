@@ -174,6 +174,16 @@ export default async function Bouteilles({
                 detail={`${c.du_mois} dossier${c.du_mois > 1 ? "s" : ""} ce mois-ci`}
                 ton="bg-surface"
               />
+              {/* Deux questions différentes : le tableau de bord dit où en est
+                  le parc aujourd'hui, le récapitulatif dit ce qui s'est passé
+                  entre deux dates. L'un se regarde le matin, l'autre se sort
+                  en fin de mois. */}
+              <Tuile
+                href="/bouteilles/recapitulatif"
+                titre="Récapitulatif"
+                detail="Sur une période : entrées, sorties, livraisons, dossiers"
+                ton="bg-surface"
+              />
           </>
         </div>
 

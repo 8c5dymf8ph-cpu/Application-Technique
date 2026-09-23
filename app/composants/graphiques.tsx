@@ -148,11 +148,45 @@ export function Colonnes({
 export function Barres({
   lignes,
   format,
+  nomsLongs = false,
 }: {
   lignes: { libelle: string; valeur: number; detail?: string }[];
   format: (n: number) => string;
+  /**
+   * Le nom au-dessus de la barre plutôt qu'à côté.
+   *
+   * Une chambre tient en deux caractères, pas « Détection Canine » ni
+   * « Télérupteurs (Mécaniques) Paris Elec ». Dans 62 px ils devenaient
+   * « Détectio… », « Télérupt… », « Télérupt… » — trois lignes qu'on ne
+   * distingue plus l'une de l'autre, donc un graphique qui n'apprend rien.
+   */
+  nomsLongs?: boolean;
 }) {
   const max = Math.max(1, ...lignes.map((l) => l.valeur));
+  if (nomsLongs) {
+    return (
+      <ul className="flex flex-col gap-2.5">
+        {lignes.map((l) => (
+          <li key={l.libelle} className="flex flex-col gap-1">
+            <span className="flex items-baseline gap-2">
+              <span className="grow text-[12.5px] leading-snug text-pretty">
+                {l.libelle}
+              </span>
+              <span className="shrink-0 text-[12.5px] tabular-nums font-display font-semibold">
+                {format(l.valeur)}
+              </span>
+            </span>
+            <span className="h-[8px] rounded-[3px]" style={{ background: "#F1EFF6" }}>
+              <span
+                className="block h-full rounded-r-[4px]"
+                style={{ width: `${Math.max(3, (l.valeur / max) * 100)}%`, background: ACCENT }}
+              />
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <ul className="flex flex-col gap-2">
       {lignes.map((l) => (

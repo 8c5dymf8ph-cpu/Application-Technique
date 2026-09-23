@@ -104,6 +104,22 @@ export function euros(n: number | null): string {
 }
 
 /**
+ * Un montant dans une tuile de tableau de bord.
+ *
+ * « 1 679,00 € » ne tient pas dans un quart de la largeur d'un téléphone : le
+ * chiffre était coupé au milieu, et un montant tronqué est pire qu'un montant
+ * absent — on lit « 1 679,0 » et on croit que c'est le chiffre. Les centimes
+ * n'apprennent rien sur un total d'année ; le millier, si.
+ */
+export function eurosCourt(n: number | null): string {
+  if (n === null || n === undefined) return "—";
+  if (Math.abs(n) >= 10000) {
+    return `${(n / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} k€`;
+  }
+  return `${Math.round(n).toLocaleString("fr-FR")} €`;
+}
+
+/**
  * Une date au format d'un champ `<input type="date">`.
  *
  * Le pilote PostgreSQL rend les colonnes `date` sous forme d'objet Date, pas de

@@ -615,6 +615,34 @@ est posé dans la requête, sans casse ni accent — la collation d'une installa
 les rayons se regroupent sans tenir compte de la casse : la reprise a laissé « Salle de Bain » et
 « Salle de bain », donc deux pastilles pour un seul rayon.
 
+## Regarder ce qui s'est passé
+
+**Un tableau de bord et un récapitulatif répondent à deux questions différentes.** Le tableau de
+bord dit **où on en est aujourd'hui** — il se regarde le matin. Le récapitulatif dit **ce qui
+s'est passé entre deux dates** — il se sort en fin de mois, pour la direction ou pour rapprocher
+une facture. Les mêmes chiffres ne répondent pas aux deux : ne pas en faire un seul écran.
+
+`/bouteilles/recapitulatif` prend une période — trois raccourcis couvrent neuf cas sur dix — et
+rend trois choses dans cet ordre : **entrées et sorties, récupérations comprises** (une bouteille
+restituée revient dans la réserve, et c'est ce qui dit si le dispositif marche), **les
+livraisons**, puis **chaque dossier par date avec son commentaire**. C'est là que se trouve ce
+que les chiffres ne disent pas. Une période à l'envers se remet à l'endroit plutôt que de rendre
+une page vide. La re-dotation n'entre jamais dans le solde du parc : elle déplace une bouteille,
+elle n'en fait pas sortir une seconde (règle 2bis).
+
+`/technique/tableau` reprend les mêmes marques — SVG écrit à la main, rien à charger, et **le
+tableau des chiffres replié sous chaque graphique**, parce que rien ne doit être accessible
+seulement en image. Il répond à quatre questions : ce qui arrive, où ça tombe, ce que ça coûte
+(matériel **plus** facturé, règle 16quater), et **ce qui part de la réserve** — le stock se lisait
+article par article sans jamais dire ce qu'on consomme. Réservé à l'encadrement (règle 10ter).
+
+**Un nom de produit ne tient pas dans 62 px.** « Détection Canine », « Télérupteurs (Mécaniques)
+Paris Elec » devenaient « Détectio… », « Télérupt… », « Télérupt… » : trois lignes qu'on ne
+distingue plus, donc un graphique qui n'apprend rien. `Barres` prend `nomsLongs` et pose alors le
+nom AU-DESSUS de sa barre. De même, « 1 679,00 € » ne tient pas dans un quart de largeur :
+`eurosCourt()` arrondit, parce qu'un montant tronqué est pire qu'un montant absent — on lit
+« 1 679,0 » et on croit que c'est le chiffre.
+
 ## Sortir ses données
 
 **Ce qu'on ne peut pas exporter n'est pas vraiment à soi.** `/administration/export` sort huit
