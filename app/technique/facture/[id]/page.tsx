@@ -45,6 +45,10 @@ type Rattachee = {
   emplacement: string;
   description: string;
   cout_materiel: number | null;
+  /** Sa part de CETTE facture — répartie à parts égales à défaut de montant affecté. */
+  cout_prestataire: number | null;
+  cout_total: number | null;
+  cout_incomplet: boolean | null;
 };
 
 export default async function DetailFacture({
@@ -72,7 +76,8 @@ export default async function DetailFacture({
 
   const rattachees = await sql<Rattachee[]>`
     select i.id as intervention_id, i.date_intervention, e.code as emplacement,
-           a.description, c.cout_materiel
+           a.description, c.cout_materiel, c.cout_prestataire, c.cout_total,
+           c.cout_incomplet
     from facture_interventions fi
     join interventions i  on i.id = fi.intervention_id
     join anomalies a      on a.id = i.anomalie_id
@@ -148,7 +153,21 @@ export default async function DetailFacture({
     revalidatePath(`/technique/facture/${id}`);
   }
 
+  /**
+   * Ce que ces interventions ont coûté.
+   *
+   * Règle 16quater : le coût d'un passage, c'est le matériel PLUS ce que
+   * l'intervenant facture. Les deux étaient affichés côte à côte sans jamais
+   * être additionnés — or c'est la somme qu'on cherche quand la facture
+   * arrive, et une facture couvre souvent plusieurs interventions.
+   *
+   * `v_cout_prestataire` répartit déjà le montant de la facture entre les
+   * interventions qu'elle couvre, à parts égales faute de montant affecté.
+   */
   const couvert = rattachees.reduce((n, r) => n + Number(r.cout_materiel ?? 0), 0);
+  const facture = rattachees.reduce((n, r) => n + Number(r.cout_prestataire ?? 0), 0);
+  const total = rattachees.reduce((n, r) => n + Number(r.cout_total ?? 0), 0);
+  const incomplet = rattachees.some((r) => r.cout_incomplet);
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -186,6 +205,52 @@ export default async function DetailFacture({
             Aucune pièce jointe. Ajoutez-la ci-dessous : elle sera consultable depuis chaque
             intervention qu’elle couvre.
           </p>
+        )}
+
+        {/* Ce que ça a coûté. Le coût d'un passage, c'est le matériel PLUS ce
+            que l'intervenant facture (règle 16quater) : les deux étaient
+            affichés côte à côte sans jamais être additionnés, alors que c'est
+            la somme qu'on cherche quand la facture arrive. */}
+        {rattachees.length > 0 && (
+          <section className="carte px-4 py-4 flex flex-col gap-3">
+            <h2 className="etiquette">
+              Ce qu’{rattachees.length > 1 ? "elles ont" : "elle a"} coûté
+            </h2>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[13.5px] text-ink-soft">Matériel sorti</span>
+                <span className="text-[15px] tabular-nums">{euros(couvert)}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[13.5px] text-ink-soft">
+                  Facturé par l’intervenant
+                </span>
+                <span className="text-[15px] tabular-nums">{euros(facture)}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
+                <span className="font-display font-semibold text-[15.5px]">
+                  {rattachees.length} intervention{rattachees.length > 1 ? "s" : ""}
+                </span>
+                <span className="font-display font-semibold text-[21px] tabular-nums">
+                  {euros(total)}
+                </span>
+              </div>
+            </div>
+            {/* Un produit sans prix n'est pas compté pour zéro (règle 6). */}
+            {incomplet && (
+              <p className="text-[12.5px] text-amber text-pretty">
+                Du matériel sans prix connu a été utilisé : ce total est un
+                minimum.
+              </p>
+            )}
+            {facture === 0 && (
+              <p className="text-[12.5px] text-ink-faint text-pretty">
+                Le montant de la facture n’est pas encore saisi : seul le
+                matériel est compté. Renseignez-le plus bas, il se répartira
+                entre ces interventions.
+              </p>
+            )}
+          </section>
         )}
 
         {/* Ce que la facture couvre déjà */}
@@ -226,8 +291,24 @@ export default async function DetailFacture({
                           <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[10.5px]">
                             {r.emplacement}
                           </span>
-                          <span className="grow min-w-0 text-[13.5px] leading-snug text-pretty">
-                            {r.description}
+                          <span className="grow min-w-0 flex flex-col gap-0.5">
+                            <span className="text-[13.5px] leading-snug text-pretty">
+                              {r.description}
+                            </span>
+                            {/* Ce que CETTE intervention a coûté : son
+                                matériel et sa part de la facture. Sans le
+                                détail, on ne sait pas laquelle pèse. */}
+                            <span className="text-[11.5px] text-ink-faint tabular-nums">
+                              {euros(r.cout_total)}
+                              {Number(r.cout_materiel ?? 0) > 0 &&
+                              Number(r.cout_prestataire ?? 0) > 0
+                                ? ` — ${euros(r.cout_materiel)} de matériel, ${euros(
+                                    r.cout_prestataire,
+                                  )} facturés`
+                                : Number(r.cout_materiel ?? 0) > 0
+                                  ? " de matériel"
+                                  : ""}
+                            </span>
                           </span>
                           {peutValider(profil.role) && (
                             <form action={detacher}>

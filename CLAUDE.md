@@ -325,6 +325,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    couvre tout le passage ; `facture_interventions` la rattache à chaque intervention,
    `montant_affecte` nul valant répartition à parts égales.
 
+16quinquies bis. **Le coût d'une facture se lit sur la facture, additionné.** Le matériel et le
+   montant facturé étaient affichés côte à côte sans jamais être additionnés — or c'est la somme
+   qu'on cherche quand la facture arrive, et une facture couvre souvent plusieurs interventions.
+   L'écran d'une facture porte donc « Ce qu'elles ont coûté » : matériel sorti, facturé par
+   l'intervenant, total — et chaque ligne dit ce qu'elle pèse, sa part de la facture comprise
+   (`v_cout_prestataire` répartit à parts égales faute de `montant_affecte`). Tout était déjà
+   calculé en base ; il manquait de le montrer. Un total incomplet le dit (règle 6), et un
+   montant non saisi le dit aussi plutôt que d'afficher le matériel seul comme si c'était tout.
+
 16sexies. **Une date lue dans un tableur n'est pas une date.** L'export donnait les dates en
    TEXTE, dans deux formats mélangés — « 17/12/2024 » et « 2025-09-12 » — et l'import a dû
    deviner : **270 dates de déclaration et 229 dates d'intervention** avaient le jour et le mois
