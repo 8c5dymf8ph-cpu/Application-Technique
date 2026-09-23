@@ -84,6 +84,16 @@ const ATTENDUES: Attendue[] = [
       regleContient("fn_fusionner_les_passages_du_jour", "v_fusionnes"),
   },
   {
+    titre: "Rattacher une journ\u00e9e ligne \u00e0 ligne",
+    sans: "Retirer une ligne d\u2019une facture la fait dispara\u00eetre : la journ\u00e9e se pr\u00e9sente comme d\u00e9j\u00e0 trait\u00e9e, et plus aucun chemin ne la ram\u00e8ne.",
+    verifier: () => regleContient("fn_journees_rapprochables", "restantes"),
+  },
+  {
+    titre: "Cr\u00e9er le libell\u00e9 qui manque",
+    sans: "Sarah P et Miguel ne peuvent pas ajouter un libell\u00e9 au catalogue depuis l\u2019\u00e9cran de d\u00e9claration : il renvoie vers l\u2019administrateur alors qu\u2019ils LE sont.",
+    verifier: () => regleContient("fn_peut_enrichir_le_catalogue", "operations"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),

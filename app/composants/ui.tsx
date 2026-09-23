@@ -178,6 +178,12 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "Vérifiez le dépôt des fichiers dans Administration.",
   },
   enregistre: { ton: "green", texte: "Enregistré." },
+  "facture-supprimee": {
+    ton: "green",
+    texte:
+      "Facture supprimée. Les interventions qu’elle couvrait reprennent leur " +
+      "coût matériel seul.",
+  },
   "passage-repris": {
     ton: "green",
     texte:

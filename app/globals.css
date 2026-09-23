@@ -23,8 +23,41 @@
   to   { opacity: 1; transform: none; }
 }
 
-/* Un bouton qui vient d'être pressé garde une trace visible le temps que la
-   page revienne : sans cela, rien ne distingue « pas encore appuyé » de
-   « c'est parti ». */
-button:active, a[data-cible]:active { transform: scale(0.985); }
-button, a[data-cible] { transition: transform .12s ease-out; }
+/* Un geste doit se voir AU MOMENT où on le fait.
+ *
+ * Un écran tactile n'a pas de survol : entre l'appui et la réponse du serveur,
+ * il ne se passe parfois rien pendant une seconde entière, et on réappuie.
+ * `BoutonEnvoi` couvre les envois, mais pas les liens ni les gestes qui ne
+ * partent pas sur le réseau — un onglet d'étage, une tuile, un dépliant.
+ *
+ * La marque était là mais imperceptible : 1,5 % de réduction et rien d'autre.
+ * On la rend franche, et on l'étend à tout ce qui se touche. Les liens ne se
+ * réduisent pas — un lien au milieu d'une phrase qui rétrécit fait sauter le
+ * texte — ils s'éclaircissent.
+ */
+button:not(:disabled):active,
+summary:active,
+[role="button"]:active,
+label[data-cible]:active {
+  transform: scale(0.97);
+  opacity: 0.78;
+}
+
+a:active { opacity: 0.68; }
+
+/* Une carte ou une tuile est un bouton qui ne dit pas son nom : elle se
+   comporte comme tel. */
+a.carte:active,
+a[data-cible]:active,
+a[class*="rounded-tile"]:active {
+  transform: scale(0.985);
+}
+
+button, summary, a, [role="button"], label[data-cible] {
+  transition:
+    transform 0.11s ease-out,
+    opacity 0.11s ease-out;
+}
+
+/* Un bouton désactivé ne bouge pas : il dit déjà qu'il n'attend rien. */
+button:disabled { transition: none; }

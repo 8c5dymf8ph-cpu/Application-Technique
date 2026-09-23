@@ -5,7 +5,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
 import { euros, peutValider , aujourdhuiISO } from "@/lib/domaine";
-import { Entete, Vide } from "@/app/composants/ui";
+import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Stat } from "@/app/composants/suivi";
 
 export const dynamic = "force-dynamic";
@@ -42,10 +42,10 @@ const STATUT: Record<string, { l: string; fond: string; texte: string }> = {
 export default async function Factures({
   searchParams,
 }: {
-  searchParams: Promise<{ filtre?: string }>;
+  searchParams: Promise<{ filtre?: string; fait?: string }>;
 }) {
   const profil = await exigerEncadrement();
-  const { filtre = "a_rapprocher" } = await searchParams;
+  const { filtre = "a_rapprocher", fait } = await searchParams;
 
   const [c] = await sql<
     { a_rapprocher: number; toutes: number; ht_annee: number; en_attente: number }[]
@@ -106,6 +106,7 @@ export default async function Factures({
       />
 
       <div className="px-5 py-4 flex flex-col gap-4">
+        {fait && <Confirmation quoi={fait} />}
         <div className="flex gap-2">
           <Stat
             valeur={c.a_rapprocher}

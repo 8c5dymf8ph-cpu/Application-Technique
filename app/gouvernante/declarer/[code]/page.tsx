@@ -6,7 +6,13 @@ import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { jours, LIBELLE_STATUT, TON_STATUT, type StatutAnomalie } from "@/lib/domaine";
+import {
+  jours,
+  LIBELLE_STATUT,
+  suitLesDossiers,
+  TON_STATUT,
+  type StatutAnomalie,
+} from "@/lib/domaine";
 import { Entete, Indices, Vide } from "../../../composants/ui";
 import { ChampPhotos } from "../../../composants/photos";
 import { ChampCommentaire } from "../../../composants/fil";
@@ -110,6 +116,57 @@ export default async function Declarer({
     : [];
 
   const choisie = choix ? resultats.find((r) => r.id === choix) : undefined;
+
+  /**
+   * Créer le libellé qui manque.
+   *
+   * Le catalogue est fermé, et c'est ce qui donne son sens au comptage des
+   * récurrences (règle 8). Mais un catalogue qu'on ne peut pas enrichir depuis
+   * le terrain finit par mentir : on déclare « autre chose » à la place, ou on
+   * ne déclare pas.
+   *
+   * Le libellé créé REJOINT donc le catalogue — on n'ouvre pas une anomalie
+   * hors catalogue, on ajoute le mot qui manquait. La fois suivante, le même
+   * problème portera le même nom, et le comptage tombe juste.
+   *
+   * Réservé à Sarah P et Miguel (`suitLesDossiers`), et la règle est dans la
+   * RLS (`fn_peut_enrichir_le_catalogue`), pas ici.
+   */
+  const enrichit = suitLesDossiers(profil.role);
+  const types = enrichit
+    ? await sql<{ id: string; nom: string }[]>`
+        select id, nom from types_intervention order by nom`
+    : [];
+
+  /** Ajouter un libellé au catalogue, puis revenir dessus pour le déclarer. */
+  async function creerLeLibelle(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !suitLesDossiers(profil_.role)) {
+      redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}`);
+    }
+    const libelle = String(donnees.get("libelle") ?? "").trim();
+    if (libelle.length < 3) {
+      redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?q=${encodeURIComponent(libelle)}`);
+    }
+    const type = String(donnees.get("type") ?? "") || null;
+
+    // `on conflict` : le libellé est unique. Si quelqu'un vient de l'ajouter,
+    // on récupère le sien plutôt que de refuser — c'est le même problème.
+    const [entree] = await sql<{ id: string }[]>`
+      insert into catalogue_anomalies (libelle, type_id, cree_par)
+      values (${libelle}, ${type}::uuid, ${profil_.id})
+      on conflict (libelle) do update set actif = true
+      returning id`;
+
+    // On revient sur l'écran avec le libellé cherché ET choisi : le
+    // formulaire de déclaration s'ouvre dessus, sans rien à retaper.
+    redirect(
+      `/gouvernante/declarer/${encodeURIComponent(lieu)}?q=${encodeURIComponent(
+        libelle,
+      )}&choix=${entree.id}${jourDuConstat ? `&jour=${jourDuConstat}` : ""}`,
+    );
+  }
 
   async function enregistrer(donnees: FormData) {
     "use server";
@@ -246,11 +303,55 @@ export default async function Declarer({
             placeholder="Chercher : fuite, spot, liseuse…"
           />
 
-          {q.trim() && resultats.length === 0 && (
+          {q.trim() && resultats.length === 0 && !enrichit && (
             <Vide>
               Aucun libellé ne correspond. Un ajout au catalogue se fait depuis un ordinateur,
               par l’administrateur.
             </Vide>
+          )}
+
+          {/* Le libellé qui manque se crée, ici, par Sarah P ou Miguel — et il
+              rejoint le catalogue. Une impasse qui renvoie « demandez à
+              l'administrateur » quand on EST l'administrateur n'a pas de sens. */}
+          {enrichit && q.trim().length >= 3 && (
+            <form
+              action={creerLeLibelle}
+              className="carte px-4 py-3.5 flex flex-col gap-2.5"
+            >
+              <p className="text-[13px] text-ink-soft text-pretty">
+                {resultats.length === 0
+                  ? "Aucun libellé ne correspond."
+                  : "Rien de tout ça ?"}{" "}
+                Ajoutez-le au catalogue : la fois suivante, le même problème
+                portera le même mot — c’est ce qui permet de compter les
+                récurrences.
+              </p>
+              <input type="hidden" name="libelle" value={q.trim()} />
+              <p className="font-display font-semibold text-[15.5px] text-pretty">
+                « {q.trim()} »
+              </p>
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">De quel métier</span>
+                <select
+                  name="type"
+                  defaultValue=""
+                  className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px]"
+                >
+                  <option value="">Sans métier</option>
+                  {types.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nom}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <BoutonEnvoi
+                pendant="Ajout…"
+                className="h-[48px] rounded-[13px] bg-plum text-white font-display font-semibold text-[15px]"
+              >
+                Ajouter au catalogue et déclarer
+              </BoutonEnvoi>
+            </form>
           )}
 
           <ul className="flex flex-col gap-2">

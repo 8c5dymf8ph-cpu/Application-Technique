@@ -25,6 +25,24 @@ type Ligne = {
 };
 
 type Frequence = { libelle: string; nb_fois: number; derniere_fois: string };
+
+/**
+ * Ce qui a été FAIT, et par qui.
+ *
+ * L'historique disait ce qui avait été déclaré, et s'arrêtait là : on lisait
+ * « mitigeur qui fuit — validée » sans savoir qui était venu, quand, ni avec
+ * quoi. C'est pourtant la première question quand le problème revient — est-ce
+ * le même qui a réparé ? a-t-il mis la bonne pièce ?
+ */
+type Passage = {
+  anomalie_id: string;
+  date_intervention: string | Date;
+  intervenant: string | null;
+  decision_technicien: string | null;
+  gouvernante: string | null;
+  decision_gouvernante: string | null;
+  materiel: string | null;
+};
 type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" };
 type Compte = { anomalie_id: string; nb: number };
 
@@ -55,6 +73,24 @@ export default async function HistoriqueDuLieu({
     from v_anomalies_du_lieu
     where emplacement_id = ${emplacement.id} and statut <> 'annulee'
     order by declare_le desc`;
+
+  // Qui est venu, quand, avec quoi, et ce que la gouvernante en a dit. Une
+  // anomalie reprise plusieurs fois porte plusieurs passages : on les garde
+  // tous, dans l'ordre, parce que c'est l'aller-retour qui est parlant.
+  const passages = await sql<Passage[]>`
+    select r.anomalie_id, r.date_intervention,
+           coalesce(r.intervenant, r.prestataire) as intervenant,
+           r.decision_technicien::text, r.gouvernante,
+           r.decision_gouvernante::text,
+           (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
+              from mouvements_stock m join produits p on p.id = m.produit_id
+             where m.intervention_id = r.intervention_id and m.type = 'sortie')
+             as materiel
+      from v_recap_interventions r
+      join anomalies a on a.id = r.anomalie_id
+     where a.emplacement_id = ${emplacement.id}
+     order by r.date_intervention`;
+  const parPassage = (id: string) => passages.filter((p) => p.anomalie_id === id);
 
   // Les photos des deux moments : ce que la gouvernante a constaté, et ce que
   // le technicien a rendu.
@@ -166,6 +202,44 @@ export default async function HistoriqueDuLieu({
                       </form>
                     )}
                   </div>
+                  {/* Qui a réparé, quand, avec quoi, et ce que la gouvernante
+                      en a dit. L'historique s'arrêtait à « validée » : on ne
+                      savait pas qui était venu ni s'il avait mis la bonne
+                      pièce — or c'est la première question quand le problème
+                      revient. Les deux avis restent côte à côte (règle 3). */}
+                  {parPassage(l.anomalie_id).map((p, i) => (
+                    <p
+                      key={i}
+                      className="text-[12px] text-ink-soft text-pretty border-l-2 border-line pl-2.5"
+                    >
+                      <span className="text-ink">
+                        {p.intervenant ?? "intervenant inconnu"}
+                      </span>{" "}
+                      le{" "}
+                      {new Date(p.date_intervention).toLocaleDateString("fr-FR")}
+                      {p.materiel ? ` · ${p.materiel}` : " · aucun matériel"}
+                      <br />
+                      {p.decision_gouvernante === "validee" ? (
+                        <span className="text-green">
+                          validé par {p.gouvernante ?? "la gouvernante"}
+                        </span>
+                      ) : p.decision_gouvernante === "a_refaire" ? (
+                        <span className="text-red">
+                          à refaire, selon {p.gouvernante ?? "la gouvernante"}
+                        </span>
+                      ) : p.decision_gouvernante === "en_cours" ? (
+                        <span className="text-blue">
+                          remis en cours par {p.gouvernante ?? "la gouvernante"}
+                        </span>
+                      ) : p.decision_technicien === "fait" ? (
+                        <span className="text-ink-faint">
+                          déclaré fait — pas encore vérifié
+                        </span>
+                      ) : (
+                        <span className="text-ink-faint">passage sans avis</span>
+                      )}
+                    </p>
+                  ))}
                   <Vignettes chemins={parAnomalie(l.anomalie_id, "constat")}
                              titre="Au constat" ton="text-blue" />
                   <Vignettes chemins={parAnomalie(l.anomalie_id, "apres")}

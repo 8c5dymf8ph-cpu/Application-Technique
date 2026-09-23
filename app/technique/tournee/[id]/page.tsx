@@ -11,6 +11,9 @@ import { euros, jourISO, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Confirmation, Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
+import { VoirDocument } from "@/app/composants/fenetre";
+import { ApercuFil } from "@/app/composants/apercu-fil";
+import type { Message } from "@/app/composants/fil";
 import { deposerRecap } from "@/lib/recap";
 
 export const dynamic = "force-dynamic";
@@ -101,6 +104,19 @@ export default async function DetailTournee({
     left join factures f               on f.id = fi.facture_id
     where r.tournee = ${lot.reference}
     order by r.date_intervention desc, r.emplacement`;
+
+  // Le fil de chaque anomalie du passage : la bulle s'ouvre SUR l'écran.
+  // « Le fil » était un lien vers un écran de plus, et on perdait sa place
+  // pour lire trois lignes.
+  const fils = lignes.length
+    ? await sql<(Message & { anomalie_id: string })[]>`
+        select anomalie_id, commentaire_id, source, auteur, texte,
+               date_commentaire, decision::text
+          from v_fil_commentaires
+         where anomalie_id = any(${lignes.map((l) => l.anomalie_id)}::uuid[])
+         order by date_commentaire`
+    : [];
+  const fil = (id: string) => fils.filter((m) => m.anomalie_id === id);
 
   /**
    * Qui est venu, et s'il facture.
@@ -477,22 +493,29 @@ export default async function DetailTournee({
                     {l.facture && (
                       <span className="text-[11px] text-ink-faint">Facture {l.facture}</span>
                     )}
+                    {/* La facture s'ouvre SUR l'écran : un onglet faisait
+                        sortir de l'application pour trois lignes. */}
                     {l.facture_fichier && (
-                      <a
-                        href={`/photo/${l.facture_fichier}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[11px] text-plum underline underline-offset-2"
+                      <VoirDocument
+                        chemin={l.facture_fichier}
+                        titre={`Facture ${l.facture ?? ""}`}
+                        className="text-[11px] text-plum underline underline-offset-2 active:opacity-60 transition-opacity"
                       >
                         voir
-                      </a>
+                      </VoirDocument>
                     )}
-                    <Link
-                      href={`/anomalie/${l.anomalie_id}` as Route}
-                      className="ml-auto text-[11.5px] text-plum underline underline-offset-4"
-                    >
-                      Le fil
-                    </Link>
+                    <span className="ml-auto flex items-center gap-2">
+                      {fil(l.anomalie_id).length > 0 ? (
+                        <ApercuFil messages={fil(l.anomalie_id)} />
+                      ) : (
+                        <Link
+                          href={`/anomalie/${l.anomalie_id}` as Route}
+                          className="text-[11.5px] text-plum underline underline-offset-4 active:opacity-60 transition-opacity"
+                        >
+                          La fiche
+                        </Link>
+                      )}
+                    </span>
                   </div>
 
                   {l.commentaire_gouvernante && (

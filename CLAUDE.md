@@ -153,6 +153,21 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    la raison d'être du catalogue fermé : sans libellés normalisés, ce comptage n'existe pas.
 9. **Une anomalie hors catalogue ne se crée que par un admin**, depuis un ordinateur. La règle est
    dans la RLS : ne pas la déplacer dans l'interface.
+9bis. **Le libellé qui manque se crée — et il REJOINT le catalogue.** Le catalogue fermé est ce
+   qui rend le comptage des récurrences possible (règle 8) ; mais un catalogue qu'on ne peut pas
+   enrichir depuis le terrain finit par mentir — on déclare « autre chose » à la place, ou on ne
+   déclare pas. L'écran de déclaration renvoyait « demandez à l'administrateur » à
+   l'administrateur lui-même. Sarah P et Miguel ajoutent donc le libellé depuis l'écran, et il
+   entre dans le catalogue : la fois suivante, le même problème portera le même mot. La règle
+   reste dans la RLS (`fn_peut_enrichir_le_catalogue`), comme l'exige la règle 9 — elle
+   s'élargit, elle ne se déplace pas dans l'interface.
+
+9ter. **Un avis peut être donné AU NOM de quelqu'un d'autre.** Un passage de juin a été vérifié
+   par Victoria, pas par celui qui le saisit aujourd'hui : sans ce choix, le récapitulatif dirait
+   « validé par Miguel » pour un travail qu'il n'a pas vu. `validations.utilisateur_id` porte qui
+   décide, `saisie_par` qui tape — les deux existaient déjà, l'écran ne s'en servait pas.
+   Réservé à `suitLesDossiers` : en cours de journée, c'est celle qui regarde qui décide.
+
 10. **Le technicien rend un lot, la gouvernante valide à l'unité.** Une `tournee` regroupe les
    anomalies traitées ensemble (l'ancien `InterventionID`). **Le lot est l'unité d'envoi** : un
    mail par anomalie validée en produirait dix pour un passage. Deux messages, deux moments —
@@ -333,6 +348,29 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    (`v_cout_prestataire` répartit à parts égales faute de `montant_affecte`). Tout était déjà
    calculé en base ; il manquait de le montrer. Un total incomplet le dit (règle 6), et un
    montant non saisi le dit aussi plutôt que d'afficher le matériel seul comme si c'était tout.
+
+16octies. **Un geste réversible doit pouvoir se défaire — jusqu'au bout.** Le « − » d'une
+   facture détachait une intervention, et elle DISPARAISSAIT : `fn_journees_rapprochables`
+   marquait la journée entière « déjà rattachée » dès qu'UNE de ses lignes l'était
+   (`bool_or`), et l'écran retirait alors le seul bouton qui pouvait la ramener. Deux anomalies
+   perdues, sans aucun chemin pour revenir en arrière. La fonction rend maintenant `restantes`
+   — les lignes qui ne sont PAS sur cette facture — et c'est ce que le bouton rattache : une
+   journée à moitié rattachée reste actionnable, et dit combien de ses lignes y sont déjà.
+
+16nonies. **Une clé de répartition n'est pas un prix.** Serafino facture son mois : 396 € pour
+   toutes les interventions de juin, pas pour chaque robinet. Le montant se répartit quand même
+   entre les interventions couvertes — il faut bien pouvoir dire ce qu'un passage a coûté — mais
+   afficher cette part sur CHAQUE ligne faisait passer une division pour un tarif négocié, et le
+   calcul paraissait sorti de nulle part. L'écran mène donc avec le total, puis dit la
+   répartition en une phrase : « 396 € répartis à parts égales entre 3 interventions, soit
+   132 € chacune. C'est une clé de répartition, pas un prix négocié ligne à ligne. » Le matériel,
+   lui, est un vrai prix : il reste sur la ligne.
+
+16decies. **Une facture saisie pour rien se supprime.** On en crée une pour essayer, on se
+   trompe d'intervenant, on la saisit deux fois — et rien ne permettait de la retirer : elle
+   restait « à rapprocher » pour toujours. Réservé à `suitLesDossiers`, en deux temps, et
+   l'écran dit ce que ça emporte : le rattachement part, les interventions reprennent leur coût
+   matériel seul, le fichier déposé reste dans le dépôt.
 
 16sexies. **Une date lue dans un tableur n'est pas une date.** L'export donnait les dates en
    TEXTE, dans deux formats mélangés — « 17/12/2024 » et « 2025-09-12 » — et l'import a dû
@@ -723,6 +761,19 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   d'une conversation, il faut le jour, et le recalculer de tête n'a pas de sens quand il tient en
   huit caractères. `depuis()` de `lib/domaine.ts` rend « il y a 6 mois (12/06/2026) » ; aujourd'hui
   et hier s'en passent, la date n'y apprend rien.
+- **Un document se regarde SUR l'écran, comme une photo.** La facture s'ouvrait dans un onglet
+  et « Le fil » dans un écran de plus : on quittait l'application, et revenir demandait trois
+  gestes. `VoirDocument` (`app/composants/fenetre.tsx`) ouvre un `<dialog>` natif — PDF dans un
+  cadre, image telle quelle, Échap et l'appui à côté referment — et « Plein écran » reste offert
+  sans être le seul chemin. Le fil passe par `ApercuFil`, qui existait déjà. Rien n'a de raison
+  d'être l'exception : photos, documents et commentaires s'ouvrent tous par-dessus.
+- **Un geste doit se voir AU MOMENT où on le fait.** Un écran tactile n'a pas de survol : entre
+  l'appui et la réponse, il ne se passe parfois rien pendant une seconde, et on réappuie.
+  `BoutonEnvoi` couvre les envois, pas les liens ni les onglets d'étage. La marque était là mais
+  imperceptible — 1,5 % de réduction et rien d'autre. Elle est maintenant franche et **posée une
+  seule fois, dans `globals.css`** : boutons, dépliants et tuiles se réduisent et s'éclaircissent,
+  les liens s'éclaircissent seulement (un lien au milieu d'une phrase qui rétrécit fait sauter le
+  texte). Ne pas repeindre ça écran par écran.
 - **Les listes longues se replient.** Les étages, les sections d'un écran : sur un téléphone tenu
   d'une main, faire défiler trois écrans avant d'atteindre le cinquième étage est un défaut.
 

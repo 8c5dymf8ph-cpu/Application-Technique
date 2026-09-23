@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros, peutValider } from "@/lib/domaine";
+import { euros, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { RelireAuRetour } from "@/app/composants/relire-au-retour";
@@ -143,6 +143,19 @@ export default async function ValiderLot({
     : [];
   const fil = (anomalie: string) => fils.filter((f) => f.anomalie_id === anomalie);
 
+  /**
+   * Qui peut porter un avis de gouvernante.
+   *
+   * Seulement pour Miguel et Sarah P, et seulement pour un passage repris :
+   * en cours de journée, c'est celle qui regarde qui décide.
+   */
+  const avis = suitLesDossiers(profil.role)
+    ? await sql<{ id: string; nom: string }[]>`
+        select id, nom from utilisateurs
+         where actif and role in ('gouvernante', 'operations', 'admin')
+         order by nom`
+    : [];
+
   async function decider(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -156,6 +169,28 @@ export default async function ValiderLot({
     // Le mot de la gouvernante reste attaché à sa décision : il s'ajoute au
     // fil sous celui du technicien, il ne le remplace pas.
     const mot = String(donnees.get("commentaire") ?? "").trim() || null;
+
+    /**
+     * Au nom de qui l'avis est donné.
+     *
+     * Miguel et Sarah P reprennent de l'historique : un passage de juin a été
+     * vérifié par Victoria, pas par celui qui le saisit aujourd'hui. L'avis
+     * doit porter SON nom, sinon le récapitulatif dira « validé par Miguel »
+     * pour un travail qu'il n'a pas vu — et `saisie_par` existe justement
+     * pour distinguer qui décide de qui tape.
+     *
+     * Réservé à `suitLesDossiers` : la gouvernante valide en son nom.
+     */
+    const aut = String(donnees.get("au_nom_de") ?? "").trim();
+    const auteur =
+      aut && suitLesDossiers(profil_.role)
+        ? (
+            await sql<{ id: string }[]>`
+              select id from utilisateurs
+               where id = ${aut}::uuid and actif and role in
+                 ('gouvernante', 'operations', 'admin')`
+          )[0]?.id ?? profil_.id
+        : profil_.id;
     // Un lot non rendu ne se valide pas : le technicien est peut-être encore
     // dans les étages, il peut revenir sur ce qu'il a coché. La liste ne le
     // propose pas, mais un écran resté ouvert depuis avant la clôture, ou une
@@ -164,7 +199,7 @@ export default async function ValiderLot({
       insert into validations (intervention_id, acteur, decision, utilisateur_id,
                                saisie_par, commentaire)
       select ${intervention}, 'gouvernante', ${decision}::decision_validation,
-             ${profil_.id}, ${profil_.id}, ${mot}
+             ${auteur}, ${profil_.id}, ${mot}
         from interventions i
         join tournees t on t.id = i.tournee_id
        where i.id = ${intervention} and t.cloturee_le is not null
@@ -300,6 +335,27 @@ export default async function ValiderLot({
                       className="mt-2 w-full rounded-card border border-line bg-surface px-3.5 py-2.5 text-[15px] leading-snug resize-none placeholder:text-ink-faint"
                     />
                   </details>
+                  {/* Au nom de qui. Un passage de juin a été vérifié par
+                      Victoria, pas par celui qui le saisit aujourd'hui : sans
+                      ce choix, le récapitulatif dirait « validé par Miguel »
+                      pour un travail qu'il n'a pas vu. `saisie_par` garde de
+                      toute façon la trace de qui a tapé. */}
+                  {avis.length > 1 && (
+                    <label className="flex items-center gap-2">
+                      <span className="etiquette shrink-0">Au nom de</span>
+                      <select
+                        name="au_nom_de"
+                        defaultValue={profil.id}
+                        className="grow min-w-0 h-[40px] rounded-[11px] border border-line px-2.5 bg-surface text-[14px]"
+                      >
+                        {avis.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <div className="grid grid-cols-3 gap-2">
                     {ISSUES.map((i) => (
                       <BoutonEnvoi
