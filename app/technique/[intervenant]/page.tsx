@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { peutSupprimer, peutValider } from "@/lib/domaine";
+import { aujourdhuiISO, peutSupprimer, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { annulerRecapNonParti, deposerRecap } from "@/lib/recap";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
@@ -28,6 +28,25 @@ type Ligne = {
   photos: number;
   commentaires: number;
 };
+
+/**
+ * L'adresse de la liste, en gardant la journée saisie.
+ *
+ * Au niveau du MODULE, pas dans le composant. Une action serveur qui se
+ * referme sur une fonction déclarée à côté d'elle ne se sérialise pas : Next
+ * essaie de l'envoyer au navigateur et l'action ne part jamais — « Functions
+ * cannot be passed directly to Client Components ». Le typage n'en dit rien,
+ * et l'écran se tait : ici, « Reprendre le passage » ne faisait simplement
+ * rien. C'est la même règle que 7undecies, du côté des fonctions ordinaires.
+ */
+function versLaListe(
+  nom: string,
+  jour: string | undefined,
+  extra: Record<string, string> = {},
+) {
+  const p = new URLSearchParams({ ...(jour ? { jour } : {}), ...extra });
+  return `/technique/${encodeURIComponent(nom)}${p.size ? `?${p}` : ""}`;
+}
 
 /**
  * La priorité, lisible d'un coup d'œil.
@@ -77,7 +96,13 @@ export default async function Tournee({
   searchParams,
 }: {
   params: Promise<{ intervenant: string }>;
-  searchParams: Promise<{ fait?: string; etage?: string; q?: string; rendre?: string }>;
+  searchParams: Promise<{
+    fait?: string;
+    etage?: string;
+    q?: string;
+    rendre?: string;
+    jour?: string;
+  }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
@@ -89,9 +114,29 @@ export default async function Tournee({
   // Celle qu'on vient de déclarer : elle se retrouve cochée, mise en avant, et
   // l'ancre du navigateur amène l'écran dessus. Sans cela on revenait en haut
   // d'une liste de douze lignes sans savoir ce qui avait changé.
-  const { fait, etage, q = "", rendre } = await searchParams;
+  const { fait, etage, q = "", rendre, jour } = await searchParams;
 
-  const tournee = await tourneeEnCours(intervenant);
+  /**
+   * Saisir un passage d'un autre jour.
+   *
+   * Miguel et Sarah P reprennent de l'historique : un passage d'il y a trois
+   * semaines se saisit à SA date, sinon il arrive daté d'aujourd'hui et la
+   * facture ne se rapproche plus (règle 16). Le reste de l'écran ne change
+   * pas d'un mot — mêmes étages, même liste, même « C'est fait », même
+   * matériel. Un passage passé est un passage.
+   *
+   * Un technicien ne date pas son propre passage : il vient aujourd'hui.
+   */
+  const passe =
+    jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) && suitLesDossiers(profil.role)
+      ? jour
+      : undefined;
+  const historique = passe !== undefined && passe !== aujourdhuiISO();
+
+  const tournee = await tourneeEnCours(intervenant, passe);
+
+  /** Le suffixe à recoller sur chaque lien de l'écran, pour ne pas perdre le jour. */
+  const jourEnPlus = historique ? `jour=${passe}` : "";
 
   // Ce qu'il a à traiter — filtré par sa spécialité — plus ce qu'il a déjà
   // coché dans cette tournée, pour qu'il voie son avancement.
@@ -207,7 +252,10 @@ export default async function Tournee({
   const encadre = peutValider(profil.role);
   const supprimable = peutSupprimer(profil.role);
 
-  const aujourdhui = new Date();
+  // Le jour affiché en grand est celui du PASSAGE, pas celui de l'horloge.
+  // Saisir un passage du 3 septembre en lisant « 23.mar » en haut de l'écran,
+  // c'est se tromper de journée sans s'en apercevoir.
+  const aujourdhui = historique ? new Date(`${passe}T12:00:00`) : new Date();
   const jourCourt = aujourdhui.toLocaleDateString("fr-FR", { weekday: "short" });
 
   /**
@@ -247,10 +295,10 @@ export default async function Tournee({
   async function supprimer(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
-    if (!peutSupprimer(profil_?.role)) redirect(`/technique/${encodeURIComponent(nom)}` as Route);
+    if (!peutSupprimer(profil_?.role)) redirect(versLaListe(nom, passe) as Route);
     await sql`delete from anomalies where id = ${String(donnees.get("anomalie"))}`;
     revalidatePath(`/technique/${encodeURIComponent(nom)}`);
-    redirect(`/technique/${encodeURIComponent(nom)}?fait=supprime` as Route);
+    redirect(versLaListe(nom, passe, { fait: "supprime" }) as Route);
   }
 
   async function cloturer() {
@@ -283,7 +331,9 @@ export default async function Tournee({
        where id = ${tournee.id} and cloturee_le is not null`;
     const retire = await annulerRecapNonParti(tournee.id);
     redirect(
-      `/technique/${encodeURIComponent(nom)}?fait=${retire ? "passage-repris" : "passage-repris-mail-parti"}` as Route,
+      versLaListe(nom, passe, {
+        fait: retire ? "passage-repris" : "passage-repris-mail-parti",
+      }) as Route,
     );
   }
 
@@ -310,7 +360,11 @@ export default async function Tournee({
           >
             <Link
               replace
-              href={`/technique/${encodeURIComponent(nom)}${q ? `?q=${encodeURIComponent(q)}` : ""}` as Route}
+              href={`/technique/${encodeURIComponent(nom)}${
+                new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) }).size
+                  ? `?${new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) })}`
+                  : ""
+              }` as Route}
               className={`w-[36px] flex-1 min-h-[40px] rounded-r-[10px] grid place-items-center text-[14px] font-medium ${
                 choisi === null ? "bg-ink text-white" : "bg-surface-muted text-ink-faint"
               }`}
@@ -321,7 +375,11 @@ export default async function Tournee({
             {etages.map((e, i) => {
               const ton = TONS[i % TONS.length];
               const actif = choisi === e.nom;
-              const p = new URLSearchParams({ etage: e.nom, ...(q ? { q } : {}) });
+              const p = new URLSearchParams({
+                etage: e.nom,
+                ...(q ? { q } : {}),
+                ...(historique ? { jour: passe! } : {}),
+              });
               return (
                 <Link
                   key={e.nom}
@@ -350,6 +408,24 @@ export default async function Tournee({
           }`}
         >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
+        {fait?.startsWith("passage-repris") && <Confirmation quoi={fait} />}
+
+        {/* On ne saisit pas un passage d'il y a trois semaines en croyant être
+            aujourd'hui. Le bandeau le dit, et il est de la couleur d'un
+            avertissement : tout ce qui sera coché ici portera CETTE date. */}
+        {historique && (
+          <p className="rounded-card bg-amber-soft px-4 py-3 text-[13px] text-amber text-pretty">
+            <strong>Passage du {aujourdhui.toLocaleDateString("fr-FR", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}.</strong>{" "}
+            Tout ce que vous cochez ici sera daté de ce jour-là — le matériel
+            sorti comme les déclarations. Aucun récapitulatif ne part avant que
+            vous ne rendiez le passage.
+          </p>
+        )}
 
         {/* Le jour, en gros : on ouvre l'écran pour savoir où on en est
             aujourd'hui, et une tournée ne court jamais d'un jour sur l'autre. */}
@@ -445,14 +521,18 @@ export default async function Tournee({
                       </form>
                     ) : (
                       <Link
-                        href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
+                        href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}${
+                          historique ? `&jour=${passe}` : ""
+                        }`}
                         aria-label="Traiter cette anomalie"
                         className="w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] border-[2px] border-[#C9C5D8] active:bg-plum-soft"
                       />
                     )}
 
                     <Link
-                      href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}`}
+                      href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}${
+                          historique ? `&jour=${passe}` : ""
+                        }`}
                       className="grow min-w-0 flex flex-col gap-1 active:opacity-70"
                     >
                       <span
@@ -551,9 +631,15 @@ export default async function Tournee({
       {/* Déclarer ce qu'on voit en passant, sans quitter sa tournée. Un
           technicien n'y a pas droit : le catalogue est fermé et la déclaration
           est un geste d'encadrement. */}
-      {encadre && (
+      {/* Pendant la confirmation, rien ne doit rivaliser avec la question :
+          le bouton d'ajout flottait par-dessus le texte. */}
+      {encadre && !rendre && (
         <Link
-          href={"/gouvernante/declarer" as Route}
+          href={
+            (historique
+              ? `/gouvernante/declarer?jour=${passe}`
+              : "/gouvernante/declarer") as Route
+          }
           aria-label="Déclarer une anomalie"
           className={`fixed right-5 z-20 w-[58px] h-[58px] rounded-full bg-plum text-white grid place-items-center shadow-lg active:opacity-80 ${
             faitesEnTout.length > 0 ? "bottom-[92px]" : "bottom-6"
@@ -615,7 +701,11 @@ export default async function Tournee({
               <div className="flex gap-2.5">
                 <Link
                   replace
-                  href={`/technique/${encodeURIComponent(nom)}${q ? `?q=${encodeURIComponent(q)}` : ""}` as Route}
+                  href={`/technique/${encodeURIComponent(nom)}${
+                new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) }).size
+                  ? `?${new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) })}`
+                  : ""
+              }` as Route}
                   className="flex-1 h-[52px] rounded-[15px] border-[1.5px] border-line text-ink-faint font-display font-semibold text-[16px] grid place-items-center active:opacity-70"
                 >
                   Pas encore
@@ -634,7 +724,11 @@ export default async function Tournee({
             <Link
               replace
               href={
-                `/technique/${encodeURIComponent(nom)}?rendre=1${q ? `&q=${encodeURIComponent(q)}` : ""}` as Route
+                `/technique/${encodeURIComponent(nom)}?${new URLSearchParams({
+                  rendre: "1",
+                  ...(q ? { q } : {}),
+                  ...(historique ? { jour: passe! } : {}),
+                })}` as Route
               }
               className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px] grid place-items-center active:opacity-80"
             >

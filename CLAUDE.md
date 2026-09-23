@@ -98,6 +98,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    déclaration et celui du dossier, qui en avaient chacun leur copie. Ce qu'une action appelle
    doit être une fonction ordinaire, jamais une action voisine.
 
+7duodecies. **Une action serveur ne se referme pas non plus sur une fonction déclarée à côté
+   d'elle.** Le pendant de 7undecies, du côté des fonctions ordinaires. `reprendre()` appelait
+   `versLaListe()`, une fonction déclarée dans le même composant : Next essaie alors de
+   l'envoyer au navigateur pour l'amélioration progressive et refuse — « Functions cannot be
+   passed directly to Client Components ». **Le typage n'en dit rien, et l'écran se tait** :
+   « Reprendre le passage » ne faisait simplement rien, sans un mot. Une fonction qu'une action
+   utilise vit au niveau du MODULE et reçoit ce dont elle a besoin en arguments. C'est ce qui a
+   été attrapé dans un vrai navigateur, pas par `tsc` ni par le build.
+
 7septies. **Une alerte qui ne part pas doit le dire sur-le-champ.** L'alerte bouteille ne concerne
    que l'emport PAR LE CLIENT — une casse ou une bouteille prise par le personnel ne regarde pas
    la réception. Mais quand elle devait partir et n'est pas partie, l'écran se taisait : on
@@ -211,6 +220,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    une décision d'encadrement — Victoria, Miguel, Sarah P, c'est-à-dire `peutValider`. La règle
    est dans `lib/acces.ts` (`exigerEncadrement`), et les écrans de `/technique` la posent tous.
    Ne jamais rouvrir ces écrans à un technicien « pour dépanner ».
+
+10nonies. **Un passage passé se saisit à SA date, depuis l'écran d'intervention habituel.**
+   Miguel et Sarah P (`suitLesDossiers`) reprennent de l'historique : `/technique/intervenants`
+   porte « Saisir un passage passé » — qui, quel jour — et renvoie sur `/technique/<nom>?jour=…`.
+   Rien de nouveau à apprendre : mêmes étages, même liste, même « C'est fait », même matériel.
+   Ce qui change se voit — **le jour en gros est celui du passage**, pas celui de l'horloge, et
+   un bandeau ambre dit que tout ce qu'on coche portera cette date. Le jour suit ensuite partout :
+   les onglets d'étage, le lien vers l'anomalie, la déclaration (`declare_le`), la clôture. Un
+   technicien ne date pas son passage : il vient aujourd'hui.
 
 11. **La gouvernante a trois issues**, pas deux : `validee`, `en_cours`, `a_refaire`. Ne jamais
    réduire le choix à valider/refuser.

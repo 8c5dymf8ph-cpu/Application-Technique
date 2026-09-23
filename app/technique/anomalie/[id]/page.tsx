@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { suitLesDossiers } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { Entete } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
@@ -14,6 +15,23 @@ import { colonneExiste } from "@/lib/schema";
 import { alerterSiSousSeuil } from "@/lib/seuil";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * L'adresse de la tournée, en gardant la journée saisie.
+ *
+ * Au niveau du MODULE, pas dans le composant. Une action serveur qui se
+ * referme sur une fonction déclarée à côté d'elle ne se sérialise pas : Next
+ * essaie de l'envoyer au navigateur, et l'action ne part jamais. C'est la
+ * même règle que 7undecies, du côté des fonctions ordinaires.
+ */
+function versLaTournee(
+  nom: string,
+  jour: string | undefined,
+  extra: Record<string, string> = {},
+) {
+  const p = new URLSearchParams({ ...(jour ? { jour } : {}), ...extra });
+  return `/technique/${encodeURIComponent(nom)}${p.size ? `?${p}` : ""}`;
+}
 
 type Anomalie = {
   id: string;
@@ -39,13 +57,26 @@ export default async function TraiterAnomalie({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ par?: string; q?: string; pris?: string }>;
+  searchParams: Promise<{ par?: string; q?: string; pris?: string; jour?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
 
   const { id } = await params;
-  const { par, q = "", pris = "" } = await searchParams;
+  const { par, q = "", pris = "", jour } = await searchParams;
+
+  /**
+   * Le jour du passage saisi.
+   *
+   * Miguel et Sarah P reprennent de l'historique : l'intervention doit
+   * atterrir dans le passage de SA journée, pas dans celui d'aujourd'hui —
+   * sinon la facture ne se rapproche plus (règle 16). Un technicien ne date
+   * pas son passage : il vient aujourd'hui.
+   */
+  const jourDuPassage =
+    jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) && suitLesDossiers(profil.role)
+      ? jour
+      : undefined;
 
   // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'en est
   // un. Une condition booléenne dans le SQL casserait l'écran entier.
@@ -165,7 +196,9 @@ export default async function TraiterAnomalie({
 
     const intervenant = (await intervenants()).find((i) => i.nom === nom);
     if (!intervenant) redirect(`/technique/anomalie/${id}`);
-    const tournee = await tourneeEnCours(intervenant);
+    // Le jour du passage suit l'anomalie : sans lui, une saisie d'historique
+    // atterrirait dans la tournée d'aujourd'hui (règle 16).
+    const tournee = await tourneeEnCours(intervenant, jourDuPassage);
 
     /**
      * Une anomalie ne se déclare qu'une fois par passage.
@@ -188,7 +221,7 @@ export default async function TraiterAnomalie({
     // Déjà déclarée pendant ce passage : on ne double ni la sortie de stock,
     // ni les photos, ni l'avis.
     if (!intervention) {
-      redirect(`/technique/${encodeURIComponent(nom)}?fait=${id}#a-${id}` as Route);
+      redirect(`${versLaTournee(nom, jourDuPassage, { fait: id })}#a-${id}` as Route);
     }
 
     // L'écran grise les articles épuisés, mais un lien recopié ou une réserve
@@ -235,13 +268,19 @@ export default async function TraiterAnomalie({
     // l'ancre amène l'écran sur la ligne, et elle s'affiche cochée et mise en
     // avant. Revenir en haut d'une liste de douze ne disait pas ce qui avait
     // changé.
-    redirect(`/technique/${encodeURIComponent(nom)}?fait=${id}#a-${id}` as Route);
+    redirect(`${versLaTournee(nom, jourDuPassage, { fait: id })}#a-${id}` as Route);
   }
 
   // L'adresse est construite à la volée : le typage des routes ne couvre pas
   // les paramètres assemblés.
   const lien = (extra: Record<string, string>) => {
-    const p = new URLSearchParams({ ...(par ? { par } : {}), q, pris, ...extra });
+    const p = new URLSearchParams({
+      ...(par ? { par } : {}),
+      q,
+      pris,
+      ...(jourDuPassage ? { jour: jourDuPassage } : {}),
+      ...extra,
+    });
     return `/technique/anomalie/${id}?${p}` as Route;
   };
 
@@ -250,7 +289,7 @@ export default async function TraiterAnomalie({
       <Entete
         titre={anomalie.emplacement}
         sous_titre={anomalie.etage}
-        retour={par ? `/technique/${encodeURIComponent(par)}` : "/technique"}
+        retour={par ? (versLaTournee(par, jourDuPassage) as Route) : "/technique"}
       />
 
       <div className="px-5 py-5 flex flex-col gap-6 grow">

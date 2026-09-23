@@ -11,9 +11,13 @@ type Lieu = { code: string; etage: string; ordre_etage: number; ouvertes: number
 export default async function ChoixLieu({
   searchParams,
 }: {
-  searchParams: Promise<{ fait?: string; ou?: string }>;
+  searchParams: Promise<{ fait?: string; ou?: string; jour?: string }>;
 }) {
-  const { fait, ou } = await searchParams;
+  const { fait, ou, jour } = await searchParams;
+  // Une déclaration faite depuis un passage saisi porte LA DATE du passage :
+  // l'anomalie a été constatée ce jour-là, pas aujourd'hui (règle 16sexies).
+  const passe = jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : undefined;
+  const suffixe = passe ? `?jour=${passe}` : "";
   // Le nombre d'anomalies encore ouvertes s'affiche dès le choix du lieu :
   // c'est le premier signal, avant même d'entrer dans la chambre.
   // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'est
@@ -36,7 +40,19 @@ export default async function ChoixLieu({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
-      <Entete titre="Déclarer" sous_titre="Choisir le lieu" retour="/gouvernante" />
+      <Entete
+        titre="Déclarer"
+        sous_titre={
+          passe
+            ? `Constat du ${new Date(`${passe}T12:00:00`).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}`
+            : "Choisir le lieu"
+        }
+        retour="/gouvernante"
+      />
       {fait && (
         <div className="px-5 pt-4">
           <Confirmation quoi={fait} />
@@ -80,7 +96,7 @@ export default async function ChoixLieu({
                 {dedans.map((l) => (
                   <Link
                     key={l.code}
-                    href={`/gouvernante/declarer/${encodeURIComponent(l.code)}`}
+                    href={`/gouvernante/declarer/${encodeURIComponent(l.code)}${suffixe}`}
                     data-cible
                     className={`relative px-3.5 flex items-center justify-center min-w-[54px] rounded-pill border text-[15px] active:bg-plum-soft ${
                       l.essai

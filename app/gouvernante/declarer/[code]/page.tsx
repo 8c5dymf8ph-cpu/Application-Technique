@@ -46,13 +46,21 @@ export default async function Declarer({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ q?: string; choix?: string }>;
+  searchParams: Promise<{ q?: string; choix?: string; jour?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
 
   const { code } = await params;
-  const { q = "", choix } = await searchParams;
+  const { q = "", choix, jour } = await searchParams;
+  /**
+   * La date du constat.
+   *
+   * Depuis un passage saisi, l'anomalie a été constatée CE jour-là. Sans elle,
+   * elle arrive datée d'aujourd'hui et se retrouve après l'intervention qui
+   * l'a résolue : un historique où le problème naît après sa réparation.
+   */
+  const jourDuConstat = jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : undefined;
   const lieu = decodeURIComponent(code);
 
   const [emplacement] = await sql<{ id: string; code: string; etage: string }[]>`
@@ -118,8 +126,9 @@ export default async function Declarer({
     try {
       const [creee] = await sql<{ id: string }[]>`
         insert into anomalies (emplacement_id, catalogue_id, type_id, description,
-                               constate_par, saisie_par)
-        select ${emp.id}, c.id, c.type_id, c.libelle, ${profil_.id}, ${profil_.id}
+                               constate_par, saisie_par, declare_le)
+        select ${emp.id}, c.id, c.type_id, c.libelle, ${profil_.id}, ${profil_.id},
+               coalesce(${jourDuConstat ?? null}::date, current_date)
         from catalogue_anomalies c where c.id = ${catalogue_id}
         returning id`;
       anomalie_id = creee.id;
@@ -156,7 +165,9 @@ export default async function Declarer({
     // Retour à la liste des lieux, pas dans la chambre : on vient de finir, et
     // rester devant le même écran laisse douter que ce soit enregistré.
     redirect(
-      `/gouvernante/declarer?fait=${refusee ? "declare-sans-photo" : "declare"}&ou=${encodeURIComponent(lieu)}`,
+      `/gouvernante/declarer?fait=${refusee ? "declare-sans-photo" : "declare"}&ou=${encodeURIComponent(lieu)}${
+        jourDuConstat ? `&jour=${jourDuConstat}` : ""
+      }`,
     );
   }
 

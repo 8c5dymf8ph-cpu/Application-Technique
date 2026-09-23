@@ -38,18 +38,33 @@ export async function intervenants(): Promise<Intervenant[]> {
  * C'est aussi ce que dit la règle 16 : un passage, c'est qui est venu et quel
  * jour.
  */
-export async function tourneeEnCours(i: Intervenant): Promise<Tournee> {
+export async function tourneeEnCours(
+  i: Intervenant,
+  /**
+   * Le jour du passage. Absent, c'est aujourd'hui.
+   *
+   * Miguel et Sarah P reprennent de l'historique : un passage d'il y a trois
+   * semaines se saisit à SA date, sinon il arrive daté d'aujourd'hui et la
+   * facture ne se rapproche plus de rien (règle 16). Réservé à
+   * `suitLesDossiers` — un technicien ne date pas son propre passage.
+   */
+  jour?: string,
+): Promise<Tournee> {
   // Ce qu'il a laissé ouvert un autre jour : on le rend pour lui, et le
   // récapitulatif de clôture part comme s'il avait appuyé sur « Fin
   // d'intervention ».
-  const oubliees = await sql<{ id: string }[]>`
-    update tournees set cloturee_le = now()
-     where cloturee_le is null
-       and date_tournee < current_date
-       and technicien_id  is not distinct from ${i.utilisateur_id}
-       and prestataire_id is not distinct from ${i.prestataire_id}
-    returning id`;
-  for (const t of oubliees) await deposerRecap(t.id, false);
+  // Une saisie d'historique ne rend rien pour personne : on ouvre la journée
+  // demandée, et le passage d'aujourd'hui reste où il en est.
+  if (!jour) {
+    const oubliees = await sql<{ id: string }[]>`
+      update tournees set cloturee_le = now()
+       where cloturee_le is null
+         and date_tournee < current_date
+         and technicien_id  is not distinct from ${i.utilisateur_id}
+         and prestataire_id is not distinct from ${i.prestataire_id}
+      returning id`;
+    for (const t of oubliees) await deposerRecap(t.id, false);
+  }
 
   // La tournée du jour, RENDUE OU NON. C'est la racine : un passage, c'est qui
   // est venu et quel jour (règle 16). Ne rendre que les tournées ouvertes en
@@ -58,7 +73,8 @@ export async function tourneeEnCours(i: Intervenant): Promise<Tournee> {
   // l'interdit désormais (index `passage_unique_par_intervenant_et_jour`),
   // et `fn_creer_tournee` retrouve celle du jour plutôt que d'en ouvrir une.
   const [creee] = await sql<{ id: string }[]>`
-    select id from fn_creer_tournee(${i.utilisateur_id}, ${i.prestataire_id})`;
+    select id from fn_creer_tournee(${i.utilisateur_id}, ${i.prestataire_id},
+                                    ${jour ?? null}::date)`;
   const [t] = await sql<Tournee[]>`
     select t.id, t.reference, t.date_tournee, t.cloturee_le,
            (select count(*) from interventions x where x.tournee_id = t.id)::int
