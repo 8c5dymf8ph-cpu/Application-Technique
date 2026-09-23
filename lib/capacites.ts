@@ -78,6 +78,12 @@ const ATTENDUES: Attendue[] = [
     verifier: () => inventaireDeRepriseRetire(),
   },
   {
+    titre: "Un passage par intervenant et par jour",
+    sans: "Revenir l’après-midi ouvre un second passage : l’historique montre trois journées pour une, et le récapitulatif part autant de fois.",
+    verifier: () =>
+      regleContient("fn_fusionner_les_passages_du_jour", "v_fusionnes"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),

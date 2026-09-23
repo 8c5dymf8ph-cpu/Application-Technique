@@ -158,6 +158,28 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    sur « Fin d'intervention » — et en ouvre une neuve pour aujourd'hui. Ne jamais laisser un lot
    courir d'un jour sur l'autre.
 
+10septies. **Un passage, c'est qui est venu et quel jour — et l'index le tient.** `tourneeEnCours`
+   ne rendait la tournée du jour que si elle était ENCORE OUVERTE : le technicien rendait son lot
+   le matin, revenait l'après-midi, et un second passage naissait. Trois passages dans
+   l'historique pour une journée, trois récapitulatifs, trois fois ceux de la gouvernante — c'est
+   le « dix mails par jour » de l'ancienne application — et une facture qui ne se rapproche plus
+   de rien de net. La règle est désormais en base (`passage_unique_par_intervenant_et_jour`), pas
+   dans l'écran : `fn_creer_tournee` RETROUVE la tournée du jour, rendue ou non, et
+   `fn_fusionner_les_passages_du_jour()` ramène l'existant à un passage par journée.
+   **Un passage se reprend**, et la reprise est le miroir exact de la clôture :
+   `tg_reouverture_tournee` retire de la file de la gouvernante ce qu'elle n'a pas encore
+   tranché — elle ne doit pas valider un travail qu'il est en train de reprendre — et ce qu'elle
+   a tranché ne bouge pas, sa décision est un fait. Le récapitulatif qui n'était pas encore parti
+   est retiré de la file (`annulerRecapNonParti`) ; celui qui est parti reste parti, on ne
+   prétend pas le contraire.
+
+10octies. **« Fin d'intervention » se confirme, il ne se déclenche pas.** Le bouton envoie un
+   message, et c'est irréversible pour qui le reçoit : un appui de trop à 9 h et le récapitulatif
+   annonce deux anomalies sur douze. Un décompte ferait attendre sans rien apprendre ; ce qui
+   empêche l'erreur, c'est de VOIR ce qui part — combien de déclarées, combien restent, et à qui
+   ça va — puis de répondre « Oui, j'ai fini ». Et comme le passage se reprend, l'erreur ne coûte
+   plus une journée. Ne jamais faire partir un message sur un seul appui.
+
 10quinquies. **Qui facture ne se déduit pas du fait d'être une entreprise.** Farid et Rachid
    interviennent sans être salariés : ils facturent, bien qu'inscrits dans `utilisateurs`. Taibi,
    Victoria et Miguel sont de la maison : leur passage ne coûte que le matériel sorti.

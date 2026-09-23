@@ -286,9 +286,12 @@ end $$;
 
 -- Une tournée à nous, encore ouverte : c'est elle qui décide du moment où la
 -- gouvernante voit le travail.
+-- Son propre JOUR. Un intervenant n'a qu'un passage par jour (0018) : deux
+-- lots indépendants dans les scénarios sont donc deux journées, pas deux
+-- tournées du même jour. C'est aussi ce qui se passe dans l'hôtel.
 insert into tournees (id, reference, technicien_id, date_tournee)
 values ('55555555-5555-5555-5555-555555555555', 'TEST-LOT-0001',
-        '11111111-1111-1111-1111-111111111111', current_date);
+        '11111111-1111-1111-1111-111111111111', current_date - 1);
 
 insert into interventions (id, anomalie_id, tournee_id, technicien_id)
 values ('44444444-4444-4444-4444-444444444444',
@@ -563,7 +566,8 @@ declare
   v_etat record;
   n int;
 begin
-  v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111');
+  v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111',
+                                null, current_date - 2);
 
   -- Trois anomalies traitées dans la même tournée
   for n in 1..3 loop
@@ -714,7 +718,8 @@ declare
   v_anomalie uuid; v_intervention uuid; n int;
   v_attente int;
 begin
-  v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111');
+  v_tournee := fn_creer_tournee('11111111-1111-1111-1111-111111111111',
+                                null, current_date - 3);
   for n in 1..3 loop
     insert into anomalies (emplacement_id, description) select id, 'Digest ' || n
       from emplacements where code = '57' returning id into v_anomalie;
@@ -1021,7 +1026,7 @@ declare
 begin
   select id into v_emplacement from emplacements where code = '35';
   select id into v_tournee from fn_creer_tournee(
-    '11111111-1111-1111-1111-111111111111', null);
+    '11111111-1111-1111-1111-111111111111', null, current_date - 4);
 
   -- Trois anomalies traitées dans le même passage.
   for v_n in 1..3 loop
@@ -1415,6 +1420,63 @@ begin
   assert (select count(*) from mouvements_bouteilles where incident_id = v_dossier) = 0,
     'la suppression doit emporter les mouvements du dossier';
 end $$;
+
+-- ===========================================================================
+-- SCÉNARIO 21 — Un passage, c'est qui est venu et quel jour. Il se reprend, et
+-- ce que la gouvernante a tranché ne se reprend pas.
+-- ===========================================================================
+do $$
+declare
+  t1 tournees; t2 tournees;
+  v_a uuid; v_i uuid; n int; v_statut text;
+begin
+  -- Son jour à lui : les autres scénarios ont pris les précédents.
+  t1 := fn_creer_tournee('11111111-1111-1111-1111-111111111111',
+                         null, current_date - 5);
+  t2 := fn_creer_tournee('11111111-1111-1111-1111-111111111111',
+                         null, current_date - 5);
+  assert t1.id = t2.id,
+    'deux passages ouverts le même jour pour le même intervenant';
+
+  insert into anomalies (emplacement_id, description, constate_par)
+  select id, 'Passage du jour — la racine', '22222222-2222-2222-2222-222222222222'
+    from emplacements where code = '55' returning id into v_a;
+  insert into interventions (anomalie_id, tournee_id, technicien_id)
+  values (v_a, t1.id, '11111111-1111-1111-1111-111111111111') returning id into v_i;
+  insert into validations (intervention_id, acteur, decision, utilisateur_id)
+  values (v_i, 'technicien', 'fait', '11111111-1111-1111-1111-111111111111');
+
+  -- Rendu : la gouvernante l'a devant elle.
+  update tournees set cloturee_le = now() where id = t1.id;
+  select nb_en_attente into n from v_tournees where id = t1.id;
+  assert n = 1, format('lot rendu : %s à valider, attendu 1', n);
+
+  -- Repris : il est reparti dans les étages, elle ne doit plus l'avoir.
+  update tournees set cloturee_le = null where id = t1.id;
+  select statut::text into v_statut from anomalies where id = v_a;
+  assert v_statut = 'en_cours',
+    format('reprise : anomalie en %s, attendu en_cours', v_statut);
+  select nb_en_attente into n from v_tournees where id = t1.id;
+  assert n = 0, format('passage repris : %s à valider, attendu 0', n);
+
+  -- Rendu à nouveau, et c'est TOUJOURS le même passage : revenir l'après-midi
+  -- n'en ouvre pas un second, sinon l'historique montrerait deux journées.
+  update tournees set cloturee_le = now() where id = t1.id;
+  select nb_en_attente into n from v_tournees where id = t1.id;
+  assert n = 1, format('rendu à nouveau : %s à valider, attendu 1', n);
+  t2 := fn_creer_tournee('11111111-1111-1111-1111-111111111111',
+                         null, current_date - 5);
+  assert t2.id = t1.id, 'revenir après avoir rendu ouvrait un second passage';
+
+  -- Sa décision est un fait : la reprise ne l'efface pas.
+  insert into validations (intervention_id, acteur, decision, utilisateur_id)
+  values (v_i, 'gouvernante', 'validee', '22222222-2222-2222-2222-222222222222');
+  update tournees set cloturee_le = null where id = t1.id;
+  select statut::text into v_statut from anomalies where id = v_a;
+  assert v_statut = 'validee',
+    format('une décision tranchée doit tenir : anomalie en %s', v_statut);
+end $$;
+
 
 \echo '✅ Tous les scénarios sont passés'
 rollback;

@@ -178,6 +178,18 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "Vérifiez le dépôt des fichiers dans Administration.",
   },
   enregistre: { ton: "green", texte: "Enregistré." },
+  "passage-repris": {
+    ton: "green",
+    texte:
+      "Passage repris. Le récapitulatif n’était pas encore parti : il a été " +
+      "retiré de la file, et repartira complet à la fin de la journée.",
+  },
+  "passage-repris-mail-parti": {
+    ton: "amber",
+    texte:
+      "Passage repris. Le récapitulatif était DÉJÀ parti : à la fin de la " +
+      "journée, un complément suivra.",
+  },
   fournisseur: { ton: "green", texte: "Fournisseur enregistré." },
   montant: { ton: "green", texte: "Montant et facture enregistrés." },
   profil: { ton: "green", texte: "Réglage enregistré." },
@@ -257,7 +269,14 @@ export function Confirmation({ quoi, qui }: { quoi?: string; qui?: string }) {
   return (
     <p
       className={`rounded-card px-4 py-3 text-[13.5px] text-pretty leading-snug animate-[apparait_.25s_ease-out] ${
-        mot.ton === "green" ? "bg-green-soft text-green" : "bg-red-soft text-red"
+        // Trois tons, pas deux. « Le message était déjà parti » n'est pas un
+        // échec : c'est une nuance, et la peindre en rouge fait croire que
+        // quelque chose s'est mal passé.
+        mot.ton === "green"
+          ? "bg-green-soft text-green"
+          : mot.ton === "amber"
+            ? "bg-amber-soft text-amber"
+            : "bg-red-soft text-red"
       }`}
       role="status"
     >

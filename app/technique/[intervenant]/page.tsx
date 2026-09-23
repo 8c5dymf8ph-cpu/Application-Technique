@@ -6,7 +6,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { peutSupprimer, peutValider } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
-import { deposerRecap } from "@/lib/recap";
+import { annulerRecapNonParti, deposerRecap } from "@/lib/recap";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
@@ -77,7 +77,7 @@ export default async function Tournee({
   searchParams,
 }: {
   params: Promise<{ intervenant: string }>;
-  searchParams: Promise<{ fait?: string; etage?: string; q?: string }>;
+  searchParams: Promise<{ fait?: string; etage?: string; q?: string; rendre?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
@@ -89,7 +89,7 @@ export default async function Tournee({
   // Celle qu'on vient de déclarer : elle se retrouve cochée, mise en avant, et
   // l'ancre du navigateur amène l'écran dessus. Sans cela on revenait en haut
   // d'une liste de douze lignes sans savoir ce qui avait changé.
-  const { fait, etage, q = "" } = await searchParams;
+  const { fait, etage, q = "", rendre } = await searchParams;
 
   const tournee = await tourneeEnCours(intervenant);
 
@@ -255,13 +255,36 @@ export default async function Tournee({
 
   async function cloturer() {
     "use server";
-    await sql`update tournees set cloturee_le = now() where id = ${tournee.id}`;
+    await sql`
+      update tournees set cloturee_le = now()
+       where id = ${tournee.id} and cloturee_le is null`;
     // Le lot est rendu : le récapitulatif de ce que le technicien déclare part
     // maintenant, pas à une heure fixe. Un mail par anomalie en aurait fait dix.
+    // Un seul par passage, et un seul passage par jour : c'est ce qui borne le
+    // nombre de messages, pas une heure d'envoi.
     await deposerRecap(tournee.id, false);
     // L'accueil, pas /technique : un intervenant n'y a pas accès et serait
     // renvoyé sur cette même tournée, qu'il vient de rendre.
     redirect("/");
+  }
+
+  /**
+   * Reprendre un passage rendu trop tôt.
+   *
+   * C'est la même journée, donc le même passage : rien n'est recréé. Ce que la
+   * gouvernante n'a pas encore tranché lui est retiré (`tg_reouverture_tournee`)
+   * — elle ne doit pas valider un travail qu'il est en train de reprendre — et
+   * le récapitulatif qui n'était pas encore parti est retiré de la file.
+   */
+  async function reprendre() {
+    "use server";
+    await sql`
+      update tournees set cloturee_le = null
+       where id = ${tournee.id} and cloturee_le is not null`;
+    const retire = await annulerRecapNonParti(tournee.id);
+    redirect(
+      `/technique/${encodeURIComponent(nom)}?fait=${retire ? "passage-repris" : "passage-repris-mail-parti"}` as Route,
+    );
   }
 
   return (
@@ -543,19 +566,84 @@ export default async function Tournee({
         </Link>
       )}
 
-      {faitesEnTout.length > 0 && (
-        <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
-          <form action={cloturer}>
+      {/* Rendre son lot, en deux temps.
+          « Fin d'intervention » envoie un message, et c'est irréversible pour
+          qui le reçoit : un appui de trop en début de journée, et le
+          récapitulatif annonce deux anomalies sur douze. Un décompte ferait
+          attendre sans rien apprendre ; ce qui empêche l'erreur, c'est de VOIR
+          ce qui part et à qui. Et puisqu'un passage se reprend maintenant — même
+          jour, même lot — l'erreur ne coûte plus une journée. */}
+      {tournee.cloturee_le ? (
+        <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground flex flex-col gap-2">
+          <p className="text-[13px] text-ink-faint text-pretty">
+            Passage rendu à{" "}
+            {new Date(tournee.cloturee_le).toLocaleTimeString("fr-FR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            . Si tu reviens aujourd’hui, reprends-le : c’est la même journée,
+            donc le même passage.
+          </p>
+          <form action={reprendre}>
             <BoutonEnvoi
-              pendant="Clôture…"
-              className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px]"
+              pendant="Reprise…"
+              className="w-full h-[52px] rounded-[15px] border-[1.5px] border-plum text-plum font-display font-semibold text-[16px]"
             >
-              Fin d’intervention — {faitesEnTout.length} anomalie
-              {faitesEnTout.length > 1 ? "s" : ""}
+              Reprendre le passage
             </BoutonEnvoi>
           </form>
         </div>
-      )}
+      ) : faitesEnTout.length > 0 ? (
+        <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
+          {rendre ? (
+            <div className="flex flex-col gap-3">
+              <div className="rounded-card bg-surface-muted px-4 py-3.5 flex flex-col gap-1.5">
+                <p className="font-display font-semibold text-[16px]">
+                  Tu as fini pour aujourd’hui ?
+                </p>
+                <p className="text-[13.5px] text-ink-faint text-pretty">
+                  {faitesEnTout.length} anomalie{faitesEnTout.length > 1 ? "s" : ""}{" "}
+                  déclarée{faitesEnTout.length > 1 ? "s" : ""} faite
+                  {faitesEnTout.length > 1 ? "s" : ""}
+                  {uniques.length - faitesEnTout.length > 0
+                    ? `, ${uniques.length - faitesEnTout.length} encore à traiter`
+                    : ""}
+                  . Le récapitulatif part tout de suite, et la gouvernante reçoit
+                  le lot à vérifier.
+                </p>
+              </div>
+              <div className="flex gap-2.5">
+                <Link
+                  replace
+                  href={`/technique/${encodeURIComponent(nom)}${q ? `?q=${encodeURIComponent(q)}` : ""}` as Route}
+                  className="flex-1 h-[52px] rounded-[15px] border-[1.5px] border-line text-ink-faint font-display font-semibold text-[16px] grid place-items-center active:opacity-70"
+                >
+                  Pas encore
+                </Link>
+                <form action={cloturer} className="flex-1">
+                  <BoutonEnvoi
+                    pendant="Clôture…"
+                    className="w-full h-[52px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
+                  >
+                    Oui, j’ai fini
+                  </BoutonEnvoi>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <Link
+              replace
+              href={
+                `/technique/${encodeURIComponent(nom)}?rendre=1${q ? `&q=${encodeURIComponent(q)}` : ""}` as Route
+              }
+              className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px] grid place-items-center active:opacity-80"
+            >
+              Fin d’intervention — {faitesEnTout.length} anomalie
+              {faitesEnTout.length > 1 ? "s" : ""}
+            </Link>
+          )}
+        </div>
+      ) : null}
     </main>
   );
 }

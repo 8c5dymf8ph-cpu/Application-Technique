@@ -124,3 +124,36 @@ export async function deposerRecapSiComplet(tournee: string) {
   // suffi à déclencher le message.
   if (t?.prete && !t.deja && !t.reprise) await deposerRecap(tournee, true);
 }
+
+/**
+ * Reprendre un passage rendu par erreur.
+ *
+ * On appuie sur « Fin d'intervention » avec deux anomalies sur douze — et le
+ * récapitulatif annonce deux. Le passage, lui, n'est pas fini : c'est la même
+ * journée, donc le même lot (règle 16).
+ *
+ * Ce qui n'est pas parti s'efface : un message en file n'est pas un message
+ * envoyé, et le supprimer ne cache rien. Ce qui EST parti reste parti — on ne
+ * le retire pas de l'horodatage, ce serait prétendre qu'il n'a pas eu lieu ;
+ * le passage rendu à nouveau enverra alors un complément.
+ *
+ * Rend `true` si le message a pu être retiré de la file avant son départ.
+ */
+export async function annulerRecapNonParti(tournee: string): Promise<boolean> {
+  const effaces = await sql<{ id: string }[]>`
+    delete from emails_envoyes
+     where reference_id = ${tournee}
+       and categorie = 'recap_technicien'
+       and envoye_le is null
+    returning id`;
+
+  // L'horodatage ne se retire QUE si plus aucun message n'est parti pour ce
+  // lot : sinon on effacerait la trace d'un envoi réel.
+  const [reste] = await sql<{ n: number }[]>`
+    select count(*)::int as n from emails_envoyes
+     where reference_id = ${tournee} and categorie = 'recap_technicien'`;
+  if (reste.n === 0) {
+    await sql`update tournees set mail_technicien_envoye_le = null where id = ${tournee}`;
+  }
+  return effaces.length > 0 && reste.n === 0;
+}

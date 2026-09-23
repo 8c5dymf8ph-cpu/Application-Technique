@@ -14,6 +14,8 @@ export type Tournee = {
   reference: string;
   date_tournee: string;
   nb_interventions: number;
+  /** Le lot a été rendu. Le passage reste celui du jour : on peut le reprendre. */
+  cloturee_le: string | null;
 };
 
 export async function intervenants(): Promise<Intervenant[]> {
@@ -49,21 +51,18 @@ export async function tourneeEnCours(i: Intervenant): Promise<Tournee> {
     returning id`;
   for (const t of oubliees) await deposerRecap(t.id, false);
 
-  const [existante] = await sql<Tournee[]>`
-    select t.id, t.reference, t.date_tournee,
-           (select count(*) from interventions x where x.tournee_id = t.id)::int as nb_interventions
-    from tournees t
-    where t.cloturee_le is null
-      and t.date_tournee = current_date
-      and (t.technicien_id is not distinct from ${i.utilisateur_id}
-       and t.prestataire_id is not distinct from ${i.prestataire_id})
-    order by t.cree_le desc limit 1`;
-  if (existante) return existante;
-
+  // La tournée du jour, RENDUE OU NON. C'est la racine : un passage, c'est qui
+  // est venu et quel jour (règle 16). Ne rendre que les tournées ouvertes en
+  // ouvrait une seconde dès qu'il revenait l'après-midi — trois passages dans
+  // l'historique pour une journée, et autant de récapitulatifs. La base
+  // l'interdit désormais (index `passage_unique_par_intervenant_et_jour`),
+  // et `fn_creer_tournee` retrouve celle du jour plutôt que d'en ouvrir une.
   const [creee] = await sql<{ id: string }[]>`
     select id from fn_creer_tournee(${i.utilisateur_id}, ${i.prestataire_id})`;
   const [t] = await sql<Tournee[]>`
-    select id, reference, date_tournee, 0::int as nb_interventions
-    from tournees where id = ${creee.id}`;
+    select t.id, t.reference, t.date_tournee, t.cloturee_le,
+           (select count(*) from interventions x where x.tournee_id = t.id)::int
+             as nb_interventions
+    from tournees t where t.id = ${creee.id}`;
   return t;
 }
