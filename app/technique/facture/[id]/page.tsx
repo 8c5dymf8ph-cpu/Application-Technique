@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { regleContient } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { euros, jourISO, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
@@ -95,14 +96,39 @@ export default async function DetailFacture({
   // Des JOURNÉES, pas des tournées : l'InterventionID changeait à chaque
   // anomalie validée, la journée d'un intervenant est ce qui identifie un
   // passage.
+  /**
+   * `restantes` et `nb_rattachees` n'existent qu'après la migration 0019.
+   *
+   * Le code part en ligne avant la migration : entre les deux, l'application
+   * tourne sur un schéma plus ancien. Nommer une colonne absente ne renvoie
+   * pas une liste vide — Postgres refuse l'instruction entière, et l'écran
+   * répond « A server error occurred ». C'est exactement ce qui est arrivé :
+   * la facture ne s'ouvrait plus du tout.
+   *
+   * Deux requêtes, choisies par une sonde. Jamais une condition dans le SQL.
+   */
+  const ligneAligne = await regleContient("fn_journees_rapprochables", "restantes");
   const journees =
-    f.type === "prestation"
-      ? await sql<Journee[]>`
-          select date_intervention, intervenant, nb_anomalies, nb_rattachees,
-                 emplacements, apercu, cout_materiel, ecart_jours, interventions,
-                 restantes, deja_rapprochee
-          from fn_journees_rapprochables(${id}, ${fenetre})`
-      : [];
+    f.type !== "prestation"
+      ? []
+      : ligneAligne
+        ? await sql<Journee[]>`
+            select date_intervention, intervenant, nb_anomalies, nb_rattachees,
+                   emplacements, apercu, cout_materiel, ecart_jours, interventions,
+                   restantes, deja_rapprochee
+            from fn_journees_rapprochables(${id}, ${fenetre})`
+        : (
+            await sql<Omit<Journee, "nb_rattachees" | "restantes">[]>`
+              select date_intervention, intervenant, nb_anomalies, emplacements,
+                     apercu, cout_materiel, ecart_jours, interventions,
+                     deja_rapprochee
+              from fn_journees_rapprochables(${id}, ${fenetre})`
+          ).map((j) => ({
+            ...j,
+            // Sans la migration, une journée se rattache en bloc, comme avant.
+            nb_rattachees: j.deja_rapprochee ? j.interventions.length : 0,
+            restantes: j.deja_rapprochee ? [] : j.interventions,
+          }));
 
   async function rapprocher(donnees: FormData) {
     "use server";
