@@ -243,7 +243,11 @@ export default async function TraiterAnomalie({
     }
 
     for (const fichier of donnees.getAll("photos")) {
-      if (!(fichier instanceof File)) continue;
+      // Un champ resté vide rend quand même un File, de taille nulle. Sans ce
+      // test, déclarer SANS photo partait au dépôt, échouait, et l'écran
+      // annonçait « la photo n'a pas pu être enregistrée » alors qu'il n'y en
+      // avait aucune — un échec inventé sur le geste le plus courant.
+      if (!(fichier instanceof File) || fichier.size === 0) continue;
       const chemin = await enregistrerPhoto(fichier);
       if (!chemin) continue;
       await sql`

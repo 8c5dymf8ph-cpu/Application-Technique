@@ -1506,5 +1506,68 @@ begin
 end $$;
 
 
+-- ===========================================================================
+-- SCÉNARIO 23 — Supprimer une anomalie rend son matériel à la réserve.
+-- Ce qu'on supprime n'a pas eu lieu : laisser la sortie en place retirerait de
+-- la réserve une pièce que personne n'a prise. Et le journal dit combien sont
+-- revenues, sinon un stock qui remonte n'a d'explication nulle part.
+-- ===========================================================================
+do $$
+declare
+  v_produit uuid; v_a uuid; v_i uuid; t tournees;
+  v_avant numeric; v_pendant numeric; v_apres numeric;
+  d anomalies_supprimees;
+begin
+  -- Un produit à soi : le scénario doit tenir sur la base de l'hôtel aussi.
+  insert into produits (code, designation, prix_unitaire, seuil_alerte)
+  values ('TEST-SUPPR', 'Produit de test — suppression', 5.00, 2)
+  returning id into v_produit;
+  insert into mouvements_stock (produit_id, type, quantite, prix_unitaire,
+                                utilisateur_id)
+  values (v_produit, 'entree', 10, 5.00,
+          '11111111-1111-1111-1111-111111111111');
+  select stock into v_avant from v_stock_produits where id = v_produit;
+
+  -- Un passage, une anomalie, du matériel sorti pour elle.
+  t := fn_creer_tournee('11111111-1111-1111-1111-111111111111',
+                        null, current_date - 4);
+  insert into anomalies (emplacement_id, description, constate_par)
+  select id, 'Anomalie avec du matériel', '22222222-2222-2222-2222-222222222222'
+    from emplacements where code = '55' returning id into v_a;
+  insert into interventions (anomalie_id, tournee_id, technicien_id)
+  values (v_a, t.id, '11111111-1111-1111-1111-111111111111') returning id into v_i;
+  insert into mouvements_stock (produit_id, type, quantite, intervention_id,
+                                emplacement_id, utilisateur_id)
+  select v_produit, 'sortie', -3, v_i, a.emplacement_id,
+         '11111111-1111-1111-1111-111111111111'
+    from anomalies a where a.id = v_a;
+
+  select stock into v_pendant from v_stock_produits where id = v_produit;
+  assert v_pendant = v_avant - 3,
+    format('sortie de 3 : stock %s, attendu %s', v_pendant, v_avant - 3);
+
+  -- On la supprime. Tout part avec elle.
+  delete from anomalies where id = v_a;
+
+  select stock into v_apres from v_stock_produits where id = v_produit;
+  assert v_apres = v_avant,
+    format('après suppression : stock %s, attendu %s — le matériel doit '
+           'revenir en réserve', v_apres, v_avant);
+  assert (select count(*) from mouvements_stock where intervention_id = v_i) = 0,
+    'le mouvement doit partir avec son intervention, pas rester détaché';
+  assert (select count(*) from mouvements_stock
+           where produit_id = v_produit and intervention_id is null
+             and type = 'sortie') = 0,
+    'aucune sortie orpheline ne doit subsister';
+
+  -- Et le journal le dit.
+  select * into d from anomalies_supprimees where id = v_a;
+  assert d.nb_mouvements = 1,
+    format('%s mouvements notés au journal, attendu 1', d.nb_mouvements);
+  assert d.nb_interventions = 1,
+    format('%s interventions notées, attendu 1', d.nb_interventions);
+end $$;
+
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

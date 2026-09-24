@@ -100,6 +100,11 @@ const ATTENDUES: Attendue[] = [
     verifier: () => tableExiste("anomalies_supprimees"),
   },
   {
+    titre: "Supprimer rend le mat\u00e9riel \u00e0 la r\u00e9serve",
+    sans: "Supprimer une anomalie laisse sa sortie de stock en place, d\u00e9tach\u00e9e : la r\u00e9serve reste amput\u00e9e d\u2019une pi\u00e8ce que personne n\u2019a prise.",
+    verifier: () => colonneExiste("anomalies_supprimees", "nb_mouvements"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { BoutonDeclarer } from "@/app/composants/bouton-declarer";
 import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
@@ -9,10 +10,12 @@ import { profilActif } from "@/lib/profil";
 import {
   jours,
   LIBELLE_STATUT,
+  peutValider,
   suitLesDossiers,
   TON_STATUT,
   type StatutAnomalie,
 } from "@/lib/domaine";
+import { colonneExiste } from "@/lib/schema";
 import { Entete, Indices, Vide } from "../../../composants/ui";
 import { ChampPhotos } from "../../../composants/photos";
 import { ChampCommentaire } from "../../../composants/fil";
@@ -29,6 +32,15 @@ type Existante = {
   constate_par: string | null;
   nb_photos: number;
   nb_commentaires: number;
+};
+
+/** Un autre lieu où le même problème peut être déclaré du même geste. */
+type AutreLieu = {
+  id: string;
+  code: string;
+  etage: string;
+  deja: boolean;
+  essai: boolean;
 };
 
 type Entree = {
@@ -79,6 +91,10 @@ export default async function Declarer({
     : null;
   const lieu = decodeURIComponent(code);
 
+  // `essai` n'existe qu'après la 0008 : nommer une colonne absente casse la
+  // requête entière, pas seulement la condition.
+  const marqueEssai = await colonneExiste("emplacements", "essai");
+
   const [emplacement] = await sql<{ id: string; code: string; etage: string }[]>`
     select e.id, e.code, et.nom as etage
     from emplacements e join etages et on et.id = e.etage_id
@@ -126,6 +142,42 @@ export default async function Declarer({
     : [];
 
   const choisie = choix ? resultats.find((r) => r.id === choix) : undefined;
+
+  /**
+   * Les autres lieux, pour déclarer la même chose d'un seul geste.
+   *
+   * « Il faudrait aussi avoir la possibilité d'ajouter une anomalie pour
+   * plusieurs chambres d'un seul coup. » On change les mitigeurs d'un étage,
+   * la même liseuse lâche dans quatre chambres : c'est UN constat, et le
+   * refaire chambre par chambre demandait quatre fois six appuis.
+   *
+   * Ce qui reste vrai : chaque chambre porte SA ligne (règle 16bis — une
+   * anomalie ne se montre jamais séparée de son lieu), et un problème déjà
+   * ouvert quelque part ne peut pas l'être deux fois (règle 8). Les lieux
+   * concernés sont donc marqués et non cochables : la base les refuserait, et
+   * le dire vaut mieux que de laisser échouer.
+   *
+   * Réservé à l'encadrement : c'est une décision qui ouvre plusieurs lignes
+   * d'un coup.
+   */
+  const enLot = peutValider(profil.role);
+  const autresLieux =
+    choisie && enLot
+      ? await sql<AutreLieu[]>`
+          select e.id, e.code, et.nom as etage,
+                 ${marqueEssai ? sql`e.essai` : sql`false`} as essai,
+                 exists (
+                   select 1 from anomalies a
+                    where a.emplacement_id = e.id
+                      and a.catalogue_id = ${choisie.id}
+                      and a.statut in ('a_faire','en_cours','attente_validation','a_acheter')
+                 ) as deja
+          from emplacements e
+          join etages et on et.id = e.etage_id
+          where e.actif and e.id <> ${emplacement.id}
+          order by et.ordre, e.ordre, e.code`
+      : [];
+  const etagesAutres = [...new Set(autresLieux.map((l) => l.etage))];
 
   /**
    * Créer le libellé qui manque.
@@ -191,21 +243,63 @@ export default async function Declarer({
     const [emp] = await sql<{ id: string }[]>`
       select id from emplacements where code = ${lieu}`;
 
-    // La base refuse un problème déjà ouvert ici ; on le dit plutôt que de
-    // laisser remonter une erreur technique.
-    let anomalie_id: string;
-    try {
-      const [creee] = await sql<{ id: string }[]>`
-        insert into anomalies (emplacement_id, catalogue_id, type_id, description,
-                               constate_par, saisie_par, declare_le, priorite)
-        select ${emp.id}, c.id, c.type_id, c.libelle, ${profil_.id}, ${profil_.id},
-               coalesce(${jourDuConstat ?? null}::date, current_date),
-               coalesce(${presseChoisie}::priorite_anomalie, 'normale')
-        from catalogue_anomalies c where c.id = ${catalogue_id}
-        returning id`;
-      anomalie_id = creee.id;
-    } catch {
+    /**
+     * Les autres lieux cochés.
+     *
+     * Le même constat vaut pour plusieurs chambres : on ouvre une ligne par
+     * lieu (règle 16bis), en un seul geste. Réservé à l'encadrement, et
+     * REVÉRIFIÉ ici : l'écran coche, l'écriture décide — un lien recopié ne
+     * doit pas passer.
+     */
+    const aussi = peutValider(profil_.role)
+      ? donnees.getAll("aussi").map(String).filter((v) => /^[0-9a-f-]{36}$/.test(v))
+      : [];
+
+    /** Ouvrir la ligne dans un lieu. `null` si la base la refuse. */
+    async function ouvrirDans(emplacement_id: string): Promise<string | null> {
+      try {
+        const [creee] = await sql<{ id: string }[]>`
+          insert into anomalies (emplacement_id, catalogue_id, type_id, description,
+                                 constate_par, saisie_par, declare_le, priorite)
+          select ${emplacement_id}, c.id, c.type_id, c.libelle, ${profil_!.id},
+                 ${profil_!.id},
+                 coalesce(${jourDuConstat ?? null}::date, current_date),
+                 coalesce(${presseChoisie}::priorite_anomalie, 'normale')
+          from catalogue_anomalies c where c.id = ${catalogue_id}
+          returning id`;
+        return creee?.id ?? null;
+      } catch {
+        // Déjà ouvert ici : l'index `anomalie_unique_ouverte_par_lieu` le
+        // refuse, et c'est voulu (règle 8). On le compte comme sauté, on ne
+        // fait pas échouer les autres.
+        return null;
+      }
+    }
+
+    // Le lieu d'où l'on déclare d'abord : s'il est refusé, il n'y a rien à
+    // faire ici et on le dit, comme avant.
+    const anomalie_id = await ouvrirDans(emp.id);
+    if (!anomalie_id) {
       redirect(`/gouvernante/declarer/${encodeURIComponent(lieu)}?deja=1`);
+    }
+
+    // Puis les autres. Chacune porte sa ligne, son lieu, son libellé.
+    const ouverts: string[] = [];
+    const sautes: string[] = [];
+    for (const autre of aussi) {
+      const id = await ouvrirDans(autre);
+      const [e] = await sql<{ code: string }[]>`
+        select code from emplacements where id = ${autre}`;
+      if (!e) continue;
+      (id ? ouverts : sautes).push(e.code);
+      if (!id) continue;
+      // Le commentaire suit : c'est le même constat, dit une fois.
+      const motAussi = String(donnees.get("commentaire") ?? "").trim();
+      if (motAussi) {
+        await sql`
+          insert into commentaires (anomalie_id, texte, auteur_id, saisie_par)
+          values (${id}, ${motAussi}, ${profil_.id}, ${profil_.id})`;
+      }
     }
 
     // Le commentaire libre de la gouvernante : c'est ici qu'elle écrit ce que
@@ -221,7 +315,11 @@ export default async function Declarer({
     // un plus, pas une condition.
     let refusee = false;
     for (const fichier of donnees.getAll("photos")) {
-      if (!(fichier instanceof File)) continue;
+      // Un champ resté vide rend quand même un File, de taille nulle. Sans ce
+      // test, déclarer SANS photo partait au dépôt, échouait, et l'écran
+      // annonçait « la photo n'a pas pu être enregistrée » alors qu'il n'y en
+      // avait aucune — un échec inventé sur le geste le plus courant.
+      if (!(fichier instanceof File) || fichier.size === 0) continue;
       const chemin = await enregistrerPhoto(fichier);
       // Une photo refusée par le dépôt disparaissait en silence : on la
       // signale, la déclaration reste enregistrée.
@@ -236,8 +334,13 @@ export default async function Declarer({
 
     // Retour à la liste des lieux, pas dans la chambre : on vient de finir, et
     // rester devant le même écran laisse douter que ce soit enregistré.
+    // Ce qui a été ouvert, et ce qui ne l'a pas été. Un « déclaré » sec sur
+    // cinq chambres cochées laisserait croire que les cinq sont parties.
+    const tous = [lieu, ...ouverts];
     redirect(
-      `/gouvernante/declarer?fait=${refusee ? "declare-sans-photo" : "declare"}&ou=${encodeURIComponent(lieu)}${
+      `/gouvernante/declarer?fait=${refusee ? "declare-sans-photo" : "declare"}&ou=${encodeURIComponent(
+        tous.join(", "),
+      )}${sautes.length > 0 ? `&saute=${encodeURIComponent(sautes.join(", "))}` : ""}${
         jourDuConstat ? `&jour=${jourDuConstat}` : ""
       }`,
     );
@@ -467,6 +570,83 @@ export default async function Declarer({
             <form action={enregistrer} className="flex flex-col gap-3">
               <input type="hidden" name="catalogue_id" value={choisie.id} />
               <ChampCommentaire />
+
+              {/* Le même constat, dans plusieurs chambres, en un geste.
+                  On change les mitigeurs d'un étage, la même liseuse lâche
+                  dans quatre chambres : c'était quatre fois six appuis.
+                  Chaque lieu garde SA ligne — une anomalie ne se montre
+                  jamais séparée de son lieu (règle 16bis). */}
+              {enLot && autresLieux.length > 0 && (
+                <details className="carte overflow-hidden group/lieux">
+                  <summary
+                    data-cible
+                    className="px-4 flex items-center gap-3 cursor-pointer list-none select-none"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="#8E8AA3" strokeWidth="2" strokeLinecap="round"
+                         strokeLinejoin="round"
+                         className="shrink-0 transition-transform group-open/lieux:rotate-90">
+                      <path d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="grow text-[14.5px]">Aussi ailleurs</span>
+                    <span className="text-[11.5px] text-ink-faint">
+                      {autresLieux.filter((l) => !l.deja).length} lieux
+                    </span>
+                  </summary>
+                  <div className="px-4 pb-4 pt-1 flex flex-col gap-3">
+                    <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+                      Une ligne par lieu, le même libellé. La photo reste sur{" "}
+                      {emplacement.code} — elle montre cette chambre-là ; le commentaire,
+                      lui, suit partout.
+                    </p>
+                    {etagesAutres.map((etage) => {
+                      const dedans = autresLieux.filter((l) => l.etage === etage);
+                      return (
+                        <div key={etage} className="flex flex-col gap-1.5">
+                          <span className="etiquette">{etage}</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {dedans.map((l) =>
+                              l.deja ? (
+                                // Déjà ouvert là-bas : la base le refuserait
+                                // (règle 8). Le dire vaut mieux que d'échouer.
+                                <span
+                                  key={l.id}
+                                  title="Déjà en cours ici"
+                                  className="px-3 h-[42px] min-w-[52px] rounded-pill border border-dashed border-line bg-surface-muted text-ink-faint text-[14px] flex items-center justify-center gap-1"
+                                >
+                                  {l.code}
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                       stroke="currentColor" strokeWidth="2.4"
+                                       strokeLinecap="round" aria-hidden>
+                                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                                  </svg>
+                                </span>
+                              ) : (
+                                <label
+                                  key={l.id}
+                                  data-cible
+                                  className={`px-3 h-[42px] min-w-[52px] rounded-pill border bg-surface text-[14px] flex items-center justify-center cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft has-[:checked]:text-plum ${
+                                    l.essai ? "border-dashed border-plum/50" : "border-line"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    name="aussi"
+                                    value={l.id}
+                                    className="sr-only"
+                                  />
+                                  {l.code}
+                                </label>
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              )}
+
               <ChampPhotos libelle="Ajouter une ou plusieurs photos (facultatif)" />
               <div className="flex gap-2">
               <Link
@@ -475,12 +655,7 @@ export default async function Declarer({
               >
                 Annuler
               </Link>
-              <BoutonEnvoi
-                pendant="Déclaration…"
-                className="grow h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
-              >
-                Déclarer en {emplacement.code}
-              </BoutonEnvoi>
+              <BoutonDeclarer lieu={emplacement.code} />
               </div>
             </form>
           </section>

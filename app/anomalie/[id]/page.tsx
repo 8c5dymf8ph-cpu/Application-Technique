@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import {
   jourISO,
@@ -66,11 +67,34 @@ export default async function DetailAnomalie({
 
   // Ce que la suppression emporterait. On le dit avant, pas après : « 2 photos
   // et 1 intervention » n'est pas la même décision que « rien ».
-  const [emporte] = await sql<{ interventions: number; photos: number }[]>`
+  const [emporte] = await sql<{
+    interventions: number;
+    photos: number;
+    sorties: number;
+    pieces: number;
+  }[]>`
     select (select count(*) from interventions where anomalie_id = ${id})::int
              as interventions,
            (select count(*) from photos_anomalie where anomalie_id = ${id})::int
-             as photos`;
+             as photos,
+           (select count(*) from mouvements_stock m
+              join interventions i on i.id = m.intervention_id
+             where i.anomalie_id = ${id})::int as sorties,
+           (select coalesce(sum(abs(m.quantite)), 0) from mouvements_stock m
+              join interventions i on i.id = m.intervention_id
+             where i.anomalie_id = ${id})::numeric as pieces`;
+
+  /**
+   * Le matériel revient-il en réserve ?
+   *
+   * La 0022 fait suivre le mouvement : ce qu'on supprime n'a pas eu lieu, et
+   * laisser la sortie en place retirerait de la réserve une pièce que
+   * personne n'a prise. Mais le code part en ligne avant la migration : tant
+   * qu'elle n'est pas jouée, le mouvement reste détaché et l'écran doit dire
+   * CELA. Une phrase fausse sur un geste irréversible est pire que pas de
+   * phrase du tout.
+   */
+  const rendLeMateriel = await colonneExiste("anomalies_supprimees", "nb_mouvements");
 
   const supprimable = peutSupprimer(profil.role);
   // Corriger une anomalie, c'est corriger une donnée, pas faire un geste de
@@ -144,9 +168,10 @@ export default async function DetailAnomalie({
   /**
    * Supprimer une anomalie.
    *
-   * Trois personnes seulement — Victoria, Sarah P, Miguel. Ce qui est parti du
-   * stock pour cette anomalie n'est PAS rendu : le mouvement reste, détaché.
-   * Le matériel a bien quitté la réserve, et l'annuler fausserait le stock.
+   * Trois personnes seulement — Victoria, Sarah P, Miguel. Depuis la 0022, le
+   * matériel sorti REVIENT en réserve : ce qu'on supprime n'a pas eu lieu, et
+   * une sortie laissée en place retirerait de l'étagère une pièce que
+   * personne n'a prise. L'écran le dit avant, chiffre en main.
    */
   async function supprimer() {
     "use server";
@@ -177,7 +202,11 @@ export default async function DetailAnomalie({
     }
 
     for (const fichier of donnees.getAll("photos")) {
-      if (!(fichier instanceof File)) continue;
+      // Un champ resté vide rend quand même un File, de taille nulle. Sans ce
+      // test, déclarer SANS photo partait au dépôt, échouait, et l'écran
+      // annonçait « la photo n'a pas pu être enregistrée » alors qu'il n'y en
+      // avait aucune — un échec inventé sur le geste le plus courant.
+      if (!(fichier instanceof File) || fichier.size === 0) continue;
       const chemin = await enregistrerPhoto(fichier);
       if (!chemin) continue;
       await sql`
@@ -340,10 +369,24 @@ export default async function DetailAnomalie({
                 . À réserver à ce qui n’aurait jamais dû être déclaré — une erreur de chambre,
                 un doublon. Un problème résolu se clôt, il ne se supprime pas.
               </p>
-              <p className="text-[12px] text-red/80 text-pretty leading-snug">
-                Le matériel sorti pour cette anomalie n’est pas remis en réserve : il a bien
-                quitté le stock.
-              </p>
+              {emporte.sorties > 0 && (
+                <p className="text-[12px] text-red/80 text-pretty leading-snug">
+                  {rendLeMateriel ? (
+                    <>
+                      {emporte.sorties} sortie{emporte.sorties > 1 ? "s" : ""} de stock
+                      {" "}repart{emporte.sorties > 1 ? "ent" : ""} avec elle :{" "}
+                      {Number(emporte.pieces)} pièce
+                      {Number(emporte.pieces) > 1 ? "s reviennent" : " revient"} en réserve.
+                      Si le matériel a réellement été posé, ne supprimez pas — clôturez.
+                    </>
+                  ) : (
+                    <>
+                      Le matériel sorti pour cette anomalie n’est pas remis en réserve : il a
+                      bien quitté le stock.
+                    </>
+                  )}
+                </p>
+              )}
               <div className="flex gap-2.5">
                 <Link
                   href={`/anomalie/${id}` as Route}

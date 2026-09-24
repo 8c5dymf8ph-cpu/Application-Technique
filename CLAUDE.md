@@ -169,6 +169,19 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    reste dans la RLS (`fn_peut_enrichir_le_catalogue`), comme l'exige la règle 9 — elle
    s'élargit, elle ne se déplace pas dans l'interface.
 
+9quinquies. **Le même constat se déclare dans plusieurs lieux d'un seul geste.** On change
+   les mitigeurs d'un étage, la même liseuse lâche dans quatre chambres : c'est UN constat, et
+   le refaire chambre par chambre demandait quatre fois six appuis. Le formulaire porte donc
+   « Aussi ailleurs » — les lieux en pastilles, dans l'ordre du bâtiment — et le bouton compte
+   ce qui part (« Déclarer dans 4 lieux ») : sans ce compte, rien ne disait que les cases
+   avaient été prises. Ce qui ne change pas : **chaque lieu garde SA ligne** (règle 16bis), et
+   un libellé déjà ouvert quelque part n'y est pas proposable — il est marqué, grisé, non
+   cochable, parce que la base le refuserait (règle 8) et que le dire vaut mieux que de laisser
+   échouer. La **photo reste sur le lieu d'où l'on déclare** : elle montre cette chambre-là,
+   l'attacher aux autres serait un mensonge ; le **commentaire suit partout**, c'est le même
+   constat dit une fois. Le retour nomme ce qui est parti ET ce qui a été sauté. Réservé à
+   `peutValider`, et revérifié à l'écriture : un lien recopié ne doit pas passer.
+
 9ter. **Un avis peut être donné AU NOM de quelqu'un d'autre.** Un passage de juin a été vérifié
    par Victoria, pas par celui qui le saisit aujourd'hui : sans ce choix, le récapitulatif dirait
    « validé par Miguel » pour un travail qu'il n'a pas vu. `validations.utilisateur_id` porte qui
@@ -591,7 +604,7 @@ dit d'abord ce que ça emporte.
 c'est un trou : on ne peut ni dire ce qu'on a perdu, ni le remettre. `tg_journal_suppression_anomalie`
 (migration 0021) copie la ligne avant qu'elle parte — son lieu, son libellé, qui l'avait
 constatée, et combien de photos, de commentaires et d'interventions s'en vont avec elle — et
-`/administration` les liste sous « Ce qui a été supprimé ». Le journal ne voit que ce qui passe
+`/administration/supprimees` les liste. Le journal ne voit que ce qui passe
 APRÈS son installation : ce qui a disparu avant lui n'y figure pas, et l'écran le dit plutôt que
 de laisser croire à une liste complète.
 
@@ -600,9 +613,19 @@ Sarah P et Miguel — c'est-à-dire `peutValider`. C'est la gouvernante qui déc
 qui se trompe de chambre ou déclare deux fois le même robinet : l'obliger à attendre quelqu'un
 d'autre pour défaire son propre geste n'avait pas de sens. La règle est dans `fn_peut_supprimer`
 et dans la politique de suppression. L'écran dit ce que la suppression emporte — fil, photos,
-interventions — avant de la proposer. **Ce qui est sorti du stock n'est pas rendu** :
-`mouvements_stock.intervention_id` passe à nul, le mouvement reste ; le matériel a bien quitté la
-réserve. Un problème résolu se clôt, il ne se supprime pas.
+interventions — avant de la proposer. Un problème résolu se clôt, il ne se supprime pas.
+
+**Et le matériel REVIENT en réserve** (migration 0022). Il restait auparavant sorti, le mouvement
+détaché : le raisonnement — « le matériel a bien quitté l'étagère » — vaut pour un passage ancien
+et clos, pas pour ce qu'on supprime vraiment, une anomalie déclarée dans la mauvaise chambre ou
+deux fois, encore `a_faire` ou `en_cours`. Là, rien n'est sorti de la réserve, et la ligne
+détachée la fausse dans l'autre sens : elle retire une pièce que personne n'a prise. La règle
+était d'ailleurs déjà en contradiction avec elle-même — **décocher** une déclaration (règle
+10bis) supprime son matériel « qui n'a donc pas été utilisé », et le même geste en plus large le
+gardait. Une règle appliquée à un endroit et pas à l'autre ne vaut rien. L'écran dit AVANT
+combien de pièces reviennent, et rappelle que ce qui a réellement été posé se CLÔT plutôt que de
+se supprimer ; `anomalies_supprimees.nb_mouvements` le note, sinon un stock qui remonte de trois
+pièces n'a d'explication nulle part.
 
 **Un formulaire validé n'est plus un écran de saisie.** On déclare une perte, on arrive sur le
 dossier, on revient en arrière — et le formulaire revient, rempli comme avant l'envoi. Rien ne

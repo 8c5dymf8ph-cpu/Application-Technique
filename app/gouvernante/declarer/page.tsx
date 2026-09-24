@@ -11,9 +11,9 @@ type Lieu = { code: string; etage: string; ordre_etage: number; ouvertes: number
 export default async function ChoixLieu({
   searchParams,
 }: {
-  searchParams: Promise<{ fait?: string; ou?: string; jour?: string }>;
+  searchParams: Promise<{ fait?: string; ou?: string; jour?: string; saute?: string }>;
 }) {
-  const { fait, ou, jour } = await searchParams;
+  const { fait, ou, jour, saute } = await searchParams;
   // Une déclaration faite depuis un passage saisi porte LA DATE du passage :
   // l'anomalie a été constatée ce jour-là, pas aujourd'hui (règle 16sexies).
   const passe = jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : undefined;
@@ -59,7 +59,19 @@ export default async function ChoixLieu({
           {/* On sort du formulaire : il ne doit plus se rouvrir par le retour. */}
           {fait && <MarquerValide cle="anomalie" />}
           {ou && fait.startsWith("declare") && (
-            <p className="text-[12.5px] text-ink-faint pt-1">En {ou}.</p>
+            <p className="text-[12.5px] text-ink-faint pt-1">
+              {ou.includes(",") ? "Dans " : "En "}
+              {ou}.
+            </p>
+          )}
+          {/* Ce qui n'est PAS parti se dit aussi : un « déclaré » sec sur cinq
+              chambres cochées laisserait croire que les cinq sont ouvertes.
+              Le même problème ne peut pas être ouvert deux fois au même
+              endroit (règle 8) — ce n'est pas un échec, c'est la règle. */}
+          {saute && fait.startsWith("declare") && (
+            <p className="text-[12.5px] text-amber pt-1 text-pretty leading-snug">
+              Rien ouvert en {saute} : le même problème y est déjà en cours.
+            </p>
           )}
         </div>
       )}
