@@ -886,6 +886,22 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   d'où le retour ne ramenait pas là où on avait appuyé. `ApercuFil` prend `libelle` et `fiche` :
   le bouton est toujours là, la fenêtre s'ouvre toujours, et elle dit « rien n'a encore été
   écrit » avec le chemin vers la fiche dedans.
+- **La pastille du fil s'ouvre, partout — y compris en déclarant.** Sur l'écran de déclaration,
+  `Indices` montrait l'appareil photo et la bulle et ne s'ouvrait pas : on voyait qu'il s'était
+  passé quelque chose dans cette chambre sans pouvoir le lire, et il fallait quitter l'écran
+  pour aller voir. C'est pourtant la question qu'on se pose juste avant de déclarer — le
+  problème a-t-il déjà été traité, et qu'en a-t-on dit ? C'est donc `ApercuFil`, qui prend
+  `photos` et `grand` : les deux pictogrammes sont conservés, le bouton fait 44 px de haut pour
+  se viser au pouce, et il est posé **à côté** du lien, jamais dedans.
+- **On crée un libellé APRÈS avoir cherché, pas avant.** L'encadré « Rien de tout ça ? » tenait
+  six lignes AVANT les résultats : on tapait trois lettres et on lisait une explication sur les
+  récurrences au lieu de voir ce que le catalogue proposait. C'est un bouton discret sous la
+  liste, et `CreerLibelle` ouvre une fenêtre — libellé, métier, urgence, commentaire. Le métier
+  arrive sur **Technique**, qui est le métier général de l'hôtel et non un rangement au hasard
+  (Plomberie, Électrique et Achats sont les spécialités) ; c'est la seule exception à la
+  règle 9quater, et elle vaut parce que « Technique » existe vraiment comme fourre-tout. Le
+  **commentaire se saisit là** — c'est en créant le libellé qu'on a en tête ce que le mot ne
+  dira jamais — et il suit jusqu'à la déclaration sans être retapé.
 - **Le « + » n'est pas un bouton flottant.** Il vivait dans le coin bas-droit, par-dessus la
   liste : il masquait la dernière ligne, le pouce l'attrapait en faisant défiler, et il n'a rien à
   voir avec le geste du bas de l'écran, qui est « j'ai fini ». Il est maintenant à côté de la

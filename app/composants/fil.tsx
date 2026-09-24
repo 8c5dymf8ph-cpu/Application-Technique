@@ -66,10 +66,14 @@ export function ChampCommentaire({
   nom = "commentaire",
   libelle = "Commentaire (facultatif)",
   lignes = 3,
+  valeur,
 }: {
   nom?: string;
   libelle?: string;
   lignes?: number;
+  /** Ce qui a déjà été écrit ailleurs — au moment de créer le libellé, par
+   *  exemple : on ne le retape pas. */
+  valeur?: string;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
@@ -77,6 +81,7 @@ export function ChampCommentaire({
       <textarea
         name={nom}
         rows={lignes}
+        defaultValue={valeur}
         className="carte px-4 py-3 text-[15px] leading-snug resize-none placeholder:text-ink-faint"
         placeholder="Ce qu’il faut savoir…"
       />

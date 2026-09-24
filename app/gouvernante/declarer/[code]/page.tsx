@@ -16,9 +16,11 @@ import {
   type StatutAnomalie,
 } from "@/lib/domaine";
 import { colonneExiste } from "@/lib/schema";
-import { Entete, Indices, Vide } from "../../../composants/ui";
+import { Entete, Vide } from "../../../composants/ui";
 import { ChampPhotos } from "../../../composants/photos";
-import { ChampCommentaire } from "../../../composants/fil";
+import { ChampCommentaire, type Message } from "../../../composants/fil";
+import { ApercuFil } from "@/app/composants/apercu-fil";
+import { CreerLibelle } from "@/app/composants/creer-libelle";
 import { enregistrerPhoto } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,17 @@ type Existante = {
   nb_photos: number;
   nb_commentaires: number;
 };
+
+type Passage = {
+  anomalie_id: string;
+  date_intervention: string | Date;
+  intervenant: string | null;
+  decision_technicien: string | null;
+  gouvernante: string | null;
+  decision_gouvernante: string | null;
+  materiel: string | null;
+};
+type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" };
 
 /** Un autre lieu où le même problème peut être déclaré du même geste. */
 type AutreLieu = {
@@ -69,13 +82,14 @@ export default async function Declarer({
     choix?: string;
     jour?: string;
     presse?: string;
+    mot?: string;
   }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
 
   const { code } = await params;
-  const { q = "", choix, jour, presse } = await searchParams;
+  const { q = "", choix, jour, presse, mot } = await searchParams;
   /**
    * La date du constat.
    *
@@ -132,6 +146,49 @@ export default async function Declarer({
     where emplacement_id = ${emplacement.id}
       and statut in ('a_faire','en_cours','a_acheter')
     order by declare_le desc`;
+
+  /**
+   * De quoi ouvrir le fil SUR PLACE.
+   *
+   * La pastille disait qu'il y avait eu des mots et des photos, et ne
+   * s'ouvrait pas : on voyait qu'il s'était passé quelque chose ici sans
+   * pouvoir le lire, et il fallait quitter l'écran de déclaration pour aller
+   * voir. Or c'est précisément ce qu'on veut savoir avant de déclarer — le
+   * problème a-t-il déjà été traité, et qu'en a-t-on dit ?
+   *
+   * Même montage que l'historique du lieu : une requête pour tout le lieu,
+   * filtrée par anomalie en mémoire.
+   */
+  const passages = await sql<Passage[]>`
+    select r.anomalie_id, r.date_intervention,
+           coalesce(r.intervenant, r.prestataire) as intervenant,
+           r.decision_technicien::text, r.gouvernante,
+           r.decision_gouvernante::text,
+           (select string_agg(pr.designation || ' × ' || abs(m.quantite), ', ')
+              from mouvements_stock m join produits pr on pr.id = m.produit_id
+             where m.intervention_id = r.intervention_id and m.type = 'sortie')
+             as materiel
+      from v_recap_interventions r
+      join anomalies a on a.id = r.anomalie_id
+     where a.emplacement_id = ${emplacement.id}
+     order by r.date_intervention`;
+  const parPassage = (id: string) => passages.filter((x) => x.anomalie_id === id);
+
+  const photos = await sql<Photo[]>`
+    select ph.anomalie_id, ph.chemin, ph.moment::text
+    from photos_anomalie ph join anomalies a on a.id = ph.anomalie_id
+    where a.emplacement_id = ${emplacement.id}
+    order by ph.prise_le`;
+  const parAnomalie = (id: string, moment: string) =>
+    photos.filter((x) => x.anomalie_id === id && x.moment === moment).map((x) => x.chemin);
+
+  const fils = await sql<(Message & { anomalie_id: string })[]>`
+    select f.anomalie_id, f.commentaire_id, f.source, f.auteur, f.texte,
+           f.date_commentaire, f.decision::text
+      from v_fil_commentaires f join anomalies a on a.id = f.anomalie_id
+     where a.emplacement_id = ${emplacement.id}
+     order by f.date_commentaire`;
+  const fil = (id: string) => fils.filter((m) => m.anomalie_id === id);
 
   // Le catalogue vu depuis ce lieu : chaque libellé sait s'il y est déjà ouvert.
   const resultats = q.trim()
@@ -214,6 +271,9 @@ export default async function Declarer({
     const choixType = String(donnees.get("type") ?? "");
     const type = choixType && choixType !== "aucun" ? choixType : null;
     const priorite = String(donnees.get("priorite") ?? "normale");
+    // Le mot écrit dans la fenêtre suit jusqu'à la déclaration : on ne le
+    // retape pas, et c'est là qu'on l'a en tête.
+    const mot = String(donnees.get("mot") ?? "").trim().slice(0, 600);
 
     // `on conflict` : le libellé est unique. Si quelqu'un vient de l'ajouter,
     // on récupère le sien plutôt que de refuser — c'est le même problème.
@@ -229,8 +289,8 @@ export default async function Declarer({
       `/gouvernante/declarer/${encodeURIComponent(lieu)}?q=${encodeURIComponent(
         libelle,
       )}&choix=${entree.id}&presse=${priorite}${
-        jourDuConstat ? `&jour=${jourDuConstat}` : ""
-      }`,
+        mot ? `&mot=${encodeURIComponent(mot)}` : ""
+      }${jourDuConstat ? `&jour=${jourDuConstat}` : ""}`,
     );
   }
 
@@ -379,31 +439,68 @@ export default async function Declarer({
           {enCours.length > 0 && (
             <ul className="flex flex-col gap-2">
               {enCours.map((e) => (
-                <li key={e.anomalie_id}>
+                <li key={e.anomalie_id} className="carte px-4 py-3 flex items-start gap-3">
                   <Link
                     href={`/anomalie/${e.anomalie_id}`}
-                    className="carte px-4 py-3 flex flex-col gap-1.5 active:bg-surface-muted"
+                    className="flex flex-col gap-1.5 grow min-w-0"
                   >
-                  <div className="flex items-start gap-2">
-                    <p className="grow min-w-0 text-[14.5px] leading-snug text-pretty">
-                      {e.description}
+                    <p className="text-[14.5px] leading-snug text-pretty">{e.description}</p>
+                    <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
+                      <span
+                        className={`px-2 py-0.5 rounded-md ${TON_STATUT[e.statut].fond} ${TON_STATUT[e.statut].texte}`}
+                      >
+                        {LIBELLE_STATUT[e.statut]}
+                      </span>
+                      <span className="text-ink-faint">
+                        {e.constate_par ? `${e.constate_par}, ` : ""}
+                        {jours(e.jours_depuis)}
+                      </span>
                     </p>
-                    <span className="mt-[1px]">
-                      <Indices photos={e.nb_photos} commentaires={e.nb_commentaires} />
-                    </span>
-                  </div>
-                  <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
-                    <span
-                      className={`px-2 py-0.5 rounded-md ${TON_STATUT[e.statut].fond} ${TON_STATUT[e.statut].texte}`}
-                    >
-                      {LIBELLE_STATUT[e.statut]}
-                    </span>
-                    <span className="text-ink-faint">
-                      {e.constate_par ? `${e.constate_par}, ` : ""}
-                      {jours(e.jours_depuis)}
-                    </span>
-                  </p>
                   </Link>
+                  {/* La pastille s'OUVRE. Elle disait qu'il y avait eu des mots
+                      et des photos sans qu'on puisse les lire : on voyait
+                      qu'il s'était passé quelque chose ici, et il fallait
+                      quitter l'écran pour savoir quoi. C'est pourtant la
+                      question qu'on se pose juste avant de déclarer.
+                      À CÔTÉ du lien, jamais dedans — un bouton dans un lien
+                      reste un lien. */}
+                  <ApercuFil
+                    messages={fil(e.anomalie_id)}
+                    photos={e.nb_photos}
+                    grand
+                    fiche={`/anomalie/${e.anomalie_id}`}
+                    contexte={{
+                      description: e.description,
+                      emplacement: emplacement.code,
+                      etage: emplacement.etage,
+                      statut: {
+                        libelle: LIBELLE_STATUT[e.statut],
+                        fond: TON_STATUT[e.statut].fond,
+                        texte: TON_STATUT[e.statut].texte,
+                      },
+                      depuis: jours(e.jours_depuis),
+                      constate_par: e.constate_par,
+                      constat: parAnomalie(e.anomalie_id, "constat"),
+                      apres: parAnomalie(e.anomalie_id, "apres"),
+                      passages: parPassage(e.anomalie_id).map((x) =>
+                        [
+                          `${x.intervenant ?? "intervenant inconnu"} le ${new Date(
+                            x.date_intervention,
+                          ).toLocaleDateString("fr-FR")}`,
+                          x.materiel ?? "aucun matériel",
+                          x.decision_gouvernante === "validee"
+                            ? `validé par ${x.gouvernante ?? "la gouvernante"}`
+                            : x.decision_gouvernante === "a_refaire"
+                              ? `à refaire, selon ${x.gouvernante ?? "la gouvernante"}`
+                              : x.decision_gouvernante === "en_cours"
+                                ? `remis en cours par ${x.gouvernante ?? "la gouvernante"}`
+                                : x.decision_technicien === "fait"
+                                  ? "déclaré fait — pas encore vérifié"
+                                  : "passage sans avis",
+                        ].join(" · "),
+                      ),
+                    }}
+                  />
                 </li>
               ))}
             </ul>
@@ -426,80 +523,6 @@ export default async function Declarer({
               Aucun libellé ne correspond. Un ajout au catalogue se fait depuis un ordinateur,
               par l’administrateur.
             </Vide>
-          )}
-
-          {/* Le libellé qui manque se crée, ici, par Sarah P ou Miguel — et il
-              rejoint le catalogue. Une impasse qui renvoie « demandez à
-              l'administrateur » quand on EST l'administrateur n'a pas de sens. */}
-          {enrichit && q.trim().length >= 3 && (
-            <form
-              action={creerLeLibelle}
-              className="carte px-4 py-3.5 flex flex-col gap-2.5"
-            >
-              <p className="text-[13px] text-ink-soft text-pretty">
-                {resultats.length === 0
-                  ? "Aucun libellé ne correspond."
-                  : "Rien de tout ça ?"}{" "}
-                Ajoutez-le au catalogue : la fois suivante, le même problème
-                portera le même mot — c’est ce qui permet de compter les
-                récurrences.
-              </p>
-              {/* Le libellé se corrige avant d'entrer au catalogue : ce
-                  qu'on a tapé pour chercher n'est pas toujours ce qu'on veut
-                  y laisser pour toujours. */}
-              <label className="flex flex-col gap-1">
-                <span className="etiquette">Le libellé, tel qu’il restera</span>
-                <input
-                  name="libelle"
-                  defaultValue={q.trim()}
-                  autoComplete="off"
-                  required
-                  minLength={3}
-                  className="h-[48px] rounded-[12px] border border-line px-3 bg-surface text-[16px]"
-                />
-              </label>
-              {/* Le métier ne se devine pas : un même mot peut être un travail
-                  électrique ou de plomberie, et rien ne dit lequel. Aucun
-                  choix par défaut — on demande. */}
-              <label className="flex flex-col gap-1">
-                <span className="etiquette">De quel métier</span>
-                <select
-                  name="type"
-                  defaultValue=""
-                  required
-                  className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px]"
-                >
-                  <option value="" disabled>
-                    Choisir le métier
-                  </option>
-                  {types.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nom}
-                    </option>
-                  ))}
-                  <option value="aucun">Aucun en particulier</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="etiquette">Ça presse ?</span>
-                <select
-                  name="priorite"
-                  defaultValue="normale"
-                  className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px]"
-                >
-                  <option value="basse">Quand ce sera possible</option>
-                  <option value="normale">Normale</option>
-                  <option value="haute">Prioritaire</option>
-                  <option value="urgente">Urgent</option>
-                </select>
-              </label>
-              <BoutonEnvoi
-                pendant="Ajout…"
-                className="h-[48px] rounded-[13px] bg-plum text-white font-display font-semibold text-[15px]"
-              >
-                Ajouter au catalogue et déclarer
-              </BoutonEnvoi>
-            </form>
           )}
 
           <ul className="flex flex-col gap-2">
@@ -543,6 +566,21 @@ export default async function Declarer({
               ),
             )}
           </ul>
+
+          {/* Le libellé qui manque se crée — mais APRÈS la liste, et dans une
+              fenêtre. L'encadré tenait six lignes AVANT les résultats : on
+              tapait trois lettres et on lisait une explication sur les
+              récurrences au lieu de voir ce que le catalogue proposait. On ne
+              crée qu'après avoir cherché et n'avoir rien trouvé : c'est le
+              dernier geste, pas le premier. */}
+          {enrichit && q.trim().length >= 3 && (
+            <CreerLibelle
+              action={creerLeLibelle}
+              types={types}
+              defaut={q.trim()}
+              aucunResultat={resultats.length === 0}
+            />
+          )}
         </section>
 
         {/* Confirmer */}
@@ -569,7 +607,7 @@ export default async function Declarer({
             )}
             <form action={enregistrer} className="flex flex-col gap-3">
               <input type="hidden" name="catalogue_id" value={choisie.id} />
-              <ChampCommentaire />
+              <ChampCommentaire valeur={mot} />
 
               {/* Le même constat, dans plusieurs chambres, en un geste.
                   On change les mitigeurs d'un étage, la même liseuse lâche

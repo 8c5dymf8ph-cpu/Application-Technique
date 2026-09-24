@@ -35,6 +35,8 @@ export function ApercuFil({
   libelle,
   fiche,
   contexte,
+  photos,
+  grand = false,
 }: {
   messages: Message[];
   eteint?: boolean;
@@ -61,6 +63,17 @@ export function ApercuFil({
    * ajouter au fil.
    */
   contexte?: Contexte;
+  /**
+   * Le nombre de photos, à afficher À CÔTÉ de la bulle.
+   *
+   * Sur l'écran de déclaration, la pastille `Indices` montrait l'appareil
+   * photo et la bulle — et ne s'ouvrait pas : on voyait qu'il s'était passé
+   * quelque chose ici sans pouvoir le lire. On garde donc les deux
+   * pictogrammes, et c'est le bouton qui les porte.
+   */
+  photos?: number;
+  /** Plus grand, parce qu'il faut pouvoir le viser avec le pouce. */
+  grand?: boolean;
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
   // Y a-t-il quelque chose à voir : des mots, ou des photos.
@@ -68,8 +81,11 @@ export function ApercuFil({
     messages.length > 0 ||
     (contexte?.constat?.length ?? 0) > 0 ||
     (contexte?.apres?.length ?? 0) > 0;
-  // Sans libellé, la bulle chiffrée ne s'affiche que s'il y a des mots.
-  if (messages.length === 0 && !libelle) return null;
+  // Sans libellé, le bouton ne s'affiche que s'il y a quelque chose à voir :
+  // des mots OU des photos. Une icône qui annonce du contenu là où il n'y en
+  // a pas fait ouvrir pour rien.
+  if (!aQuelqueChose && !libelle) return null;
+  const px = grand ? 19 : 15;
 
   return (
     <>
@@ -81,7 +97,7 @@ export function ApercuFil({
             ? "Le fil — rien n’a encore été écrit"
             : `Lire ${messages.length} commentaire${messages.length > 1 ? "s" : ""}`
         }
-        className={`h-[34px] px-2.5 rounded-lg flex items-center gap-1.5 text-[13.5px] font-medium tabular-nums shrink-0 ${
+        className={`${grand ? "h-[40px] px-3 gap-2 text-[14.5px]" : "h-[34px] px-2.5 gap-1.5 text-[13.5px]"} rounded-lg flex items-center font-medium tabular-nums shrink-0 ${
           eteint || !aQuelqueChose
             ? "text-ink-faint bg-surface-muted"
             : "text-plum bg-plum-soft"
@@ -90,13 +106,25 @@ export function ApercuFil({
         {/* La bulle dit qu'il y a des MOTS. Quand il n'y en a pas — et pas de
             photo non plus — elle promet quelque chose qui n'existe pas : on
             ouvre pour rien. Elle disparaît alors, et le mot suffit. */}
+        {/* L'appareil photo, quand il y en a : c'est l'autre chose qu'on
+            vient regarder, et la bulle seule ne le dit pas. */}
+        {(photos ?? 0) > 0 && (
+          <>
+            <svg width={px} height={px} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 8.5A1.5 1.5 0 014.5 7h2L8 4.8h8L17.5 7h2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5z" />
+              <circle cx="12" cy="12.7" r="3.3" />
+            </svg>
+            {photos}
+          </>
+        )}
         {aQuelqueChose && (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg width={px} height={px} viewBox="0 0 24 24" fill="none" stroke="currentColor"
                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M20 12.5c0 3.9-3.6 7-8 7a9.3 9.3 0 01-2.7-.4L4.5 20.5l1.2-3.4A6.7 6.7 0 014 12.5c0-3.9 3.6-7 8-7s8 3.1 8 7z" />
           </svg>
         )}
-        {libelle ?? messages.length}
+        {libelle ?? (messages.length > 0 ? messages.length : "")}
       </button>
 
       <dialog
