@@ -356,14 +356,17 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    calculé en base ; il manquait de le montrer. Un total incomplet le dit (règle 6), et un
    montant non saisi le dit aussi plutôt que d'afficher le matériel seul comme si c'était tout.
 
-16duodecies. **La facture et l'historique sont deux entrées sur la même chose.** Depuis un
-   passage, on saisit la facture de CE passage — c'est le geste courant, il doit rester à trois
-   appuis. Depuis l'écran d'une facture, on regroupe plusieurs journées — c'est ce que Serafino
-   impose en facturant son mois. Les deux écrivent déjà dans la même `factures` : il manquait le
-   pont. Le passage porte donc « Cette facture couvre d'autres journées ? » qui mène à l'écran de
-   la facture, et l'historique porte **la pastille** — le numéro de facture en vert, avec le
-   nombre de journées couvertes quand il y en a plusieurs, ou « sans facture » en ambre. Sans ce
-   signe, rien ne distinguait ce qui est déjà couvert de ce qui attend sa pièce.
+16duodecies. **La facture d'un passage se règle ENTIÈREMENT depuis le passage — un seul écran.**
+   C'était deux écrans pour une seule chose : ici le montant et la pièce, là-bas les journées à
+   rapprocher, la même facture des deux côtés et un aller-retour entre les deux. Un pont entre
+   eux ne suffisait pas : « je veux réellement que les deux écrans soient un seul et même
+   écran ». Le passage porte donc tout — le montant, la pièce, et **« Ce que cette facture
+   couvre »** avec un + pour ajouter une journée et un − pour la retirer. Une facture de
+   prestation ne se crée plus ailleurs (règle 16quater : là où on regarde le passage), et
+   `/technique/facture/[id]` RENVOIE sur le passage. L'écran des factures reste pour lister, et
+   pour les factures d'ACHAT, qui n'ont pas de passage. L'historique porte **la pastille** — le
+   numéro de facture en vert avec le nombre de journées couvertes, ou « sans facture » en
+   ambre : sans ce signe, rien ne distinguait ce qui est couvert de ce qui attend sa pièce.
 
 16octies. **Un geste réversible doit pouvoir se défaire — jusqu'au bout.** Le « − » d'une
    facture détachait une intervention, et elle DISPARAISSAIT : `fn_journees_rapprochables`
@@ -847,6 +850,19 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   voir avec le geste du bas de l'écran, qui est « j'ai fini ». Il est maintenant à côté de la
   recherche — chercher et déclarer sont deux gestes du même moment, quand on arrive devant une
   porte.
+- **Supprimer se confirme ; un dépliant n'est pas une confirmation.** On l'ouvre pour voir ce
+  qu'il y a dedans, et le bouton rouge est déjà sous le pouce. La suppression passe donc par
+  `?supprimer=1` : l'écran NOMME l'anomalie — « Supprimer "lavabo bouché" ? » — dit ce que ça
+  emporte, et offre « Annuler » à côté de « Oui, supprimer ». Le même geste en deux temps que
+  « Fin d'intervention ».
+- **La bulle du fil promet des mots : sans mots ni photo, elle ne s'affiche pas.** Une icône qui
+  annonce du contenu là où il n'y en a pas fait ouvrir pour rien. Elle est aussi passée de 19 à
+  15 px : c'est un indice, pas un titre.
+- **Ce qu'on vient de déclarer reste À SA PLACE le temps du retour.** Ce qui est coché passe à la
+  fin de la liste — mais le renvoi porte son ancre, et l'écran s'ouvrait donc EN BAS de cent
+  dix-neuf lignes : il fallait tout remonter pour reprendre. La ligne qu'on vient de cocher garde
+  sa position pour ce seul affichage, cochée et barrée au milieu de ce qui reste ; au chargement
+  suivant elle rejoint les autres.
 - **Ce qu'on a déclaré se relit d'un appui, et avant de rendre.** Ce qui est coché passe en bas de
   la liste (14sexies) — mais sur cent dix-neuf lignes, le relire demandait de tout faire défiler,
   et on rendait son lot sans avoir revu ce qu'on rend. Le compteur du haut est devenu un bouton :

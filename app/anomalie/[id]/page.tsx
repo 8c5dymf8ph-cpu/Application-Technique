@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
@@ -38,12 +39,12 @@ export default async function DetailAnomalie({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ fait?: string }>;
+  searchParams: Promise<{ fait?: string; supprimer?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
-  const { fait } = await searchParams;
+  const { fait, supprimer: confirmeSuppression } = await searchParams;
 
   const [anomalie] = await sql<Anomalie[]>`
     select anomalie_id as id, reference, description, statut, emplacement, declare_le,
@@ -310,12 +311,25 @@ export default async function DetailAnomalie({
           </details>
         )}
 
+        {/* Supprimer se confirme, en deux temps, comme « Fin d'intervention ».
+            Un dépliant n'est pas une confirmation : on l'ouvre pour voir ce
+            qu'il y a dedans, et le bouton rouge est déjà sous le pouce. Une
+            anomalie d'il y a six mois a disparu comme ça. */}
         {supprimable && (
-          <details className="border-t border-line pt-5">
-            <summary className="list-none cursor-pointer text-[13px] text-ink-faint underline underline-offset-4">
-              Supprimer cette anomalie
-            </summary>
+          <div className="border-t border-line pt-5">
+            {!confirmeSuppression ? (
+              <Link
+                href={`/anomalie/${id}?supprimer=1` as Route}
+                replace
+                className="text-[13px] text-ink-faint underline underline-offset-4"
+              >
+                Supprimer cette anomalie
+              </Link>
+            ) : (
             <div className="mt-3 rounded-card bg-red-soft px-4 py-3.5 flex flex-col gap-3">
+              <p className="font-display font-semibold text-[15.5px] text-red">
+                Supprimer « {anomalie.description} » ?
+              </p>
               <p className="text-[13px] text-red text-pretty leading-snug">
                 La ligne disparaît pour de bon, avec son fil
                 {messages.length > 0 && ` (${messages.length} message${messages.length > 1 ? "s" : ""})`}
@@ -330,13 +344,26 @@ export default async function DetailAnomalie({
                 Le matériel sorti pour cette anomalie n’est pas remis en réserve : il a bien
                 quitté le stock.
               </p>
-              <form action={supprimer}>
-                <button className="h-[46px] w-full rounded-[12px] bg-red text-white font-display font-semibold text-[14.5px]">
-                  Supprimer définitivement
-                </button>
-              </form>
+              <div className="flex gap-2.5">
+                <Link
+                  href={`/anomalie/${id}` as Route}
+                  replace
+                  className="flex-1 h-[46px] rounded-[12px] bg-surface border border-line text-ink-soft font-display font-semibold text-[14.5px] grid place-items-center"
+                >
+                  Annuler
+                </Link>
+                <form action={supprimer} className="flex-1">
+                  <BoutonEnvoi
+                    pendant="Suppression…"
+                    className="h-[46px] w-full rounded-[12px] bg-red text-white font-display font-semibold text-[14.5px]"
+                  >
+                    Oui, supprimer
+                  </BoutonEnvoi>
+                </form>
+              </div>
             </div>
-          </details>
+            )}
+          </div>
         )}
       </div>
     </main>

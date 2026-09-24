@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
-import { euros, peutValider , aujourdhuiISO } from "@/lib/domaine";
+import { euros, peutValider } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Stat } from "@/app/composants/suivi";
 
@@ -80,22 +80,8 @@ export default async function Factures({
     group by prestataire_id, prestataire
     order by max(jours_ecoules) desc`;
 
-  const prestataires = await sql<{ id: string; nom: string }[]>`
-    select id, nom from prestataires where actif order by nom`;
 
-  async function creer(donnees: FormData) {
-    "use server";
-    const profil_ = await profilActif();
-    if (!profil_ || !peutValider(profil_.role)) redirect("/technique/factures" as Route);
-    const [creee] = await sql<{ id: string }[]>`
-      insert into factures (type, prestataire_id, date_reference, statut, saisie_par)
-      values ('prestation', ${String(donnees.get("prestataire"))},
-              ${String(donnees.get("date") ?? "") || null}::date, 'a_rapprocher', ${profil_.id})
-      returning id`;
-    redirect(`/technique/facture/${creee.id}` as Route);
-  }
 
-  const aujourdhui = aujourdhuiISO();
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -208,33 +194,23 @@ export default async function Factures({
           </ul>
         )}
 
+        {/* Une facture de prestation naît d'un PASSAGE, jamais ici.
+            C'est la règle 16quater — le montant et la pièce se saisissent là
+            où on regarde le passage — et c'est ce qui évite d'avoir deux
+            écrans pour une seule facture. L'écran des factures les liste et
+            renvoie sur le passage ; il n'en crée plus. */}
         {peutValider(profil.role) && (
-          <form action={creer} className="carte px-4 py-4 flex flex-col gap-2.5">
-            <h2 className="etiquette">Une facture vient d’arriver</h2>
-            <select
-              name="prestataire"
-              required
-              className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface-muted text-[16px]"
+          <p className="carte px-4 py-3.5 text-[13px] text-ink-soft text-pretty">
+            Une facture se saisit depuis le passage qu’elle couvre :{" "}
+            <Link
+              href={"/technique/historique" as Route}
+              className="text-plum underline underline-offset-4"
             >
-              {prestataires.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nom}
-                </option>
-              ))}
-            </select>
-            <label className="flex flex-col gap-1">
-              <span className="etiquette">Date de la facture</span>
-              <input
-                name="date"
-                type="date"
-                defaultValue={aujourdhui}
-                className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
-              />
-            </label>
-            <button className="h-[50px] rounded-[14px] bg-plum text-white font-display font-semibold text-[15.5px]">
-              Créer et rapprocher
-            </button>
-          </form>
+              ouvrez la journée de l’intervenant
+            </Link>{" "}
+            et renseignez le montant. De là, elle peut ensuite couvrir d’autres
+            journées.
+          </p>
         )}
       </div>
     </main>

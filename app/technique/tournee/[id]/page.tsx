@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
-import { colonneExiste } from "@/lib/schema";
+import { colonneExiste, regleContient } from "@/lib/schema";
 import { enregistrerFichier } from "@/lib/stockage";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
@@ -17,6 +17,19 @@ import type { Message } from "@/app/composants/fil";
 import { deposerRecap } from "@/lib/recap";
 
 export const dynamic = "force-dynamic";
+
+/** Une journée d'intervenant, que la facture couvre ou pourrait couvrir. */
+type Journee = {
+  date_intervention: string | Date;
+  intervenant: string;
+  nb_anomalies: number;
+  nb_rattachees: number;
+  emplacements: string;
+  cout_materiel: number;
+  interventions: string[];
+  restantes: string[];
+  deja_rapprochee: boolean;
+};
 
 type Lot = {
   id: string;
@@ -193,6 +206,67 @@ export default async function DetailTournee({
     revalidatePath(`/technique/tournee/${id}`);
     revalidatePath("/technique/historique");
     redirect(`/technique/tournee/${id}?fait=modifie` as Route);
+  }
+
+  /**
+   * Les journées que cette facture couvre, ou pourrait couvrir.
+   *
+   * C'était un second écran. Serafino facture son mois : la même pièce couvre
+   * cinq journées, et il fallait quitter le passage pour les rattacher, avec
+   * un aller-retour entre deux écrans qui montraient la même facture. Un seul
+   * écran, donc — celui du passage, là où on regarde.
+   *
+   * `restantes` n'existe qu'après la 0019 : deux requêtes, choisies par une
+   * sonde. Nommer une colonne absente casse l'écran entier.
+   */
+  const ligneAligne = await regleContient("fn_journees_rapprochables", "restantes");
+  const journees = facture
+    ? ligneAligne
+      ? await sql<Journee[]>`
+          select date_intervention, intervenant, nb_anomalies, nb_rattachees,
+                 emplacements, cout_materiel, interventions, restantes,
+                 deja_rapprochee
+            from fn_journees_rapprochables(${facture.id}, 120)`
+      : (
+          await sql<Omit<Journee, "nb_rattachees" | "restantes">[]>`
+            select date_intervention, intervenant, nb_anomalies, emplacements,
+                   cout_materiel, interventions, deja_rapprochee
+              from fn_journees_rapprochables(${facture.id}, 120)`
+        ).map((j) => ({
+          ...j,
+          nb_rattachees: j.deja_rapprochee ? j.interventions.length : 0,
+          restantes: j.deja_rapprochee ? [] : j.interventions,
+        }))
+    : [];
+
+  /** Rattacher une journée à la facture de ce passage. */
+  async function rattacherLaJournee(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/technique/tournee/${id}` as Route);
+    const lignes = String(donnees.get("interventions") ?? "").split(",").filter(Boolean);
+    const f = String(donnees.get("facture") ?? "");
+    if (!f || lignes.length === 0) return;
+    await sql`
+      insert into facture_interventions (facture_id, intervention_id)
+      select ${f}::uuid, unnest(${lignes}::uuid[])
+      on conflict do nothing`;
+    revalidatePath(`/technique/tournee/${id}`);
+  }
+
+  /** La retirer. Un geste réversible doit pouvoir se défaire (règle 16octies). */
+  async function detacherLaJournee(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/technique/tournee/${id}` as Route);
+    const lignes = String(donnees.get("interventions") ?? "").split(",").filter(Boolean);
+    const f = String(donnees.get("facture") ?? "");
+    if (!f || lignes.length === 0) return;
+    await sql`
+      delete from facture_interventions
+       where facture_id = ${f}::uuid
+         and intervention_id = any(${lignes}::uuid[])`;
+    revalidatePath(`/technique/tournee/${id}`);
   }
 
   /**
@@ -427,27 +501,93 @@ export default async function DetailTournee({
                 </p>
               </form>
 
-              {/* Le pont entre les deux écrans. Ici on saisit la facture d'UN
-                  passage — c'est le geste courant, et il doit rester à trois
-                  appuis. Mais Serafino facture son mois : la même pièce couvre
-                  souvent cinq journées. Plutôt que de refaire ici la liste des
-                  journées rapprochables, on renvoie là où elle vit déjà, avec
-                  la facture qu'on vient de saisir. */}
-              {facture && (
-                <Link
-                  href={`/technique/facture/${facture.id}` as Route}
-                  className="mt-2.5 carte px-4 py-3 flex items-center gap-3"
-                >
-                  <span className="grow min-w-0">
-                    <span className="block text-[14px]">
-                      Cette facture couvre d’autres journées ?
-                    </span>
-                    <span className="block text-[11.5px] text-ink-faint text-pretty">
-                      Les ajouter, en retirer, voir ce qu’elles ont coûté en tout.
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-ink-faint">›</span>
-                </Link>
+              {/* Les autres journées que cette facture couvre — ICI, pas dans
+                  un second écran. Serafino facture son mois : la même pièce
+                  couvre cinq journées, et faire l'aller-retour entre deux
+                  écrans qui montraient la même facture n'apprenait rien. */}
+              {facture && journees.length > 0 && (
+                <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+                  <p className="etiquette">Ce que cette facture couvre</p>
+                  {journees.map((j) => {
+                    const cette =
+                      jourISO(j.date_intervention) === jourISO(lot.date_tournee);
+                    return (
+                      <div
+                        key={`${jourISO(j.date_intervention)}-${j.intervenant}`}
+                        className={`rounded-[12px] px-3 py-2.5 flex items-center gap-2.5 ${
+                          j.deja_rapprochee
+                            ? "bg-green-soft"
+                            : j.nb_rattachees > 0
+                              ? "bg-amber-soft"
+                              : "bg-surface-muted"
+                        }`}
+                      >
+                        <span className="grow min-w-0">
+                          <span className="block text-[13.5px]">
+                            {new Date(j.date_intervention).toLocaleDateString("fr-FR", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "long",
+                            })}
+                            {cette ? " — ce passage" : ""}
+                          </span>
+                          <span className="block text-[11px] text-ink-faint truncate">
+                            {j.nb_anomalies} anomalie{j.nb_anomalies > 1 ? "s" : ""}
+                            {j.nb_rattachees > 0 && !j.deja_rapprochee
+                              ? ` · ${j.nb_rattachees} déjà dessus`
+                              : ""}
+                            {j.emplacements ? ` · ${j.emplacements}` : ""}
+                          </span>
+                        </span>
+                        {/* Un + pour ajouter ce qui manque, un − pour retirer.
+                            Les deux toujours possibles : un geste réversible
+                            doit pouvoir se défaire. */}
+                        {j.restantes.length > 0 && (
+                          <form action={rattacherLaJournee} className="shrink-0">
+                            <input type="hidden" name="facture" value={facture.id} />
+                            <input
+                              type="hidden"
+                              name="interventions"
+                              value={j.restantes.join(",")}
+                            />
+                            <button
+                              aria-label="Ajouter cette journée à la facture"
+                              className="w-10 h-10 rounded-[10px] bg-white border border-line grid place-items-center text-[18px] text-plum"
+                            >
+                              +
+                            </button>
+                          </form>
+                        )}
+                        {j.nb_rattachees > 0 && !cette && (
+                          <form action={detacherLaJournee} className="shrink-0">
+                            <input type="hidden" name="facture" value={facture.id} />
+                            <input
+                              type="hidden"
+                              name="interventions"
+                              value={j.interventions.join(",")}
+                            />
+                            <button
+                              aria-label="Retirer cette journée de la facture"
+                              className="w-10 h-10 rounded-[10px] bg-white border border-line grid place-items-center text-[18px] text-ink-faint"
+                            >
+                              −
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <p className="text-[11.5px] text-ink-faint text-pretty">
+                    {journees.filter((j) => j.nb_rattachees > 0).length} journée
+                    {journees.filter((j) => j.nb_rattachees > 0).length > 1
+                      ? "s"
+                      : ""}{" "}
+                    couverte
+                    {journees.filter((j) => j.nb_rattachees > 0).length > 1 ? "s" : ""}{" "}
+                    par cette facture. Le passage d’aujourd’hui ne se retire pas d’ici :
+                    c’est lui qui l’a créée.
+                  </p>
+                </div>
               )}
             </details>
           )}

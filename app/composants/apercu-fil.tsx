@@ -63,6 +63,11 @@ export function ApercuFil({
   contexte?: Contexte;
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
+  // Y a-t-il quelque chose à voir : des mots, ou des photos.
+  const aQuelqueChose =
+    messages.length > 0 ||
+    (contexte?.constat?.length ?? 0) > 0 ||
+    (contexte?.apres?.length ?? 0) > 0;
   // Sans libellé, la bulle chiffrée ne s'affiche que s'il y a des mots.
   if (messages.length === 0 && !libelle) return null;
 
@@ -76,14 +81,21 @@ export function ApercuFil({
             ? "Le fil — rien n’a encore été écrit"
             : `Lire ${messages.length} commentaire${messages.length > 1 ? "s" : ""}`
         }
-        className={`h-[34px] pl-2 pr-2.5 rounded-lg flex items-center gap-1.5 text-[14px] font-medium tabular-nums shrink-0 ${
-          eteint ? "text-ink-faint bg-surface-muted" : "text-plum bg-plum-soft"
+        className={`h-[34px] px-2.5 rounded-lg flex items-center gap-1.5 text-[13.5px] font-medium tabular-nums shrink-0 ${
+          eteint || !aQuelqueChose
+            ? "text-ink-faint bg-surface-muted"
+            : "text-plum bg-plum-soft"
         }`}
       >
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M20 12.5c0 3.9-3.6 7-8 7a9.3 9.3 0 01-2.7-.4L4.5 20.5l1.2-3.4A6.7 6.7 0 014 12.5c0-3.9 3.6-7 8-7s8 3.1 8 7z" />
-        </svg>
+        {/* La bulle dit qu'il y a des MOTS. Quand il n'y en a pas — et pas de
+            photo non plus — elle promet quelque chose qui n'existe pas : on
+            ouvre pour rien. Elle disparaît alors, et le mot suffit. */}
+        {aQuelqueChose && (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M20 12.5c0 3.9-3.6 7-8 7a9.3 9.3 0 01-2.7-.4L4.5 20.5l1.2-3.4A6.7 6.7 0 014 12.5c0-3.9 3.6-7 8-7s8 3.1 8 7z" />
+          </svg>
+        )}
         {libelle ?? messages.length}
       </button>
 

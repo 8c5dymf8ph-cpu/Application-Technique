@@ -259,7 +259,24 @@ export default async function Tournee({
     a.emplacement.localeCompare(b.emplacement, "fr", { numeric: true }) ||
     (rang[a.priorite] ?? 2) - (rang[b.priorite] ?? 2);
 
-  const ordonnees = [...restantes.sort(parLieu), ...faites.sort(parLieu)];
+  /**
+   * Celle qu'on vient de déclarer reste À SA PLACE.
+   *
+   * Ce qui est coché passe à la fin — c'est de l'avancement, pas du travail.
+   * Mais le renvoi porte son ancre : en la déplaçant tout en bas, l'écran
+   * s'ouvrait EN BAS de cent dix-neuf lignes, et il fallait tout remonter pour
+   * reprendre. On la laisse donc où elle était le temps de ce retour : cochée,
+   * barrée, sur fond vert, au milieu de ce qui reste — c'est exactement ce
+   * qu'on veut voir. Au chargement suivant elle rejoint les autres.
+   */
+  const ordonnees =
+    fait && uniques.some((l) => l.anomalie_id === fait)
+      ? [...vues].sort(
+          (a, b) =>
+            Number(a.traitee && a.anomalie_id !== fait) -
+              Number(b.traitee && b.anomalie_id !== fait) || parLieu(a, b),
+        )
+      : [...restantes.sort(parLieu), ...faites.sort(parLieu)];
 
   const encadre = peutValider(profil.role);
   const supprimable = peutSupprimer(profil.role);
@@ -465,8 +482,10 @@ export default async function Tournee({
                   ...(vue === "faites" ? {} : { vue: "faites" }),
                 })}` as Route
               }
-              className={`shrink-0 text-right rounded-[11px] px-2.5 py-1 ${
-                vue === "faites" ? "bg-green-soft" : ""
+              className={`shrink-0 flex items-center gap-1.5 rounded-[11px] px-2.5 py-1.5 border ${
+                vue === "faites"
+                  ? "bg-green-soft border-green/30"
+                  : "bg-surface border-line"
               }`}
               aria-label={
                 vue === "faites"
@@ -474,16 +493,37 @@ export default async function Tournee({
                   : "Ne voir que ce que j’ai déclaré"
               }
             >
-              <span
-                className={`block font-display font-semibold text-[19px] tabular-nums ${
-                  vue === "faites" ? "text-green" : ""
-                }`}
-              >
-                {faitesEnTout.length}
-                <span className="text-ink-faint">/{uniques.length}</span>
-              </span>
-              <span className="block text-[11px] text-ink-faint">
-                {vue === "faites" ? "déclarées — tout voir" : "traitées"}
+              {/* Un chiffre seul ne ressemble pas à un bouton : on ne sait pas
+                  qu'on peut appuyer dessus. Un mot et un œil le disent. */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
+                   strokeLinejoin="round" aria-hidden
+                   className={vue === "faites" ? "text-green" : "text-ink-faint"}>
+                {vue === "faites" ? (
+                  <>
+                    <path d="M4 12h16" />
+                    <path d="M4 6h16" />
+                    <path d="M4 18h16" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+                    <circle cx="12" cy="12" r="2.6" />
+                  </>
+                )}
+              </svg>
+              <span className="text-right">
+                <span
+                  className={`block font-display font-semibold text-[17px] leading-none tabular-nums ${
+                    vue === "faites" ? "text-green" : ""
+                  }`}
+                >
+                  {faitesEnTout.length}
+                  <span className="text-ink-faint">/{uniques.length}</span>
+                </span>
+                <span className="block text-[10.5px] text-ink-faint leading-tight pt-0.5">
+                  {vue === "faites" ? "tout revoir" : "voir mes déclarées"}
+                </span>
               </span>
             </Link>
           ) : (

@@ -81,6 +81,30 @@ export default async function DetailFacture({
     where f.id = ${id}`;
   if (!f) notFound();
 
+  /**
+   * Une facture de prestation se règle DEPUIS LE PASSAGE.
+   *
+   * C'était deux écrans pour une seule chose : ici on rapprochait des
+   * journées, là-bas on saisissait le montant et la pièce — la même facture,
+   * deux fois, avec un aller-retour entre les deux. Tout vit maintenant sur le
+   * passage (règle 16quater : « là où on le regarde »), et cet écran n'y
+   * conduit plus que ceux qui arrivent par la liste des factures ou par un
+   * lien ancien.
+   *
+   * Les factures d'ACHAT, elles, n'ont pas de passage : elles restent ici.
+   */
+  if (f.type === "prestation") {
+    const [passage] = await sql<{ id: string }[]>`
+      select t.id
+        from facture_interventions fi
+        join interventions i on i.id = fi.intervention_id
+        join tournees t      on t.id = i.tournee_id
+       where fi.facture_id = ${id}
+       order by t.date_tournee
+       limit 1`;
+    if (passage) redirect(`/technique/tournee/${passage.id}` as Route);
+  }
+
   const rattachees = await sql<Rattachee[]>`
     select i.id as intervention_id, i.date_intervention, e.code as emplacement,
            a.description, c.cout_materiel, c.cout_prestataire, c.cout_total,
