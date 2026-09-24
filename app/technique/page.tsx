@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { exigerEncadrement } from "@/lib/acces";
+import { vueExiste } from "@/lib/schema";
 import { euros } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 
@@ -42,6 +43,14 @@ export default async function HubTechnique() {
       (select coalesce(sum(cout_total), 0) from v_tournees
         where date_tournee >= date_trunc('month', current_date))          as cout_mois`;
 
+  // Les suivis n'existent qu'après la 0023 : nommer une vue absente casse
+  // l'écran entier, pas seulement la requête.
+  const suivisPrets = await vueExiste("v_suivis");
+  const [{ a_controler_suivis }] = suivisPrets
+    ? await sql<{ a_controler_suivis: number }[]>`
+        select coalesce(sum(nb_a_controler), 0)::int as a_controler_suivis from v_suivis`
+    : [{ a_controler_suivis: 0 }];
+
   // Les derniers lots rendus : ce qui s'est passé dans l'hôtel, en un regard.
   const derniers = await sql<Lot[]>`
     select id, reference, intervenant, date_tournee, nb_interventions::int,
@@ -77,6 +86,17 @@ export default async function HubTechnique() {
             detail="Ce qui a été fait, ce que ça coûte, ce que chaque facture couvre"
             badge={c.sans_facture}
             ton="bg-blue-soft"
+          />
+          {/* Les histoires qui ne tiennent pas dans une anomalie : elles
+              traversent des chambres et des semaines, et ne se ferment pas
+              par une réparation mais par une vérification qui revient
+              négative. */}
+          <Tuile
+            href="/suivis"
+            titre="Suivis"
+            detail="Punaises, nuisibles : les histoires qui durent"
+            badge={a_controler_suivis}
+            ton="bg-amber-soft"
           />
           <Tuile
             href="/stock"

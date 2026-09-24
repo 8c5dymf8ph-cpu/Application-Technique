@@ -169,6 +169,15 @@ export function Indices({
  * donc un `?fait=` dans l'adresse après une action, et ce bandeau le rend.
  */
 const MOTS: Record<string, { ton: string; texte: string }> = {
+  acte: { ton: "green", texte: "Acte enregistré. La chronologie est à jour." },
+  "acte-sans-piece": {
+    ton: "red",
+    texte:
+      "Acte enregistré, mais la pièce jointe n’a pas pu l’être. " +
+      "Vérifiez le dépôt des fichiers dans Administration.",
+  },
+  episode: { ton: "green", texte: "Épisode ouvert." },
+  etat: { ton: "green", texte: "L’état de l’épisode est à jour." },
   photo: { ton: "green", texte: "Photo enregistrée." },
   photos: { ton: "green", texte: "Photos enregistrées." },
   "photo-refusee": {

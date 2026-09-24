@@ -463,6 +463,40 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    réception se saisit et se corrige après coup ; `tg_redater_reception` déplace alors les
    mouvements que la commande a produits, grâce à `mouvements_*.commande_id`. Sans ce lien,
    l'historique du prix serait faux.
+18. **Certaines anomalies sont des HISTOIRES, et elles ont leurs propres objets.** Une anomalie
+   est un problème dans un lieu, qu'on répare et qu'on clôt. Les punaises de lit n'entrent pas
+   là-dedans : ça traverse des chambres et des semaines, ça enchaîne des actes dont l'ordre
+   varie, et ça ne se termine pas par une réparation mais par une vérification qui revient
+   négative. Mesuré sur l'export : l'histoire complète tient en **quatorze actes sur vingt-sept
+   mois, et un seul était correctement en base** — deux dans l'export jamais importé, quatre en
+   phrases dans un commentaire, cinq sur des notes de facture, dont celui qui clôt l'histoire.
+   L'application savait que le problème avait commencé et ignorait qu'il était résolu.
+   Trois objets (migration 0023), et pas un de plus :
+   **le SUIVI** — permanent (il ne se clôt jamais, il porte un rythme) ou épisode, rattaché au
+   permanent ; **la PORTÉE** — les lieux, avec la date d'entrée, parce qu'on s'élargit en cours
+   de route ; **l'ACTE** — une ligne = un fait daté, avec sa propre portée et **un résultat par
+   lieu**. C'est ce dernier point qui fait qu'un balayage de 38 chambres est UNE ligne de
+   chronologie et non 38 anomalies — sans perdre la preuve qu'une chambre a été vérifiée.
+   « J'ai besoin de savoir quelles chambres ont été contrôlées même si elles n'ont rien relevé. »
+
+18bis. **Aucune machine à états.** L'ordre des traitements varie — chimique puis froid,
+   l'inverse, ou les deux — une contre-visite peut s'ajouter, une chambre voisine peut entrer.
+   On enregistre ce qui a eu lieu ; on ne dicte jamais la suite. L'état se CALCULE, comme le
+   stock (règle 1) : **un lieu est réglé quand une vérification négative est postérieure à tous
+   ses traitements et à toute vérification positive.** Une vérification `non_concluant` ne
+   conclut rien et ne compte pas — la contre-visite du 05/11/2024 est exactement ce cas, et ses
+   quatre chambres sont **à contrôler** depuis. C'est l'état qui manquait : traité, jamais
+   revérifié, personne ne le savait. Un dossier permanent, lui, ne se « règle » pas : il porte
+   le périmètre et le rythme (`periodicite_jours`), et dit quand la campagne est en retard —
+   354 jours entre les deux balayages de l'hôtel, 359 depuis le dernier.
+
+18ter. **Ce qu'un acte ne recopie jamais.** `intervention_id` pointe vers le passage quand il y
+   en a un : le matériel, le coût et la facture restent où ils sont. `gratuit` et
+   `hors_contrat` disent les deux sens de l'anomalie commerciale — EcoFlair a OFFERT la
+   vérification du 26/11/2025, et une société sous contrat peut facturer un passage ponctuel.
+   Le coût des pièces est ce qu'elles ANNONCENT, pas la comptabilité. Et on ne modélise pas les
+   contrats fournisseurs : « ça aurait dû être couvert » est un jugement, pas une règle.
+
 17. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
    Ne jamais réintroduire `Stock_Initial`, `StockActuel` ni `EstHistorique`.
 

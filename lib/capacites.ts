@@ -105,6 +105,11 @@ const ATTENDUES: Attendue[] = [
     verifier: () => colonneExiste("anomalies_supprimees", "nb_mouvements"),
   },
   {
+    titre: "Suivre une histoire (suivis, actes)",
+    sans: "Les punaises, les nuisibles et les contr\u00f4les n\u2019ont nulle part o\u00f9 vivre : chaque \u00e9tape reste une anomalie de plus ou une phrase dans un commentaire.",
+    verifier: () => tableExiste("suivis"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),
