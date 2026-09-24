@@ -231,7 +231,7 @@ export default async function DetailFacture({
       redirect(`/technique/facture/${id}` as Route);
     }
     await sql`delete from factures where id = ${id}`;
-    redirect("/technique/factures?fait=facture-supprimee" as Route);
+    redirect("/technique/historique?vue=factures&fait=facture-supprimee" as Route);
   }
 
   /**
@@ -255,7 +255,7 @@ export default async function DetailFacture({
       <Entete
         titre={f.emetteur ?? "Facture"}
         sous_titre={`${f.reference ?? "sans numéro"} · ${new Date(f.date_reference).toLocaleDateString("fr-FR")}`}
-        retour="/technique/factures"
+        retour="/technique/historique?vue=factures"
       />
 
       {/* L'écran change en le quittant — on rattache, on détache, on saisit un
@@ -691,7 +691,7 @@ export default async function DetailFacture({
         )}
 
         <Link
-          href={"/technique/factures" as Route}
+          href={"/technique/historique?vue=factures" as Route}
           className="text-[12.5px] text-plum underline underline-offset-4 self-start"
         >
           Toutes les factures

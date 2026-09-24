@@ -239,6 +239,9 @@ export default async function DetailTournee({
         }))
     : [];
 
+  /** Celles que la facture couvre réellement, en tout ou en partie. */
+  const couvertes = journees.filter((j) => j.nb_rattachees > 0);
+
   /** Rattacher une journée à la facture de ce passage. */
   async function rattacherLaJournee(donnees: FormData) {
     "use server";
@@ -501,95 +504,116 @@ export default async function DetailTournee({
                 </p>
               </form>
 
-              {/* Les autres journées que cette facture couvre — ICI, pas dans
-                  un second écran. Serafino facture son mois : la même pièce
-                  couvre cinq journées, et faire l'aller-retour entre deux
-                  écrans qui montraient la même facture n'apprenait rien. */}
-              {facture && journees.length > 0 && (
-                <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
-                  <p className="etiquette">Ce que cette facture couvre</p>
-                  {journees.map((j) => {
-                    const cette =
-                      jourISO(j.date_intervention) === jourISO(lot.date_tournee);
-                    return (
-                      <div
-                        key={`${jourISO(j.date_intervention)}-${j.intervenant}`}
-                        className={`rounded-[12px] px-3 py-2.5 flex items-center gap-2.5 ${
-                          j.deja_rapprochee
-                            ? "bg-green-soft"
-                            : j.nb_rattachees > 0
-                              ? "bg-amber-soft"
-                              : "bg-surface-muted"
+            </details>
+          )}
+
+          {/* Ce que la facture couvre — VISIBLE, pas replié sous « Corriger la
+              facture ». C'est la question qu'on se pose en ouvrant le passage :
+              cette pièce, elle couvre quoi ? Et les gestes portent des MOTS :
+              un « + » nu ne dit pas ce qu'il ajoute ni à quoi. */
+          }
+          {facture && journees.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline gap-2">
+                <h3 className="etiquette grow">Ce que cette facture couvre</h3>
+                <span className="text-[11.5px] text-ink-faint tabular-nums">
+                  {couvertes.length} journée{couvertes.length > 1 ? "s" : ""} ·{" "}
+                  {couvertes.reduce((n, j) => n + j.nb_anomalies, 0)} anomalie
+                  {couvertes.reduce((n, j) => n + j.nb_anomalies, 0) > 1 ? "s" : ""}
+                </span>
+              </div>
+
+              <ul className="flex flex-col gap-1.5">
+                {journees.map((j) => {
+                  const cette = jourISO(j.date_intervention) === jourISO(lot.date_tournee);
+                  const dessus = j.nb_rattachees > 0;
+                  const partielle = dessus && !j.deja_rapprochee;
+                  return (
+                    <li
+                      key={`${jourISO(j.date_intervention)}-${j.intervenant}`}
+                      className={`rounded-[12px] border px-3 py-2.5 flex items-center gap-2.5 ${
+                        partielle
+                          ? "bg-amber-soft border-amber/25"
+                          : dessus
+                            ? "bg-green-soft border-green/25"
+                            : "bg-surface border-line"
+                      }`}
+                    >
+                      {/* L'état se voit avant de se lire : coché, à moitié, ou rien. */}
+                      <span
+                        aria-hidden
+                        className={`shrink-0 w-[22px] h-[22px] rounded-full grid place-items-center ${
+                          dessus ? (partielle ? "bg-amber" : "bg-green") : "bg-surface-muted"
                         }`}
                       >
-                        <span className="grow min-w-0">
-                          <span className="block text-[13.5px]">
-                            {new Date(j.date_intervention).toLocaleDateString("fr-FR", {
-                              weekday: "short",
-                              day: "numeric",
-                              month: "long",
-                            })}
-                            {cette ? " — ce passage" : ""}
-                          </span>
-                          <span className="block text-[11px] text-ink-faint truncate">
-                            {j.nb_anomalies} anomalie{j.nb_anomalies > 1 ? "s" : ""}
-                            {j.nb_rattachees > 0 && !j.deja_rapprochee
-                              ? ` · ${j.nb_rattachees} déjà dessus`
-                              : ""}
-                            {j.emplacements ? ` · ${j.emplacements}` : ""}
-                          </span>
+                        {dessus && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                               stroke="#fff" strokeWidth="3.4" strokeLinecap="round"
+                               strokeLinejoin="round">
+                            <path d="M5 12.5l4.5 4.5L19 7.5" />
+                          </svg>
+                        )}
+                      </span>
+
+                      <span className="grow min-w-0">
+                        <span className="block text-[13.5px]">
+                          {new Date(j.date_intervention).toLocaleDateString("fr-FR", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "long",
+                          })}
+                          {cette && (
+                            <span className="ml-1.5 text-[10.5px] text-plum">ce passage</span>
+                          )}
                         </span>
-                        {/* Un + pour ajouter ce qui manque, un − pour retirer.
-                            Les deux toujours possibles : un geste réversible
-                            doit pouvoir se défaire. */}
-                        {j.restantes.length > 0 && (
-                          <form action={rattacherLaJournee} className="shrink-0">
-                            <input type="hidden" name="facture" value={facture.id} />
-                            <input
-                              type="hidden"
-                              name="interventions"
-                              value={j.restantes.join(",")}
-                            />
-                            <button
-                              aria-label="Ajouter cette journée à la facture"
-                              className="w-10 h-10 rounded-[10px] bg-white border border-line grid place-items-center text-[18px] text-plum"
-                            >
-                              +
-                            </button>
-                          </form>
-                        )}
-                        {j.nb_rattachees > 0 && !cette && (
-                          <form action={detacherLaJournee} className="shrink-0">
-                            <input type="hidden" name="facture" value={facture.id} />
-                            <input
-                              type="hidden"
-                              name="interventions"
-                              value={j.interventions.join(",")}
-                            />
-                            <button
-                              aria-label="Retirer cette journée de la facture"
-                              className="w-10 h-10 rounded-[10px] bg-white border border-line grid place-items-center text-[18px] text-ink-faint"
-                            >
-                              −
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <p className="text-[11.5px] text-ink-faint text-pretty">
-                    {journees.filter((j) => j.nb_rattachees > 0).length} journée
-                    {journees.filter((j) => j.nb_rattachees > 0).length > 1
-                      ? "s"
-                      : ""}{" "}
-                    couverte
-                    {journees.filter((j) => j.nb_rattachees > 0).length > 1 ? "s" : ""}{" "}
-                    par cette facture. Le passage d’aujourd’hui ne se retire pas d’ici :
-                    c’est lui qui l’a créée.
-                  </p>
-                </div>
-              )}
-            </details>
+                        <span className="block text-[11px] text-ink-faint truncate">
+                          {partielle
+                            ? `${j.nb_rattachees} sur ${j.nb_anomalies} déjà dessus`
+                            : `${j.nb_anomalies} anomalie${j.nb_anomalies > 1 ? "s" : ""}`}
+                          {j.emplacements ? ` · ${j.emplacements}` : ""}
+                        </span>
+                      </span>
+
+                      {/* Un geste réversible doit pouvoir se défaire (16octies) :
+                          les deux restent offerts tant qu'il y a quelque chose
+                          à ajouter ou à retirer. */}
+                      {j.restantes.length > 0 && (
+                        <form action={rattacherLaJournee} className="shrink-0">
+                          <input type="hidden" name="facture" value={facture.id} />
+                          <input type="hidden" name="interventions"
+                                 value={j.restantes.join(",")} />
+                          <BoutonEnvoi
+                            pendant="…"
+                            className="h-[36px] px-3 rounded-[10px] bg-plum text-white text-[12.5px] font-display font-semibold"
+                          >
+                            {partielle ? "+ le reste" : "+ Ajouter"}
+                          </BoutonEnvoi>
+                        </form>
+                      )}
+                      {dessus && !cette && (
+                        <form action={detacherLaJournee} className="shrink-0">
+                          <input type="hidden" name="facture" value={facture.id} />
+                          <input type="hidden" name="interventions"
+                                 value={j.interventions.join(",")} />
+                          <BoutonEnvoi
+                            pendant="…"
+                            className="h-[36px] px-3 rounded-[10px] bg-surface border border-line text-ink-soft text-[12.5px]"
+                          >
+                            − Retirer
+                          </BoutonEnvoi>
+                        </form>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+                Le passage d’aujourd’hui ne se retire pas d’ici : c’est lui qui a créé la
+                facture. Une journée retirée revient dans cette liste, elle ne disparaît
+                pas.
+              </p>
+            </div>
           )}
         </section>
 
@@ -764,7 +788,7 @@ export default async function DetailTournee({
           href={"/technique/historique" as Route}
           className="text-[12.5px] text-plum underline underline-offset-4 self-start"
         >
-          Tout l’historique
+          Tous les passages
         </Link>
       </div>
     </main>

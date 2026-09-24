@@ -368,6 +368,21 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    numéro de facture en vert avec le nombre de journées couvertes, ou « sans facture » en
    ambre : sans ce signe, rien ne distinguait ce qui est couvert de ce qui attend sa pièce.
 
+16terdecies. **Un passage et une facture sont deux LECTURES, pas deux écrans.** La 16duodecies
+   avait mis la facture sur le passage ; il restait deux tuiles dans Technique, deux listes, et
+   la même pièce des deux côtés — « je ne veux pas de pont, je veux réellement que les deux
+   écrans soient un seul et même écran ». On ne peut pas mettre un passage et une facture dans
+   une seule liste : ce sont deux objets. Mais ce sont deux façons de regarder UNE chose — ce
+   que l'hôtel a fait faire, et ce qu'il paye. Un seul écran, donc, `/technique/historique`,
+   avec deux onglets, et un seul chemin depuis Technique. `/technique/factures` n'est plus
+   qu'une redirection, pour les liens déjà partagés. **Une facture se lit par ce qu'elle
+   couvre** : sa carte porte les JOURNÉES, pas « 3 interventions » — on ouvrait pour savoir
+   lesquelles. Et « Passages sans facture » mène aux passages de l'intervenant : c'est le geste
+   qui suit, quand la pièce arrive. Sur le passage, « Ce que cette facture couvre » n'est plus
+   replié sous « Corriger la facture » — c'est la question qu'on se pose en ouvrant — et les
+   gestes portent des MOTS, « + Ajouter » et « − Retirer » : un signe nu ne dit pas ce qu'il
+   ajoute ni à quoi.
+
 16octies. **Un geste réversible doit pouvoir se défaire — jusqu'au bout.** Le « − » d'une
    facture détachait une intervention, et elle DISPARAISSAIT : `fn_journees_rapprochables`
    marquait la journée entière « déjà rattachée » dès qu'UNE de ses lignes l'était
@@ -888,6 +903,15 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   seule fois, dans `globals.css`** : boutons, dépliants et tuiles se réduisent et s'éclaircissent,
   les liens s'éclaircissent seulement (un lien au milieu d'une phrase qui rétrécit fait sauter le
   texte). Ne pas repeindre ça écran par écran.
+- **L'administration est un menu, pas un écran.** Tout y était posé bout à bout — l'état de la
+  base, la file des courriels, le test du dépôt, le journal des suppressions, les destinataires
+  — puis quatre tuiles tout en bas : « toutes les sous-menus en vrac ». On faisait défiler pour
+  trouver, et rien ne disait ce qu'il y avait plus loin. Trois groupes, chacun avec son compte
+  quand il y a quelque chose à regarder : **Réglages** (l'équipe, les bouteilles, alertes &
+  courriels), **Les données** (contrôle, ce qui a été supprimé, exporter), **L'application**
+  (`/administration/base` : ce que la base sait faire, où vont les fichiers). Ce qui bloque se
+  dit AVANT le menu, sinon on cherche le défaut dans l'écran qui le subit. Un menu qui contient
+  tout n'est plus un menu : chaque section vit sur son écran.
 - **Les listes longues se replient.** Les étages, les sections d'un écran : sur un téléphone tenu
   d'une main, faire défiler trois écrans avant d'atteindre le cinquième étage est un défaut.
 

@@ -68,18 +68,15 @@ export default async function HubTechnique() {
             badge={c.a_faire}
             ton="bg-plum-soft"
           />
+          {/* Un seul chemin : un passage et une facture sont deux lectures
+              d'une même chose, et l'aller-retour entre deux écrans qui
+              montraient la même pièce n'apprenait rien (règle 16duodecies). */}
           <Tuile
             href="/technique/historique"
-            titre="Historique"
-            detail="Les passages, leur coût, renvoyer un récapitulatif"
-            ton="bg-blue-soft"
-          />
-          <Tuile
-            href="/technique/factures"
-            titre="Factures"
-            detail="Rapprocher une facture des journées qu’elle couvre"
+            titre="Passages & factures"
+            detail="Ce qui a été fait, ce que ça coûte, ce que chaque facture couvre"
             badge={c.sans_facture}
-            ton="bg-amber-soft"
+            ton="bg-blue-soft"
           />
           <Tuile
             href="/stock"
@@ -152,7 +149,7 @@ export default async function HubTechnique() {
               href={"/technique/historique" as Route}
               className="text-[12.5px] text-plum underline underline-offset-4 self-start"
             >
-              Tout l’historique
+              Tous les passages
             </Link>
           </section>
         )}
