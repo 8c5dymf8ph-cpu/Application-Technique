@@ -3,14 +3,16 @@ import { sql } from "@/lib/db";
 import {
   jours,
   LIBELLE_STATUT,
-  peutSupprimer,
-  TON_STATUT,
   type StatutAnomalie,
+  suitLesDossiers,
+  TON_STATUT,
 } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import Link from "next/link";
 import type { Route } from "next";
 import { Vignettes } from "@/app/composants/photos";
+import { ApercuFil } from "@/app/composants/apercu-fil";
+import type { Message } from "@/app/composants/fil";
 import { profilActif } from "@/lib/profil";
 import { revalidatePath } from "next/cache";
 
@@ -48,7 +50,6 @@ type Passage = {
   facture_id: string | null;
 };
 type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" };
-type Compte = { anomalie_id: string; nb: number };
 
 export default async function HistoriqueDuLieu({
   params,
@@ -109,22 +110,27 @@ export default async function HistoriqueDuLieu({
   const parAnomalie = (id: string, moment: string) =>
     photos.filter((p) => p.anomalie_id === id && p.moment === moment).map((p) => p.chemin);
 
-  const commentaires = await sql<Compte[]>`
-    select f.anomalie_id, count(*)::int as nb
-    from v_fil_commentaires f join anomalies a on a.id = f.anomalie_id
-    where a.emplacement_id = ${emplacement.id} group by f.anomalie_id`;
-  const nbCommentaires = new Map(commentaires.map((c) => [c.anomalie_id, c.nb]));
+  // Le fil entier, pas seulement son compte : la fenêtre le montre sur place.
+  const fils = await sql<(Message & { anomalie_id: string })[]>`
+    select f.anomalie_id, f.commentaire_id, f.source, f.auteur, f.texte,
+           f.date_commentaire, f.decision::text
+      from v_fil_commentaires f join anomalies a on a.id = f.anomalie_id
+     where a.emplacement_id = ${emplacement.id}
+     order by f.date_commentaire`;
+  const fil = (id: string) => fils.filter((m) => m.anomalie_id === id);
 
   const profil = await profilActif();
-  const supprimable = peutSupprimer(profil?.role);
-
-  async function supprimer(donnees: FormData) {
-    "use server";
-    const profil_ = await profilActif();
-    if (!peutSupprimer(profil_?.role)) return;
-    await sql`delete from anomalies where id = ${String(donnees.get("id"))}`;
-    revalidatePath(`/gouvernante/historique/${lieu}`);
-  }
+  /**
+   * Corriger, pas supprimer.
+   *
+   * L'historique portait une poubelle au bout de chaque ligne, d'un seul
+   * appui et sans confirmation. Une anomalie d'il y a six mois a disparu
+   * comme ça — « je ne sais plus laquelle ». Or sur un historique, ce qu'on
+   * veut c'est CORRIGER : la reprise s'est trompée de porte, le libellé est
+   * approximatif, la date est fausse. Supprimer reste possible, mais depuis
+   * la fiche, où l'écran dit d'abord ce que ça emporte.
+   */
+  const corrigeable = suitLesDossiers(profil?.role);
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -179,34 +185,63 @@ export default async function HistoriqueDuLieu({
                           {l.constate_par ? `${l.constate_par}, ` : ""}
                           {jours(l.jours_depuis)}
                         </span>
-                        {(nbCommentaires.get(l.anomalie_id) ?? 0) > 0 && (
-                          <span className="flex items-center gap-1 text-plum">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                 stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                 strokeLinejoin="round">
-                              <path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
-                            </svg>
-                            {nbCommentaires.get(l.anomalie_id)}
-                          </span>
-                        )}
                       </p>
                     </Link>
-                    {supprimable && (
-                      <form action={supprimer} className="shrink-0">
-                        <input type="hidden" name="id" value={l.anomalie_id} />
-                        <button
-                          aria-label="Supprimer cette anomalie"
-                          className="w-11 h-11 rounded-[11px] bg-surface-muted grid place-items-center active:bg-red-soft"
-                        >
-                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-                               stroke="#9E3538" strokeWidth="1.8" strokeLinecap="round"
-                               strokeLinejoin="round">
-                            <path d="M5 7h14" /><path d="M10 11v6" /><path d="M14 11v6" />
-                            <path d="M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
-                            <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                          </svg>
-                        </button>
-                      </form>
+                    {/* Le fil, en fenêtre, À CÔTÉ du lien — un bouton dans un
+                        lien reste un lien. Elle porte tout : les photos, les
+                        passages, ce qui s'est dit. */}
+                    <ApercuFil
+                      messages={fil(l.anomalie_id)}
+                      libelle="Le fil"
+                      fiche={`/anomalie/${l.anomalie_id}`}
+                      contexte={{
+                        description: l.description,
+                        emplacement: emplacement.code,
+                        etage: emplacement.etage,
+                        statut: {
+                          libelle: LIBELLE_STATUT[l.statut],
+                          fond: TON_STATUT[l.statut].fond,
+                          texte: TON_STATUT[l.statut].texte,
+                        },
+                        depuis: jours(l.jours_depuis),
+                        constate_par: l.constate_par,
+                        constat: parAnomalie(l.anomalie_id, "constat"),
+                        apres: parAnomalie(l.anomalie_id, "apres"),
+                        passages: parPassage(l.anomalie_id).map((p) =>
+                          [
+                            `${p.intervenant ?? "intervenant inconnu"} le ${new Date(
+                              p.date_intervention,
+                            ).toLocaleDateString("fr-FR")}`,
+                            p.materiel ?? "aucun matériel",
+                            p.decision_gouvernante === "validee"
+                              ? `validé par ${p.gouvernante ?? "la gouvernante"}`
+                              : p.decision_gouvernante === "a_refaire"
+                                ? `à refaire, selon ${p.gouvernante ?? "la gouvernante"}`
+                                : p.decision_gouvernante === "en_cours"
+                                  ? `remis en cours par ${p.gouvernante ?? "la gouvernante"}`
+                                  : p.decision_technicien === "fait"
+                                    ? "déclaré fait — pas encore vérifié"
+                                    : "passage sans avis",
+                          ].join(" · "),
+                        ),
+                      }}
+                    />
+                    {/* Un crayon, pas une poubelle. Sur un historique on
+                        corrige — la reprise s'est trompée de porte, le
+                        libellé est approximatif, la date est fausse. */}
+                    {corrigeable && (
+                      <Link
+                        href={`/anomalie/${l.anomalie_id}#corriger` as Route}
+                        aria-label="Corriger cette anomalie"
+                        className="w-11 h-11 shrink-0 rounded-[11px] bg-surface-muted grid place-items-center"
+                      >
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                             stroke="#453A6E" strokeWidth="1.8" strokeLinecap="round"
+                             strokeLinejoin="round">
+                          <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+                          <path d="M14.5 5.5l3 3" />
+                        </svg>
+                      </Link>
                     )}
                   </div>
                   {/* Qui a réparé, quand, avec quoi, et ce que la gouvernante

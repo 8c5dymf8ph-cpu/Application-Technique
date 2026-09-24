@@ -123,3 +123,23 @@ export async function inventaireDeRepriseRetire(): Promise<boolean> {
   if (r.retire) presentes.add(cle);
   return r.retire;
 }
+
+/**
+ * Cette table est-elle déjà là ?
+ *
+ * La 0021 pose `anomalies_supprimees`. Le code part en ligne avant la
+ * migration : nommer une table absente ne rend pas une liste vide, Postgres
+ * refuse l'instruction et l'écran entier tombe. Même prudence que plus haut :
+ * on ne retient que les réponses positives.
+ */
+export async function tableExiste(table: string): Promise<boolean> {
+  const cle = `table:${table}`;
+  if (presentes.has(cle)) return true;
+
+  const [r] = await sql<{ presente: boolean }[]>`
+    select count(*) > 0 as presente
+      from information_schema.tables
+     where table_schema = 'public' and table_name = ${table}`;
+  if (r.presente) presentes.add(cle);
+  return r.presente;
+}

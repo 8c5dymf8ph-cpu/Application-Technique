@@ -102,6 +102,7 @@ export default async function Tournee({
     q?: string;
     rendre?: string;
     jour?: string;
+    vue?: string;
   }>;
 }) {
   const profil = await profilActif();
@@ -114,7 +115,7 @@ export default async function Tournee({
   // Celle qu'on vient de déclarer : elle se retrouve cochée, mise en avant, et
   // l'ancre du navigateur amène l'écran dessus. Sans cela on revenait en haut
   // d'une liste de douze lignes sans savoir ce qui avait changé.
-  const { fait, etage, q = "", rendre, jour } = await searchParams;
+  const { fait, etage, q = "", rendre, jour, vue } = await searchParams;
 
   /**
    * Saisir un passage d'un autre jour.
@@ -219,8 +220,19 @@ export default async function Tournee({
     l.description.toLowerCase().includes(terme) ||
     l.emplacement.toLowerCase().includes(terme);
 
+  /**
+   * Ne voir QUE ce qu'on a déclaré.
+   *
+   * Ce qui est coché passe en bas de la liste — c'est de l'avancement, pas du
+   * travail (14sexies) — mais sur cent dix-neuf lignes, le relire demandait de
+   * tout faire défiler, et on rend son lot sans avoir revu ce qu'on rend. Le
+   * compteur du haut bascule la liste ; le même appui la ramène.
+   */
   const vues = uniques.filter(
-    (l) => (choisi === null || l.etage === choisi) && correspond(l),
+    (l) =>
+      (choisi === null || l.etage === choisi) &&
+      correspond(l) &&
+      (vue !== "faites" || l.traitee),
   );
 
   const faites = vues.filter((l) => l.traitee);
@@ -403,9 +415,7 @@ export default async function Tournee({
         {/* Seule la liste défile, et de la place sous la dernière ligne : le
             bouton d'ajout flotte au-dessus et masquait ce qui était en bas. */}
         <div
-          className={`grow min-h-0 overflow-y-auto pl-3 pr-5 pt-3 flex flex-col gap-4 ${
-            encadre ? "pb-24" : "pb-4"
-          }`}
+          className="grow min-h-0 overflow-y-auto pl-3 pr-5 pt-3 pb-4 flex flex-col gap-4"
         >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
         {fait?.startsWith("passage-repris") && <Confirmation quoi={fait} />}
@@ -441,25 +451,86 @@ export default async function Tournee({
               </span>
             </span>
           </span>
-          <span className="shrink-0 text-right">
-            <span className="block font-display font-semibold text-[19px] tabular-nums">
-              {faitesEnTout.length}
-              <span className="text-ink-faint">/{uniques.length}</span>
+          {/* Le compteur est un bouton : ce qu'on a déclaré est en bas de
+              cent dix-neuf lignes, et le relire demandait de tout faire
+              défiler. Un appui ne montre que ça ; le même appui revient. */}
+          {faitesEnTout.length > 0 ? (
+            <Link
+              replace
+              href={
+                `/technique/${encodeURIComponent(nom)}?${new URLSearchParams({
+                  ...(choisi ? { etage: choisi } : {}),
+                  ...(q ? { q } : {}),
+                  ...(historique ? { jour: passe! } : {}),
+                  ...(vue === "faites" ? {} : { vue: "faites" }),
+                })}` as Route
+              }
+              className={`shrink-0 text-right rounded-[11px] px-2.5 py-1 ${
+                vue === "faites" ? "bg-green-soft" : ""
+              }`}
+              aria-label={
+                vue === "faites"
+                  ? "Revoir tout ce qu’il y a à traiter"
+                  : "Ne voir que ce que j’ai déclaré"
+              }
+            >
+              <span
+                className={`block font-display font-semibold text-[19px] tabular-nums ${
+                  vue === "faites" ? "text-green" : ""
+                }`}
+              >
+                {faitesEnTout.length}
+                <span className="text-ink-faint">/{uniques.length}</span>
+              </span>
+              <span className="block text-[11px] text-ink-faint">
+                {vue === "faites" ? "déclarées — tout voir" : "traitées"}
+              </span>
+            </Link>
+          ) : (
+            <span className="shrink-0 text-right">
+              <span className="block font-display font-semibold text-[19px] tabular-nums">
+                {faitesEnTout.length}
+                <span className="text-ink-faint">/{uniques.length}</span>
+              </span>
+              <span className="block text-[11px] text-ink-faint">traitées</span>
             </span>
-            <span className="block text-[11px] text-ink-faint">traitées</span>
-          </span>
+          )}
         </div>
 
         {/* Chercher plutôt que faire défiler. On tape « mitigeur » ou « 27 » :
             la description et le lieu, rien d'autre — un numéro de référence ne
             se retient pas. La recherche garde l'étage regardé. */}
+        {/* Chercher, et déclarer, sur la même ligne. Le « + » flottait dans
+            le coin bas-droit, par-dessus la liste : il masquait la dernière
+            ligne, le pouce l'attrapait en faisant défiler, et il n'a rien à
+            voir avec le geste du bas de l'écran, qui est « j'ai fini ». */}
         {uniques.length > 0 && (
-          <RechercheVive
-            valeur={q}
-            base={`/technique/${encodeURIComponent(nom)}`}
-            garde={choisi ? { etage: choisi } : {}}
-            placeholder="Chercher une anomalie, une chambre…"
-          />
+          <div className="flex items-center gap-2">
+            <span className="grow min-w-0">
+              <RechercheVive
+                valeur={q}
+                base={`/technique/${encodeURIComponent(nom)}`}
+                garde={choisi ? { etage: choisi } : {}}
+                placeholder="Chercher une anomalie, une chambre…"
+              />
+            </span>
+            {encadre && (
+              <Link
+                href={
+                  (historique
+                    ? `/gouvernante/declarer?jour=${passe}`
+                    : "/gouvernante/declarer") as Route
+                }
+                aria-label="Déclarer une anomalie"
+                className="shrink-0 w-12 h-12 rounded-[13px] bg-plum text-white grid place-items-center"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+                  <path d="M6 12h12" /><path d="M12 6v12" />
+                </svg>
+              </Link>
+            )}
+          </div>
         )}
 
         {/* L'avancement, dessiné : un chiffre seul ne se lit pas en marchant. */}
@@ -628,30 +699,6 @@ export default async function Tournee({
         </div>
       </div>
 
-      {/* Déclarer ce qu'on voit en passant, sans quitter sa tournée. Un
-          technicien n'y a pas droit : le catalogue est fermé et la déclaration
-          est un geste d'encadrement. */}
-      {/* Pendant la confirmation, rien ne doit rivaliser avec la question :
-          le bouton d'ajout flottait par-dessus le texte. */}
-      {encadre && !rendre && (
-        <Link
-          href={
-            (historique
-              ? `/gouvernante/declarer?jour=${passe}`
-              : "/gouvernante/declarer") as Route
-          }
-          aria-label="Déclarer une anomalie"
-          className={`fixed right-5 z-20 w-[58px] h-[58px] rounded-full bg-plum text-white grid place-items-center shadow-lg active:opacity-80 ${
-            faitesEnTout.length > 0 ? "bottom-[92px]" : "bottom-6"
-          }`}
-        >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               strokeWidth="2.4" strokeLinecap="round" aria-hidden>
-            <path d="M6 12h12" /><path d="M12 6v12" />
-          </svg>
-        </Link>
-      )}
-
       {/* Rendre son lot, en deux temps.
           « Fin d'intervention » envoie un message, et c'est irréversible pour
           qui le reçoit : un appui de trop en début de journée, et le
@@ -683,10 +730,26 @@ export default async function Tournee({
         <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
           {rendre ? (
             <div className="flex flex-col gap-3">
-              <div className="rounded-card bg-surface-muted px-4 py-3.5 flex flex-col gap-1.5">
+              <div className="rounded-card bg-surface-muted px-4 py-3.5 flex flex-col gap-2">
                 <p className="font-display font-semibold text-[16px]">
                   Tu as fini pour aujourd’hui ?
                 </p>
+                {/* Ce qui part, nommé. Un compte ne dit pas ce qu'on rend :
+                    on relit les lignes, pas un chiffre. La liste défile dans
+                    elle-même pour ne pas repousser les deux boutons hors de
+                    l'écran. */}
+                <ul className="max-h-[34dvh] overflow-y-auto flex flex-col gap-1 -mx-1 px-1">
+                  {faitesEnTout.map((l) => (
+                    <li key={l.anomalie_id} className="flex items-baseline gap-2">
+                      <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-white text-ink-soft text-[11px]">
+                        {l.emplacement}
+                      </span>
+                      <span className="grow min-w-0 text-[12.5px] leading-snug text-pretty">
+                        {l.description}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
                 <p className="text-[13.5px] text-ink-faint text-pretty">
                   {faitesEnTout.length} anomalie{faitesEnTout.length > 1 ? "s" : ""}{" "}
                   déclarée{faitesEnTout.length > 1 ? "s" : ""} faite

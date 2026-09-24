@@ -24,6 +24,10 @@ type Lot = {
   reprise: boolean;
   mail_recap_envoye_le: string | null;
   emplacements: string | null;
+  /** La facture qui couvre ce passage, et combien de passages elle couvre. */
+  facture: string | null;
+  facture_id: string | null;
+  nb_journees_couvertes: number;
 };
 
 export default async function Historique({
@@ -60,8 +64,23 @@ export default async function Historique({
            coalesce(t.cout_incomplet, false) as cout_incomplet,
            t.reprise, t.mail_recap_envoye_le,
            (select string_agg(distinct r.emplacement, ', ' order by r.emplacement)
-              from v_recap_interventions r where r.tournee = t.reference) as emplacements
+              from v_recap_interventions r where r.tournee = t.reference) as emplacements,
+           -- La facture qui couvre ce passage. Sans ce signe, on ne distingue
+           -- pas ce qui est déjà réglé de ce qui attend sa pièce.
+           fa.reference as facture, fa.id as facture_id,
+           coalesce(fa.nb_journees, 0)::int as nb_journees_couvertes
     from v_tournees t
+    left join lateral (
+      select f.id, f.reference,
+             (select count(distinct i2.date_intervention)
+                from facture_interventions fi2
+                join interventions i2 on i2.id = fi2.intervention_id
+               where fi2.facture_id = f.id) as nb_journees
+        from v_recap_interventions r
+        join facture_interventions fi on fi.intervention_id = r.intervention_id
+        join factures f               on f.id = fi.facture_id
+       where r.tournee = t.reference
+       limit 1) fa on true
     where t.nb_interventions > 0
       and (${qui} = 'tous' or t.intervenant = ${qui})
       and (${terme} = '' or exists (
@@ -153,10 +172,35 @@ export default async function Historique({
                     <span className="text-[12px] text-ink-soft truncate">{l.emplacements}</span>
                   )}
 
-                  <span className="flex flex-wrap gap-2 text-[11px]">
+                  <span className="flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="text-ink-faint">
                       {l.nb_interventions} anomalie{l.nb_interventions > 1 ? "s" : ""}
                     </span>
+                    {/* La facture, d'un coup d'œil : ce qui est couvert et ce
+                        qui attend encore sa pièce ne se distinguaient pas. Et
+                        quand elle couvre plusieurs journées, on le dit — c'est
+                        ce que l'écran des factures sait faire, et c'est
+                        l'information qui manquait ici. */}
+                    {l.facture_id ? (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-soft text-green">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                             strokeLinejoin="round" aria-hidden>
+                          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                          <path d="M14 3v5h5" />
+                        </svg>
+                        {l.facture ?? "facturé"}
+                        {l.nb_journees_couvertes > 1
+                          ? ` · ${l.nb_journees_couvertes} journées`
+                          : ""}
+                      </span>
+                    ) : (
+                      l.cout_total > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-amber-soft text-amber">
+                          sans facture
+                        </span>
+                      )
+                    )}
                     {l.nb_validees > 0 && (
                       <span className="text-green">{l.nb_validees} validée{l.nb_validees > 1 ? "s" : ""}</span>
                     )}

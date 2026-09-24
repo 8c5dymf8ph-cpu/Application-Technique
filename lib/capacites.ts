@@ -1,5 +1,6 @@
 import {
   colonneExiste,
+  tableExiste,
   inventaireDeRepriseRetire,
   regleContient,
   vueContient,
@@ -92,6 +93,11 @@ const ATTENDUES: Attendue[] = [
     titre: "Cr\u00e9er le libell\u00e9 qui manque",
     sans: "Sarah P et Miguel ne peuvent pas ajouter un libell\u00e9 au catalogue depuis l\u2019\u00e9cran de d\u00e9claration : il renvoie vers l\u2019administrateur alors qu\u2019ils LE sont.",
     verifier: () => regleContient("fn_peut_enrichir_le_catalogue", "operations"),
+  },
+  {
+    titre: "Rien ne dispara\u00eet en silence",
+    sans: "Une anomalie supprim\u00e9e ne laisse aucune trace : on ne peut plus dire ce qui a disparu, ni le red\u00e9clarer.",
+    verifier: () => tableExiste("anomalies_supprimees"),
   },
   {
     titre: "Fournisseurs de bouteilles",

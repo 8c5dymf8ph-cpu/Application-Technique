@@ -1478,5 +1478,33 @@ begin
 end $$;
 
 
+-- ===========================================================================
+-- SCÉNARIO 22 — Une anomalie supprimée laisse une trace. Un effacement qui ne
+-- laisse rien n'est pas une suppression, c'est un trou.
+-- ===========================================================================
+do $$
+declare
+  v_a uuid; n int; d anomalies_supprimees;
+begin
+  insert into anomalies (emplacement_id, description, constate_par)
+  select id, 'Anomalie qui va disparaître', '22222222-2222-2222-2222-222222222222'
+    from emplacements where code = '55' returning id into v_a;
+  insert into commentaires (anomalie_id, texte, auteur_id)
+  values (v_a, 'un mot avant de partir', '22222222-2222-2222-2222-222222222222');
+
+  delete from anomalies where id = v_a;
+
+  select count(*) into n from anomalies_supprimees where id = v_a;
+  assert n = 1, 'la suppression doit laisser une trace';
+
+  select * into d from anomalies_supprimees where id = v_a;
+  assert d.emplacement = '55', format('lieu perdu : %s', d.emplacement);
+  assert d.description = 'Anomalie qui va disparaître',
+    format('libellé perdu : %s', d.description);
+  assert d.nb_commentaires = 1,
+    format('%s commentaires notés, attendu 1', d.nb_commentaires);
+end $$;
+
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

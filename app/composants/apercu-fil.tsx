@@ -3,6 +3,22 @@
 import { useRef } from "react";
 import type { Message } from "./fil";
 import { Fil } from "./fil";
+import { Vignettes } from "./photos";
+
+/** Ce qu'une anomalie porte, en plus de ses mots. */
+export type Contexte = {
+  description: string;
+  emplacement: string;
+  etage?: string | null;
+  statut?: { libelle: string; fond: string; texte: string } | null;
+  depuis?: string | null;
+  constate_par?: string | null;
+  /** Les photos, par moment : au constat et après intervention. */
+  constat?: string[];
+  apres?: string[];
+  /** Qui est venu, quand, avec quoi, et ce que la gouvernante en a dit. */
+  passages?: string[];
+};
 
 /**
  * La bulle de commentaires, cliquable.
@@ -18,6 +34,7 @@ export function ApercuFil({
   eteint = false,
   libelle,
   fiche,
+  contexte,
 }: {
   messages: Message[];
   eteint?: boolean;
@@ -31,8 +48,19 @@ export function ApercuFil({
    * ne savait plus où appuyer.
    */
   libelle?: string;
-  /** Vers quoi renvoyer quand il n'y a encore rien à lire. */
+  /** Vers quoi renvoyer pour CORRIGER : la fenêtre montre, elle ne modifie pas. */
   fiche?: string;
+  /**
+   * Tout ce que la fiche montrait.
+   *
+   * « Le fil doit tout inclure, et en pop-up. Dès qu'on peut éviter des pages
+   * inutiles, on essaye. » Lire ce qui s'est passé sur une anomalie ne vaut
+   * pas un écran de plus : on y va, on lit trois lignes, on revient — et le
+   * retour ne ramène pas toujours là où on avait appuyé. La fenêtre porte
+   * donc l'anomalie entière ; la FICHE reste pour ce qui s'écrit, corriger et
+   * ajouter au fil.
+   */
+  contexte?: Contexte;
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
   // Sans libellé, la bulle chiffrée ne s'affiche que s'il y a des mots.
@@ -69,7 +97,9 @@ export function ApercuFil({
       >
         <div className="flex flex-col gap-3 p-4 max-h-[75vh] overflow-y-auto">
           <div className="flex items-center justify-between">
-            <span className="etiquette">Ce qui a été dit</span>
+            <span className="etiquette">
+              {contexte ? "L’anomalie" : "Ce qui a été dit"}
+            </span>
             <button
               type="button"
               onClick={() => fenetre.current?.close()}
@@ -82,12 +112,70 @@ export function ApercuFil({
               </svg>
             </button>
           </div>
+          {/* Ce qu'est l'anomalie, avant ce qui s'est dit dessus. Une
+              anomalie ne se montre jamais séparée de son lieu (règle 16bis). */}
+          {contexte && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-baseline gap-2.5">
+                <span className="shrink-0 px-2 py-0.5 rounded-md bg-plum-soft text-plum text-[12.5px] font-medium">
+                  {contexte.emplacement}
+                </span>
+                {contexte.etage && (
+                  <span className="text-[11.5px] text-ink-faint">{contexte.etage}</span>
+                )}
+              </div>
+              <p className="font-display font-semibold text-[16.5px] leading-snug text-pretty">
+                {contexte.description}
+              </p>
+              <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
+                {contexte.statut && (
+                  <span
+                    className={`px-2 py-0.5 rounded-md ${contexte.statut.fond} ${contexte.statut.texte}`}
+                  >
+                    {contexte.statut.libelle}
+                  </span>
+                )}
+                <span className="text-ink-faint">
+                  {contexte.constate_par ? `${contexte.constate_par}, ` : ""}
+                  {contexte.depuis}
+                </span>
+              </p>
+
+              {(contexte.constat?.length ?? 0) > 0 && (
+                <Vignettes chemins={contexte.constat!} titre="Au constat" ton="text-blue" />
+              )}
+              {(contexte.apres?.length ?? 0) > 0 && (
+                <Vignettes
+                  chemins={contexte.apres!}
+                  titre="Après intervention"
+                  ton="text-green"
+                />
+              )}
+
+              {(contexte.passages?.length ?? 0) > 0 && (
+                <div className="flex flex-col gap-1 border-t border-line pt-2.5">
+                  {contexte.passages!.map((t, i) => (
+                    <p
+                      key={i}
+                      className="text-[12px] text-ink-soft text-pretty border-l-2 border-line pl-2.5"
+                    >
+                      {t}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <span className="etiquette border-t border-line pt-2.5">
+                Ce qui a été dit
+              </span>
+            </div>
+          )}
+
           {messages.length > 0 ? (
             <Fil messages={messages} />
           ) : (
             <p className="text-[13.5px] text-ink-faint text-pretty py-2">
               Rien n’a encore été écrit ici.
-              {fiche ? " La fiche de l’anomalie porte le reste." : ""}
             </p>
           )}
           {fiche && (
@@ -95,7 +183,7 @@ export function ApercuFil({
               href={fiche}
               className="text-[12.5px] text-plum underline underline-offset-4 self-start"
             >
-              Ouvrir la fiche de l’anomalie
+              {contexte ? "Ajouter un mot, une photo, corriger" : "Ouvrir la fiche"}
             </a>
           )}
         </div>

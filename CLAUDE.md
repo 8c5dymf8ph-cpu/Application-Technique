@@ -356,6 +356,15 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    calculé en base ; il manquait de le montrer. Un total incomplet le dit (règle 6), et un
    montant non saisi le dit aussi plutôt que d'afficher le matériel seul comme si c'était tout.
 
+16duodecies. **La facture et l'historique sont deux entrées sur la même chose.** Depuis un
+   passage, on saisit la facture de CE passage — c'est le geste courant, il doit rester à trois
+   appuis. Depuis l'écran d'une facture, on regroupe plusieurs journées — c'est ce que Serafino
+   impose en facturant son mois. Les deux écrivent déjà dans la même `factures` : il manquait le
+   pont. Le passage porte donc « Cette facture couvre d'autres journées ? » qui mène à l'écran de
+   la facture, et l'historique porte **la pastille** — le numéro de facture en vert, avec le
+   nombre de journées couvertes quand il y en a plusieurs, ou « sans facture » en ambre. Sans ce
+   signe, rien ne distinguait ce qui est déjà couvert de ce qui attend sa pièce.
+
 16octies. **Un geste réversible doit pouvoir se défaire — jusqu'au bout.** Le « − » d'une
    facture détachait une intervention, et elle DISPARAISSAIT : `fn_journees_rapprochables`
    marquait la journée entière « déjà rattachée » dès qu'UNE de ses lignes l'était
@@ -549,6 +558,21 @@ et l'appui paraissait n'avoir rien fait.
 retire des listes de saisie et son prénom reste sur les dossiers qu'elle a constatés, des années
 après son départ. `/administration/equipe` tient les deux listes à jour, et la gouvernante peut
 s'en servir : elle n'a pas à attendre l'administrateur pour enregistrer une arrivée.
+
+**Sur un historique, on corrige — on ne supprime pas.** L'écran d'un lieu portait une poubelle au
+bout de chaque ligne, d'un seul appui et sans confirmation : une anomalie d'il y a six mois a
+disparu comme ça, « et je ne sais plus laquelle ». Or ce qu'on veut sur un historique, c'est
+corriger — la reprise s'est trompée de porte, le libellé est approximatif, la date est fausse.
+C'est donc un crayon, qui mène à la fiche. Supprimer reste possible depuis la fiche, où l'écran
+dit d'abord ce que ça emporte.
+
+**Une suppression laisse une trace.** Un effacement qui ne laisse RIEN n'est pas une suppression,
+c'est un trou : on ne peut ni dire ce qu'on a perdu, ni le remettre. `tg_journal_suppression_anomalie`
+(migration 0021) copie la ligne avant qu'elle parte — son lieu, son libellé, qui l'avait
+constatée, et combien de photos, de commentaires et d'interventions s'en vont avec elle — et
+`/administration` les liste sous « Ce qui a été supprimé ». Le journal ne voit que ce qui passe
+APRÈS son installation : ce qui a disparu avant lui n'y figure pas, et l'écran le dit plutôt que
+de laisser croire à une liste complète.
 
 **Supprimer une anomalie efface une trace : trois personnes, jamais un technicien.** Victoria,
 Sarah P et Miguel — c'est-à-dire `peutValider`. C'est la gouvernante qui déclare, donc c'est elle
@@ -806,12 +830,29 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   `RelireEnRevenant` vit donc dans la mise en page, clé sur le chemin, et vaut pour tout.
   `router.refresh()` garde la position de défilement : c'est un aller-retour, et ce qui s'affiche
   est vrai. Ne plus jamais poser ça écran par écran.
+- **Le fil porte l'anomalie ENTIÈRE, pas seulement les mots.** « Dès qu'on peut éviter des pages
+  inutiles, on essaye. » Lire ce qui s'est passé sur une anomalie ne vaut pas un écran de plus :
+  on y va, on lit trois lignes, on revient — et le retour ne ramène pas toujours là où on avait
+  appuyé. La fenêtre montre donc le lieu, l'état, qui a constaté, les photos des deux moments,
+  chaque passage avec son matériel et l'avis de la gouvernante, puis le fil. La FICHE ne reste que
+  pour ce qui s'ÉCRIT : ajouter un mot, une photo, corriger. Une fenêtre montre, un écran modifie.
 - **« Le fil » reste « Le fil », et au même endroit.** Le remplacer par un lien « La fiche » quand
   il n'y avait pas encore de commentaire déplaçait la cible d'une ligne à l'autre selon qu'il y
   avait eu des mots ou non — on ne savait plus où appuyer — et renvoyait vers un écran de plus,
   d'où le retour ne ramenait pas là où on avait appuyé. `ApercuFil` prend `libelle` et `fiche` :
   le bouton est toujours là, la fenêtre s'ouvre toujours, et elle dit « rien n'a encore été
   écrit » avec le chemin vers la fiche dedans.
+- **Le « + » n'est pas un bouton flottant.** Il vivait dans le coin bas-droit, par-dessus la
+  liste : il masquait la dernière ligne, le pouce l'attrapait en faisant défiler, et il n'a rien à
+  voir avec le geste du bas de l'écran, qui est « j'ai fini ». Il est maintenant à côté de la
+  recherche — chercher et déclarer sont deux gestes du même moment, quand on arrive devant une
+  porte.
+- **Ce qu'on a déclaré se relit d'un appui, et avant de rendre.** Ce qui est coché passe en bas de
+  la liste (14sexies) — mais sur cent dix-neuf lignes, le relire demandait de tout faire défiler,
+  et on rendait son lot sans avoir revu ce qu'on rend. Le compteur du haut est devenu un bouton :
+  un appui ne montre que les déclarées, le même appui ramène tout. Et la confirmation de « Fin
+  d'intervention » les NOMME, dans une liste qui défile dans elle-même pour ne pas repousser les
+  deux boutons hors de l'écran. Un compte ne dit pas ce qu'on rend.
 - **Changer de profil se fait EN HAUT.** L'application est partagée : on la prend des mains de
   quelqu'un d'autre, et la première chose qu'on vérifie est le nom affiché. Le lien vivait tout en
   bas, après les tuiles — il fallait faire défiler pour corriger ce qu'on lisait en haut. C'est

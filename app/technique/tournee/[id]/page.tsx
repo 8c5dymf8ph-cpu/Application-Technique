@@ -118,6 +118,18 @@ export default async function DetailTournee({
     : [];
   const fil = (id: string) => fils.filter((m) => m.anomalie_id === id);
 
+  // Les photos des deux moments : la fenêtre du fil les montre, plutôt que de
+  // renvoyer sur un écran de plus pour les regarder.
+  const photos = lignes.length
+    ? await sql<{ anomalie_id: string; chemin: string; moment: string }[]>`
+        select anomalie_id, chemin, moment::text
+          from photos_anomalie
+         where anomalie_id = any(${lignes.map((l) => l.anomalie_id)}::uuid[])
+         order by prise_le`
+    : [];
+  const clichés = (id: string, moment: string) =>
+    photos.filter((p) => p.anomalie_id === id && p.moment === moment).map((p) => p.chemin);
+
   /**
    * Qui est venu, et s'il facture.
    *
@@ -397,14 +409,13 @@ export default async function DetailTournee({
                 />
 
                 {facture?.fichier_url && (
-                  <a
-                    href={`/photo/${facture.fichier_url}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[13.5px] text-plum underline underline-offset-4"
+                  <VoirDocument
+                    chemin={facture.fichier_url}
+                    titre={`Facture ${facture.reference ?? ""}`}
+                    className="text-[13.5px] text-plum underline underline-offset-4 self-start"
                   >
                     Voir la facture jointe
-                  </a>
+                  </VoirDocument>
                 )}
 
                 <button className="h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[16px]">
@@ -415,6 +426,29 @@ export default async function DetailTournee({
                   remplace pas.
                 </p>
               </form>
+
+              {/* Le pont entre les deux écrans. Ici on saisit la facture d'UN
+                  passage — c'est le geste courant, et il doit rester à trois
+                  appuis. Mais Serafino facture son mois : la même pièce couvre
+                  souvent cinq journées. Plutôt que de refaire ici la liste des
+                  journées rapprochables, on renvoie là où elle vit déjà, avec
+                  la facture qu'on vient de saisir. */}
+              {facture && (
+                <Link
+                  href={`/technique/facture/${facture.id}` as Route}
+                  className="mt-2.5 carte px-4 py-3 flex items-center gap-3"
+                >
+                  <span className="grow min-w-0">
+                    <span className="block text-[14px]">
+                      Cette facture couvre d’autres journées ?
+                    </span>
+                    <span className="block text-[11.5px] text-ink-faint text-pretty">
+                      Les ajouter, en retirer, voir ce qu’elles ont coûté en tout.
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-ink-faint">›</span>
+                </Link>
+              )}
             </details>
           )}
         </section>
@@ -520,6 +554,26 @@ export default async function DetailTournee({
                         messages={fil(l.anomalie_id)}
                         libelle="Le fil"
                         fiche={`/anomalie/${l.anomalie_id}`}
+                        contexte={{
+                          description: l.description,
+                          emplacement: l.emplacement,
+                          constat: clichés(l.anomalie_id, "constat"),
+                          apres: clichés(l.anomalie_id, "apres"),
+                          passages: [
+                            [
+                              lot.intervenant ?? "intervenant inconnu",
+                              `le ${new Date(l.date_intervention).toLocaleDateString("fr-FR")}`,
+                              l.materiel ?? "aucun matériel",
+                            ].join(" · "),
+                            l.decision_gouvernante === "validee"
+                              ? `validé par ${l.gouvernante ?? "la gouvernante"}`
+                              : l.decision_gouvernante === "a_refaire"
+                                ? `à refaire, selon ${l.gouvernante ?? "la gouvernante"}`
+                                : l.decision_gouvernante === "en_cours"
+                                  ? `remis en cours par ${l.gouvernante ?? "la gouvernante"}`
+                                  : "déclaré fait — pas encore vérifié",
+                          ],
+                        }}
                       />
                     </span>
                   </div>
