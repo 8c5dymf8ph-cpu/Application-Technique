@@ -57,14 +57,32 @@ période suivante. Mesuré : `extincteur`, `désenfumage` → **zéro ligne dans
 rien à reprendre ; tout est à saisir. Ce qui manque ici n'est pas une chronologie, c'est une
 **échéance** et une pièce jointe.
 
-### C. L'équipement qui récidive — l'ascenseur en panne
-Les 10 lignes « ascenseur » de l'export sont **5 pannes** (21/05, 29/05, 18/08, 09/09, 11/12/2025)
-et 5 spots à changer à côté. Ce ne sont pas des épisodes : ce sont des anomalies ponctuelles
-ordinaires, sur un lieu qui s'appelle « Ascenseur ».
+### C. Le dossier permanent — l'ascenseur, les nuisibles
+**Correction d'une première version de cette note**, qui disait « ne rien construire pour
+l'ascenseur, le comptage des récurrences suffit ». C'est faux, et les données le montrent.
 
-> **Et cette forme est déjà traitée.** « Ascenseur en panne » est un libellé du catalogue,
-> « Ascenseur » est un lieu : `v_frequence_anomalie_lieu` dit déjà « 5 fois ». Ne rien construire
-> pour elle. Le seul manque côté ascenseur relève de la forme **B** — son contrôle annuel.
+Un dossier permanent **ne se clôt jamais**. Il n'a pas de fin, il a un **rythme**. Ce qu'on y
+lit n'est pas « est-ce réglé ? » mais « quand est-on passé la dernière fois, que s'est-il passé
+depuis, et quand revient-on ? »
+
+Mesuré sur l'export :
+
+- **Ascenseur** — 5 pannes en 7 mois (21/05, 29/05, 18/08, 09/09, 11/12/2025), toutes résolues
+  en 0 à 4 jours, **plus** une visite contractuelle KONE le 26/02/2026 (« de 11h40 à 11h45 —
+  rien à signaler »). Six anomalies indépendantes, aucun lien entre elles. Impossible de dire
+  « KONE est passé six fois, voici le contrat, la prochaine visite est due en février ».
+- **Nuisibles / rongeurs** — une vérification contractuelle le 26/05/2026 couvrant **cinq lieux
+  d'un coup** (Lobby — deux fois, doublon —, Cuisine, Local TGBT, Lingerie), toutes « RAS ». Un
+  acte, plusieurs lieux, un résultat par lieu : la même forme que le balayage d'EcoFlair, et
+  elle apparaît deux fois dans les données de façon indépendante.
+
+Une **seule** visite contractuelle de chaque, dans tout l'export. Où sont les précédentes ?
+Quand sont les suivantes ? Rien ne le dit — et c'est précisément le suivi constant qui manque.
+
+> Les pannes d'ascenseur restent des anomalies ordinaires, déclarées comme aujourd'hui. Ce qui
+> change, c'est qu'elles **atterrissent dans le dossier de l'équipement**, à côté des visites de
+> contrat. Le comptage des récurrences continue de fonctionner ; il ne répond simplement pas à
+> la question posée.
 
 ---
 
@@ -213,5 +231,10 @@ Ces deux chantiers ne dépendent pas du modèle ci-dessus et le préparent.
    2024 et de nouveau en 2025 : deux suivis, deux actes, aucune ambiguïté. Mais une anomalie
    déclarée une fois et rattachée à deux histoires n'a pas de sens — un rattachement unique
    suffit, et c'est plus simple à lire.
-5. **L'ampleur.** C'est le plus gros ajout depuis les bouteilles : deux tables de référence,
+5. **Un dossier permanent peut-il contenir des épisodes ?** Rongeurs et punaises relèvent du
+   même contrat de nuisibles : un dossier permanent « Nuisibles », avec ses vérifications
+   périodiques, et des épisodes qui s'ouvrent dedans quand on trouve quelque chose. C'est
+   naturel, mais c'est aussi un niveau d'imbrication de plus — à ne faire que si la lecture y
+   gagne vraiment.
+6. **L'ampleur.** C'est le plus gros ajout depuis les bouteilles : deux tables de référence,
    quatre tables, un écran de suivi, un écran de saisie d'acte, et un rattachement du passé.
