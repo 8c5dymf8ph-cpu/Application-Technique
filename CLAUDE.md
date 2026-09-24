@@ -452,6 +452,9 @@ donnees/installation/  les fichiers à jouer en production, dans l'ordre d'ordre
 donnees/export/        l'export « TEST Tech 3 » de l'hôtel, source de tout côté
                        technique. `importer_anomalies.py` en fait une base
                        neuve, `reprendre_export.py` aligne une base vivante
+donnees/recuperation/  ce qui manque à la base et comment le remettre, produit par
+                       outils/retrouver_les_anomalies_disparues.py — à jouer dans
+                       l'éditeur SQL de Supabase, le 1 regarde, le 2 remet
 donnees/demo_*.sql     données inventées, pour regarder les écrans. Jamais en production.
 ```
 
