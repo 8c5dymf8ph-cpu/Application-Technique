@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivre une histoire, pas seulement des anomalies</title>
+<style>
+  :root{
+    --ground:#F4F2F7; --surface:#fff; --muted:#FAF9FC; --line:#E7E4EF;
+    --ink:#1B1930; --soft:#4F4B6B; --faint:#8E8AA3;
+    --plum:#453A6E; --plum-soft:#EDE9F5;
+    --amber:#A8641F; --amber-soft:#F6EEE3;
+    --blue:#3A6499; --blue-soft:#E6EDF6;
+    --green:#357051; --green-soft:#E3EFE8;
+    --red:#9E3538; --red-soft:#F7E6E7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font:16px/1.55 Georgia,'Times New Roman',serif;
+    -webkit-text-size-adjust:100%}
+  .page{max-width:780px;margin:0 auto;padding:28px 18px 72px}
+  h1{font-size:28px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em}
+  .chapeau{color:var(--soft);font-size:15px;margin:0 0 30px}
+  h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    margin:40px 0 12px;font-family:system-ui,sans-serif;font-weight:600}
+  h3{font-size:18px;margin:0 0 8px;line-height:1.3}
+  p{margin:0 0 12px}
+  .carte{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px}
+  .petit{font-size:13.5px;color:var(--soft)}
+  .faint{color:var(--faint)}
+  code{background:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+    font:13px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  /* --- le mur de lignes identiques --- */
+  .mur{display:flex;flex-wrap:wrap;gap:4px;margin:14px 0 4px}
+  .mur span{background:var(--muted);border:1px solid var(--line);border-radius:6px;
+    padding:3px 7px;font-size:11.5px;color:var(--faint);font-family:system-ui,sans-serif}
+  .mur span.chaude{background:var(--red-soft);border-color:#e3c3c4;color:var(--red);font-weight:600}
+
+  /* --- la frise --- */
+  .frise{position:relative;margin:6px 0 0;padding-left:26px}
+  .frise::before{content:"";position:absolute;left:7px;top:8px;bottom:12px;width:2px;background:var(--line)}
+  .etape{position:relative;margin-bottom:20px}
+  .etape::before{content:"";position:absolute;left:-23px;top:5px;width:12px;height:12px;
+    border-radius:50%;background:var(--plum);border:2px solid var(--surface);box-shadow:0 0 0 2px var(--plum)}
+  .etape.vert::before{background:var(--green);box-shadow:0 0 0 2px var(--green)}
+  .etape.rouge::before{background:var(--red);box-shadow:0 0 0 2px var(--red)}
+  .etape.creux::before{background:var(--surface);box-shadow:0 0 0 2px var(--line)}
+  .quand{font-family:system-ui,sans-serif;font-size:11.5px;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--faint);font-weight:600}
+  .quoi{font-size:16px;margin:2px 0 3px;line-height:1.35}
+  .qui{font-size:13.5px;color:var(--soft)}
+
+  .puce{display:inline-block;font-family:system-ui,sans-serif;font-size:11.5px;font-weight:600;
+    padding:2px 8px;border-radius:7px;vertical-align:1px}
+  .p-vert{background:var(--green-soft);color:var(--green)}
+  .p-rouge{background:var(--red-soft);color:var(--red)}
+  .p-ambre{background:var(--amber-soft);color:var(--amber)}
+  .p-bleu{background:var(--blue-soft);color:var(--blue)}
+  .p-prune{background:var(--plum-soft);color:var(--plum)}
+
+  .defaut{border-left:3px solid var(--amber);background:var(--amber-soft);
+    border-radius:0 12px 12px 0;padding:14px 18px;margin-bottom:10px}
+  .defaut b{display:block;margin-bottom:4px}
+  .defaut .petit{color:#7d4c17}
+
+  .question{border:1.5px solid var(--plum);border-radius:14px;padding:18px 20px;
+    background:var(--plum-soft);margin-bottom:12px}
+  .question b{display:block;margin-bottom:6px;font-size:17px}
+
+  .deux{display:grid;gap:12px}
+  @media(min-width:660px){.deux{grid-template-columns:1fr 1fr}}
+  .pour,.contre{border-radius:10px;padding:12px 14px;font-size:14px}
+  .pour{background:var(--green-soft)} .contre{background:var(--red-soft)}
+  .pour b,.contre b{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.07em;
+    text-transform:uppercase;display:block;margin-bottom:4px}
+  .pour b{color:var(--green)} .contre b{color:var(--red)}
+
+  .note{font-size:13px;color:var(--faint);border-top:1px solid var(--line);
+    padding-top:14px;margin-top:34px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0 4px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--faint);font-weight:600}
+  td.n{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--soft)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Suivre une histoire, pas seulement des anomalies</h1>
+<p class="chapeau">
+  Réflexion à partir d’un cas réel : les punaises de lit. Rien n’est construit —
+  c’est un état des lieux et trois questions à trancher.
+</p>
+
+<h2>Ce que la base contient vraiment</h2>
+
+<div class="carte">
+  <h3>38 anomalies portent le mot « punaise ».</h3>
+  <p class="petit">
+    Toutes déclarées le <b>30 septembre 2025</b>. Une par chambre, plus une.
+    Voici ce que donne l’historique aujourd’hui :
+  </p>
+  <div class="mur">
+    <span>01</span><span>02</span><span>03</span><span>11</span><span>12</span><span>14</span>
+    <span>15</span><span>16</span><span>18</span><span>21</span><span>22</span><span>24</span>
+    <span>25</span><span>26</span><span>27</span><span>28</span><span>31</span><span>32</span>
+    <span>34</span><span>35</span><span>36</span><span>37</span><span>38</span><span>41</span>
+    <span>42</span><span>44</span><span>45</span><span>46</span><span>47</span><span>48</span>
+    <span>51</span><span>52</span><span class="chaude">54</span><span>55</span><span>56</span>
+    <span>57</span><span>58</span>
+  </div>
+  <p class="petit faint" style="margin-top:10px">
+    37 lignes rigoureusement identiques, le même jour, le même libellé, le même
+    intervenant. Un suivi chronologique de ça ne montre qu’un mur.
+    <b>Sauf que l’une d’elles n’est pas comme les autres</b> — et rien ne le dit.
+  </p>
+</div>
+
+<h2>La même histoire, telle qu’elle s’est passée</h2>
+
+<div class="carte">
+  <div class="frise">
+    <div class="etape">
+      <div class="quand">Mardi 30 septembre 2025</div>
+      <div class="quoi">EcoFlair inspecte <b>37 chambres</b></div>
+      <div class="qui">Un passage, 37 interventions. <span class="puce p-bleu">inspection</span></div>
+    </div>
+    <div class="etape vert">
+      <div class="quand">Le même jour</div>
+      <div class="quoi">36 chambres : rien à signaler</div>
+      <div class="qui">Écrit « RAS » dans le commentaire, 36 fois.
+        <span class="puce p-vert">négatif</span></div>
+    </div>
+    <div class="etape rouge">
+      <div class="quand">Le même jour</div>
+      <div class="quoi"><b>Chambre 54</b> — punaises constatées à la tête de lit</div>
+      <div class="qui">La seule information qui compte de toute la campagne.
+        <span class="puce p-rouge">positif</span></div>
+    </div>
+    <div class="etape">
+      <div class="quand">Mercredi 1<sup>er</sup> octobre 2025</div>
+      <div class="quoi">Rachid traite la chambre 54</div>
+      <div class="qui">
+        N’existe <b>que comme une phrase dans un commentaire</b>.
+        L’intervention enregistrée, elle, porte la date du 10 janvier 2025.
+        <span class="puce p-ambre">date inversée</span>
+      </div>
+    </div>
+    <div class="etape creux">
+      <div class="quand">Ensuite</div>
+      <div class="quoi faint">Rien.</div>
+      <div class="qui faint">
+        Aucune contre-visite enregistrée, aucune facture EcoFlair, aucune clôture.
+        On ne peut pas dire si c’est réglé.
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>Les quatre défauts que ce cas révèle</h2>
+
+<div class="defaut">
+  <b>1. Le résultat d’une vérification est en texte libre.</b>
+  <p class="petit" style="margin:0">
+    « RAS » d’un côté, « Punaises constaté au niveau de la tête de lit » de l’autre.
+    C’est la seule chose qu’on cherche, et c’est la seule qui ne soit pas structurée.
+    Impossible de demander à l’application <i>où</i> et <i>quand</i> on en a trouvé.
+  </p>
+</div>
+
+<div class="defaut">
+  <b>2. Le traitement n’est pas un acte, c’est une phrase.</b>
+  <p class="petit" style="margin:0">
+    « Le 01/10/25 Rachid a fait un traitement » est écrit dans un commentaire. L’intervention
+    qui existe en base est datée du <code>2025-01-10</code> : le jour et le mois inversés,
+    encore — le traitement est donc classé <b>neuf mois avant</b> la détection.
+  </p>
+</div>
+
+<div class="defaut">
+  <b>3. Le catalogue a reçu des événements au lieu de libellés.</b>
+  <table>
+    <tr><th>Libellé au catalogue</th><th>Anomalies</th></tr>
+    <tr><td>Demande de vérification s’il y a la présence de punaises</td><td class="n">37</td></tr>
+    <tr><td>Détection de punaises de lit au niveau de la tête de lit constaté le <b>30/09/25</b> par la societe <b>Ecoflair</b></td><td class="n">1</td></tr>
+    <tr><td>Détection de punaises de lit au niveau de la tête de lit constaté le <b>11/10/24</b> par la societe <b>Ecoflair</b></td><td class="n">0</td></tr>
+    <tr><td>Un client suspecte la présence de punaises</td><td class="n">0</td></tr>
+  </table>
+  <p class="petit" style="margin:6px 0 0">
+    Deux de ces quatre libellés portent une <b>date</b> et une <b>société</b>. Ce ne sont pas des
+    libellés, ce sont des faits — et chaque nouveau fait créera son propre libellé. Le comptage
+    des récurrences, qui est la raison d’être du catalogue fermé, vaut alors 1 et 0.
+  </p>
+</div>
+
+<div class="defaut">
+  <b>4. La campagne n’a pas de coût.</b>
+  <p class="petit" style="margin:0">
+    Aucune facture EcoFlair n’est rattachée. Le passage du 30/09 existe, les 37 interventions
+    existent, mais personne ne peut dire ce que l’épisode a coûté.
+  </p>
+</div>
+
+<h2>Ce qui manque, au fond</h2>
+
+<div class="carte">
+  <p>
+    Votre règle de départ — <b>le libellé est standardisé, seul le commentaire varie</b> — est
+    juste, mais elle suppose trois choses :
+  </p>
+  <p class="petit" style="margin-left:14px">
+    ① l’anomalie a <b>un</b> lieu &nbsp;·&nbsp;
+    ② elle se termine par « réparé » &nbsp;·&nbsp;
+    ③ chaque occurrence est indépendante des autres.
+  </p>
+  <p>Une histoire de punaises casse les trois :</p>
+  <p class="petit" style="margin-left:14px">
+    ① elle traverse des chambres, et <b>le voisinage compte</b> &nbsp;·&nbsp;
+    ② elle ne se termine pas par une réparation mais par une <b>absence de retour</b>, qui ne
+    se sait qu’après des contre-visites &nbsp;·&nbsp;
+    ③ la 54 en septembre et la 55 en octobre, c’est probablement <b>la même histoire</b>.
+  </p>
+  <p style="margin-bottom:0">
+    Il manque donc deux choses, et elles sont <b>indépendantes l’une de l’autre</b> : dire le
+    <b>résultat</b> d’une vérification, et grouper des anomalies en une <b>histoire</b>.
+  </p>
+</div>
+
+<h2>Trois questions à trancher — avant d’écrire quoi que ce soit</h2>
+
+<div class="question">
+  <b>① Une vérification négative doit-elle laisser une trace dans la chambre ?</b>
+  <div class="deux" style="margin-top:10px">
+    <div class="pour"><b>Oui</b>
+      « On a vérifié la 27 le 30/09, il n’y avait rien » est précieux quand un client se plaint
+      trois semaines plus tard. C’est une preuve.</div>
+    <div class="contre"><b>Non</b>
+      37 lignes de bruit par campagne dans 37 historiques de chambre, et le comptage des
+      récurrences de chaque chambre s’en trouve faussé.</div>
+  </div>
+  <p class="petit" style="margin:10px 0 0;color:var(--plum)">
+    Une troisième voie : la vérification reste <b>un seul objet</b> (le passage d’EcoFlair), et
+    seules les chambres <b>positives</b> deviennent des anomalies. La preuve existe quand même —
+    elle est sur le passage, pas dans 37 chambres.
+  </p>
+</div>
+
+<div class="question">
+  <b>② Le « résultat » mérite-t-il d’être un champ ?</b>
+  <p class="petit" style="margin:0">
+    Certaines anomalies sont des <b>questions</b>, pas des problèmes : « vérifier s’il y a des
+    punaises », « contrôler les détecteurs de fumée », « vérifier la VMC ». Leur réponse est
+    <b>trouvé / rien trouvé</b>, et aujourd’hui elle est en texte libre. C’est le changement le
+    moins cher et le plus rentable : une ligne de plus sur un libellé du catalogue
+    (« celui-ci attend un résultat »), un choix à deux boutons quand on la clôt.
+    Il ne sert pas qu’aux punaises.
+  </p>
+</div>
+
+<div class="question">
+  <b>③ Faut-il un « dossier » qui groupe des anomalies ?</b>
+  <p class="petit" style="margin:0 0 8px">
+    C’est exactement la forme du <b>dossier bouteille</b>, appliquée aux anomalies : un nom
+    (« Punaises — septembre 2025 »), une date d’ouverture, une chronologie qui fusionne les
+    anomalies de plusieurs chambres, leurs commentaires, leurs photos, leurs passages et leurs
+    factures. Il peut aussi porter <b>ses propres</b> pièces — le rapport d’EcoFlair — sans être
+    attaché à une chambre.
+  </p>
+  <p class="petit" style="margin:0">
+    Et comme vos données d’avant ne sont pas normalisées, il faut pouvoir le construire
+    <b>à l’envers</b> : chercher un mot dans les libellés <b>et dans les commentaires</b>,
+    voir les candidats avec leur chambre et leur date, en cocher, et les rattacher. Un geste
+    qu’on ne fait qu’une fois par histoire, et qui transforme un historique brut en chronologie
+    sans rien réécrire.
+  </p>
+</div>
+
+<h2>Ce que ça donnerait, sur ce cas</h2>
+
+<div class="carte" style="border-color:var(--plum)">
+  <div class="quand" style="color:var(--plum)">Dossier</div>
+  <h3 style="margin-top:2px">Punaises de lit — chambre 54, septembre 2025</h3>
+  <p class="petit faint" style="margin-bottom:14px">
+    Ouvert le 30/09/2025 · <span class="puce p-ambre">à surveiller</span> · 1 chambre positive
+    sur 37 vérifiées
+  </p>
+  <div class="frise">
+    <div class="etape"><div class="quand">30 sept.</div>
+      <div class="quoi">Inspection générale — EcoFlair</div>
+      <div class="qui">37 chambres · <span class="puce p-vert">36 négatives</span>
+        <span class="puce p-rouge">1 positive</span></div></div>
+    <div class="etape rouge"><div class="quand">30 sept.</div>
+      <div class="quoi">Chambre 54 — tête de lit</div>
+      <div class="qui">Photo du constat · commentaire de Victoria</div></div>
+    <div class="etape"><div class="quand">1<sup>er</sup> oct.</div>
+      <div class="quoi">Traitement — Rachid</div>
+      <div class="qui">Matériel sorti · à sa vraie date</div></div>
+    <div class="etape creux"><div class="quand">À faire</div>
+      <div class="quoi faint">Contre-visite à J+14</div>
+      <div class="qui faint">Le dossier reste ouvert tant qu’elle n’a pas eu lieu.</div></div>
+  </div>
+  <p class="petit" style="margin:14px 0 0;border-top:1px solid var(--line);padding-top:12px">
+    Coût de l’épisode : facture EcoFlair + matériel de Rachid. Une seule ligne à lire.
+  </p>
+</div>
+
+<p class="note">
+  Tout ce qui est chiffré ici vient de la base de l’hôtel au 24 septembre 2026 : 38 anomalies
+  contenant « punaise », 4 libellés au catalogue, 1 passage EcoFlair le 30/09/2025 portant
+  37 interventions, 2 commentaires ne disant pas « RAS » — les deux en chambre 54 — et aucune
+  facture EcoFlair. Rien n’a été modifié pour produire ce document.
+</p>
+
+</div>
+</body>
+</html>
