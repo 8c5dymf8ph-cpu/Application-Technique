@@ -522,6 +522,47 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    Le coût des pièces est ce qu'elles ANNONCENT, pas la comptabilité. Et on ne modélise pas les
    contrats fournisseurs : « ça aurait dû être couvert » est un jugement, pas une règle.
 
+18quater. **Une conséquence n'est pas un événement.** « Chambre bloquée », « remise en
+   vente » et « geste commercial » étaient des TYPES D'ACTE, à côté de « détection canine » :
+   « ces options sont plus la conséquence que des événements ». Une ligne de chronologie qui dit
+   « Chambre bloquée » et rien d'autre ne raconte rien — c'est le constat de la veille qui dit
+   pourquoi, et il est trois lignes plus haut. Une conséquence PEND donc à son acte
+   (`consequences_acte`, migration 0025) : elle porte les lieux qu'elle touche — une chambre se
+   bloque, pas un dossier —, un montant pour le geste commercial, et **pas de date propre**,
+   c'est celle du fait qui l'a causée. On lit « le 04/11, constat client, et la 34 a été
+   bloquée ». Rien ne change au principe : aucune machine à états (18bis), une conséquence ne
+   ferme rien et n'impose aucune suite. Le montant d'un geste commercial compte dans ce que
+   l'épisode a coûté — c'est de l'argent sorti.
+
+18quinquies. **Une étape passée se corrige — sur place.** On reprend de l'historique : une date
+   lue de travers sur une note de facture, un intervenant retrouvé trois jours plus tard, une
+   chambre oubliée dans un balayage de trente-huit. Sans correction, la chronologie fige la
+   première saisie, et c'est exactement ce qu'on essaie d'éviter en la tenant. Un crayon au bout
+   de chaque acte ouvre le MÊME formulaire que la saisie — deux formulaires pour une seule chose,
+   c'est deux endroits où l'un des deux oublie un champ — avec ses lieux et leurs résultats déjà
+   cochés : rouvrir un acte pour changer sa date ne doit pas coûter ses trente-huit chambres.
+   Les lieux et les conséquences sont réécrits d'un bloc, les pièces déjà jointes restent.
+   Retirer un acte emporte ses lieux, ses conséquences et ses pièces — c'est le geste qui défait
+   une SAISIE, jamais celui qui annule un fait : un traitement qui a eu lieu se corrige.
+
+18sexies. **Les lieux d'un acte se lisent en pastilles, et l'encadré ne s'ouvre que s'il sert.**
+   Rouge pour ce qui a été trouvé, vert pour « vérifié, rien relevé », **pointillé pour le
+   résultat qui n'a jamais été écrit** — sans quoi une contre-visite non conclue ressemble à une
+   chambre saine. C'est la preuve qu'une chambre a été contrôlée même quand elle n'a rien relevé,
+   et ça se voit d'un coup d'œil : « j'aimais bien ce visuel ». « Ce qu'il faut retenir »
+   s'ouvrait en revanche sur TOUS les actes, alors qu'un balayage n'a rien à retenir : c'est un
+   dépliant, ouvert pour un devis ou une note, et **un acte qui porte un commentaire le dit** par
+   une bulle à côté de son titre — sinon on ne sait pas qu'il y a quelque chose à lire. Enfin,
+   « Où on en est, lieu par lieu » est un CALCUL, pas une saisie : l'écran le dit, range les
+   lieux par état en pastilles, et replie le détail ligne à ligne — « je ne sais pas à quoi ça
+   correspond ».
+
+18septies. **Un intertitre ne se lit pas plus petit que le texte qu'il annonce.** `etiquette`
+   (10 px, capitales, gris pâle) titrait des sections dont le corps fait 15,5 px : ça ne titre
+   rien, ça flotte. Les titres de section prennent `titre`, et dans la chronologie **c'est le
+   FAIT qui est le titre**, la date passant au-dessus en petit — on cherche « détection canine »,
+   pas « vendredi 11 octobre ». `etiquette` reste ce qu'elle est : l'étiquette d'un champ.
+
 17. **Il n'y a pas de bouton « recalculer le stock ».** Rien n'est stocké, donc rien à recalculer.
    Ne jamais réintroduire `Stock_Initial`, `StockActuel` ni `EstHistorique`.
 

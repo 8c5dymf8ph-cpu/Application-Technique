@@ -1632,5 +1632,53 @@ begin
 end $$;
 
 
+-- ===========================================================================
+-- SCÉNARIO 24 — Une conséquence n'est pas un événement : elle pend à l'acte
+-- qui l'a causée, porte SA date, et son montant compte dans l'épisode.
+-- ===========================================================================
+do $$
+declare v_suivi uuid; v_acte uuid; v_type uuid; v_lieu uuid;
+        v_montant numeric; v_avant numeric; n int;
+begin
+  -- Les trois faux types d'acte sont partis : « chambre bloquée » n'est pas
+  -- une chose qui arrive, c'est une chose qu'on décide.
+  select count(*) into n from types_acte
+   where nature_code = 'punaises'
+     and code in ('chambre_bloquee','remise_en_service','geste_commercial');
+  assert n = 0, format('%s faux types d''acte subsistent, attendu 0', n);
+
+  select count(*) into n from types_consequence where nature_code = 'punaises';
+  assert n >= 3, format('%s conséquences au catalogue, attendu au moins 3', n);
+
+  select id into v_suivi from suivis where parent_id is not null
+   order by ouvert_le limit 1;
+  select montant into v_avant from v_suivis where id = v_suivi;
+  select a.id into v_acte from actes a where a.suivi_id = v_suivi
+   order by a.date_acte limit 1;
+  select id into v_type from types_consequence where code = 'geste_commercial';
+  select emplacement_id into v_lieu from suivi_lieux where suivi_id = v_suivi limit 1;
+
+  insert into consequences_acte (acte_id, type_consequence_id, montant_ht)
+  values (v_acte, v_type, 120.00);
+
+  -- Un geste commercial est de l'argent sorti : il compte dans ce que
+  -- l'épisode a coûté.
+  select montant into v_montant from v_suivis where id = v_suivi;
+  assert v_montant = v_avant + 120.00,
+    format('montant de l''épisode = %s, attendu %s', v_montant, v_avant + 120.00);
+
+  -- Une chambre bloquée pend au fait qui l'a causée : elle n'a pas de date
+  -- propre, et se lit avec lui.
+  insert into consequences_acte (acte_id, type_consequence_id, emplacement_id)
+  select v_acte, id, v_lieu from types_consequence where code = 'chambre_bloquee';
+  select count(*) into n from consequences_acte where acte_id = v_acte;
+  assert n = 2, format('%s conséquences sur l''acte, attendu 2', n);
+
+  -- Et elle s'en va avec lui : un acte saisi deux fois n'en laisse aucune.
+  delete from actes where id = v_acte;
+  select count(*) into n from consequences_acte where acte_id = v_acte;
+  assert n = 0, format('%s conséquences orphelines, attendu 0', n);
+end $$;
+
 \echo '✅ Tous les scénarios sont passés'
 rollback;

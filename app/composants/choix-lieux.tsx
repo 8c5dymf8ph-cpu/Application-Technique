@@ -20,16 +20,24 @@ export type LieuChoix = { id: string; code: string; etage: string };
 export function ChoixLieux({
   lieux,
   defaut = [],
+  etats,
   verification,
 }: {
   lieux: LieuChoix[];
   /** Les lieux pré-cochés — la portée du suivi. */
   defaut?: string[];
+  /**
+   * Ce qu'un acte porte DÉJÀ, quand on le corrige : chaque lieu avec son
+   * résultat. Sans cela, rouvrir un acte pour changer sa date en aurait
+   * effacé les trente-huit chambres — une correction ne doit jamais coûter
+   * plus que ce qu'elle corrige.
+   */
+  etats?: Record<string, "negatif" | "positif" | "concerne">;
   /** Un acte de vérification porte un résultat ; un traitement, non. */
   verification: boolean;
 }) {
   const [etat, setEtat] = useState<Record<string, "negatif" | "positif" | "concerne">>(
-    Object.fromEntries(defaut.map((id) => [id, verification ? "negatif" : "concerne"])),
+    etats ?? Object.fromEntries(defaut.map((id) => [id, verification ? "negatif" : "concerne"])),
   );
 
   const suivant = (id: string) => {

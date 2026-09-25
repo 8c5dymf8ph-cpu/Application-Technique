@@ -117,6 +117,14 @@ const ATTENDUES: Attendue[] = [
     verifier: () => regleContient("fn_journees_rapprochables", "ailleurs"),
   },
   {
+    titre: "Une cons\u00e9quence n\u2019est pas un \u00e9v\u00e9nement",
+    sans:
+      "Un suivi ne peut pas porter de cons\u00e9quence \u2014 chambre bloqu\u00e9e, remise en vente, " +
+      "geste commercial : elles restent des \u00e9v\u00e9nements de la chronologie, o\u00f9 elles ne " +
+      "disent pas pourquoi.",
+    verifier: () => tableExiste("consequences_acte"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),

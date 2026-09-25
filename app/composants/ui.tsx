@@ -176,6 +176,16 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "Acte enregistré, mais la pièce jointe n’a pas pu l’être. " +
       "Vérifiez le dépôt des fichiers dans Administration.",
   },
+  "acte-modifie": {
+    ton: "green",
+    texte:
+      "Acte corrigé. Les lieux et les conséquences suivent la correction ; les " +
+      "pièces déjà jointes restent.",
+  },
+  "acte-supprime": {
+    ton: "green",
+    texte: "Acte retiré de la chronologie, avec ses lieux, ses conséquences et ses pièces.",
+  },
   episode: { ton: "green", texte: "Épisode ouvert." },
   etat: { ton: "green", texte: "L’état de l’épisode est à jour." },
   photo: { ton: "green", texte: "Photo enregistrée." },

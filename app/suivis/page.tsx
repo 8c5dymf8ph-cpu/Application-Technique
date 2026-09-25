@@ -119,7 +119,7 @@ export default async function Suivis() {
         })}
 
         <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Les épisodes</h2>
+          <h2 className="titre text-[15.5px]">Les épisodes</h2>
           {episodes.length === 0 ? (
             <Vide>Aucun épisode ouvert.</Vide>
           ) : (
