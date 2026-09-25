@@ -46,7 +46,8 @@ async function chiffres(essai: string[]): Promise<Chiffres> {
         where statut = 'attente_validation'
           and not (emplacement_id = any(${essai})))::int                         as attente,
       (select count(*) from v_tournees where nb_en_attente > 0)::int            as a_valider_lots,
-      (select count(*) from v_incidents_bouteille where dossier_ouvert)::int    as dossiers_bouteille,
+      (select count(*) from v_incidents_bouteille
+        where dossier_ouvert and not (emplacement_id = any(${essai})))::int    as dossiers_bouteille,
       (select count(*) from v_stock_produits where sous_seuil)::int             as sous_seuil,
       (select count(*) from v_interventions_sans_facture)::int                  as sans_facture,
       (select count(*) from v_controle_donnees)::int                            as a_controler`;
