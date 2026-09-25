@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { euros } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Filtres } from "@/app/composants/suivi";
+import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -87,11 +88,12 @@ export default async function Commandes({
       insert into commandes (fournisseur_id, saisie_par)
       values (${String(donnees.get("fournisseur"))}, ${profil_.id})
       returning id`;
-    redirect(`/bouteilles/commande/${creee.id}` as Route);
+    redirect(`/bouteilles/commande/${creee.id}?neuf=1` as Route);
   }
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      <QuitterSiRevenu cle="commande" vers="/bouteilles/commandes" />
       <Entete
         titre="Commandes"
         sous_titre={`${euros(c.ht_annee)} HT commandés cette année`}

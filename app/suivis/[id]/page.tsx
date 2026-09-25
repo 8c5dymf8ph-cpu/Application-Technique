@@ -10,6 +10,7 @@ import { enregistrerFichier } from "@/lib/stockage";
 import { tableExiste } from "@/lib/schema";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
+import { MarquerValide, QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
 import { ChoixLieux, type LieuChoix } from "@/app/composants/choix-lieux";
@@ -719,6 +720,15 @@ export default async function Dossier({
       />
 
       <div className="px-5 py-4 flex flex-col gap-4">
+        {/* Ouvrir un épisode crée un nouveau dossier et bascule dessus : ce
+            même écran sert d'origine ET d'arrivée selon l'id de la route.
+            Revenir en arrière ne doit pas rouvrir le formulaire rempli — donc
+            on ferme le volet (`episode=1`) au lieu de le réafficher. */}
+        {fait === "episode" ? (
+          <MarquerValide cle="episode" />
+        ) : (
+          <QuitterSiRevenu cle="episode" vers={`/suivis/${id}`} />
+        )}
         {fait && <Confirmation quoi={fait} />}
 
         {/* L'état, en un mot */}

@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import type { Route } from "next";
 
 /**
  * Ne pas rouvrir un formulaire qu'on vient de valider.
@@ -17,21 +15,26 @@ import type { Route } from "next";
  * effacée au passage, donc rouvrir l'écran plus tard pour une VRAIE nouvelle
  * déclaration fonctionne normalement — c'est ce qui distingue le retour en
  * arrière d'une nouvelle saisie.
+ *
+ * Le rechargement est FRANC (`window.location`), pas une navigation du
+ * routeur : un dépliant resté ouvert (`<details>`, pas piloté par l'adresse)
+ * garde son état dans le cache du navigateur telle qu'avant l'envoi, y
+ * compris quand la cible est la MÊME adresse que l'écran de saisie — un
+ * remplacement côté routeur vers une adresse inchangée ne fait alors rien.
+ * Un vrai rechargement, lui, repart toujours d'une page neuve.
  */
 export function QuitterSiRevenu({ cle, vers }: { cle: string; vers: string }) {
-  const routeur = useRouter();
-
   useEffect(() => {
     try {
       if (sessionStorage.getItem(`valide:${cle}`)) {
         sessionStorage.removeItem(`valide:${cle}`);
-        routeur.replace(vers as Route);
+        window.location.replace(vers);
       }
     } catch {
       // Stockage refusé : on laisse le formulaire s'ouvrir. Rien de vital n'en
       // dépend, et le double-envoi est déjà empêché côté écriture.
     }
-  }, [cle, vers, routeur]);
+  }, [cle, vers]);
 
   return null;
 }
