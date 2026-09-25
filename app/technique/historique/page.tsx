@@ -629,14 +629,18 @@ export default async function PassagesEtFactures({
                             <span className="px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[11.5px] font-medium tabular-nums">
                               <Surligne texte={d.emplacement} mot={terme} />
                             </span>
-                            {/* On identifie une anomalie par son NUMÉRO
-                                d'origine : « l'anomalie 378 ». On le cherchait,
-                                et il n'était écrit nulle part. */}
-                            {d.sharepoint_id != null && (
-                              <span className="text-[9.5px] text-ink-faint tabular-nums">
-                                n° <Surligne texte={String(d.sharepoint_id)} mot={terme} />
-                              </span>
-                            )}
+                            {/* Le numéro d'origine n'a rien à faire sur un
+                                écran de suivi : on lit des libellés, pas des
+                                identifiants. Il ne paraît QUE si c'est lui
+                                qu'on cherche — sinon « 378 » trouve le passage
+                                sans dire quelle ligne a répondu, ce qui est
+                                exactement le défaut qu'on vient de corriger. */}
+                            {d.sharepoint_id != null &&
+                              String(d.sharepoint_id) === terme && (
+                                <span className="text-[9.5px] text-ink-faint tabular-nums">
+                                  n° <Surligne texte={String(d.sharepoint_id)} mot={terme} />
+                                </span>
+                              )}
                           </span>
                           <span className="grow min-w-0">
                             <span className="block text-[13.5px] leading-snug text-pretty">

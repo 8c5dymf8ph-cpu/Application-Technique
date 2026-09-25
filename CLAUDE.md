@@ -973,8 +973,9 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   relit tout pour retrouver le mot qu'on vient de taper. Sur « 22 », qui est autant une chambre
   qu'un numéro d'anomalie, on ne sait même pas ce qui a répondu. `Surligne`
   (`app/composants/suivi.tsx`) marque le mot dans le libellé, le lieu, le matériel, le nom de
-  l'intervenant et le numéro d'origine — qui **s'affiche enfin** sous la puce de lieu, lui qu'on
-  cherchait sans qu'il soit écrit nulle part. Et **chercher rouvre les mois qui répondent** :
+  l'intervenant. Le **numéro d'origine ne s'affiche QUE si c'est lui qu'on cherche** : « il n'est
+  pas nécessaire dans cet écran », on y lit des libellés et pas des identifiants — mais sans lui,
+  taper « 378 » trouve le passage sans dire quelle ligne a répondu. Et **chercher rouvre les mois qui répondent** :
   sinon le mot tombe dans une section restée fermée par la question d'avant, et on croit qu'il
   n'a rien donné. Une recherche est une question neuve — elle ne traîne pas les mois ouverts
   de la précédente.
