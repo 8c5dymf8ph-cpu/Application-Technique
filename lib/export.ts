@@ -1,5 +1,5 @@
 import { sql } from "./db";
-import { colonneExiste } from "./schema";
+import { colonneExiste, tableExiste } from "./schema";
 import { jourISO } from "./domaine";
 
 /**
@@ -254,6 +254,225 @@ export const EXPORTS: Export[] = [
         join anomalies a     on a.id = f.anomalie_id
         join emplacements e  on e.id = a.emplacement_id
        order by f.date_commentaire desc`,
+  },
+  {
+    cle: "equipe",
+    titre: "Équipe",
+    aide: "Qui est qui : salariés et entreprises, leurs coordonnées et leur rôle.",
+    lignes: () => sql`
+      select nom                                       as "Nom",
+             'Salarié'                                 as "Type",
+             role::text                                as "Rôle ou spécialité",
+             email                                     as "Email",
+             null::text                                as "Téléphone",
+             case when actif then 'oui' else 'non' end as "Actif",
+             case when peut_se_connecter then 'oui' else 'non' end as "Se connecte à l’application",
+             case when intervient_technique then 'oui' else 'non' end as "Intervient en technique"
+        from utilisateurs
+       union all
+      select nom, 'Entreprise', specialite, email, telephone,
+             case when actif then 'oui' else 'non' end,
+             'non',
+             'oui'
+        from prestataires
+       order by 1`,
+  },
+  {
+    cle: "referentiels",
+    titre: "Étages et lieux",
+    aide: "Tous les lieux de l’hôtel, avec leur étage et ce qu’ils portent.",
+    lignes: async () => {
+      const essai = await colonneExiste("emplacements", "essai");
+      return sql`
+      select et.nom                                    as "Étage",
+             et.ordre                                  as "Ordre étage",
+             e.code                                     as "Lieu",
+             e.nom                                       as "Nom du lieu",
+             e.type::text                                as "Type",
+             ${essai
+               ? sql`case when e.essai then 'oui' else 'non' end`
+               : sql`'non'::text`}                       as "Lieu d’essai",
+             case when e.dote_bouteilles then 'oui' else 'non' end as "Doté en bouteilles",
+             case when e.actif then 'oui' else 'non' end as "Actif"
+        from emplacements e
+        join etages et on et.id = e.etage_id
+       order by et.ordre, e.ordre, e.code`;
+    },
+  },
+  {
+    cle: "catalogue",
+    titre: "Catalogue des anomalies",
+    aide: "Les libellés autorisés à la déclaration, avec leur métier.",
+    lignes: () => sql`
+      select c.libelle                                 as "Libellé",
+             ti.nom                                     as "Métier",
+             array_to_string(c.mots_cles, ', ')         as "Mots-clés",
+             c.occurrences                              as "Occurrences",
+             case when c.actif then 'oui' else 'non' end as "Actif"
+        from catalogue_anomalies c
+        left join types_intervention ti on ti.id = c.type_id
+       order by c.libelle`,
+  },
+  {
+    cle: "bouteilles_park",
+    titre: "Bouteilles — types et dotation",
+    aide: "Les types de bouteille, leurs prix, et la dotation attendue par chambre.",
+    lignes: () => sql`
+      select et.nom                                    as "Étage",
+             e.code                                     as "Lieu",
+             bt.libelle                                 as "Type de bouteille",
+             d.quantite                                 as "Quantité dotée",
+             bt.prix_vente                              as "Prix vente (client)",
+             bt.prix_achat                              as "Prix achat (interne)",
+             bt.seuil_alerte                            as "Seuil d’alerte (réserve)"
+        from dotations d
+        join emplacements e  on e.id = d.emplacement_id
+        join etages et       on et.id = e.etage_id
+        join bouteille_types bt on bt.id = d.bouteille_type_id
+       order by et.ordre, e.ordre, bt.libelle`,
+  },
+  {
+    cle: "mouvements_bouteilles",
+    titre: "Mouvements de bouteilles",
+    aide: "Entrées, dotations, emports, retours : c’est d’ici que vient le parc.",
+    lignes: () => sql`
+      select m.date_mouvement                          as "Date",
+             m.type::text                               as "Type",
+             bt.libelle                                 as "Type de bouteille",
+             m.quantite                                 as "Quantité",
+             m.de_lieu::text                            as "Depuis",
+             e_de.code                                  as "Lieu de départ",
+             m.vers_lieu::text                          as "Vers",
+             e_vers.code                                as "Lieu d’arrivée",
+             coalesce(u.nom, '—')                       as "Par",
+             m.commentaire                              as "Commentaire"
+        from mouvements_bouteilles m
+        join bouteille_types bt      on bt.id = m.bouteille_type_id
+        left join emplacements e_de   on e_de.id = m.de_emplacement_id
+        left join emplacements e_vers on e_vers.id = m.vers_emplacement_id
+        left join utilisateurs u      on u.id = m.utilisateur_id
+       order by m.date_mouvement desc`,
+  },
+  {
+    cle: "commandes",
+    titre: "Commandes fournisseurs",
+    aide: "Les commandes de matériel et de bouteilles, reçues ou non.",
+    lignes: () => sql`
+      select reference                                 as "N°",
+             fournisseur                                as "Fournisseur",
+             date_commande                              as "Date de commande",
+             date_livraison                             as "Livraison prévue le",
+             statut::text                               as "État",
+             montant_ht                                 as "Montant HT",
+             montant_ttc                                as "Montant TTC",
+             nb_articles                                as "Articles",
+             articles                                   as "Détail",
+             facture_fichier                            as "Pièce jointe"
+        from v_commandes
+       order by date_commande desc`,
+  },
+  {
+    cle: "fournisseurs",
+    titre: "Fournisseurs",
+    aide: "Coordonnées, et pour chaque article ce qu’ils en demandent.",
+    lignes: () => sql`
+      select f.nom                                     as "Fournisseur",
+             f.contact                                  as "Contact",
+             f.email                                    as "Email",
+             f.email_2                                  as "Email 2",
+             f.telephone                                as "Téléphone",
+             f.delai_livraison_jours                     as "Délai de livraison (jours)",
+             case when f.actif then 'oui' else 'non' end as "Actif",
+             coalesce(p.designation, bt.libelle)         as "Article",
+             af.reference_fournisseur                    as "Référence fournisseur",
+             af.prix_indicatif                           as "Prix indicatif",
+             case when af.prefere then 'oui' else 'non' end as "Fournisseur préféré"
+        from fournisseurs f
+        left join article_fournisseurs af on af.fournisseur_id = f.id
+        left join produits p              on p.id = af.produit_id
+        left join bouteille_types bt      on bt.id = af.bouteille_type_id
+       order by f.nom, 8`,
+  },
+  {
+    cle: "suivis",
+    titre: "Suivis (histoires)",
+    aide:
+      "La chronologie des histoires comme les punaises de lit : un acte par ligne, " +
+      "ses lieux, ses résultats et ses conséquences.",
+    // Migration 0023 (suivis) puis 0025 (conséquences) : deux tables neuves, deux
+    // requêtes possibles, jamais une condition dans le SQL — voir lib/schema.ts.
+    lignes: async () => {
+      if (!(await tableExiste("suivis"))) return [];
+      const avecConsequences = await tableExiste("consequences_acte");
+      const consequences = avecConsequences
+        ? sql`(select string_agg(
+                 tc.libelle
+                   || coalesce(' (' || ce.code || ')', '')
+                   || coalesce(' — ' || cq.montant_ht::text || ' €', ''),
+                 ', ' order by tc.ordre)
+                 from consequences_acte cq
+                 join types_consequence tc on tc.id = cq.type_consequence_id
+                 left join emplacements ce on ce.id = cq.emplacement_id
+                where cq.acte_id = a.id)`
+        : sql`null::text`;
+      return sql`
+      select s.titre                                   as "Dossier",
+             sp.titre                                   as "Dossier permanent",
+             case when s.parent_id is null then 'Permanent' else 'Épisode' end
+                                                         as "Type de dossier",
+             n.libelle                                  as "Nature",
+             a.date_acte                                as "Date",
+             ta.libelle                                 as "Acte",
+             coalesce(u.nom, pr.nom, '—')               as "Par",
+             (select string_agg(
+                        e.code || case al.resultat
+                                    when 'positif'      then ' (positif)'
+                                    when 'negatif'      then ' (négatif)'
+                                    when 'non_concluant' then ' (non concluant)'
+                                    else ' (résultat non écrit)'
+                                  end,
+                        ', ' order by e.code)
+                from acte_lieux al
+                join emplacements e on e.id = al.emplacement_id
+               where al.acte_id = a.id)                 as "Lieux et résultats",
+             a.montant_ht                                as "Montant HT",
+             case when a.gratuit then 'oui' else 'non' end      as "Offert",
+             case when a.hors_contrat then 'oui' else 'non' end as "Hors contrat",
+             ${consequences}                             as "Conséquences",
+             a.commentaire                               as "Commentaire"
+        from actes a
+        join suivis s        on s.id = a.suivi_id
+        left join suivis sp  on sp.id = s.parent_id
+        join natures_suivi n on n.code = s.nature_code
+        join types_acte ta   on ta.id = a.type_acte_id
+        left join utilisateurs u  on u.id = a.utilisateur_id
+        left join prestataires pr on pr.id = a.prestataire_id
+       order by a.date_acte desc`;
+    },
+  },
+  {
+    cle: "anomalies_supprimees",
+    titre: "Anomalies supprimées",
+    aide: "La trace de ce qui a été supprimé, et ce que ça a emporté.",
+    lignes: async () => {
+      if (!(await tableExiste("anomalies_supprimees"))) return [];
+      return sql`
+      select coalesce(sharepoint_id::text, '—')        as "N° d’origine",
+             emplacement                                as "Lieu",
+             description                                as "Description",
+             statut                                     as "État",
+             priorite                                   as "Priorité",
+             declare_le                                 as "Déclarée le",
+             constate_par                               as "Constatée par",
+             nb_photos                                  as "Photos emportées",
+             nb_commentaires                            as "Commentaires emportés",
+             nb_interventions                           as "Interventions emportées",
+             supprimee_le                               as "Supprimée le",
+             u.nom                                       as "Supprimée par"
+        from anomalies_supprimees s
+        left join utilisateurs u on u.id = s.supprimee_par
+       order by supprimee_le desc`;
+    },
   },
 ];
 
