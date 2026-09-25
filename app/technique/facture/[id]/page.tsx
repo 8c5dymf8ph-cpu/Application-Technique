@@ -43,6 +43,9 @@ type Journee = {
   interventions: string[];
   /** Celles qui ne le sont pas : c'est ce que le bouton rattache. */
   restantes: string[];
+  /** Celles qu'une AUTRE pièce porte déjà (migration 0024). */
+  ailleurs: string[];
+  autre_facture: string | null;
   deja_rapprochee: boolean;
 };
 
@@ -132,27 +135,41 @@ export default async function DetailFacture({
    * Deux requêtes, choisies par une sonde. Jamais une condition dans le SQL.
    */
   const ligneAligne = await regleContient("fn_journees_rapprochables", "restantes");
-  const journees =
+  /** `ailleurs` et `autre_facture` n'arrivent qu'avec la 0024. */
+  const deplacable = await regleContient("fn_journees_rapprochables", "ailleurs");
+  const journees: Journee[] =
     f.type !== "prestation"
       ? []
-      : ligneAligne
+      : deplacable
         ? await sql<Journee[]>`
             select date_intervention, intervenant, nb_anomalies, nb_rattachees,
                    emplacements, apercu, cout_materiel, ecart_jours, interventions,
-                   restantes, deja_rapprochee
+                   restantes, ailleurs, autre_facture, deja_rapprochee
             from fn_journees_rapprochables(${id}, ${fenetre})`
-        : (
-            await sql<Omit<Journee, "nb_rattachees" | "restantes">[]>`
-              select date_intervention, intervenant, nb_anomalies, emplacements,
-                     apercu, cout_materiel, ecart_jours, interventions,
-                     deja_rapprochee
-              from fn_journees_rapprochables(${id}, ${fenetre})`
-          ).map((j) => ({
-            ...j,
-            // Sans la migration, une journée se rattache en bloc, comme avant.
-            nb_rattachees: j.deja_rapprochee ? j.interventions.length : 0,
-            restantes: j.deja_rapprochee ? [] : j.interventions,
-          }));
+        : ligneAligne
+          ? (
+              await sql<Omit<Journee, "ailleurs" | "autre_facture">[]>`
+                select date_intervention, intervenant, nb_anomalies, nb_rattachees,
+                       emplacements, apercu, cout_materiel, ecart_jours, interventions,
+                       restantes, deja_rapprochee
+                from fn_journees_rapprochables(${id}, ${fenetre})`
+            ).map((j) => ({ ...j, ailleurs: [], autre_facture: null }))
+          : (
+              await sql<
+                Omit<Journee, "nb_rattachees" | "restantes" | "ailleurs" | "autre_facture">[]
+              >`
+                select date_intervention, intervenant, nb_anomalies, emplacements,
+                       apercu, cout_materiel, ecart_jours, interventions,
+                       deja_rapprochee
+                from fn_journees_rapprochables(${id}, ${fenetre})`
+            ).map((j) => ({
+              ...j,
+              // Sans la migration, une journée se rattache en bloc, comme avant.
+              nb_rattachees: j.deja_rapprochee ? j.interventions.length : 0,
+              restantes: j.deja_rapprochee ? [] : j.interventions,
+              ailleurs: [],
+              autre_facture: null,
+            }));
 
   async function rapprocher(donnees: FormData) {
     "use server";
@@ -163,6 +180,30 @@ export default async function DetailFacture({
     await sql`
       insert into facture_interventions (facture_id, intervention_id)
       select ${id}, unnest(${interventions}::uuid[])
+      on conflict do nothing`;
+    await sql`
+      update factures set statut = 'rapprochee'
+       where id = ${id} and statut = 'a_rapprocher'`;
+    revalidatePath(`/technique/facture/${id}`);
+  }
+
+  /**
+   * Déplacer une journée qu'une AUTRE pièce porte déjà.
+   *
+   * Sans ça, le bouton était rendu avec une liste vide : on appuyait, et il ne
+   * se passait rien — silencieusement. Une ligne ne vit que sur une facture,
+   * sinon son coût est compté deux fois.
+   */
+  async function deplacer(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/technique/facture/${id}` as Route);
+    const lignes = String(donnees.get("interventions") ?? "").split(",").filter(Boolean);
+    if (lignes.length === 0) return;
+    await sql`delete from facture_interventions where intervention_id = any(${lignes}::uuid[])`;
+    await sql`
+      insert into facture_interventions (facture_id, intervention_id)
+      select ${id}, unnest(${lignes}::uuid[])
       on conflict do nothing`;
     await sql`
       update factures set statut = 'rapprochee'
@@ -486,8 +527,12 @@ export default async function DetailFacture({
                           {j.nb_rattachees > 0 && !j.deja_rapprochee
                             ? ` · ${j.nb_rattachees} déjà sur la facture`
                             : ""}{" "}
-                          · {j.ecart_jours} jour{j.ecart_jours > 1 ? "s" : ""} avant la
-                          facture
+                          {/* La fenêtre s'ouvre des deux côtés (0024) : une
+                              journée peut suivre le jour de la facture. */}
+                          · {Math.abs(j.ecart_jours)} jour
+                          {Math.abs(j.ecart_jours) > 1 ? "s" : ""}{" "}
+                          {j.ecart_jours < 0 ? "après" : "avant"} la facture
+                          {j.autre_facture ? ` · déjà sur la facture ${j.autre_facture}` : ""}
                         </span>
                       </span>
                       {Number(j.cout_materiel) > 0 && (
@@ -522,6 +567,16 @@ export default async function DetailFacture({
                         Déjà rattachée — {j.nb_anomalies} ligne
                         {j.nb_anomalies > 1 ? "s" : ""}
                       </span>
+                    ) : j.restantes.length === 0 && j.ailleurs.length > 0 ? (
+                      <form action={deplacer}>
+                        <input type="hidden" name="interventions" value={j.ailleurs.join(",")} />
+                        <BoutonEnvoi
+                          pendant="Déplacement…"
+                          className="w-full h-[42px] rounded-[11px] bg-amber-soft text-amber text-[13.5px] font-medium active:opacity-70 active:scale-[.99] transition"
+                        >
+                          Déplacer sur cette facture
+                        </BoutonEnvoi>
+                      </form>
                     ) : (
                       <form action={rapprocher}>
                         <input

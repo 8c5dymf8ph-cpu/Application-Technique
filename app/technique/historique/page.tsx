@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 import { exigerEncadrement } from "@/lib/acces";
 import { euros, jourISO } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
-import { Filtres, Recherche, Stat } from "@/app/composants/suivi";
+import { Filtres, Recherche, Stat, Surligne } from "@/app/composants/suivi";
 
 export const dynamic = "force-dynamic";
 
@@ -269,9 +269,15 @@ export default async function PassagesEtFactures({
    * fois sur dix. `?mois=` (vide) les referme tous.
    */
   const ouverts = new Set(
-    moisOuverts === undefined
-      ? mois.slice(0, 2).map((g) => g.cle)
-      : moisOuverts.split(",").filter(Boolean),
+    moisOuverts !== undefined
+      ? moisOuverts.split(",").filter(Boolean)
+      : // Chercher, c'est déjà dire ce qu'on veut lire : les mois qui
+        // répondent s'ouvrent tous, sinon on retrouve la bonne section fermée
+        // et on croit que le mot n'a rien donné. Sans recherche, les deux plus
+        // récents — c'est là qu'on regarde neuf fois sur dix.
+        terme
+        ? mois.map((g) => g.cle)
+        : mois.slice(0, 2).map((g) => g.cle),
   );
 
   /**
@@ -376,10 +382,10 @@ export default async function PassagesEtFactures({
         <Recherche
           valeur={q}
           placeholder={factures_ ? "Un intervenant, un numéro…" : "Une chambre, un mot, un nom…"}
-          caches={{
-            ...(factures_ ? { vue, filtre } : { qui }),
-            ...(moisOuverts !== undefined ? { mois: moisOuverts } : {}),
-          }}
+          // Les mois ouverts ne suivent pas la recherche : une question neuve
+          // rouvre ce qui répond, sinon le mot tombe dans une section restée
+          // fermée par la question d'avant.
+          caches={factures_ ? { vue, filtre } : { qui }}
         />
 
         {factures_ ? (
@@ -455,10 +461,19 @@ export default async function PassagesEtFactures({
                         <span className="flex items-start gap-3">
                           <span className="grow min-w-0">
                             <span className="block font-display font-semibold text-[15px]">
-                              {f.emetteur ?? "—"}
+                              {f.emetteur ? (
+                                <Surligne texte={f.emetteur} mot={terme} />
+                              ) : (
+                                "—"
+                              )}
                             </span>
                             <span className="block text-[11.5px] text-ink-faint">
-                              {f.reference ?? "sans numéro"} ·{" "}
+                              {f.reference ? (
+                                <Surligne texte={f.reference} mot={terme} />
+                              ) : (
+                                "sans numéro"
+                              )}{" "}
+                              ·{" "}
                               {new Date(f.date_reference).toLocaleDateString("fr-FR")}
                               {f.type === "achat" && " · achat"}
                             </span>
@@ -581,7 +596,11 @@ export default async function PassagesEtFactures({
                       <span className="flex items-baseline gap-3">
                         <span className="grow min-w-0">
                           <span className="block font-display font-semibold text-[15.5px]">
-                            {l.intervenant ?? "Intervenant inconnu"}
+                            {l.intervenant ? (
+                              <Surligne texte={l.intervenant} mot={terme} />
+                            ) : (
+                              "Intervenant inconnu"
+                            )}
                           </span>
                           <span className="block text-[11.5px] text-ink-faint">
                             {new Date(l.date_tournee).toLocaleDateString("fr-FR", JOUR_LONG)}
@@ -606,16 +625,26 @@ export default async function PassagesEtFactures({
                     <ul className="flex flex-col divide-y divide-line border-y border-line">
                       {detailDe(l.reference).map((d, i) => (
                         <li key={`${d.emplacement}-${i}`} className="py-2 flex items-start gap-2.5">
-                          <span className="shrink-0 mt-[1px] px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[11.5px] font-medium tabular-nums">
-                            {d.emplacement}
+                          <span className="shrink-0 mt-[1px] flex flex-col items-center gap-0.5">
+                            <span className="px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[11.5px] font-medium tabular-nums">
+                              <Surligne texte={d.emplacement} mot={terme} />
+                            </span>
+                            {/* On identifie une anomalie par son NUMÉRO
+                                d'origine : « l'anomalie 378 ». On le cherchait,
+                                et il n'était écrit nulle part. */}
+                            {d.sharepoint_id != null && (
+                              <span className="text-[9.5px] text-ink-faint tabular-nums">
+                                n° <Surligne texte={String(d.sharepoint_id)} mot={terme} />
+                              </span>
+                            )}
                           </span>
                           <span className="grow min-w-0">
                             <span className="block text-[13.5px] leading-snug text-pretty">
-                              {d.description}
+                              <Surligne texte={d.description} mot={terme} />
                             </span>
                             {d.materiel && (
                               <span className="block text-[11.5px] text-ink-faint">
-                                {d.materiel}
+                                <Surligne texte={d.materiel} mot={terme} />
                               </span>
                             )}
                           </span>

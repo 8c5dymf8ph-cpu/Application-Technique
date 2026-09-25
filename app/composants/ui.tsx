@@ -270,6 +270,19 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "Anomalie déclarée, mais la photo n’a pas pu être enregistrée. " +
       "Vérifiez le dépôt des fichiers dans Administration.",
   },
+  deplace: {
+    ton: "green",
+    texte:
+      "Journée déplacée sur cette facture. Elle a quitté l’autre pièce : une " +
+      "ligne portée deux fois serait comptée deux fois.",
+  },
+  rattache: {
+    ton: "green",
+    texte:
+      "Ce passage fait maintenant partie de cette facture. S’il en quittait " +
+      "une autre, celle-ci reste dans la liste des factures — sans journée si " +
+      "elle n’en couvre plus aucune.",
+  },
   lot: {
     ton: "green",
     texte:

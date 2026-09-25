@@ -119,6 +119,50 @@ export function Stat({
   );
 }
 
+/**
+ * Le mot cherché, marqué dans le texte.
+ *
+ * Filtrer ne suffit pas : sur un mois déplié qui porte quarante-sept lignes,
+ * la liste dit « il y a quelque chose ici » sans dire OÙ. On relit tout pour
+ * retrouver le mot qu'on vient de taper — et sur « 22 », qui est autant une
+ * chambre qu'un numéro d'anomalie, on ne sait même pas ce qui a répondu.
+ * Le mot se surligne donc là où il se trouve, comme dans un navigateur.
+ *
+ * Sans mot, le texte passe tel quel : aucun coût quand on ne cherche rien.
+ */
+export function Surligne({ texte, mot }: { texte: string; mot?: string }) {
+  const cherche = (mot ?? "").trim().toLowerCase();
+  if (!cherche || !texte) return <>{texte}</>;
+
+  const bas = texte.toLowerCase();
+  const morceaux: { t: string; marque: boolean }[] = [];
+  let curseur = 0;
+  for (let i = bas.indexOf(cherche); i !== -1; i = bas.indexOf(cherche, curseur)) {
+    if (i > curseur) morceaux.push({ t: texte.slice(curseur, i), marque: false });
+    morceaux.push({ t: texte.slice(i, i + cherche.length), marque: true });
+    curseur = i + cherche.length;
+  }
+  if (morceaux.length === 0) return <>{texte}</>;
+  if (curseur < texte.length) morceaux.push({ t: texte.slice(curseur), marque: false });
+
+  return (
+    <>
+      {morceaux.map((m, i) =>
+        m.marque ? (
+          <mark
+            key={i}
+            className="rounded-[3px] bg-amber-soft px-[1px] text-amber font-medium"
+          >
+            {m.t}
+          </mark>
+        ) : (
+          <span key={i}>{m.t}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 /** La barre de recherche d'une liste, en GET : l'adresse reste partageable. */
 export function Recherche({
   valeur,

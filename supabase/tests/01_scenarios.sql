@@ -480,6 +480,69 @@ begin
 end $$;
 
 -- ===========================================================================
+-- SCÉNARIO 3 bis — Une facture couvre aussi les jours qui SUIVENT, et une
+-- journée prise par une autre pièce se voit au lieu de disparaître.
+-- ===========================================================================
+-- « Je ne peux pas ajouter cet ancien passage. » Le jour de référence d'une
+-- facture est celui où on la saisit, pas le dernier jour qu'elle couvre :
+-- Serafino facture son mois, et la pièce arrive après. La fenêtre s'ouvre donc
+-- des deux côtés.
+insert into anomalies (id, emplacement_id, description, constate_par)
+select '55555555-0000-0000-0000-000000000009', e.id,
+       'Anomalie prestataire du surlendemain',
+       '22222222-2222-2222-2222-222222222222'
+from emplacements e where e.code = '41';
+
+insert into interventions (id, anomalie_id, prestataire_id, date_intervention)
+values ('66666666-0000-0000-0000-000000000009',
+        '55555555-0000-0000-0000-000000000009',
+        '99999999-9999-9999-9999-999999999999', date '2026-06-03');
+
+do $$
+declare v record;
+begin
+  select * into v from fn_journees_rapprochables(
+    '77777777-7777-7777-7777-777777777777', 30)
+   where date_intervention = date '2026-06-03';
+  assert found,
+    'une journée postérieure au jour de la facture doit rester rattachable';
+  assert v.ecart_jours = -5,
+    format('écart annoncé = %s, attendu -5 (cinq jours APRÈS la facture)',
+           v.ecart_jours);
+  assert array_length(v.restantes, 1) = 1,
+    'la ligne est libre : elle doit pouvoir se rattacher';
+end $$;
+
+-- Et maintenant une AUTRE pièce la prend. Elle ne doit pas disparaître de la
+-- liste de la première : cachée, elle n'était ni rattachable, ni détachable,
+-- ni même nommée (règle 16octies).
+insert into factures (id, type, prestataire_id, reference, date_reference, statut)
+values ('77777777-7777-7777-7777-777777777778', 'prestation',
+        '99999999-9999-9999-9999-999999999999',
+        'FA-2026-0611', date '2026-06-11', 'a_rapprocher');
+
+insert into facture_interventions (facture_id, intervention_id)
+values ('77777777-7777-7777-7777-777777777778',
+        '66666666-0000-0000-0000-000000000009');
+
+do $$
+declare v record;
+begin
+  select * into v from fn_journees_rapprochables(
+    '77777777-7777-7777-7777-777777777777', 30)
+   where date_intervention = date '2026-06-03';
+  assert found, 'une journée prise ailleurs reste dans la liste, nommée';
+  assert coalesce(array_length(v.restantes, 1), 0) = 0,
+    'une ligne portée par une autre facture ne se rattache pas une seconde fois';
+  assert array_length(v.ailleurs, 1) = 1,
+    'elle se déplace : la ligne doit être offerte en déplacement';
+  assert v.autre_facture = 'FA-2026-0611',
+    format('la pièce qui la porte doit être nommée, lu : %s', v.autre_facture);
+  assert v.autre_facture_id = '77777777-7777-7777-7777-777777777778',
+    'et on doit pouvoir y aller';
+end $$;
+
+-- ===========================================================================
 -- SCÉNARIO 4 — Inventaire matériel : un écart crée une régularisation tracée.
 -- ===========================================================================
 insert into inventaires (id, type, libelle, ouvert_par)

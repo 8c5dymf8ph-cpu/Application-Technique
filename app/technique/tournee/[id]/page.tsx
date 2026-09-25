@@ -28,7 +28,20 @@ type Journee = {
   cout_materiel: number;
   interventions: string[];
   restantes: string[];
+  /** Les lignes qu'une AUTRE pièce porte déjà : elles se déplacent. */
+  ailleurs: string[];
+  autre_facture: string | null;
+  autre_facture_id: string | null;
   deja_rapprochee: boolean;
+};
+
+/** Une facture déjà saisie pour le même intervenant, à laquelle se rattacher. */
+type FactureVoisine = {
+  id: string;
+  reference: string | null;
+  date_reference: string | Date;
+  montant_ht: number | null;
+  nb_journees: number;
 };
 
 type Lot = {
@@ -220,24 +233,74 @@ export default async function DetailTournee({
    * sonde. Nommer une colonne absente casse l'écran entier.
    */
   const ligneAligne = await regleContient("fn_journees_rapprochables", "restantes");
-  const journees = facture
-    ? ligneAligne
+  /**
+   * `ailleurs` et `autre_facture` n'arrivent qu'avec la 0024 — comme la
+   * fenêtre ouverte des deux côtés. Avant, une journée postérieure au jour de
+   * la facture n'était nulle part, et une journée prise par une autre pièce
+   * non plus.
+   */
+  const deplacable = await regleContient("fn_journees_rapprochables", "ailleurs");
+  const journees: Journee[] = !facture
+    ? []
+    : deplacable
       ? await sql<Journee[]>`
           select date_intervention, intervenant, nb_anomalies, nb_rattachees,
                  emplacements, cout_materiel, interventions, restantes,
-                 deja_rapprochee
+                 ailleurs, autre_facture, autre_facture_id, deja_rapprochee
             from fn_journees_rapprochables(${facture.id}, 120)`
-      : (
-          await sql<Omit<Journee, "nb_rattachees" | "restantes">[]>`
-            select date_intervention, intervenant, nb_anomalies, emplacements,
-                   cout_materiel, interventions, deja_rapprochee
-              from fn_journees_rapprochables(${facture.id}, 120)`
-        ).map((j) => ({
-          ...j,
-          nb_rattachees: j.deja_rapprochee ? j.interventions.length : 0,
-          restantes: j.deja_rapprochee ? [] : j.interventions,
-        }))
-    : [];
+      : ligneAligne
+        ? (
+            await sql<Omit<Journee, "ailleurs" | "autre_facture" | "autre_facture_id">[]>`
+              select date_intervention, intervenant, nb_anomalies, nb_rattachees,
+                     emplacements, cout_materiel, interventions, restantes,
+                     deja_rapprochee
+                from fn_journees_rapprochables(${facture.id}, 120)`
+          ).map((j) => ({ ...j, ailleurs: [], autre_facture: null, autre_facture_id: null }))
+        : (
+            await sql<
+              Omit<
+                Journee,
+                "nb_rattachees" | "restantes" | "ailleurs" | "autre_facture" | "autre_facture_id"
+              >[]
+            >`
+              select date_intervention, intervenant, nb_anomalies, emplacements,
+                     cout_materiel, interventions, deja_rapprochee
+                from fn_journees_rapprochables(${facture.id}, 120)`
+          ).map((j) => ({
+            ...j,
+            nb_rattachees: j.deja_rapprochee ? j.interventions.length : 0,
+            restantes: j.deja_rapprochee ? [] : j.interventions,
+            ailleurs: [],
+            autre_facture: null,
+            autre_facture_id: null,
+          }));
+
+  /**
+   * Les factures déjà saisies pour le même intervenant.
+   *
+   * « Je ne peux pas ajouter cet ancien passage » — on regardait le problème
+   * par le mauvais bout. Depuis la facture, on ajoute une journée ; depuis un
+   * passage qui n'a pas encore de pièce, il n'y avait AUCUN chemin : le seul
+   * bouton offert en créait une nouvelle, et Serafino se retrouvait avec deux
+   * factures pour un même mois. Le passage porte donc aussi la question
+   * inverse : de quelle facture ce passage fait-il partie ?
+   */
+  const voisines =
+    qui?.facture && (qui.prestataire_id || qui.technicien_id)
+      ? await sql<FactureVoisine[]>`
+          select f.id, f.reference, f.date_reference, f.montant_ht,
+                 (select count(distinct i.date_intervention)
+                    from facture_interventions fi
+                    join interventions i on i.id = fi.intervention_id
+                   where fi.facture_id = f.id)::int as nb_journees
+            from factures f
+           where f.type = 'prestation'
+             and (f.prestataire_id = ${qui.prestataire_id}::uuid
+               or f.technicien_id  = ${qui.technicien_id}::uuid)
+             and f.id is distinct from ${facture?.id ?? null}::uuid
+           order by abs(f.date_reference - ${lot.date_tournee}::date), f.date_reference desc
+           limit 12`
+      : [];
 
   /** Celles que la facture couvre réellement, en tout ou en partie. */
   const couvertes = journees.filter((j) => j.nb_rattachees > 0);
@@ -270,6 +333,69 @@ export default async function DetailTournee({
        where facture_id = ${f}::uuid
          and intervention_id = any(${lignes}::uuid[])`;
     revalidatePath(`/technique/tournee/${id}`);
+  }
+
+  /**
+   * Déplacer une journée d'une autre facture vers celle-ci.
+   *
+   * Une ligne ne peut être portée que par UNE pièce : sur deux, elle serait
+   * comptée deux fois dans le coût du passage. Déplacer, c'est donc retirer
+   * puis poser — en un seul geste, parce que l'autre facture n'est pas ouverte
+   * et qu'on ne va pas demander d'aller la chercher.
+   */
+  async function deplacerLaJournee(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/technique/tournee/${id}` as Route);
+    const lignes = String(donnees.get("interventions") ?? "").split(",").filter(Boolean);
+    const f = String(donnees.get("facture") ?? "");
+    if (!f || lignes.length === 0) return;
+    await sql`
+      delete from facture_interventions
+       where intervention_id = any(${lignes}::uuid[])`;
+    await sql`
+      insert into facture_interventions (facture_id, intervention_id)
+      select ${f}::uuid, unnest(${lignes}::uuid[])
+      on conflict do nothing`;
+    revalidatePath(`/technique/tournee/${id}`);
+    redirect(`/technique/tournee/${id}?fait=deplace` as Route);
+  }
+
+  /**
+   * Rattacher CE passage à une facture déjà saisie.
+   *
+   * L'autre sens du même geste. Un passage sans pièce n'avait qu'un bouton :
+   * « Renseigner ce qu'il a facturé », qui en crée une nouvelle. Or la plupart
+   * du temps la pièce existe déjà — c'est le mois de Serafino — et ce qu'on
+   * veut dire, c'est « ce passage en fait partie ».
+   *
+   * Si le passage était sur une autre pièce, il la quitte : une ligne ne se
+   * compte pas deux fois. L'ancienne facture reste, éventuellement sans
+   * journée — elle se supprime alors depuis la liste des factures, et l'écran
+   * le dit plutôt que de la faire disparaître dans le dos.
+   */
+  async function rattacherAUneFacture(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/technique/tournee/${id}` as Route);
+    const cible = String(donnees.get("facture") ?? "");
+    if (!cible) return;
+    await sql`
+      delete from facture_interventions
+       where intervention_id in (select r.intervention_id from v_recap_interventions r
+                                  where r.tournee = ${lot.reference})`;
+    await sql`
+      insert into facture_interventions (facture_id, intervention_id)
+      select ${cible}::uuid, r.intervention_id
+        from v_recap_interventions r
+       where r.tournee = ${lot.reference}
+      on conflict do nothing`;
+    await sql`
+      update factures set statut = 'rapprochee'
+       where id = ${cible}::uuid and statut = 'a_rapprocher'`;
+    revalidatePath(`/technique/tournee/${id}`);
+    revalidatePath("/technique/historique");
+    redirect(`/technique/tournee/${id}?fait=rattache` as Route);
   }
 
   /**
@@ -507,6 +633,74 @@ export default async function DetailTournee({
             </details>
           )}
 
+          {/* L'autre sens : de quelle facture ce passage fait-il partie ?
+              Un passage sans pièce n'avait qu'un bouton, et il en créait une
+              nouvelle — deux factures pour le même mois de Serafino. */}
+          {qui?.facture && voisines.length > 0 && (
+            <details open={!facture}>
+              <summary className="list-none carte px-4 py-3 text-[15px] flex items-center justify-between cursor-pointer">
+                <span className="text-pretty">
+                  {facture
+                    ? "Rattacher ce passage à une autre facture"
+                    : "Rattacher ce passage à une facture déjà saisie"}
+                </span>
+                <span className="shrink-0 ml-2 text-[13px] text-ink-faint tabular-nums">
+                  {voisines.length}
+                </span>
+              </summary>
+
+              <ul className="flex flex-col gap-1.5 pt-2.5">
+                {voisines.map((v) => (
+                  <li
+                    key={v.id}
+                    className="rounded-[12px] border border-line bg-surface px-3 py-2.5 flex items-center gap-2.5"
+                  >
+                    <span className="grow min-w-0">
+                      <span className="block text-[13.5px] truncate">
+                        {v.reference ?? "sans numéro"}
+                        {v.montant_ht != null && (
+                          <span className="ml-1.5 text-[11.5px] text-ink-faint tabular-nums">
+                            {euros(v.montant_ht)}
+                          </span>
+                        )}
+                      </span>
+                      <span className="block text-[11px] text-ink-faint truncate">
+                        {new Date(v.date_reference).toLocaleDateString("fr-FR", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                        {v.nb_journees > 0
+                          ? ` · ${v.nb_journees} journée${v.nb_journees > 1 ? "s" : ""}`
+                          : " · aucune journée"}
+                      </span>
+                    </span>
+                    <form action={rattacherAUneFacture} className="shrink-0">
+                      <input type="hidden" name="facture" value={v.id} />
+                      <BoutonEnvoi
+                        pendant="…"
+                        className="h-[36px] px-3 rounded-[10px] bg-plum text-white text-[12.5px] font-display font-semibold"
+                      >
+                        Rattacher
+                      </BoutonEnvoi>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+
+              <p className="pt-2 text-[11.5px] text-ink-faint text-pretty leading-snug">
+                {lot.intervenant} facture souvent son mois : une même pièce couvre plusieurs
+                journées. Rattacher ce passage à une facture déjà saisie évite d’en créer une
+                seconde pour le même mois.
+                {facture
+                  ? " Le passage quitte alors la facture actuelle — l’ancienne pièce reste" +
+                    " dans la liste des factures, sans journée si elle n’en couvre plus" +
+                    " aucune."
+                  : ""}
+              </p>
+            </details>
+          )}
+
           {/* Ce que la facture couvre — VISIBLE, pas replié sous « Corriger la
               facture ». C'est la question qu'on se pose en ouvrant le passage :
               cette pièce, elle couvre quoi ? Et les gestes portent des MOTS :
@@ -528,6 +722,9 @@ export default async function DetailTournee({
                   const cette = jourISO(j.date_intervention) === jourISO(lot.date_tournee);
                   const dessus = j.nb_rattachees > 0;
                   const partielle = dessus && !j.deja_rapprochee;
+                  // Portée par une autre pièce : on la NOMME, on ne la cache
+                  // pas. Cachée, elle n'était ni rattachable ni détachable.
+                  const ailleurs = j.ailleurs.length > 0;
                   return (
                     <li
                       key={`${jourISO(j.date_intervention)}-${j.intervenant}`}
@@ -536,7 +733,9 @@ export default async function DetailTournee({
                           ? "bg-amber-soft border-amber/25"
                           : dessus
                             ? "bg-green-soft border-green/25"
-                            : "bg-surface border-line"
+                            : ailleurs
+                              ? "bg-surface border-amber/30 border-dashed"
+                              : "bg-surface border-line"
                       }`}
                     >
                       {/* L'état se voit avant de se lire : coché, à moitié, ou rien. */}
@@ -572,6 +771,11 @@ export default async function DetailTournee({
                             : `${j.nb_anomalies} anomalie${j.nb_anomalies > 1 ? "s" : ""}`}
                           {j.emplacements ? ` · ${j.emplacements}` : ""}
                         </span>
+                        {ailleurs && (
+                          <span className="block text-[11px] text-amber truncate">
+                            sur la facture {j.autre_facture}
+                          </span>
+                        )}
                       </span>
 
                       {/* Un geste réversible doit pouvoir se défaire (16octies) :
@@ -587,6 +791,22 @@ export default async function DetailTournee({
                             className="h-[36px] px-3 rounded-[10px] bg-plum text-white text-[12.5px] font-display font-semibold"
                           >
                             {partielle ? "+ le reste" : "+ Ajouter"}
+                          </BoutonEnvoi>
+                        </form>
+                      )}
+                      {/* Une journée prise par une autre pièce se DÉPLACE :
+                          la faire disparaître de la liste, c'était une ligne
+                          sans aucun chemin de retour (règle 16octies). */}
+                      {ailleurs && (
+                        <form action={deplacerLaJournee} className="shrink-0">
+                          <input type="hidden" name="facture" value={facture.id} />
+                          <input type="hidden" name="interventions"
+                                 value={j.ailleurs.join(",")} />
+                          <BoutonEnvoi
+                            pendant="…"
+                            className="h-[36px] px-3 rounded-[10px] bg-amber-soft border border-amber/30 text-amber text-[12.5px] font-display font-semibold"
+                          >
+                            Déplacer ici
                           </BoutonEnvoi>
                         </form>
                       )}
@@ -609,9 +829,12 @@ export default async function DetailTournee({
               </ul>
 
               <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
-                Le passage d’aujourd’hui ne se retire pas d’ici : c’est lui qui a créé la
-                facture. Une journée retirée revient dans cette liste, elle ne disparaît
-                pas.
+                Le passage qu’on regarde ne se retire pas d’ici : il se retire depuis un
+                autre passage de la même facture, ou se déplace avec « Rattacher ce passage
+                à une autre facture ». Une journée retirée revient dans cette liste, elle ne
+                disparaît pas. Une journée déjà portée par une autre pièce est écrite en
+                pointillé : la déplacer ici l’en retire, parce qu’une ligne comptée deux
+                fois compterait deux fois.
               </p>
             </div>
           )}

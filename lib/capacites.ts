@@ -110,6 +110,13 @@ const ATTENDUES: Attendue[] = [
     verifier: () => tableExiste("suivis"),
   },
   {
+    titre: "Une facture couvre aussi les jours suivants",
+    sans:
+      "Un passage postérieur au jour où la facture a été saisie ne peut pas lui être " +
+      "rattaché, et une journée déjà prise par une autre pièce disparaît de la liste.",
+    verifier: () => regleContient("fn_journees_rapprochables", "ailleurs"),
+  },
+  {
     titre: "Fournisseurs de bouteilles",
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),

@@ -396,6 +396,31 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    gestes portent des MOTS, « + Ajouter » et « − Retirer » : un signe nu ne dit pas ce qu'il
    ajoute ni à quoi.
 
+16quaterdecies. **Une facture couvre aussi les jours qui SUIVENT le jour où on la
+   saisit.** La fenêtre des journées rapprochables était fermée d'un côté :
+   `between date_reference - p_jours and date_reference`. Or `date_reference` est le jour du
+   passage DEPUIS lequel la pièce a été saisie, pas le dernier jour qu'elle couvre — Serafino
+   facture son mois, et la facture arrive après. Mesuré : la facture saisie sur le passage du
+   23 février proposait **4 journées** ; elle en propose **16** une fois la fenêtre ouverte des
+   deux côtés, dont les 24 et 25 février, que rien ne pouvait lui rattacher. « Je ne peux pas
+   ajouter cet ancien passage. » Et **une journée que porte une AUTRE pièce ne disparaît
+   plus** : elle était retirée de la liste (`not exists … facture_id <> f.id`), donc ni
+   rattachable, ni détachable, ni même nommée — le même défaut que la 0019 corrigeait à
+   l'intérieur d'une journée. Elle est écrite en pointillé, avec le numéro de la pièce qui la
+   porte, et **« Déplacer ici »** la prend : une ligne ne vit que sur une facture, sinon son
+   coût est compté deux fois (migration 0024). La fonction ne joignait d'ailleurs que sur
+   `prestataire_id` : la facture de Farid ou de Rachid, qui facturent sans être une entreprise
+   (règle 10quinquies), ne trouvait jamais une seule journée.
+
+16quindecies. **Un passage se rattache à une facture DÉJÀ saisie.** L'autre sens du même
+   geste, et celui qui manquait entièrement : depuis la facture on ajoute une journée, mais
+   depuis un passage sans pièce le seul bouton offert en créait une NOUVELLE — deux factures
+   pour le même mois de Serafino. Le passage porte donc « Rattacher ce passage à une facture
+   déjà saisie », avec les pièces du même intervenant, la plus proche en date d'abord. Si le
+   passage était sur une autre pièce, il la quitte, et l'écran le dit : l'ancienne facture
+   reste dans la liste, sans journée si elle n'en couvre plus aucune — elle s'y supprime
+   (règle 16decies). Ne jamais faire disparaître une pièce dans le dos de celui qui déplace.
+
 16octies. **Un geste réversible doit pouvoir se défaire — jusqu'au bout.** Le « − » d'une
    facture détachait une intervention, et elle DISPARAISSAIT : `fn_journees_rapprochables`
    marquait la journée entière « déjà rattachée » dès qu'UNE de ses lignes l'était
@@ -943,6 +968,16 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   anomalies n'apparaissent pas. » Les mois se **replient**, ils ne se coupent pas : une section
   par mois avec ce qu'il pèse — passages, anomalies, coût — les deux plus récents ouverts, le
   reste à un appui. Une liste longue se range ; elle ne se raccourcit jamais sans le dire.
+- **Le mot cherché se surligne là où il se trouve.** Filtrer ne suffit pas : un mois déplié
+  porte quarante-sept lignes, et la liste dit « il y a quelque chose ici » sans dire OÙ — on
+  relit tout pour retrouver le mot qu'on vient de taper. Sur « 22 », qui est autant une chambre
+  qu'un numéro d'anomalie, on ne sait même pas ce qui a répondu. `Surligne`
+  (`app/composants/suivi.tsx`) marque le mot dans le libellé, le lieu, le matériel, le nom de
+  l'intervenant et le numéro d'origine — qui **s'affiche enfin** sous la puce de lieu, lui qu'on
+  cherchait sans qu'il soit écrit nulle part. Et **chercher rouvre les mois qui répondent** :
+  sinon le mot tombe dans une section restée fermée par la question d'avant, et on croit qu'il
+  n'a rien donné. Une recherche est une question neuve — elle ne traîne pas les mois ouverts
+  de la précédente.
 - **On identifie une anomalie par son NUMÉRO d'origine.** « L'anomalie 378 », « celle de Serafino
   du 24/02 » : c'est le langage de l'hôtel, hérité de l'ancienne application. La recherche ne
   portait que sur la description, le lieu et l'intervenant — taper « 378 » ne rendait rien, et on
