@@ -27,8 +27,17 @@ type Lot = {
   facture: string | null;
   facture_id: string | null;
   nb_journees_couvertes: number;
-  /** Ce que le passage contient, en clair : sans ça on ouvrait chaque carte. */
-  apercu: string[];
+};
+
+/** Une anomalie du passage, telle qu'on la lit dans le mois déplié. */
+type Detail = {
+  tournee: string;
+  sharepoint_id: number | null;
+  emplacement: string;
+  description: string;
+  decision_gouvernante: string | null;
+  decision_technicien: string | null;
+  materiel: string | null;
 };
 
 type Facture = {
@@ -75,10 +84,22 @@ const JOUR_LONG = { weekday: "long", day: "numeric", month: "long", year: "numer
 export default async function PassagesEtFactures({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; qui?: string; vue?: string; filtre?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    qui?: string;
+    vue?: string;
+    filtre?: string;
+    mois?: string;
+  }>;
 }) {
   await exigerEncadrement();
-  const { q = "", qui = "tous", vue = "passages", filtre = "a_rapprocher" } = await searchParams;
+  const {
+    q = "",
+    qui = "tous",
+    vue = "passages",
+    filtre = "a_rapprocher",
+    mois: moisOuverts,
+  } = await searchParams;
   const terme = q.trim().toLowerCase();
   const factures_ = vue === "factures";
 
@@ -126,16 +147,6 @@ export default async function PassagesEtFactures({
                t.reprise, t.mail_recap_envoye_le,
                (select string_agg(distinct r.emplacement, ', ' order by r.emplacement)
                   from v_recap_interventions r where r.tournee = t.reference) as emplacements,
-               -- Les trois premières anomalies, lieu compris (règle 16bis) :
-               -- la carte ne disait que « 5 anomalies », et retrouver une
-               -- ligne précise demandait d'ouvrir les quatre-vingt-seize
-               -- passages un par un.
-               coalesce((select array_agg(x.ligne order by x.ligne)
-                           from (select distinct r.emplacement || ' — ' || r.description
-                                   as ligne
-                                   from v_recap_interventions r
-                                  where r.tournee = t.reference
-                                  limit 3) x), '{}') as apercu,
                fa.reference as facture, fa.id as facture_id,
                coalesce(fa.nb_journees, 0)::int as nb_journees_couvertes
         from v_tournees t
@@ -221,11 +232,13 @@ export default async function PassagesEtFactures({
    * ce qu'il pèse, et l'on ouvre celui qu'on cherche. Les deux plus récents
    * sont ouverts — c'est là qu'on regarde neuf fois sur dix.
    */
+  const cleDuMois = (d: string | Date) => jourISO(d).slice(0, 7);
+
   const mois = lots.reduce<
     { cle: string; libelle: string; lots: Lot[]; anomalies: number; cout: number }[]
   >((acc, l) => {
     const d = new Date(jourISO(l.date_tournee));
-    const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const cle = cleDuMois(l.date_tournee);
     let groupe = acc.find((g) => g.cle === cle);
     if (!groupe) {
       groupe = {
@@ -243,11 +256,57 @@ export default async function PassagesEtFactures({
     return acc;
   }, []);
 
+  /**
+   * Quels mois sont dépliés — et c'est l'ADRESSE qui le dit.
+   *
+   * Sans ça, ouvrir un passage puis revenir refermait tout : `RelireEnRevenant`
+   * redemande la page au serveur, et l'état d'un `<details>` n'y survit pas.
+   * On remontait le mois qu'on venait de quitter à chaque aller-retour.
+   * Dans l'adresse, l'ouverture est une donnée comme une autre : elle survit au
+   * retour, et le lien se partage tel qu'on le regarde.
+   *
+   * Par défaut les deux mois les plus récents — c'est là qu'on regarde neuf
+   * fois sur dix. `?mois=` (vide) les referme tous.
+   */
+  const ouverts = new Set(
+    moisOuverts === undefined
+      ? mois.slice(0, 2).map((g) => g.cle)
+      : moisOuverts.split(",").filter(Boolean),
+  );
+
+  /**
+   * Le détail des mois ouverts — TOUTES les anomalies, pas un aperçu.
+   *
+   * « Si je clique pour avoir le détail, c'est que je veux tous les détails
+   * des anomalies regroupées ensemble, et non devoir cliquer sur la deuxième
+   * intervention du mois pour avoir le détail à nouveau. » Le mois déplié
+   * porte donc tout ; on ne charge que ce qui est ouvert.
+   */
+  const referencesOuvertes = lots
+    .filter((l) => ouverts.has(cleDuMois(l.date_tournee)))
+    .map((l) => l.reference);
+
+  const details = referencesOuvertes.length
+    ? await sql<Detail[]>`
+        select r.tournee, a.sharepoint_id, r.emplacement, r.description,
+               r.decision_gouvernante::text, r.decision_technicien::text,
+               (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
+                  from mouvements_stock m join produits p on p.id = m.produit_id
+                 where m.intervention_id = r.intervention_id and m.type = 'sortie')
+                 as materiel
+          from v_recap_interventions r
+          join anomalies a on a.id = r.anomalie_id
+         where r.tournee = any(${referencesOuvertes})
+         order by r.emplacement, r.description`
+    : [];
+  const detailDe = (reference: string) => details.filter((d) => d.tournee === reference);
+
   const ici = (p: Record<string, string>) =>
     `/technique/historique?${new URLSearchParams({
       ...(vue !== "passages" ? { vue } : {}),
       ...(qui !== "tous" ? { qui } : {}),
       ...(q ? { q } : {}),
+      ...(moisOuverts !== undefined ? { mois: moisOuverts } : {}),
       ...p,
     })}` as Route;
 
@@ -317,7 +376,10 @@ export default async function PassagesEtFactures({
         <Recherche
           valeur={q}
           placeholder={factures_ ? "Un intervenant, un numéro…" : "Une chambre, un mot, un nom…"}
-          caches={{ ...(factures_ ? { vue, filtre } : { qui }) }}
+          caches={{
+            ...(factures_ ? { vue, filtre } : { qui }),
+            ...(moisOuverts !== undefined ? { mois: moisOuverts } : {}),
+          }}
         />
 
         {factures_ ? (
@@ -478,16 +540,28 @@ export default async function PassagesEtFactures({
               </Vide>
             ) : (
               <div className="flex flex-col gap-3">
-                {mois.map((g, rang) => (
-                  <details key={g.cle} className="flex flex-col gap-2" open={rang < 2}>
-                    <summary
+                {mois.map((g) => {
+                  const ouvert = ouverts.has(g.cle);
+                  // Basculer ce mois : `replace`, pas `push` — déplier n'est
+                  // pas naviguer, et la flèche arrière doit sortir de l'écran,
+                  // pas refermer les mois un par un (règle 14septies).
+                  const bascule = [...ouverts];
+                  const apres = ouvert
+                    ? bascule.filter((c) => c !== g.cle)
+                    : [...bascule, g.cle];
+                  return (
+                  <section key={g.cle} className="flex flex-col gap-2">
+                    <Link
+                      href={ici({ mois: apres.join(",") })}
+                      replace
+                      scroll={false}
                       data-cible
-                      className="carte px-4 py-2.5 flex items-center gap-3 cursor-pointer list-none select-none group/mois"
+                      className="carte px-4 py-2.5 flex items-center gap-3 select-none"
                     >
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                            stroke="#8E8AA3" strokeWidth="2" strokeLinecap="round"
                            strokeLinejoin="round"
-                           className="shrink-0 transition-transform group-open/mois:rotate-90">
+                           className={`shrink-0 transition-transform ${ouvert ? "rotate-90" : ""}`}>
                         <path d="M9 5l7 7-7 7" />
                       </svg>
                       <span className="grow font-display font-semibold text-[15px] first-letter:uppercase">
@@ -498,14 +572,12 @@ export default async function PassagesEtFactures({
                         anomalie{g.anomalies > 1 ? "s" : ""}
                         {g.cout > 0 ? ` · ${euros(g.cout)}` : ""}
                       </span>
-                    </summary>
-                    <ul className="flex flex-col gap-2 pt-2">
+                    </Link>
+                    {ouvert && (
+                    <ul className="flex flex-col gap-2">
 {g.lots.map((l) => (
-                  <li key={l.id}>
-                    <Link
-                      href={`/technique/tournee/${l.id}` as Route}
-                      className="carte px-4 py-3.5 flex flex-col gap-1.5 active:bg-surface-muted"
-                    >
+                  <li key={l.id} className="carte px-4 py-3.5 flex flex-col gap-1.5">
+                    <div>
                       <span className="flex items-baseline gap-3">
                         <span className="grow min-w-0">
                           <span className="block font-display font-semibold text-[15.5px]">
@@ -526,30 +598,61 @@ export default async function PassagesEtFactures({
                       </span>
 
 
-                      {/* Ce que le passage contient, en clair. « 5 anomalies »
-                          n'aide pas à retrouver une ligne précise : il fallait
-                          ouvrir chaque passage. Le détail reste derrière
-                          l'appui. */}
-                      {l.apercu.length > 0 && (
-                        <span className="flex flex-col gap-0.5 pt-0.5">
-                          {l.apercu.map((t) => (
-                            <span key={t} className="text-[12px] text-ink-soft truncate">
-                              · {t}
+                    </div>
+
+                    {/* TOUTES les anomalies du passage, pas trois. Déplier un
+                        mois, c'est vouloir le lire en entier — pas rouvrir
+                        chaque passage l'un après l'autre. */}
+                    <ul className="flex flex-col divide-y divide-line border-y border-line">
+                      {detailDe(l.reference).map((d, i) => (
+                        <li key={`${d.emplacement}-${i}`} className="py-2 flex items-start gap-2.5">
+                          <span className="shrink-0 mt-[1px] px-1.5 py-0.5 rounded-md bg-plum-soft text-plum text-[11.5px] font-medium tabular-nums">
+                            {d.emplacement}
+                          </span>
+                          <span className="grow min-w-0">
+                            <span className="block text-[13.5px] leading-snug text-pretty">
+                              {d.description}
                             </span>
-                          ))}
-                          {l.nb_interventions > l.apercu.length && (
-                            <span className="text-[11.5px] text-ink-faint">
-                              et {l.nb_interventions - l.apercu.length} autre
-                              {l.nb_interventions - l.apercu.length > 1 ? "s" : ""} — appuyez
-                              pour le détail
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      <span className="flex flex-wrap items-center gap-2 text-[11px]">
-                        <span className="text-ink-faint">
-                          {l.nb_interventions} anomalie{l.nb_interventions > 1 ? "s" : ""}
-                        </span>
+                            {d.materiel && (
+                              <span className="block text-[11.5px] text-ink-faint">
+                                {d.materiel}
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            className={`shrink-0 mt-[1px] px-1.5 py-0.5 rounded-md text-[10.5px] ${
+                              d.decision_gouvernante === "validee"
+                                ? "bg-green-soft text-green"
+                                : d.decision_gouvernante === "a_refaire"
+                                  ? "bg-red-soft text-red"
+                                  : d.decision_gouvernante
+                                    ? "bg-blue-soft text-blue"
+                                    : d.decision_technicien === "fait"
+                                      ? "bg-amber-soft text-amber"
+                                      : "bg-surface-muted text-ink-faint"
+                            }`}
+                          >
+                            {d.decision_gouvernante === "validee"
+                              ? "validée"
+                              : d.decision_gouvernante === "a_refaire"
+                                ? "à refaire"
+                                : d.decision_gouvernante
+                                  ? "en cours"
+                                  : d.decision_technicien === "fait"
+                                    ? "sans avis"
+                                    : "—"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Link
+                      href={`/technique/tournee/${l.id}` as Route}
+                      className="flex flex-wrap items-center gap-2 text-[11px] active:opacity-70"
+                    >
+                      <span className="text-plum underline underline-offset-4">
+                        Ouvrir le passage
+                      </span>
                         {/* La facture, d'un coup d'œil : ce qui est couvert et
                             ce qui attend encore sa pièce ne se distinguaient
                             pas. */}
@@ -589,13 +692,14 @@ export default async function PassagesEtFactures({
                         ) : l.mail_recap_envoye_le ? (
                           <span className="text-ink-faint">récapitulatif envoyé</span>
                         ) : null}
-                      </span>
                     </Link>
                   </li>
                       ))}
                     </ul>
-                  </details>
-                ))}
+                    )}
+                  </section>
+                  );
+                })}
               </div>
             )}
           </>

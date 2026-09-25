@@ -947,11 +947,20 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   du 24/02 » : c'est le langage de l'hôtel, hérité de l'ancienne application. La recherche ne
   portait que sur la description, le lieu et l'intervenant — taper « 378 » ne rendait rien, et on
   en concluait que la ligne avait disparu. Elle couvre donc aussi `anomalies.sharepoint_id`.
-- **Un passage groupe des anomalies : il doit dire LESQUELLES.** La carte annonçait
-  « 5 anomalies » et la liste des lieux : pour retrouver une ligne précise il fallait ouvrir les
-  quatre-vingt-seize passages un par un. Elle porte maintenant les trois premières, lieu compris
-  (règle 16bis), puis « et 2 autres — appuyez pour le détail ». L'aperçu sert à reconnaître,
-  l'appui sert à lire.
+- **Déplier un mois, c'est vouloir le lire EN ENTIER.** Un aperçu de trois anomalies obligeait
+  encore à ouvrir chaque passage : « si je clique pour avoir le détail, c'est que je veux tous
+  les détails des anomalies regroupées ensemble, et non devoir cliquer sur la deuxième
+  intervention du mois pour avoir le détail à nouveau ». Le mois déplié porte donc TOUTES les
+  anomalies de TOUS ses passages — lieu, libellé, matériel sorti, avis de la gouvernante — et on
+  ne charge que les mois ouverts. L'écran sert au suivi rapide des passages : il se lit, il ne
+  se parcourt pas. « Ouvrir le passage » reste au bas de chaque carte, pour la facture et les
+  corrections.
+- **Ce qui est déplié vit dans l'ADRESSE, pas dans le `<details>`.** `RelireEnRevenant` redemande
+  la page au serveur en revenant : l'état d'un `<details>` n'y survit pas, et on remontait le
+  mois qu'on venait de quitter à chaque aller-retour. `?mois=2026-04,2026-03` le dit, donc il
+  survit au retour et le lien se partage tel qu'on le regarde. Basculer un mois se fait en
+  **`replace` et `scroll={false}`** — déplier n'est pas naviguer (règle 14septies) — et `?mois=`
+  vide les referme tous.
 - **Le « + » n'est pas un bouton flottant.** Il vivait dans le coin bas-droit, par-dessus la
   liste : il masquait la dernière ligne, le pouce l'attrapait en faisant défiler, et il n'a rien à
   voir avec le geste du bas de l'écran, qui est « j'ai fini ». Il est maintenant à côté de la
