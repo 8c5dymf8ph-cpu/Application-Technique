@@ -95,13 +95,13 @@ export default async function DetailDossier({
           : "Le client est au courant. Reste à savoir si la bouteille revient.";
 
   // On reconnaît une bouteille à sa couleur en chambre, pas à son nom. La vue
-  // du dossier ne porte pas la couleur ; on la prend au référentiel plutôt que
-  // de faire une migration pour deux lignes.
-  const couleurs = new Map(
+  // du dossier ne porte ni la couleur ni la photo ; on les prend au
+  // référentiel plutôt que de faire une migration pour deux lignes.
+  const typesBouteille = new Map(
     (
-      await sql<{ code: string; couleur: string | null }[]>`
-        select code, couleur from bouteille_types`
-    ).map((b) => [b.code, b.couleur]),
+      await sql<{ code: string; couleur: string | null; photo: string | null }[]>`
+        select code, couleur, photo from bouteille_types`
+    ).map((b) => [b.code, b]),
   );
 
   // À qui l'alerte est destinée. Jamais au client : c'est la réception qui lui
@@ -196,18 +196,30 @@ export default async function DetailDossier({
         {/* Ce que le dossier dit : quelles bouteilles, combien, et chez qui. */}
         <section className="carte px-4 py-4 flex flex-col gap-3.5">
           <ul className="flex flex-col gap-2">
-            {d.lignes.map((l) => (
+            {d.lignes.map((l) => {
+              const couleur = typesBouteille.get(l.code)?.couleur ?? "#8C86A8";
+              const photo = typesBouteille.get(l.code)?.photo;
+              return (
               <li key={l.code} className="flex items-center gap-3">
-                {/* La bouteille à sa couleur : bleue pour la filtrée, rouge
-                    pour la gazeuse. On la reconnaît à ça en chambre. */}
-                <span
-                  aria-hidden
-                  className="w-[20px] h-[30px] shrink-0 rounded-[6px] border-2"
-                  style={{
-                    borderColor: couleurs.get(l.code) ?? "#8C86A8",
-                    background: (couleurs.get(l.code) ?? "#8C86A8") + "22",
-                  }}
-                />
+                {/* La bouteille : sa photo si Miguel en a ajouté une, sinon
+                    sa couleur — bleue pour la filtrée, rouge pour la gazeuse.
+                    Même taille dans les deux cas, on la reconnaît à ça en
+                    chambre. */}
+                {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/photo/${photo}`}
+                    alt=""
+                    aria-hidden
+                    className="w-[20px] h-[30px] shrink-0 rounded-[6px] object-contain"
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="w-[20px] h-[30px] shrink-0 rounded-[6px] border-2"
+                    style={{ borderColor: couleur, background: couleur + "22" }}
+                  />
+                )}
                 <span className="grow min-w-0 flex flex-col">
                   <span className="text-[15px] leading-snug">{l.libelle}</span>
                   <span className="text-[11.5px] text-ink-faint tabular-nums">
@@ -217,7 +229,8 @@ export default async function DetailDossier({
                   </span>
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
 
           <div className="flex items-baseline justify-between border-t border-line pt-3">

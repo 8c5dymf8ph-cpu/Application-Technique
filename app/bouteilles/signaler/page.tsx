@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { personnes, profilActif } from "@/lib/profil";
 import { euros , aujourdhuiISO } from "@/lib/domaine";
 import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
@@ -14,7 +15,14 @@ import { deposerAlerteBouteille } from "@/lib/alerte-bouteille";
 
 export const dynamic = "force-dynamic";
 
-type Chambre = { id: string; code: string; etage: string; en_place: number; dotation: number };
+type Chambre = {
+  id: string;
+  code: string;
+  etage: string;
+  en_place: number;
+  dotation: number;
+  essai: boolean;
+};
 type Type = {
   id: string;
   code: string;
@@ -48,10 +56,14 @@ export default async function Signaler({
   // Ceux à qui l'on transmet : la réception, et l'administration.
   const destinataires = await personnes(["reception", "admin"]);
 
+  // `essai` n'existe qu'après la migration 0008 : nommer une colonne absente
+  // casse la requête entière, pas seulement la condition.
+  const marqueEssai = await colonneExiste("emplacements", "essai");
   const chambres = await sql<Chambre[]>`
     select e.id, e.code, et.nom as etage,
            coalesce(sum(b.quantite_reelle), 0)::int    as en_place,
-           coalesce(sum(b.quantite_theorique), 0)::int as dotation
+           coalesce(sum(b.quantite_theorique), 0)::int as dotation,
+           ${marqueEssai ? sql`e.essai` : sql`false`}  as essai
     from emplacements e
     join etages et on et.id = e.etage_id
     left join v_bouteilles_par_emplacement b on b.emplacement_id = e.id
@@ -158,9 +170,11 @@ export default async function Signaler({
         ? await deposerAlerteBouteille(dossier.id)
         : null;
 
-    redirect(
-      `/bouteilles/dossier/${dossier.id}${verdict ? `?fait=${verdict}` : ""}` as Route,
-    );
+    // Toujours un `fait`, même sans alerte à envoyer (casse, ou emport par le
+    // personnel) : sinon rien ne dit que l'enregistrement a abouti, et la
+    // marque qui empêche la flèche arrière de rouvrir le formulaire rempli
+    // (MarquerValide) ne se pose jamais.
+    redirect(`/bouteilles/dossier/${dossier.id}?fait=${verdict ?? "enregistre"}` as Route);
   }
 
   const etages = [...new Set(chambres.map((c) => c.etage))];
@@ -208,7 +222,11 @@ export default async function Signaler({
           <div className="flex flex-col gap-2">
             {etages.map((etage) => {
               const dedans = chambres.filter((c) => c.etage === etage);
-              const incompletes = dedans.filter((c) => c.en_place < c.dotation).length;
+              // Un essai ne compte dans aucun chiffre : sa dotation n'est pas
+              // une vraie alerte.
+              const incompletes = dedans.filter(
+                (c) => !c.essai && c.en_place < c.dotation,
+              ).length;
               return (
                 <details key={etage} className="carte overflow-hidden group">
                   <summary
@@ -237,12 +255,17 @@ export default async function Signaler({
                         href={lien({ lieu: c.code })}
                         data-cible
                         className={`px-3.5 flex items-center justify-center min-w-[54px] rounded-pill border text-[15px] ${
-                          c.en_place < c.dotation
-                            ? "border-amber/40 bg-amber-soft text-amber"
-                            : "border-line bg-surface-muted"
+                          c.essai
+                            ? "border-dashed border-plum bg-plum-soft text-plum"
+                            : c.en_place < c.dotation
+                              ? "border-amber/40 bg-amber-soft text-amber"
+                              : "border-line bg-surface-muted"
                         }`}
                       >
                         {c.code}
+                        {/* Un lieu d'essai se voit : on y fait ce qu'on veut,
+                            rien de ce qu'on y fait ne sort du parc. */}
+                        {c.essai && <span className="ml-1.5 text-[11px]">essai</span>}
                       </Link>
                     ))}
                   </div>

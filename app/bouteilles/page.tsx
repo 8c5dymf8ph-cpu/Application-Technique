@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
+import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
@@ -43,16 +44,28 @@ export default async function Bouteilles({
   // Tout le monde voit tout : ce qui change, c'est l'ordre. Les trois gestes de
   // la gouvernante viennent d'abord, le suivi et l'analyse ensuite.
 
+  // Les chambres d'essai (06, 07) ne comptent dans aucun chiffre affiché ici :
+  // une liste vide n'exclut personne, ce qui est exactement l'état tant que
+  // la migration 0008 n'est pas appliquée.
+  const essai = (await colonneExiste("emplacements", "essai"))
+    ? (
+        await sql<{ id: string }[]>`select id from emplacements where essai`
+      ).map((l) => l.id)
+    : [];
+
   const [c] = await sql<
     { ouverts: number; urgents: number; du_mois: number; en_jeu: number; commandes: number }[]
   >`
     select
-      (select count(*) from v_dossiers_bouteille where famille = 'ouvert')::int as ouverts,
-      (select count(*) from v_dossiers_bouteille where urgent)::int             as urgents,
       (select count(*) from v_dossiers_bouteille
-        where constate_le >= date_trunc('month', current_date))::int            as du_mois,
+        where famille = 'ouvert' and not (emplacement_id = any(${essai})))::int as ouverts,
+      (select count(*) from v_dossiers_bouteille
+        where urgent and not (emplacement_id = any(${essai})))::int             as urgents,
+      (select count(*) from v_dossiers_bouteille
+        where constate_le >= date_trunc('month', current_date)
+          and not (emplacement_id = any(${essai})))::int                        as du_mois,
       (select coalesce(sum(montant), 0) from v_dossiers_bouteille
-        where famille = 'ouvert')                                               as en_jeu,
+        where famille = 'ouvert' and not (emplacement_id = any(${essai})))      as en_jeu,
       (select count(*) from commandes where statut in ('brouillon','envoyee'))::int as commandes`;
 
   return (

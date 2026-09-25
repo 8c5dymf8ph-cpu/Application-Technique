@@ -333,7 +333,12 @@ export const EXPORTS: Export[] = [
     aide:
       "Entrées, dotations, emports, retours : c’est d’ici que vient le parc — " +
       "avec le prix de référence de chaque type, pour ne pas ouvrir une deuxième feuille.",
-    lignes: () => sql`
+    // Même principe que « Mouvements de stock » (migration 0013, puis 0026
+    // pour les bouteilles) : un geste passé en 06 ou 07 reste dans la liste —
+    // le technicien doit pouvoir le revoir — mais ne compte pas dans le parc.
+    lignes: async () => {
+      const essai = await colonneExiste("emplacements", "essai");
+      return sql`
       select m.date_mouvement                          as "Date",
              m.type::text                               as "Type",
              bt.libelle                                 as "Type de bouteille",
@@ -343,6 +348,10 @@ export const EXPORTS: Export[] = [
              m.vers_lieu::text                          as "Vers",
              e_vers.code                                as "Lieu d’arrivée",
              coalesce(u.nom, '—')                       as "Par",
+             ${essai
+               ? sql`case when coalesce(e_de.essai, false) or coalesce(e_vers.essai, false)
+                          then 'non (essai)' else 'oui' end`
+               : sql`'oui'::text`}                       as "Compté dans le parc",
              bt.prix_vente                              as "Prix vente (référence)",
              bt.prix_achat                              as "Prix achat (référence)",
              m.commentaire                              as "Commentaire"
@@ -351,7 +360,8 @@ export const EXPORTS: Export[] = [
         left join emplacements e_de   on e_de.id = m.de_emplacement_id
         left join emplacements e_vers on e_vers.id = m.vers_emplacement_id
         left join utilisateurs u      on u.id = m.utilisateur_id
-       order by m.date_mouvement desc`,
+       order by m.date_mouvement desc`;
+    },
   },
   {
     cle: "commandes",
