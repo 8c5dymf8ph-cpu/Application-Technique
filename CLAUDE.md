@@ -936,6 +936,22 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   règle 9quater, et elle vaut parce que « Technique » existe vraiment comme fourre-tout. Le
   **commentaire se saisit là** — c'est en créant le libellé qu'on a en tête ce que le mot ne
   dira jamais — et il suit jusqu'à la déclaration sans être retapé.
+- **Une liste qui se tronque en silence est un mensonge.** `/technique/historique` rendait les
+  50 passages les plus récents et s'arrêtait là, sans un mot : sur la base de l'hôtel,
+  **46 passages sur 96 — 304 anomalies — n'existaient tout simplement pas à l'écran**, et tout
+  ce qui précédait le 23/12/2025 était hors d'atteinte. « Je ne comprends pas pourquoi certaines
+  anomalies n'apparaissent pas. » Les mois se **replient**, ils ne se coupent pas : une section
+  par mois avec ce qu'il pèse — passages, anomalies, coût — les deux plus récents ouverts, le
+  reste à un appui. Une liste longue se range ; elle ne se raccourcit jamais sans le dire.
+- **On identifie une anomalie par son NUMÉRO d'origine.** « L'anomalie 378 », « celle de Serafino
+  du 24/02 » : c'est le langage de l'hôtel, hérité de l'ancienne application. La recherche ne
+  portait que sur la description, le lieu et l'intervenant — taper « 378 » ne rendait rien, et on
+  en concluait que la ligne avait disparu. Elle couvre donc aussi `anomalies.sharepoint_id`.
+- **Un passage groupe des anomalies : il doit dire LESQUELLES.** La carte annonçait
+  « 5 anomalies » et la liste des lieux : pour retrouver une ligne précise il fallait ouvrir les
+  quatre-vingt-seize passages un par un. Elle porte maintenant les trois premières, lieu compris
+  (règle 16bis), puis « et 2 autres — appuyez pour le détail ». L'aperçu sert à reconnaître,
+  l'appui sert à lire.
 - **Le « + » n'est pas un bouton flottant.** Il vivait dans le coin bas-droit, par-dessus la
   liste : il masquait la dernière ligne, le pouce l'attrapait en faisant défiler, et il n'a rien à
   voir avec le geste du bas de l'écran, qui est « j'ai fini ». Il est maintenant à côté de la

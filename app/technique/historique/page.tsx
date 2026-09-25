@@ -27,6 +27,8 @@ type Lot = {
   facture: string | null;
   facture_id: string | null;
   nb_journees_couvertes: number;
+  /** Ce que le passage contient, en clair : sans ça on ouvrait chaque carte. */
+  apercu: string[];
 };
 
 type Facture = {
@@ -124,6 +126,16 @@ export default async function PassagesEtFactures({
                t.reprise, t.mail_recap_envoye_le,
                (select string_agg(distinct r.emplacement, ', ' order by r.emplacement)
                   from v_recap_interventions r where r.tournee = t.reference) as emplacements,
+               -- Les trois premières anomalies, lieu compris (règle 16bis) :
+               -- la carte ne disait que « 5 anomalies », et retrouver une
+               -- ligne précise demandait d'ouvrir les quatre-vingt-seize
+               -- passages un par un.
+               coalesce((select array_agg(x.ligne order by x.ligne)
+                           from (select distinct r.emplacement || ' — ' || r.description
+                                   as ligne
+                                   from v_recap_interventions r
+                                  where r.tournee = t.reference
+                                  limit 3) x), '{}') as apercu,
                fa.reference as facture, fa.id as facture_id,
                coalesce(fa.nb_journees, 0)::int as nb_journees_couvertes
         from v_tournees t
@@ -145,9 +157,19 @@ export default async function PassagesEtFactures({
                 where r.tournee = t.reference
                   and (lower(r.description) like ${"%" + terme + "%"}
                     or lower(r.emplacement) like ${"%" + terme + "%"}
-                    or lower(coalesce(r.intervenant, '')) like ${"%" + terme + "%"})))
+                    or lower(coalesce(r.intervenant, '')) like ${"%" + terme + "%"}
+                    -- On identifie une anomalie par son NUMÉRO d'origine, celui
+                    -- de l'ancienne application : « l'anomalie 378 ». Chercher
+                    -- « 378 » ne rendait rien, et on concluait qu'elle avait
+                    -- disparu.
+                    or exists (select 1 from anomalies a
+                                where a.id = r.anomalie_id
+                                  and a.sharepoint_id::text = ${terme}))))
         order by t.date_tournee desc, t.cloturee_le desc nulls last
-        limit 50`;
+        -- Plus de coupe à 50 : sur la base de l'hôtel, 46 passages sur 96 —
+        -- 304 anomalies — n'existaient tout simplement pas à l'écran, et rien
+        -- ne le disait. Les mois se replient, ils ne se tronquent pas.
+        limit 400`;
 
   // Une facture se lit par ce qu'elle COUVRE : sans les journées, la carte ne
   // disait qu'un nombre d'interventions, et on ouvrait pour savoir lesquelles.
@@ -190,6 +212,36 @@ export default async function PassagesEtFactures({
         group by prestataire_id, prestataire
         order by max(jours_ecoules) desc`
     : [];
+
+  /**
+   * Les passages, groupés par mois.
+   *
+   * Quatre-vingt-seize cartes à la file ne disent rien : on fait défiler sans
+   * savoir où l'on est dans le temps, et on renonce. Un mois par section, avec
+   * ce qu'il pèse, et l'on ouvre celui qu'on cherche. Les deux plus récents
+   * sont ouverts — c'est là qu'on regarde neuf fois sur dix.
+   */
+  const mois = lots.reduce<
+    { cle: string; libelle: string; lots: Lot[]; anomalies: number; cout: number }[]
+  >((acc, l) => {
+    const d = new Date(jourISO(l.date_tournee));
+    const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    let groupe = acc.find((g) => g.cle === cle);
+    if (!groupe) {
+      groupe = {
+        cle,
+        libelle: d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }),
+        lots: [],
+        anomalies: 0,
+        cout: 0,
+      };
+      acc.push(groupe);
+    }
+    groupe.lots.push(l);
+    groupe.anomalies += l.nb_interventions;
+    groupe.cout += Number(l.cout_total ?? 0);
+    return acc;
+  }, []);
 
   const ici = (p: Record<string, string>) =>
     `/technique/historique?${new URLSearchParams({
@@ -425,8 +477,30 @@ export default async function PassagesEtFactures({
                 {terme ? `Aucun passage ne correspond à « ${q} ».` : "Aucun passage enregistré."}
               </Vide>
             ) : (
-              <ul className="flex flex-col gap-2">
-                {lots.map((l) => (
+              <div className="flex flex-col gap-3">
+                {mois.map((g, rang) => (
+                  <details key={g.cle} className="flex flex-col gap-2" open={rang < 2}>
+                    <summary
+                      data-cible
+                      className="carte px-4 py-2.5 flex items-center gap-3 cursor-pointer list-none select-none group/mois"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                           stroke="#8E8AA3" strokeWidth="2" strokeLinecap="round"
+                           strokeLinejoin="round"
+                           className="shrink-0 transition-transform group-open/mois:rotate-90">
+                        <path d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span className="grow font-display font-semibold text-[15px] first-letter:uppercase">
+                        {g.libelle}
+                      </span>
+                      <span className="shrink-0 text-[11.5px] text-ink-faint tabular-nums">
+                        {g.lots.length} passage{g.lots.length > 1 ? "s" : ""} · {g.anomalies}{" "}
+                        anomalie{g.anomalies > 1 ? "s" : ""}
+                        {g.cout > 0 ? ` · ${euros(g.cout)}` : ""}
+                      </span>
+                    </summary>
+                    <ul className="flex flex-col gap-2 pt-2">
+{g.lots.map((l) => (
                   <li key={l.id}>
                     <Link
                       href={`/technique/tournee/${l.id}` as Route}
@@ -451,12 +525,27 @@ export default async function PassagesEtFactures({
                         </span>
                       </span>
 
-                      {l.emplacements && (
-                        <span className="text-[12px] text-ink-soft truncate">
-                          {l.emplacements}
+
+                      {/* Ce que le passage contient, en clair. « 5 anomalies »
+                          n'aide pas à retrouver une ligne précise : il fallait
+                          ouvrir chaque passage. Le détail reste derrière
+                          l'appui. */}
+                      {l.apercu.length > 0 && (
+                        <span className="flex flex-col gap-0.5 pt-0.5">
+                          {l.apercu.map((t) => (
+                            <span key={t} className="text-[12px] text-ink-soft truncate">
+                              · {t}
+                            </span>
+                          ))}
+                          {l.nb_interventions > l.apercu.length && (
+                            <span className="text-[11.5px] text-ink-faint">
+                              et {l.nb_interventions - l.apercu.length} autre
+                              {l.nb_interventions - l.apercu.length > 1 ? "s" : ""} — appuyez
+                              pour le détail
+                            </span>
+                          )}
                         </span>
                       )}
-
                       <span className="flex flex-wrap items-center gap-2 text-[11px]">
                         <span className="text-ink-faint">
                           {l.nb_interventions} anomalie{l.nb_interventions > 1 ? "s" : ""}
@@ -503,8 +592,11 @@ export default async function PassagesEtFactures({
                       </span>
                     </Link>
                   </li>
+                      ))}
+                    </ul>
+                  </details>
                 ))}
-              </ul>
+              </div>
             )}
           </>
         )}
