@@ -28,34 +28,70 @@ export const EXPORTS: Export[] = [
   {
     cle: "anomalies",
     titre: "Anomalies",
-    aide: "Une ligne par anomalie déclarée, avec son lieu, son état et qui l’a constatée.",
-    lignes: () => sql`
-      select a.reference                              as "Référence",
-             e.code                                   as "Lieu",
-             et.nom                                   as "Étage",
-             a.description                            as "Description",
-             c.libelle                                as "Libellé du catalogue",
-             ti.nom                                   as "Type",
-             a.statut::text                           as "État",
-             a.priorite::text                         as "Priorité",
-             a.declare_le                             as "Déclarée le",
-             m.nom                                    as "Constatée par",
-             u.nom                                    as "Saisie par",
-             a.cloture_le                             as "Clôturée le",
-             (select count(*) from interventions i
-               where i.anomalie_id = a.id)            as "Interventions",
-             (select count(*) from photos_anomalie ph
-               where ph.anomalie_id = a.id)           as "Photos",
-             (select count(*) from v_fil_commentaires f
-               where f.anomalie_id = a.id)            as "Commentaires"
-        from anomalies a
-        join emplacements e   on e.id = a.emplacement_id
-        join etages et        on et.id = e.etage_id
-        left join catalogue_anomalies c  on c.id = a.catalogue_id
-        left join types_intervention ti  on ti.id = coalesce(a.type_id, c.type_id)
-        left join utilisateurs m on m.id = a.constate_par
-        left join utilisateurs u on u.id = a.saisie_par
-       order by a.declare_le desc`,
+    aide:
+      "Une ligne par anomalie déclarée, avec son lieu, son état et qui l’a constatée — " +
+      "y compris celles qui ont été supprimées depuis (migration 0021).",
+    // Les anomalies supprimées sont une autre TABLE (anomalies_supprimees, une
+    // trace au moment du DELETE, migration 0021) mais le même FAIT — une ligne
+    // par anomalie. Deux requêtes, jamais une condition dans le SQL : la table
+    // n'existe pas tant que la migration n'est pas jouée.
+    lignes: async () => {
+      const actives = sql`
+        select a.reference::text                         as "Référence",
+               e.code                                     as "Lieu",
+               et.nom                                     as "Étage",
+               a.description                              as "Description",
+               c.libelle                                  as "Libellé du catalogue",
+               ti.nom                                      as "Type",
+               a.statut::text                              as "État",
+               a.priorite::text                            as "Priorité",
+               a.declare_le                                as "Déclarée le",
+               m.nom                                       as "Constatée par",
+               u.nom                                       as "Saisie par",
+               a.cloture_le                                as "Clôturée le",
+               (select count(*) from interventions i
+                 where i.anomalie_id = a.id)::int          as "Interventions",
+               (select count(*) from photos_anomalie ph
+                 where ph.anomalie_id = a.id)::int         as "Photos",
+               (select count(*) from v_fil_commentaires f
+                 where f.anomalie_id = a.id)::int          as "Commentaires",
+               null::timestamptz                           as "Supprimée le",
+               null::text                                  as "Supprimée par"
+          from anomalies a
+          join emplacements e   on e.id = a.emplacement_id
+          join etages et        on et.id = e.etage_id
+          left join catalogue_anomalies c  on c.id = a.catalogue_id
+          left join types_intervention ti  on ti.id = coalesce(a.type_id, c.type_id)
+          left join utilisateurs m on m.id = a.constate_par
+          left join utilisateurs u on u.id = a.saisie_par`;
+
+      if (!(await tableExiste("anomalies_supprimees"))) {
+        return sql`${actives} order by "Déclarée le" desc`;
+      }
+      return sql`
+        ${actives}
+         union all
+        select coalesce(s.sharepoint_id::text, '—'),
+               s.emplacement,
+               null::text,
+               s.description,
+               null::text,
+               null::text,
+               s.statut || ' (supprimée)',
+               s.priorite,
+               s.declare_le,
+               s.constate_par,
+               null::text,
+               null::timestamptz,
+               s.nb_interventions,
+               s.nb_photos,
+               s.nb_commentaires,
+               s.supprimee_le,
+               su.nom
+          from anomalies_supprimees s
+          left join utilisateurs su on su.id = s.supprimee_par
+         order by "Déclarée le" desc`;
+    },
   },
   {
     cle: "interventions",
@@ -278,28 +314,6 @@ export const EXPORTS: Export[] = [
        order by 1`,
   },
   {
-    cle: "referentiels",
-    titre: "Étages et lieux",
-    aide: "Tous les lieux de l’hôtel, avec leur étage et ce qu’ils portent.",
-    lignes: async () => {
-      const essai = await colonneExiste("emplacements", "essai");
-      return sql`
-      select et.nom                                    as "Étage",
-             et.ordre                                  as "Ordre étage",
-             e.code                                     as "Lieu",
-             e.nom                                       as "Nom du lieu",
-             e.type::text                                as "Type",
-             ${essai
-               ? sql`case when e.essai then 'oui' else 'non' end`
-               : sql`'non'::text`}                       as "Lieu d’essai",
-             case when e.dote_bouteilles then 'oui' else 'non' end as "Doté en bouteilles",
-             case when e.actif then 'oui' else 'non' end as "Actif"
-        from emplacements e
-        join etages et on et.id = e.etage_id
-       order by et.ordre, e.ordre, e.code`;
-    },
-  },
-  {
     cle: "catalogue",
     titre: "Catalogue des anomalies",
     aide: "Les libellés autorisés à la déclaration, avec leur métier.",
@@ -314,27 +328,11 @@ export const EXPORTS: Export[] = [
        order by c.libelle`,
   },
   {
-    cle: "bouteilles_park",
-    titre: "Bouteilles — types et dotation",
-    aide: "Les types de bouteille, leurs prix, et la dotation attendue par chambre.",
-    lignes: () => sql`
-      select et.nom                                    as "Étage",
-             e.code                                     as "Lieu",
-             bt.libelle                                 as "Type de bouteille",
-             d.quantite                                 as "Quantité dotée",
-             bt.prix_vente                              as "Prix vente (client)",
-             bt.prix_achat                              as "Prix achat (interne)",
-             bt.seuil_alerte                            as "Seuil d’alerte (réserve)"
-        from dotations d
-        join emplacements e  on e.id = d.emplacement_id
-        join etages et       on et.id = e.etage_id
-        join bouteille_types bt on bt.id = d.bouteille_type_id
-       order by et.ordre, e.ordre, bt.libelle`,
-  },
-  {
     cle: "mouvements_bouteilles",
     titre: "Mouvements de bouteilles",
-    aide: "Entrées, dotations, emports, retours : c’est d’ici que vient le parc.",
+    aide:
+      "Entrées, dotations, emports, retours : c’est d’ici que vient le parc — " +
+      "avec le prix de référence de chaque type, pour ne pas ouvrir une deuxième feuille.",
     lignes: () => sql`
       select m.date_mouvement                          as "Date",
              m.type::text                               as "Type",
@@ -345,6 +343,8 @@ export const EXPORTS: Export[] = [
              m.vers_lieu::text                          as "Vers",
              e_vers.code                                as "Lieu d’arrivée",
              coalesce(u.nom, '—')                       as "Par",
+             bt.prix_vente                              as "Prix vente (référence)",
+             bt.prix_achat                              as "Prix achat (référence)",
              m.commentaire                              as "Commentaire"
         from mouvements_bouteilles m
         join bouteille_types bt      on bt.id = m.bouteille_type_id
@@ -448,30 +448,6 @@ export const EXPORTS: Export[] = [
         left join utilisateurs u  on u.id = a.utilisateur_id
         left join prestataires pr on pr.id = a.prestataire_id
        order by a.date_acte desc`;
-    },
-  },
-  {
-    cle: "anomalies_supprimees",
-    titre: "Anomalies supprimées",
-    aide: "La trace de ce qui a été supprimé, et ce que ça a emporté.",
-    lignes: async () => {
-      if (!(await tableExiste("anomalies_supprimees"))) return [];
-      return sql`
-      select coalesce(sharepoint_id::text, '—')        as "N° d’origine",
-             emplacement                                as "Lieu",
-             description                                as "Description",
-             statut                                     as "État",
-             priorite                                   as "Priorité",
-             declare_le                                 as "Déclarée le",
-             constate_par                               as "Constatée par",
-             nb_photos                                  as "Photos emportées",
-             nb_commentaires                            as "Commentaires emportés",
-             nb_interventions                           as "Interventions emportées",
-             supprimee_le                               as "Supprimée le",
-             u.nom                                       as "Supprimée par"
-        from anomalies_supprimees s
-        left join utilisateurs u on u.id = s.supprimee_par
-       order by supprimee_le desc`;
     },
   },
 ];

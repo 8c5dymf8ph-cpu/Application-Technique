@@ -23,6 +23,11 @@ export default async function Exporter() {
 
   // Le volume, pour que le fichier ne soit pas une surprise. Une seule requête :
   // ce sont des comptages, pas les données elles-mêmes.
+  // Les anomalies supprimées sont désormais des lignes de CE même export
+  // (migration 0021) : le compte les additionne, sinon le nombre affiché ne
+  // correspondrait plus à ce que contient réellement le fichier.
+  const avecSupprimees = await tableExiste("anomalies_supprimees");
+
   const [n] = await sql<
     {
       anomalies: number;
@@ -34,15 +39,15 @@ export default async function Exporter() {
       factures: number;
       commentaires: number;
       equipe: number;
-      referentiels: number;
       catalogue: number;
-      bouteilles_park: number;
       mouvements_bouteilles: number;
       commandes: number;
       fournisseurs: number;
     }[]
   >`
-    select (select count(*) from anomalies)::int             as anomalies,
+    select ((select count(*) from anomalies) +
+            ${avecSupprimees ? sql`(select count(*) from anomalies_supprimees)` : sql`0`}
+           )::int                                            as anomalies,
            (select count(*) from interventions)::int         as interventions,
            (select count(*) from tournees)::int              as passages,
            (select count(*) from mouvements_stock)::int      as mouvements,
@@ -52,25 +57,18 @@ export default async function Exporter() {
            (select count(*) from v_fil_commentaires)::int    as commentaires,
            ((select count(*) from utilisateurs) +
             (select count(*) from prestataires))::int        as equipe,
-           (select count(*) from emplacements)::int          as referentiels,
            (select count(*) from catalogue_anomalies)::int   as catalogue,
-           (select count(*) from dotations)::int             as bouteilles_park,
            (select count(*) from mouvements_bouteilles)::int as mouvements_bouteilles,
            (select count(*) from commandes)::int             as commandes,
            (select count(*) from fournisseurs)::int          as fournisseurs`;
 
-  // Deux tableaux neufs (migrations 0021 et 0023) : la table peut ne pas encore
-  // exister sur une base qui n'a pas encore joué la migration.
-  const [avecSuivis, avecSupprimees] = await Promise.all([
-    tableExiste("suivis"),
-    tableExiste("anomalies_supprimees"),
-  ]);
-  const [supplement] = await sql<{ suivis: number; anomalies_supprimees: number }[]>`
-    select ${avecSuivis ? sql`(select count(*) from actes)` : sql`0`}::int as suivis,
-           ${avecSupprimees ? sql`(select count(*) from anomalies_supprimees)` : sql`0`}::int
-             as anomalies_supprimees`;
+  // Le tableau des suivis (migration 0023) peut ne pas encore exister sur une
+  // base qui n'a pas encore joué la migration.
+  const avecSuivis = await tableExiste("suivis");
+  const [{ suivis }] = await sql<{ suivis: number }[]>`
+    select ${avecSuivis ? sql`(select count(*) from actes)` : sql`0`}::int as suivis`;
 
-  const compte = { ...n, ...supplement } as unknown as Record<string, number>;
+  const compte = { ...n, suivis } as unknown as Record<string, number>;
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
