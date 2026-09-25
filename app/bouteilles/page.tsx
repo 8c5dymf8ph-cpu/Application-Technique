@@ -5,6 +5,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
+import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,7 @@ export default async function Bouteilles({
       <Entete titre="Bouteilles" sous_titre="Purezza" retour="/" />
 
       <div className="px-5 py-5 flex flex-col gap-5">
+        {fait && <MarquerValide cle="bouteille" />}
         {fait && (
           <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
             {fait === "remplacement"

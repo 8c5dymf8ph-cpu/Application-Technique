@@ -8,6 +8,7 @@ import { Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Recherche, Stat } from "@/app/composants/suivi";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
+import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -202,6 +203,7 @@ export default async function Stock({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      <QuitterSiRevenu cle="produit" vers="/stock" />
       <Entete
         titre="Stock"
         sous_titre={`${c.produits} produits · ${euros(c.valeur)}`}

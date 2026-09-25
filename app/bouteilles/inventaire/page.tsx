@@ -6,6 +6,7 @@ import { profilActif } from "@/lib/profil";
 import { Entete } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Comptage, type LigneComptage } from "@/app/composants/comptage";
+import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -115,11 +116,12 @@ export default async function Inventaire() {
                ${l.compte}`;
     }
 
-    redirect(`/bouteilles/inventaire/${inv.id}` as Route);
+    redirect(`/bouteilles/inventaire/${inv.id}?neuf=1` as Route);
   }
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      <QuitterSiRevenu cle="inventaire-bouteilles" vers="/bouteilles/inventaire" />
       <Entete titre="Inventaire" sous_titre="Compter les bouteilles" retour="/bouteilles" />
 
       <form action={enregistrer} className="px-5 py-4 flex flex-col gap-5">

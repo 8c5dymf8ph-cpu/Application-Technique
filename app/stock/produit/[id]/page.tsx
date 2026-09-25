@@ -9,6 +9,7 @@ import { euros, peutValider } from "@/lib/domaine";
 import { Entete , Confirmation } from "@/app/composants/ui";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
+import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -344,6 +345,7 @@ export default async function FicheProduit({
             a servi restent tels quels.
           </p>
         )}
+        {neuf && <MarquerValide cle="produit" />}
         {neuf && (
           <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug">
             Produit créé. Il reste à lui mettre une photo — appuyez sur la vignette —, un

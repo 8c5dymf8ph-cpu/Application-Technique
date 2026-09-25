@@ -8,6 +8,7 @@ import { aujourdhuiISO, euros, jourISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
 import { enregistrerFichier } from "@/lib/stockage";
+import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +45,15 @@ type Article = { id: string; libelle: string; nature: string };
 
 export default async function DetailCommande({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ neuf?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
+  const { neuf } = await searchParams;
 
   const [commande] = await sql<Commande[]>`
     select id, reference, fournisseur, fournisseur_id, date_commande, date_livraison,
@@ -217,6 +221,7 @@ export default async function DetailCommande({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {neuf && <MarquerValide cle="commande" />}
       <Entete
         titre={`Commande n° ${commande.reference}`}
         sous_titre={`${commande.fournisseur} · ${new Date(commande.date_commande).toLocaleDateString("fr-FR")}`}

@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { euros } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +34,15 @@ type Ligne = {
 
 export default async function DetailInventaireMateriel({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ neuf?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
+  const { neuf } = await searchParams;
 
   const [inv] = await sql<Inventaire[]>`
     select i.id, i.libelle, i.statut::text, uo.nom as ouvert_par, i.ouvert_le,
@@ -92,6 +96,7 @@ export default async function DetailInventaireMateriel({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {neuf && <MarquerValide cle="inventaire-materiel" />}
       <Entete
         titre={inv.libelle ?? "Comptage"}
         sous_titre={
