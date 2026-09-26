@@ -8,6 +8,7 @@ import {
   TON_STATUT,
 } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
+import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
 import Link from "next/link";
 import type { Route } from "next";
 import { Vignettes } from "@/app/composants/photos";
@@ -142,6 +143,11 @@ export default async function HistoriqueDuLieu({
 
       <div className="px-5 py-5 flex flex-col gap-6">
         <Confirmation quoi={fait} />
+        {/* On peut arriver ici après une suppression : la fiche disparue
+            reste dans l'historique du navigateur. */}
+        {fait === "supprime" && (
+          <MarquerApresSuppression vers={`/gouvernante/historique/${encodeURIComponent(lieu)}`} />
+        )}
         {recurrences.length > 0 && (
           <section className="flex flex-col gap-2.5">
             <h2 className="etiquette">Ce qui revient</h2>

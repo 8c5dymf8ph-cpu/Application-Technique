@@ -3,7 +3,8 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { exigerEncadrement } from "@/lib/acces";
 import { euros, jourISO } from "@/lib/domaine";
-import { Entete, Vide } from "@/app/composants/ui";
+import { Entete, Vide, Confirmation } from "@/app/composants/ui";
+import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
 import { Filtres, Recherche, Stat, Surligne } from "@/app/composants/suivi";
 
 export const dynamic = "force-dynamic";
@@ -90,6 +91,7 @@ export default async function PassagesEtFactures({
     vue?: string;
     filtre?: string;
     mois?: string;
+    fait?: string;
   }>;
 }) {
   await exigerEncadrement();
@@ -99,6 +101,7 @@ export default async function PassagesEtFactures({
     vue = "passages",
     filtre = "a_rapprocher",
     mois: moisOuverts,
+    fait,
   } = await searchParams;
   const terme = q.trim().toLowerCase();
   const factures_ = vue === "factures";
@@ -329,6 +332,12 @@ export default async function PassagesEtFactures({
       />
 
       <div className="px-5 py-4 flex flex-col gap-3.5">
+        <Confirmation quoi={fait} />
+        {/* On peut arriver ici après une suppression de facture : la fiche
+            disparue reste dans l'historique du navigateur. */}
+        {fait === "facture-supprimee" && (
+          <MarquerApresSuppression vers="/technique/historique?vue=factures" />
+        )}
         {/* Les deux lectures d'une même chose. On ne quitte pas l'écran pour
             passer de l'une à l'autre : elles se répondent. */}
         <div className="flex gap-1.5 p-1 rounded-pill bg-surface-muted">

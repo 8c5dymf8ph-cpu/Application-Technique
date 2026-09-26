@@ -725,7 +725,7 @@ export default async function Dossier({
             Revenir en arrière ne doit pas rouvrir le formulaire rempli — donc
             on ferme le volet (`episode=1`) au lieu de le réafficher. */}
         {fait === "episode" ? (
-          <MarquerValide cle="episode" />
+          <MarquerValide key={id} cle="episode" />
         ) : (
           <QuitterSiRevenu cle="episode" vers={`/suivis/${id}`} />
         )}

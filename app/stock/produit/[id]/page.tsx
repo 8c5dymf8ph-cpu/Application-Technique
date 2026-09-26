@@ -345,7 +345,7 @@ export default async function FicheProduit({
             a servi restent tels quels.
           </p>
         )}
-        {neuf && <MarquerValide cle="produit" />}
+        {neuf && <MarquerValide key={id} cle="produit" />}
         {neuf && (
           <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug">
             Produit créé. Il reste à lui mettre une photo — appuyez sur la vignette —, un

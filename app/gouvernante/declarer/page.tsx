@@ -2,7 +2,7 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { Confirmation, Entete } from "../../composants/ui";
-import { MarquerValide } from "../../composants/quitter-si-revenu";
+import { MarquerValide, MarquerApresSuppression } from "../../composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +58,11 @@ export default async function ChoixLieu({
           <Confirmation quoi={fait} />
           {/* On sort du formulaire : il ne doit plus se rouvrir par le retour. */}
           {fait && <MarquerValide cle="anomalie" />}
+          {/* On peut aussi arriver ici après une suppression : la fiche
+              disparue reste dans l'historique du navigateur. */}
+          {fait === "supprime" && (
+            <MarquerApresSuppression vers="/gouvernante/declarer" />
+          )}
           {ou && fait.startsWith("declare") && (
             <p className="text-[12.5px] text-ink-faint pt-1">
               {ou.includes(",") ? "Dans " : "En "}

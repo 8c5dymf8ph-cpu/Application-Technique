@@ -174,7 +174,10 @@ export default async function DetailDossier({
         <Confirmation quoi={fait} />
         {/* On arrive ici en sortant du formulaire : il ne doit plus se rouvrir
             par la flèche arrière, rempli comme avant l'envoi. */}
-        {fait && <MarquerValide cle="bouteille" />}
+        {/* `key={id}` : entre deux dossiers, la page garde le même composant
+            React (même route `[id]`) — sans la clé, l'effet qui pose la
+            marque ne se rejoue pas pour le second dossier créé. */}
+        {fait && <MarquerValide key={id} cle="bouteille" />}
         {/* Où en est le dossier, avant tout le reste : c'est la question
             qu'on se pose en l'ouvrant. La frise le dessine, et la phrase en
             dessous le dit en mots — une frise seule se lit vite mais ne

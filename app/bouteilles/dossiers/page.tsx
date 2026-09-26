@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { depuis, euros } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Frise, Recherche, Stat } from "@/app/composants/suivi";
+import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
 
 export const dynamic = "force-dynamic";
 
@@ -57,11 +58,11 @@ const TON: Record<string, { fond: string; texte: string; barre: string }> = {
 export default async function Dossiers({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filtre?: string; fait?: string }>;
+  searchParams: Promise<{ q?: string; filtre?: string; fait?: string; tri?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { q = "", filtre = "ouvert", fait } = await searchParams;
+  const { q = "", filtre = "ouvert", fait, tri = "date" } = await searchParams;
 
   const [c] = await sql<
     { ouverts: number; urgents: number; du_mois: number; resolus: number; perdus: number;
@@ -93,7 +94,7 @@ export default async function Dossiers({
         or (${filtre} = 'urgent' and urgent)
         or famille = ${filtre})
       and (${terme} = '' or recherche like ${"%" + terme + "%"})
-    order by urgent desc, constate_le desc
+    order by ${tri === "alpha" ? sql`emplacement asc, constate_le desc` : sql`constate_le desc`}
     limit 60`;
 
   async function avancer(donnees: FormData) {
@@ -139,7 +140,17 @@ export default async function Dossiers({
   }
 
   const lien = (f: string) =>
-    `/bouteilles/dossiers?${new URLSearchParams({ filtre: f, ...(q ? { q } : {}) })}` as Route;
+    `/bouteilles/dossiers?${new URLSearchParams({
+      filtre: f,
+      ...(tri !== "date" ? { tri } : {}),
+      ...(q ? { q } : {}),
+    })}` as Route;
+  const lienTri = (t: string) =>
+    `/bouteilles/dossiers?${new URLSearchParams({
+      filtre,
+      ...(t !== "date" ? { tri: t } : {}),
+      ...(q ? { q } : {}),
+    })}` as Route;
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -150,6 +161,9 @@ export default async function Dossiers({
             sait pas si la suppression a eu lieu ou si l'on s'est trompé
             d'écran. */}
         <Confirmation quoi={fait} />
+        {fait === "dossier-supprime" && (
+          <MarquerApresSuppression vers="/bouteilles/dossiers" />
+        )}
 
         <div className="flex gap-2">
           <Stat valeur={c.ouverts} libelle="En cours" />
@@ -161,7 +175,7 @@ export default async function Dossiers({
         <Recherche
           valeur={q}
           placeholder="Nom du client, chambre, n° de dossier…"
-          caches={{ filtre }}
+          caches={{ filtre, tri }}
         />
 
         <Filtres
@@ -173,6 +187,18 @@ export default async function Dossiers({
             { valeur: "resolu", libelle: "Réglés", nombre: c.resolus },
             { valeur: "perdu", libelle: "Perte sèche", nombre: c.perdus },
             { valeur: "tous", libelle: "Tous", nombre: c.tous },
+          ]}
+        />
+
+        {/* Par date par défaut — c'est l'ordre dans lequel les dossiers
+            arrivent. L'alphabétique (par chambre) n'est là que pour qui
+            cherche un dossier précis sans se souvenir de sa date. */}
+        <Filtres
+          actif={tri}
+          lien={lienTri}
+          choix={[
+            { valeur: "date", libelle: "Par date" },
+            { valeur: "alpha", libelle: "A → Z (chambre)" },
           ]}
         />
 
