@@ -6,8 +6,9 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { depuis, euros } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
-import { Filtres, Frise, Recherche, Stat } from "@/app/composants/suivi";
+import { Frise, Recherche, Stat } from "@/app/composants/suivi";
 import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
+import { MenuFiltre } from "@/app/composants/menu-filtre";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +95,13 @@ export default async function Dossiers({
         or (${filtre} = 'urgent' and urgent)
         or famille = ${filtre})
       and (${terme} = '' or recherche like ${"%" + terme + "%"})
-    order by ${tri === "alpha" ? sql`emplacement asc, constate_le desc` : sql`constate_le desc`}
+    order by ${
+      tri === "alpha"
+        ? sql`emplacement asc, constate_le desc`
+        : tri === "nom"
+          ? sql`client_nom nulls last, constate_le desc`
+          : sql`constate_le desc`
+    }
     limit 60`;
 
   async function avancer(donnees: FormData) {
@@ -178,29 +185,36 @@ export default async function Dossiers({
           caches={{ filtre, tri }}
         />
 
-        <Filtres
-          actif={filtre}
-          lien={lien}
-          choix={[
-            { valeur: "ouvert", libelle: "En cours", nombre: c.ouverts },
-            { valeur: "urgent", libelle: "Urgents", nombre: c.urgents },
-            { valeur: "resolu", libelle: "Réglés", nombre: c.resolus },
-            { valeur: "perdu", libelle: "Perte sèche", nombre: c.perdus },
-            { valeur: "tous", libelle: "Tous", nombre: c.tous },
-          ]}
-        />
-
-        {/* Par date par défaut — c'est l'ordre dans lequel les dossiers
-            arrivent. L'alphabétique (par chambre) n'est là que pour qui
-            cherche un dossier précis sans se souvenir de sa date. */}
-        <Filtres
-          actif={tri}
-          lien={lienTri}
-          choix={[
-            { valeur: "date", libelle: "Par date" },
-            { valeur: "alpha", libelle: "A → Z (chambre)" },
-          ]}
-        />
+        {/* Deux icônes plutôt que deux rangées de boutons toujours affichées :
+            le choix se change rarement, il n'a pas besoin d'une ligne entière
+            en permanence. Chacune montre le choix actuel en clair. */}
+        <div className="flex gap-2">
+          <MenuFiltre
+            icone="filtre"
+            titre="Filtrer les dossiers"
+            actif={filtre}
+            choix={[
+              { valeur: "ouvert", libelle: "En cours", nombre: c.ouverts, href: lien("ouvert") },
+              { valeur: "urgent", libelle: "Urgents", nombre: c.urgents, href: lien("urgent") },
+              { valeur: "resolu", libelle: "Réglés", nombre: c.resolus, href: lien("resolu") },
+              { valeur: "perdu", libelle: "Perte sèche", nombre: c.perdus, href: lien("perdu") },
+              { valeur: "tous", libelle: "Tous", nombre: c.tous, href: lien("tous") },
+            ]}
+          />
+          {/* Par date par défaut — c'est l'ordre dans lequel les dossiers
+              arrivent. Chambre et nom ne servent qu'à retrouver un dossier
+              précis sans se souvenir de sa date. */}
+          <MenuFiltre
+            icone="tri"
+            titre="Trier les dossiers"
+            actif={tri}
+            choix={[
+              { valeur: "date", libelle: "Par date", href: lienTri("date") },
+              { valeur: "alpha", libelle: "Par chambre (A → Z)", href: lienTri("alpha") },
+              { valeur: "nom", libelle: "Par nom de client (A → Z)", href: lienTri("nom") },
+            ]}
+          />
+        </div>
 
         {dossiers.length === 0 ? (
           <Vide>
