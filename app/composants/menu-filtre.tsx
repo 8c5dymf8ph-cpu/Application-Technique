@@ -1,8 +1,16 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
+
+/** Insensible à la casse et aux accents : « Electricite » trouve « Électricité ». */
+function normalise(texte: string) {
+  return texte
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
 
 /**
  * Un choix, derrière une icône plutôt qu'une rangée de boutons.
@@ -13,6 +21,12 @@ import type { Route } from "next";
  * porte le choix ACTUEL en clair à côté d'elle — jamais un pictogramme seul,
  * qui ne dit rien tant qu'on n'a pas appuyé — et ouvre la liste complète
  * dans une fenêtre, comme `CreerLibelle`.
+ *
+ * Un rayon ou un métier, en texte libre, peut en compter des dizaines : au-delà
+ * d'une poignée d'options, une liste sans recherche n'est plus un filtre,
+ * c'est un rouleau à faire défiler pour trouver le bon mot. La fenêtre porte
+ * donc une recherche dès que la liste dépasse huit choix, et le corps défile
+ * dans une hauteur bornée pendant que la recherche et le titre restent fixes.
  *
  * Chaque choix porte son adresse déjà construite (`href`), jamais une
  * fonction : `MenuFiltre` est un composant client, et une fonction ordinaire
@@ -31,13 +45,21 @@ export function MenuFiltre({
   choix: { valeur: string; libelle: string; nombre?: number; href: string }[];
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
+  const [recherche, setRecherche] = useState("");
   const courant = choix.find((c) => c.valeur === actif);
+
+  const cherchable = choix.length > 8;
+  const mot = normalise(recherche.trim());
+  const visibles = mot ? choix.filter((c) => normalise(c.libelle).includes(mot)) : choix;
 
   return (
     <>
       <button
         type="button"
-        onClick={() => fenetre.current?.showModal()}
+        onClick={() => {
+          setRecherche("");
+          fenetre.current?.showModal();
+        }}
         aria-label={`${titre} : ${courant?.libelle ?? actif}. Changer`}
         className="h-[38px] pl-3 pr-3.5 rounded-pill border border-line bg-surface text-[13px] text-ink-soft flex items-center gap-2"
       >
@@ -92,28 +114,46 @@ export function MenuFiltre({
               </svg>
             </button>
           </div>
-          {choix.map((c) => (
-            <Link
-              key={c.valeur}
-              href={c.href as Route}
-              onClick={() => fenetre.current?.close()}
-              className={`h-[48px] px-3 rounded-[12px] flex items-center gap-3 ${
-                c.valeur === actif ? "bg-plum-soft text-plum" : "text-ink"
-              }`}
-            >
-              <span
-                className={`shrink-0 w-5 h-5 rounded-full border-2 grid place-items-center ${
-                  c.valeur === actif ? "border-plum" : "border-line"
-                }`}
-              >
-                {c.valeur === actif && <span className="w-2.5 h-2.5 rounded-full bg-plum" />}
-              </span>
-              <span className="grow min-w-0 text-[14.5px]">{c.libelle}</span>
-              {c.nombre !== undefined && (
-                <span className="text-[12.5px] text-ink-faint tabular-nums">{c.nombre}</span>
-              )}
-            </Link>
-          ))}
+          {cherchable && (
+            <input
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              autoComplete="off"
+              placeholder="Chercher…"
+              className="h-[42px] mb-1 rounded-[11px] border border-line px-3 bg-surface text-[14.5px] placeholder:text-ink-faint"
+            />
+          )}
+
+          <div className="flex flex-col gap-1 max-h-[52vh] overflow-y-auto">
+            {visibles.length === 0 ? (
+              <p className="px-3 py-6 text-center text-[13px] text-ink-faint">
+                Rien ne correspond à « {recherche} ».
+              </p>
+            ) : (
+              visibles.map((c) => (
+                <Link
+                  key={c.valeur}
+                  href={c.href as Route}
+                  onClick={() => fenetre.current?.close()}
+                  className={`h-[48px] px-3 rounded-[12px] flex items-center gap-3 shrink-0 ${
+                    c.valeur === actif ? "bg-plum-soft text-plum" : "text-ink"
+                  }`}
+                >
+                  <span
+                    className={`shrink-0 w-5 h-5 rounded-full border-2 grid place-items-center ${
+                      c.valeur === actif ? "border-plum" : "border-line"
+                    }`}
+                  >
+                    {c.valeur === actif && <span className="w-2.5 h-2.5 rounded-full bg-plum" />}
+                  </span>
+                  <span className="grow min-w-0 text-[14.5px]">{c.libelle}</span>
+                  {c.nombre !== undefined && (
+                    <span className="text-[12.5px] text-ink-faint tabular-nums">{c.nombre}</span>
+                  )}
+                </Link>
+              ))
+            )}
+          </div>
         </div>
       </dialog>
     </>
