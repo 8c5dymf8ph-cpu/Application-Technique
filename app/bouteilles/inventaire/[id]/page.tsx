@@ -84,7 +84,7 @@ export default async function DetailInventaire({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
-      {neuf && <MarquerValide cle="inventaire-bouteilles" />}
+      {neuf && <MarquerValide key={id} cle="inventaire-bouteilles" />}
       <Entete
         titre={inv.libelle ?? "Comptage"}
         sous_titre={

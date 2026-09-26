@@ -56,3 +56,47 @@ export function MarquerValide({ cle }: { cle: string }) {
 
   return null;
 }
+
+/**
+ * Après une suppression, la flèche arrière ne trouve plus rien.
+ *
+ * Un dossier supprimé, une anomalie supprimée, une facture supprimée : la
+ * fiche redirige vers une liste, mais elle reste dans l'historique du
+ * navigateur. Y revenir relit la fiche au serveur (`dynamic = "force-dynamic"`)
+ * — et comme la ligne n'existe plus, l'écran appelle `notFound()` avant même
+ * de pouvoir poser un `<QuitterSiRevenu>` : la page 404 de Next s'affiche,
+ * sans aucun moyen de revenir à une liste valide.
+ *
+ * `MarquerApresSuppression` note où la suppression a mené ; `app/not-found.tsx`
+ * la relit. Une seule marque pour toutes les suppressions de l'application —
+ * une suppression est un geste rare et déjà confirmé, la dernière connue est
+ * la bonne cible.
+ */
+export function MarquerApresSuppression({ vers }: { vers: string }) {
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("apres-suppression", vers);
+    } catch {
+      /* Rien à faire : un 404 plus tard restera un 404, sans lien de retour. */
+    }
+  }, [vers]);
+
+  return null;
+}
+
+/** Lue par `app/not-found.tsx`. */
+export function RevenirSiSupprime() {
+  useEffect(() => {
+    try {
+      const vers = sessionStorage.getItem("apres-suppression");
+      if (vers) {
+        sessionStorage.removeItem("apres-suppression");
+        window.location.replace(vers);
+      }
+    } catch {
+      // Stockage refusé : la page 404, générique mais pas cassée, reste affichée.
+    }
+  }, []);
+
+  return null;
+}

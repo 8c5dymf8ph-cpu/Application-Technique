@@ -221,7 +221,7 @@ export default async function DetailCommande({
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
-      {neuf && <MarquerValide cle="commande" />}
+      {neuf && <MarquerValide key={id} cle="commande" />}
       <Entete
         titre={`Commande n° ${commande.reference}`}
         sous_titre={`${commande.fournisseur} · ${new Date(commande.date_commande).toLocaleDateString("fr-FR")}`}
