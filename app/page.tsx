@@ -82,7 +82,7 @@ export default async function Accueil() {
         <Link
           href={"/profil" as Route}
           aria-label={`Profil : ${profil.nom}. Changer de profil`}
-          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface border border-line"
+          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface shadow-[0_2px_8px_rgba(27,25,48,0.08)]"
         >
           <span className="w-8 h-8 rounded-full bg-plum grid place-items-center font-display font-semibold text-[12.5px] text-white">
             {profil.nom.slice(0, 2).toUpperCase()}
@@ -116,6 +116,12 @@ export default async function Accueil() {
             detail="Déclarer, valider, suivre"
             badge={c.a_valider_lots}
             ton="bg-plum-soft"
+            icone={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#453A6E" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="8.4" />
+                <path d="M8.4 12.3l2.3 2.3 4.7-5.1" />
+              </svg>
+            }
           />
         )}
         <Tuile
@@ -124,6 +130,11 @@ export default async function Accueil() {
           detail="Ma tournée du jour"
           badge={c.a_faire}
           ton="bg-green-soft"
+          icone={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#357051" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z" />
+            </svg>
+          }
         />
         <Tuile
           href="/bouteilles"
@@ -131,6 +142,11 @@ export default async function Accueil() {
           detail="Parc Purezza et dossiers"
           badge={c.dossiers_bouteille}
           ton="bg-blue-soft"
+          icone={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3A6499" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z" />
+            </svg>
+          }
         />
         <Tuile
           href="/stock"
@@ -138,6 +154,13 @@ export default async function Accueil() {
           detail="Produits, seuils, inventaire"
           badge={c.sous_seuil}
           ton="bg-amber-soft"
+          icone={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A8641F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3.5 8.5L12 4l8.5 4.5L12 13z" />
+              <path d="M3.5 8.5V16L12 20.5 20.5 16V8.5" />
+              <path d="M12 13v7.5" />
+            </svg>
+          }
         />
         {admin && (
           <Tuile
@@ -146,6 +169,13 @@ export default async function Accueil() {
             detail="Factures, référentiels, envois"
             badge={c.sans_facture + c.a_controler}
             ton="bg-surface-muted"
+            icone={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+                <circle cx="15" cy="7" r="2.3" />
+                <circle cx="8" cy="17" r="2.3" />
+              </svg>
+            }
           />
         )}
       </nav>
@@ -175,7 +205,7 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
         <Link
           href={"/profil" as Route}
           aria-label={`Profil : ${profil.nom}. Changer de profil`}
-          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface border border-line"
+          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface shadow-[0_2px_8px_rgba(27,25,48,0.08)]"
         >
           <span className="w-8 h-8 rounded-full bg-plum grid place-items-center font-display font-semibold text-[12.5px] text-white">
             {profil.nom.slice(0, 2).toUpperCase()}
@@ -202,6 +232,11 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
           detail="Traiter mes anomalies, dire le matériel utilisé"
           badge={c.a_traiter}
           ton="bg-green-soft"
+          icone={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#357051" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z" />
+            </svg>
+          }
         />
       </nav>
 

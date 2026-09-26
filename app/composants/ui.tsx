@@ -68,7 +68,7 @@ export function Compteur({
   ton?: string;
 }) {
   return (
-    <div className="carte px-2 py-5 flex flex-col items-center gap-1">
+    <div className="rounded-[18px] bg-surface px-2 py-5 flex flex-col items-center gap-1 shadow-[0_2px_4px_rgba(27,25,48,0.04),0_10px_22px_-10px_rgba(27,25,48,0.18)]">
       <span className={`font-display font-semibold text-[30px] leading-none tabular-nums ${ton}`}>
         {valeur}
       </span>
@@ -77,30 +77,71 @@ export function Compteur({
   );
 }
 
+/**
+ * L'ombre d'une tuile porte la teinte de son fond, pas un gris générique :
+ * la carte verte projette une ombre verte. `OMBRE_DEFAUT` couvre les fonds
+ * neutres (`bg-surface`, `bg-surface-muted`) et tout ton non répertorié.
+ */
+const OMBRES: Record<string, string> = {
+  "bg-plum-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(69,58,110,0.45)]",
+  "bg-green-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(53,112,81,0.40)]",
+  "bg-blue-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(58,100,153,0.40)]",
+  "bg-amber-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(168,100,31,0.40)]",
+};
+const OMBRE_DEFAUT = "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-14px_rgba(27,25,48,0.30)]";
+
 export function Tuile({
   href,
   titre,
   detail,
   badge,
   ton = "bg-plum-soft",
+  icone,
 }: {
   href: Adresse;
   titre: string;
   detail: string;
   badge?: string | number;
   ton?: string;
+  /**
+   * Une pastille d'icône avant le texte, et l'ombre en relief qui va avec.
+   * Réservée aux écrans qui la passent — l'accueil — pour ne rien changer
+   * aux tuiles qui n'ont pas d'icône à donner.
+   */
+  icone?: React.ReactNode;
 }) {
+  if (!icone) {
+    return (
+      <Link
+        href={href as Route}
+        className={`${ton} rounded-tile px-5 py-[22px] flex items-center gap-4 min-h-[96px]`}
+      >
+        <div className="flex flex-col gap-[3px] grow min-w-0">
+          <span className="font-display font-bold text-[22px] text-ink">{titre}</span>
+          <span className="text-[13px] text-ink-soft">{detail}</span>
+        </div>
+        {badge !== undefined && badge !== 0 && (
+          <span className="shrink-0 min-w-[34px] h-[34px] px-2 rounded-[10px] bg-white grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums">
+            {badge}
+          </span>
+        )}
+      </Link>
+    );
+  }
+
+  const ombre = OMBRES[ton] ?? OMBRE_DEFAUT;
   return (
     <Link
       href={href as Route}
-      className={`${ton} rounded-tile px-5 py-[22px] flex items-center gap-4 min-h-[96px]`}
+      className={`${ton} ${ombre} rounded-[22px] px-5 py-[18px] flex items-center gap-4 min-h-[96px]`}
     >
+      <span className="shrink-0 w-11 h-11 rounded-full bg-white/65 grid place-items-center">{icone}</span>
       <div className="flex flex-col gap-[3px] grow min-w-0">
-        <span className="font-display font-bold text-[22px] text-ink">{titre}</span>
+        <span className="font-display font-bold text-[21px] text-ink">{titre}</span>
         <span className="text-[13px] text-ink-soft">{detail}</span>
       </div>
       {badge !== undefined && badge !== 0 && (
-        <span className="shrink-0 min-w-[34px] h-[34px] px-2 rounded-[10px] bg-white grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums">
+        <span className="shrink-0 min-w-[34px] h-[34px] px-2 rounded-[11px] bg-white grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums shadow-[0_2px_5px_rgba(27,25,48,0.12)]">
           {badge}
         </span>
       )}
