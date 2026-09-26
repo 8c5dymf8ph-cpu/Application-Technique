@@ -39,6 +39,9 @@ type Detail = {
   decision_gouvernante: string | null;
   decision_technicien: string | null;
   materiel: string | null;
+  /** Sert seulement au tri : chaque anomalie garde sa date d'origine, même
+      reprises ensemble dans un même passage. */
+  declare_le: string | Date;
 };
 
 type Facture = {
@@ -302,11 +305,12 @@ export default async function PassagesEtFactures({
                (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
                   from mouvements_stock m join produits p on p.id = m.produit_id
                  where m.intervention_id = r.intervention_id and m.type = 'sortie')
-                 as materiel
+                 as materiel,
+               a.declare_le
           from v_recap_interventions r
           join anomalies a on a.id = r.anomalie_id
          where r.tournee = any(${referencesOuvertes})
-         order by r.emplacement, r.description`
+         order by a.declare_le desc, r.emplacement`
     : [];
   const detailDe = (reference: string) => details.filter((d) => d.tournee === reference);
 
@@ -688,18 +692,23 @@ export default async function PassagesEtFactures({
                       ))}
                     </ul>
 
-                    <Link
-                      href={`/technique/tournee/${l.id}` as Route}
-                      className="flex flex-wrap items-center gap-2 text-[11px] active:opacity-70"
-                    >
-                      <span className="text-plum underline underline-offset-4">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <Link
+                        href={`/technique/tournee/${l.id}` as Route}
+                        className="text-plum underline underline-offset-4 active:opacity-70"
+                      >
                         Ouvrir le passage
-                      </span>
+                      </Link>
                         {/* La facture, d'un coup d'œil : ce qui est couvert et
                             ce qui attend encore sa pièce ne se distinguaient
-                            pas. */}
+                            pas. Un lien À PART : elle mène à la facture — la
+                            première journée qu'elle couvre — pas forcément à
+                            CE passage-ci. */}
                         {l.facture_id ? (
-                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-soft text-green">
+                          <Link
+                            href={`/technique/facture/${l.facture_id}` as Route}
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-soft text-green active:opacity-70"
+                          >
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
                                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                                  strokeLinejoin="round" aria-hidden>
@@ -710,7 +719,7 @@ export default async function PassagesEtFactures({
                             {l.nb_journees_couvertes > 1
                               ? ` · ${l.nb_journees_couvertes} journées`
                               : ""}
-                          </span>
+                          </Link>
                         ) : (
                           l.cout_total > 0 && (
                             <span className="px-1.5 py-0.5 rounded-md bg-amber-soft text-amber">
@@ -734,7 +743,7 @@ export default async function PassagesEtFactures({
                         ) : l.mail_recap_envoye_le ? (
                           <span className="text-ink-faint">récapitulatif envoyé</span>
                         ) : null}
-                    </Link>
+                    </div>
                   </li>
                       ))}
                     </ul>

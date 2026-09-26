@@ -5,11 +5,13 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
-import { euros, peutValider } from "@/lib/domaine";
+import { aujourdhuiISO, euros, peutValider } from "@/lib/domaine";
 import { Entete , Confirmation } from "@/app/composants/ui";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
+import { enregistrerFichier } from "@/lib/stockage";
+import { ChampPhotos } from "@/app/composants/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -177,10 +179,35 @@ export default async function FicheProduit({
     const quantite = Number(donnees.get("quantite") ?? 0);
     if (!(quantite > 0)) return;
     const prix = donnees.get("prix") ? Number(donnees.get("prix")) : null;
+    // La date de la LIVRAISON, pas celle de la saisie (règle 16ter) : on
+    // reprend souvent une entrée de quelques jours.
+    const saisie = String(donnees.get("date") ?? "").trim();
+    const quand = saisie ? `${saisie} 12:00` : new Date().toISOString();
+
+    // La facture n'est jointe que si un fournisseur ET un fichier sont là :
+    // `factures` exige un émetteur, et un fichier seul ne suffirait pas à en
+    // faire une facture d'achat.
+    const fournisseur = String(donnees.get("fournisseur") ?? "") || null;
+    const fichier = donnees.get("facture");
+    let facture_id: string | null = null;
+    if (fournisseur && fichier instanceof File && fichier.size > 0) {
+      const chemin = await enregistrerFichier(fichier);
+      if (chemin) {
+        const [creee] = await sql<{ id: string }[]>`
+          insert into factures (type, fournisseur_id, date_reference, montant_ht,
+                                statut, saisie_par)
+          values ('achat', ${fournisseur}, ${saisie || aujourdhuiISO()}::date,
+                  ${prix !== null ? prix * quantite : null}, 'rapprochee', ${profil_.id})
+          returning id`;
+        await sql`update factures set fichier_url = ${chemin} where id = ${creee.id}`;
+        facture_id = creee.id;
+      }
+    }
+
     await sql`
-      insert into mouvements_stock (produit_id, type, quantite, utilisateur_id,
-                                    prix_unitaire, commentaire)
-      values (${id}, 'entree', ${quantite}, ${profil_.id}, ${prix},
+      insert into mouvements_stock (produit_id, type, quantite, date_mouvement,
+                                    utilisateur_id, prix_unitaire, facture_id, commentaire)
+      values (${id}, 'entree', ${quantite}, ${quand}, ${profil_.id}, ${prix}, ${facture_id},
               ${String(donnees.get("commentaire") ?? "").trim() || null})`;
     revalidatePath(`/stock/produit/${id}`);
   }
@@ -457,12 +484,53 @@ export default async function FicheProduit({
                 />
               </label>
             </div>
+            <label className="flex flex-col gap-1">
+              <span className="etiquette">Date de livraison</span>
+              <input
+                name="date"
+                type="date"
+                max={aujourdhuiISO()}
+                defaultValue={aujourdhuiISO()}
+                className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
+              />
+              <span className="text-[11px] text-ink-faint text-pretty">
+                Une date passée est acceptée : c’est ainsi qu’on rattrape une livraison reçue
+                il y a quelques jours.
+              </span>
+            </label>
             <input
               name="commentaire"
               autoComplete="off"
               placeholder="D’où vient-elle ? (facultatif)"
               className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
             />
+            {tous.length > 0 && (
+              <>
+                <div className="flex gap-2">
+                  <label className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span className="etiquette">Fournisseur (pour la facture)</span>
+                    <select
+                      name="fournisseur"
+                      defaultValue={fournisseurs[0]?.fournisseur_id ?? ""}
+                      className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface-muted text-[15px]"
+                    >
+                      <option value="">Aucun</option>
+                      {tous.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.nom}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="flex-1 min-w-0">
+                    <ChampPhotos nom="facture" libelle="Facture (PDF ou photo)" multiple={false} documents />
+                  </div>
+                </div>
+                <span className="text-[11px] text-ink-faint text-pretty -mt-1">
+                  Jointe seulement si un fournisseur ET un fichier sont donnés tous les deux.
+                </span>
+              </>
+            )}
             <button className="h-[48px] rounded-[12px] bg-green text-white font-display font-semibold text-[15px]">
               Enregistrer l’entrée
             </button>
