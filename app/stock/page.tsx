@@ -9,6 +9,7 @@ import { Filtres, Recherche, Stat } from "@/app/composants/suivi";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
+import { MenuFiltre } from "@/app/composants/menu-filtre";
 
 export const dynamic = "force-dynamic";
 
@@ -262,52 +263,39 @@ export default async function Stock({
         />
 
         {/* Les deux colonnes de la liste de Miguel : le rayon et le métier.
-            Elles se croisent — « plomberie » dans « salle de bain » — et se
-            replient, parce qu'on ne s'en sert pas à chaque visite. */}
-        <Depliant
-          titre="Rayon et métier"
-          aide={affines.length === 0 ? "Croiser les deux colonnes de la liste" : undefined}
-          ouvert={affines.length > 0}
-          indice={
-            affines.length > 0 ? (
-              <span className="text-plum">{affines.join(" · ")}</span>
-            ) : (
-              "tout"
-            )
-          }
-        >
-          <div className="flex flex-col gap-1">
-            <span className="etiquette">Rayon</span>
-            <Filtres
-              actif={lieu}
-              lien={(v) => lien("lieu", v)}
-              choix={[
-                { valeur: "tous", libelle: "Tous", nombre: c.produits },
-                ...familles.map((f) => ({
-                  valeur: f.cle,
-                  libelle: f.lieu,
-                  nombre: f.nombre,
-                })),
-              ]}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="etiquette">Métier</span>
-            <Filtres
-              actif={metier}
-              lien={(v) => lien("metier", v)}
-              choix={[
-                { valeur: "tous", libelle: "Tous", nombre: c.produits },
-                ...metiers_filtre.map((m) => ({
-                  valeur: m.cle,
-                  libelle: m.metier,
-                  nombre: m.nombre,
-                })),
-              ]}
-            />
-          </div>
-        </Depliant>
+            Elles se croisent — « plomberie » dans « salle de bain ». Chacune
+            derrière une icône plutôt qu'une rangée de boutons : un rayon,
+            à lui seul, peut en compter une douzaine. */}
+        <div className="flex gap-2">
+          <MenuFiltre
+            icone="lieu"
+            titre="Rayon"
+            actif={lieu}
+            choix={[
+              { valeur: "tous", libelle: "Tous", nombre: c.produits, href: lien("lieu", "tous") },
+              ...familles.map((f) => ({
+                valeur: f.cle,
+                libelle: f.lieu,
+                nombre: f.nombre,
+                href: lien("lieu", f.cle),
+              })),
+            ]}
+          />
+          <MenuFiltre
+            icone="metier"
+            titre="Métier"
+            actif={metier}
+            choix={[
+              { valeur: "tous", libelle: "Tous", nombre: c.produits, href: lien("metier", "tous") },
+              ...metiers_filtre.map((m) => ({
+                valeur: m.cle,
+                libelle: m.metier,
+                nombre: m.nombre,
+                href: lien("metier", m.cle),
+              })),
+            ]}
+          />
+        </div>
 
         {administre && (
           <Depliant titre="Ajouter un produit">
