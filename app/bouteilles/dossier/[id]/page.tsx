@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { vueContient } from "@/lib/schema";
 import { viderLaFileEnFond } from "@/lib/envoi";
 import { depuis, euros } from "@/lib/domaine";
 import { Confirmation, Entete } from "@/app/composants/ui";
@@ -43,6 +44,8 @@ type Dossier = {
   etape_resolue: boolean;
   jours_ouvert: number;
   commentaire: string | null;
+  /** `null` tant que la migration 0027 n'est pas jouée : la colonne n'existe pas encore. */
+  redoter: boolean | null;
 };
 
 const LIBELLE: Record<string, string> = {
@@ -67,13 +70,26 @@ export default async function DetailDossier({
   const { id } = await params;
   const { fait } = await searchParams;
 
-  const [d] = await sql<Dossier[]>`
-    select id, reference, emplacement, nature::text, responsable::text, client_nom,
-           constate_par, transmis_a, constate_le, transmis_le, client_contacte_le,
-           resolu_le, notifie_le, statut::text, montant, quantite, lignes,
-           facturable_client, dossier_ouvert, etape_constate, etape_transmis,
-           etape_client_contacte, etape_resolue, jours_ouvert, commentaire
-    from v_dossiers_bouteille where id = ${id}`;
+  // La colonne n'existe dans la vue que depuis la migration 0027 : deux
+  // requêtes, jamais une condition booléenne dans le SQL (le code part en
+  // ligne avant la migration).
+  const remplacementVisible = await vueContient("v_incidents_bouteille", "i.redoter");
+  const [d] = remplacementVisible
+    ? await sql<Dossier[]>`
+        select id, reference, emplacement, nature::text, responsable::text, client_nom,
+               constate_par, transmis_a, constate_le, transmis_le, client_contacte_le,
+               resolu_le, notifie_le, statut::text, montant, quantite, lignes,
+               facturable_client, dossier_ouvert, etape_constate, etape_transmis,
+               etape_client_contacte, etape_resolue, jours_ouvert, commentaire, redoter
+        from v_dossiers_bouteille where id = ${id}`
+    : await sql<Dossier[]>`
+        select id, reference, emplacement, nature::text, responsable::text, client_nom,
+               constate_par, transmis_a, constate_le, transmis_le, client_contacte_le,
+               resolu_le, notifie_le, statut::text, montant, quantite, lignes,
+               facturable_client, dossier_ouvert, etape_constate, etape_transmis,
+               etape_client_contacte, etape_resolue, jours_ouvert, commentaire,
+               null::boolean as redoter
+        from v_dossiers_bouteille where id = ${id}`;
   if (!d) notFound();
 
   /**
@@ -261,6 +277,23 @@ export default async function DetailDossier({
               {d.nature === "casse" ? "Bouteille cassée" : "Bouteille emportée"} ·{" "}
               {depuis(d.jours_ouvert, d.constate_le)}
             </dd>
+
+            {/* Le remplacement, invisible jusqu'ici : c'est ce qui permet de
+                repérer deux dossiers qui re-dotent la même chambre le même
+                jour, une réserve rendant deux bouteilles pour une seule
+                perte réelle. */}
+            {d.redoter !== null && (
+              <>
+                <dt className="text-ink-faint">Chambre re-dotée</dt>
+                <dd>
+                  {d.redoter ? (
+                    "Oui — une bouteille de la réserve"
+                  ) : (
+                    <span className="text-amber">Non — la chambre reste en manque</span>
+                  )}
+                </dd>
+              </>
+            )}
 
             {/* « — » à la place d'un prénom ne se lit pas : on dit en toutes
                 lettres que personne n'a été noté, parce que c'est une chose à
