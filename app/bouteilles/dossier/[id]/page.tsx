@@ -170,7 +170,7 @@ export default async function DetailDossier({
          set commentaire = coalesce(${note}, commentaire),
              montant = ${mt}
        where id = ${id}`;
-    revalidatePath(`/bouteilles/dossier/${id}`);
+    redirect("/bouteilles?fait=modifie" as Route);
   }
 
   return (
