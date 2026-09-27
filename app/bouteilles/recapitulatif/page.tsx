@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { vueContient } from "@/lib/schema";
 import { euros, jourISO } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Cadre, Chiffre, Repartition, SERIES, Tableau } from "@/app/composants/graphiques";
@@ -54,6 +55,8 @@ type Dossier = {
   resolu_le: string | Date | null;
   montant: number | null;
   commentaire: string | null;
+  /** `null` tant que la migration 0027 n'est pas jouée : la colonne n'existe pas encore. */
+  redoter: boolean | null;
 };
 
 const NATURE: Record<string, string> = {
@@ -142,14 +145,26 @@ export default async function Recapitulatif({
        and m.date_mouvement < (${fin}::date + 1)
      order by m.date_mouvement desc`;
 
-  const dossiers = await sql<Dossier[]>`
-    select id, reference, emplacement, bouteille, quantite, nature::text,
-           statut::text, responsable::text, client_nom, constate_par, transmis_a,
-           constate_le, resolu_le, montant, commentaire
-      from v_dossiers_bouteille
-     where constate_le >= ${debut}::date
-       and constate_le < (${fin}::date + 1)
-     order by constate_le desc, reference desc`;
+  // La colonne n'existe dans la vue que depuis la migration 0027 : deux
+  // requêtes, jamais une condition booléenne dans le SQL.
+  const remplacementVisible = await vueContient("v_incidents_bouteille", "i.redoter");
+  const dossiers = remplacementVisible
+    ? await sql<Dossier[]>`
+        select id, reference, emplacement, bouteille, quantite, nature::text,
+               statut::text, responsable::text, client_nom, constate_par, transmis_a,
+               constate_le, resolu_le, montant, commentaire, redoter
+          from v_dossiers_bouteille
+         where constate_le >= ${debut}::date
+           and constate_le < (${fin}::date + 1)
+         order by constate_le desc, reference desc`
+    : await sql<Dossier[]>`
+        select id, reference, emplacement, bouteille, quantite, nature::text,
+               statut::text, responsable::text, client_nom, constate_par, transmis_a,
+               constate_le, resolu_le, montant, commentaire, null::boolean as redoter
+          from v_dossiers_bouteille
+         where constate_le >= ${debut}::date
+           and constate_le < (${fin}::date + 1)
+         order by constate_le desc, reference desc`;
 
   const somme = (t: string) =>
     bilan.filter((b) => b.type === t).reduce((n, b) => n + b.quantite, 0);
@@ -416,6 +431,21 @@ export default async function Recapitulatif({
                           <span className="text-[12px] text-ink-faint">
                             {NATURE[d.nature] ?? d.nature}
                           </span>
+                          {/* Le remplacement, en badge : c'est ce qui manquait
+                              pour repérer deux dossiers qui re-dotent la même
+                              chambre le même jour — une réserve qui rend deux
+                              bouteilles pour une seule perte réelle. */}
+                          {d.redoter !== null && (
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[11.5px] ${
+                                d.redoter
+                                  ? "bg-green-soft text-green"
+                                  : "bg-amber-soft text-amber"
+                              }`}
+                            >
+                              {d.redoter ? "Re-dotée" : "Non re-dotée"}
+                            </span>
+                          )}
                           {Number(d.montant ?? 0) > 0 && (
                             <span className="text-[12px] tabular-nums text-ink-soft">
                               · {euros(d.montant)}

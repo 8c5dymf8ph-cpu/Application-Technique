@@ -134,6 +134,14 @@ const ATTENDUES: Attendue[] = [
     sans: "Culligan apparaît dans la liste des fournisseurs d’un joint de robinet.",
     verifier: () => colonneExiste("fournisseurs", "pour_bouteilles"),
   },
+  {
+    titre: "Voir les remplacements de bouteille",
+    sans:
+      "Aucun écran ne dit si une chambre a été re-dotée depuis la réserve : ni la fiche " +
+      "d’un dossier, ni la liste, ni le récapitulatif — impossible de repérer un " +
+      "remplacement compté deux fois sur la même chambre.",
+    verifier: () => vueContient("v_incidents_bouteille", "i.redoter"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

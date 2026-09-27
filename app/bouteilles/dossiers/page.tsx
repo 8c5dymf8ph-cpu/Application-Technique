@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { vueContient } from "@/lib/schema";
 import { depuis, euros } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Frise, Recherche, Stat } from "@/app/composants/suivi";
@@ -34,6 +35,8 @@ type Dossier = {
   etape_client_contacte: boolean;
   etape_resolue: boolean;
   commentaire: string | null;
+  /** `null` tant que la migration 0027 n'est pas jouée : la colonne n'existe pas encore. */
+  redoter: boolean | null;
 };
 
 const LIBELLE: Record<string, string> = {
@@ -84,25 +87,48 @@ export default async function Dossiers({
   // client, la chambre, le type et le commentaire — tout ce qu'on retient d'un
   // dossier quand on le cherche des semaines plus tard.
   const terme = q.trim().toLowerCase();
-  const dossiers = await sql<Dossier[]>`
-    select id, reference, emplacement, bouteille, quantite, nature::text,
-           responsable::text, client_nom, constate_par, constate_le, statut::text,
-           famille, jours_ouvert, urgent, montant, facturable_client,
-           etape_constate, etape_transmis, etape_client_contacte, etape_resolue,
-           commentaire
-    from v_dossiers_bouteille
-    where (${filtre} = 'tous'
-        or (${filtre} = 'urgent' and urgent)
-        or famille = ${filtre})
-      and (${terme} = '' or recherche like ${"%" + terme + "%"})
-    order by ${
-      tri === "alpha"
-        ? sql`emplacement asc, constate_le desc`
-        : tri === "nom"
-          ? sql`client_nom nulls last, constate_le desc`
-          : sql`constate_le desc`
-    }
-    limit 60`;
+  // La colonne n'existe dans la vue que depuis la migration 0027 : deux
+  // requêtes, jamais une condition booléenne dans le SQL.
+  const remplacementVisible = await vueContient("v_incidents_bouteille", "i.redoter");
+  const dossiers = remplacementVisible
+    ? await sql<Dossier[]>`
+        select id, reference, emplacement, bouteille, quantite, nature::text,
+               responsable::text, client_nom, constate_par, constate_le, statut::text,
+               famille, jours_ouvert, urgent, montant, facturable_client,
+               etape_constate, etape_transmis, etape_client_contacte, etape_resolue,
+               commentaire, redoter
+        from v_dossiers_bouteille
+        where (${filtre} = 'tous'
+            or (${filtre} = 'urgent' and urgent)
+            or famille = ${filtre})
+          and (${terme} = '' or recherche like ${"%" + terme + "%"})
+        order by ${
+          tri === "alpha"
+            ? sql`emplacement asc, constate_le desc`
+            : tri === "nom"
+              ? sql`client_nom nulls last, constate_le desc`
+              : sql`constate_le desc`
+        }
+        limit 60`
+    : await sql<Dossier[]>`
+        select id, reference, emplacement, bouteille, quantite, nature::text,
+               responsable::text, client_nom, constate_par, constate_le, statut::text,
+               famille, jours_ouvert, urgent, montant, facturable_client,
+               etape_constate, etape_transmis, etape_client_contacte, etape_resolue,
+               commentaire, null::boolean as redoter
+        from v_dossiers_bouteille
+        where (${filtre} = 'tous'
+            or (${filtre} = 'urgent' and urgent)
+            or famille = ${filtre})
+          and (${terme} = '' or recherche like ${"%" + terme + "%"})
+        order by ${
+          tri === "alpha"
+            ? sql`emplacement asc, constate_le desc`
+            : tri === "nom"
+              ? sql`client_nom nulls last, constate_le desc`
+              : sql`constate_le desc`
+        }
+        limit 60`;
 
   async function avancer(donnees: FormData) {
     "use server";
@@ -252,6 +278,17 @@ export default async function Dossiers({
                         <p className="text-[11.5px] text-ink-faint">
                           {d.bouteille} · {d.nature === "casse" ? "cassée" : "emportée"} ·{" "}
                           {depuis(d.jours_ouvert, d.constate_le)}
+                          {/* Le remplacement, invisible jusqu'ici : sans lui,
+                              deux dossiers qui re-dotent la même chambre le
+                              même jour ne se distinguent pas l'un de l'autre. */}
+                          {d.redoter !== null && (
+                            <>
+                              {" · "}
+                              <span className={d.redoter ? undefined : "text-amber"}>
+                                {d.redoter ? "re-dotée" : "non re-dotée"}
+                              </span>
+                            </>
+                          )}
                         </p>
                       </div>
                       <div className="shrink-0 text-right flex flex-col items-end gap-1">
