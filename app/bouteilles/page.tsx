@@ -78,7 +78,9 @@ export default async function Bouteilles({
           <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
             {fait === "remplacement"
               ? "Remplacement enregistré : les bouteilles ont quitté la réserve pour la chambre."
-              : "Dossier enregistré. La chambre est re-dotée, et la réception a ce qu’il lui faut."}
+              : fait === "modifie"
+                ? "Modification enregistrée."
+                : "Dossier enregistré. La chambre est re-dotée, et la réception a ce qu’il lui faut."}
           </p>
         )}
 
