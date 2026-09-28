@@ -100,14 +100,42 @@ export default async function Signaler({
     if (estRemplacement) {
       // Re-doter la chambre depuis la réserve : un déplacement, jamais une
       // seconde sortie de parc.
+      //
+      // Si un dossier de cette chambre attend encore sa re-dotation pour ce
+      // type de bouteille (`redoter = false`), on s'y RATTACHE plutôt que
+      // de poser un mouvement détaché : sans ça, le geste manuel et le
+      // dossier ne se parlent pas, et rien n'empêche de re-doter deux fois
+      // la même chambre pour la même perte. Rattacher avant de cocher
+      // `redoter` est ce qui empêche le déclencheur de la migration 0014
+      // d'en poser une seconde : il ne crée un mouvement que s'il n'en
+      // trouve aucun déjà lié à ce dossier pour ce type de bouteille.
       for (const l of choisies) {
+        const [attente] = await sql<{ id: string; reference: number }[]>`
+          select i.id, i.reference from incidents_bouteille i
+          join incident_lignes_bouteille li on li.incident_id = i.id
+          where i.emplacement_id = ${emplacement}
+            and li.bouteille_type_id = ${l.id}
+            and i.redoter = false
+          order by i.constate_le desc
+          limit 1`;
+
         await sql`
           insert into mouvements_bouteilles (type, bouteille_type_id, quantite,
                                              de_lieu, vers_lieu, vers_emplacement_id,
-                                             date_mouvement, utilisateur_id, commentaire)
+                                             date_mouvement, utilisateur_id, incident_id,
+                                             commentaire)
           values ('dotation', ${l.id}, ${l.quantite}, 'reserve', 'emplacement',
                   ${emplacement}, ${quand ?? new Date().toISOString()},
-                  ${profil_.id}, 'Remplacement en chambre')`;
+                  ${profil_.id}, ${attente?.id ?? null},
+                  ${
+                    attente
+                      ? "Remplacement en chambre — rattaché au dossier n° " + attente.reference
+                      : "Remplacement en chambre"
+                  })`;
+
+        if (attente) {
+          await sql`update incidents_bouteille set redoter = true where id = ${attente.id}`;
+        }
       }
       redirect("/bouteilles?fait=remplacement" as Route);
     }
