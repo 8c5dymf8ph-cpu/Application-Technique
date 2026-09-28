@@ -7,7 +7,7 @@
 Le script n'écrit rien en base : il produit du SQL à relire, et un rapport sur
 stderr. Aucune ligne n'est perdue en silence.
 
-Deux pièges de l'export, traités ici :
+Trois pièges de l'export, traités ici :
 
 1. **Les dates sont ambiguës.** Excel a interprété certaines cellules au format
    américain : `01/07/2026` est devenu le 7 janvier. La référence du dossier,
@@ -15,6 +15,17 @@ Deux pièges de l'export, traités ici :
 
 2. **Les quantités sont parfois vides** alors que les cases « Filtree » et
    « Petillante » disent le contraire. On retombe alors sur les cases.
+
+3. **Le compte de la reprise est GLOBAL, pas la réserve seule.** Confirmé par
+   Miguel : « 46 filtrées et 44 gazeuses » comptait tout l'établissement,
+   chambres comprises — pas ce qu'il restait sur l'étagère. Or chaque chambre
+   dotée reçoit déjà sa bouteille via la régularisation, juste au-dessus. Poser
+   le compte global ENTIER comme une entrée en réserve compterait donc deux
+   fois les bouteilles déjà en chambre : une fois par la régularisation, une
+   fois par l'entrée. La ligne « Entrée » proche de `DATE_REPRISE` est donc
+   réduite de ce que les chambres ont déjà reçu — la SQL le fait elle-même par
+   sous-requête, pas ce script, pour rester juste quel que soit le nombre de
+   chambres dotées.
 """
 import datetime
 import re
@@ -220,12 +231,33 @@ where e.actif and e.dote_bouteilles;""")
         compte[type_evt] += 1
 
         if type_evt == "Entrée":
-            # Une livraison : elle entre en réserve, pas en chambre.
-            print(f"\n-- Entrée en réserve du {date:%d/%m/%Y} — {f} filtrées, {p} gazeuses")
+            # Une livraison : elle entre en réserve, pas en chambre. Mais la
+            # ligne posée à la reprise (proche de DATE_REPRISE) porte le
+            # compte GLOBAL — chambres comprises — jamais la réserve seule :
+            # on lui retire ce que les chambres ont déjà reçu par la
+            # régularisation, pour ne pas compter deux fois les mêmes
+            # bouteilles. Une entrée plus tardive (une vraie livraison) reste
+            # posée telle quelle : elle arrive en réserve, pas déjà distribuée.
+            a_la_reprise = date <= DATE_REPRISE + datetime.timedelta(days=3)
+            print(f"\n-- Entrée en réserve du {date:%d/%m/%Y} — {f} filtrées, {p} gazeuses"
+                  + (" (compte global, chambres comprises)" if a_la_reprise else ""))
             for code, qte in (("filtree", f), ("petillante", p)):
                 if qte <= 0:
                     continue
-                print(f"""insert into mouvements_bouteilles (type, bouteille_type_id, quantite,
+                if a_la_reprise:
+                    print(f"""insert into mouvements_bouteilles (type, bouteille_type_id, quantite,
+       de_lieu, vers_lieu, date_mouvement, commentaire)
+select 'entree', bt.id,
+       {qte} - coalesce((select sum(d.quantite) from dotations d
+                          join emplacements e on e.id = d.emplacement_id
+                          where e.actif and e.dote_bouteilles
+                            and d.bouteille_type_id = bt.id), 0),
+       'hors_parc', 'reserve', timestamptz '{date} 10:00+02',
+       'Livraison reprise de l''ancienne application — réserve seule ; '
+       || '{qte} au total avec les chambres'
+from bouteille_types bt where bt.code = '{code}';""")
+                else:
+                    print(f"""insert into mouvements_bouteilles (type, bouteille_type_id, quantite,
        de_lieu, vers_lieu, date_mouvement, commentaire)
 select 'entree', bt.id, {qte}, 'hors_parc', 'reserve',
        timestamptz '{date} 10:00+02', 'Livraison reprise de l''ancienne application'

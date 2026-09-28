@@ -26,16 +26,28 @@ where e.actif and e.dote_bouteilles;
 
 -- Opérations reprises, dans l'ordre chronologique ----------------------
 
--- Entrée en réserve du 31/03/2026 — 46 filtrées, 44 gazeuses
+-- Entrée en réserve du 31/03/2026 — 46 filtrées, 44 gazeuses (compte global, chambres comprises)
 insert into mouvements_bouteilles (type, bouteille_type_id, quantite,
        de_lieu, vers_lieu, date_mouvement, commentaire)
-select 'entree', bt.id, 46, 'hors_parc', 'reserve',
-       timestamptz '2026-03-31 10:00+02', 'Livraison reprise de l''ancienne application'
+select 'entree', bt.id,
+       46 - coalesce((select sum(d.quantite) from dotations d
+                          join emplacements e on e.id = d.emplacement_id
+                          where e.actif and e.dote_bouteilles
+                            and d.bouteille_type_id = bt.id), 0),
+       'hors_parc', 'reserve', timestamptz '2026-03-31 10:00+02',
+       'Livraison reprise de l''ancienne application — réserve seule ; '
+       || '46 au total avec les chambres'
 from bouteille_types bt where bt.code = 'filtree';
 insert into mouvements_bouteilles (type, bouteille_type_id, quantite,
        de_lieu, vers_lieu, date_mouvement, commentaire)
-select 'entree', bt.id, 44, 'hors_parc', 'reserve',
-       timestamptz '2026-03-31 10:00+02', 'Livraison reprise de l''ancienne application'
+select 'entree', bt.id,
+       44 - coalesce((select sum(d.quantite) from dotations d
+                          join emplacements e on e.id = d.emplacement_id
+                          where e.actif and e.dote_bouteilles
+                            and d.bouteille_type_id = bt.id), 0),
+       'hors_parc', 'reserve', timestamptz '2026-03-31 10:00+02',
+       'Livraison reprise de l''ancienne application — réserve seule ; '
+       || '44 au total avec les chambres'
 from bouteille_types bt where bt.code = 'petillante';
 
 -- PERTE-35-060420260,45633681 — chambre 35, 06/04/2026

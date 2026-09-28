@@ -4744,6 +4744,158 @@ select s.id, s.nature_code, n.libelle as nature, s.parent_id, s.titre,
 
 grant select on v_suivis to authenticated;
 
+-- ===== supabase/migrations/0026_un_essai_ne_touche_pas_les_bouteilles.sql =====
+-- =============================================================================
+-- Migration 0026 : un essai ne touche pas les bouteilles non plus
+-- =============================================================================
+-- La 0013 a posé la règle pour le matériel : un mouvement passé dans une
+-- chambre d'essai (06, 07) n'est pas un mouvement de stock. Elle ne parlait
+-- que de `mouvements_stock` — les bouteilles n'ont jamais été couvertes.
+-- Déclarer une bouteille perdue en 06 pour montrer le geste sortait pour de
+-- bon une bouteille du parc détenu, et re-doter la chambre en 06 sortait pour
+-- de bon une bouteille de la réserve : exactement le défaut que la 0013
+-- corrigeait côté matériel.
+--
+-- Même geste, même endroit unique : `v_bouteilles_positions` est la SEULE vue
+-- qui lit `mouvements_bouteilles` directement (v_stock_bouteilles et
+-- v_bouteilles_par_emplacement en dérivent toutes les deux) — un filtre posé
+-- ici vaut pour le parc entier, sans le répéter vue par vue.
+--
+-- La ligne reste, avec son lieu — on ne l'efface pas, le dossier existe
+-- toujours et doit pouvoir se corriger comme n'importe quel autre. C'est le
+-- lieu qui dit qu'elle ne compte pas dans le parc.
+
+create or replace view v_mouvements_bouteilles_reels as
+select m.*
+  from mouvements_bouteilles m
+  left join emplacements e_de   on e_de.id = m.de_emplacement_id
+  left join emplacements e_vers on e_vers.id = m.vers_emplacement_id
+ where not coalesce(e_de.essai, false)
+   and not coalesce(e_vers.essai, false);
+
+comment on view v_mouvements_bouteilles_reels is
+  'Les mouvements de bouteilles qui comptent : tout sauf ce qui touche un lieu '
+  'd''essai, d''un côté comme de l''autre du mouvement. Pendant du '
+  'v_mouvements_reels de la 0013, pour le parc plutôt que pour le stock.';
+
+create or replace view v_bouteilles_positions as
+select
+  m.bouteille_type_id,
+  f.lieu,
+  f.emplacement_id,
+  f.qte
+from v_mouvements_bouteilles_reels m
+cross join lateral (values
+  (m.vers_lieu, m.vers_emplacement_id,  m.quantite),
+  (m.de_lieu,   m.de_emplacement_id,   -m.quantite)
+) as f (lieu, emplacement_id, qte)
+where f.lieu <> 'hors_parc';
+
+alter view v_mouvements_bouteilles_reels set (security_invoker = on);
+grant select on v_mouvements_bouteilles_reels to authenticated;
+
+-- ===== supabase/migrations/0027_voir_les_remplacements_de_bouteille.sql =====
+-- =============================================================================
+-- Migration 0027 : voir les remplacements de bouteille
+-- =============================================================================
+-- `redoter` existe depuis le début (`incidents_bouteille.redoter`) et le
+-- déclencheur de la migration 0014 le tient parfaitement synchronisé avec le
+-- mouvement de re-dotation. Mais `v_incidents_bouteille` ne le sélectionnait
+-- pas : ni la fiche d'un dossier, ni la liste des dossiers, ni le
+-- récapitulatif ne pouvaient donc dire si une chambre avait été re-dotée.
+--
+-- En reprenant l'historique tenu à la main, ça se voit : deux dossiers du même
+-- jour pour la même chambre peuvent chacun porter une re-dotation sans que
+-- rien ne le dise nulle part — la réserve rend deux bouteilles pour une seule
+-- perte réelle, et rien à l'écran ne permet de le remarquer.
+--
+-- `create or replace view` ne permet pas d'insérer une colonne au milieu sans
+-- casser les vues qui en dépendent : on l'ajoute donc à la fin, comme
+-- `commentaire`.
+--
+-- Postgres fige la liste de colonnes d'un `select i.*` au moment où la vue est
+-- créée : la remplacer ne suffit pas à faire apparaître `redoter` dans
+-- `v_dossiers_bouteille`, qui fait justement `select i.*, ... from
+-- v_incidents_bouteille i`. Testé : sans le `drop` ci-dessous, l'écran des
+-- dossiers renvoie « column "redoter" does not exist » — la vue de dessus n'a
+-- jamais vu la nouvelle colonne. Il faut la recréer entièrement ; rien d'autre
+-- n'en dépend (aucune autre vue, aucune politique RLS).
+
+create or replace view v_incidents_bouteille as
+select
+  i.id,
+  i.reference,
+  i.emplacement_id,
+  e.code                                   as emplacement,
+  l.libelles                               as bouteille,
+  coalesce(l.quantite, 0)                  as quantite,
+  coalesce(l.detail, '[]'::jsonb)          as lignes,
+  i.nature,
+  i.responsable,
+  i.client_nom,
+  uc.nom                                   as constate_par,
+  ut.nom                                   as transmis_a,
+  i.constate_le,
+  i.statut,
+  i.notifie_le,
+  i.transmis_le,
+  i.client_contacte_le,
+  i.resolu_le,
+  -- Les quatre étapes du dossier, pour la frise de l'écran de suivi.
+  i.constate_le is not null                as etape_constate,
+  i.transmis_le is not null                as etape_transmis,
+  i.client_contacte_le is not null         as etape_client_contacte,
+  i.statut in ('restitue', 'facture', 'non_facture', 'clos') as etape_resolue,
+  -- Le montant retenu s'il a été saisi ; sinon le prix du barème, ligne à ligne.
+  coalesce(i.montant, l.montant_theorique, 0) as montant,
+  i.responsable = 'client'                 as facturable_client,
+  i.statut in ('signale', 'transmis', 'client_contacte') as dossier_ouvert,
+  i.commentaire,
+  -- Ajouté en 0027, à la fin : la chambre a-t-elle été re-dotée depuis la
+  -- réserve ? C'est ce qui manquait pour repérer un remplacement compté deux
+  -- fois sur la même chambre, le même jour.
+  i.redoter
+from incidents_bouteille i
+join emplacements e     on e.id = i.emplacement_id
+left join utilisateurs uc on uc.id = i.constate_par
+left join utilisateurs ut on ut.id = i.transmis_a
+left join lateral (
+  select
+    string_agg(bt.libelle, ' + ' order by bt.libelle)                as libelles,
+    sum(li.quantite)::int                                            as quantite,
+    sum(li.quantite * case when i.responsable = 'client'
+                           then bt.prix_vente else bt.prix_achat end) as montant_theorique,
+    jsonb_agg(jsonb_build_object(
+      'code', bt.code, 'libelle', bt.libelle, 'quantite', li.quantite,
+      'prix', case when i.responsable = 'client' then bt.prix_vente else bt.prix_achat end)
+      order by bt.libelle)                                           as detail
+  from incident_lignes_bouteille li
+  join bouteille_types bt on bt.id = li.bouteille_type_id
+  where li.incident_id = i.id
+) l on true;
+
+drop view v_dossiers_bouteille;
+
+create view v_dossiers_bouteille as
+select
+  i.*,
+  -- Trois familles suffisent aux filtres : à traiter, réglé, abandonné.
+  case
+    when i.statut in ('signale', 'transmis', 'client_contacte') then 'ouvert'
+    when i.statut in ('restitue', 'facture')                    then 'resolu'
+    else 'perdu'
+  end                                              as famille,
+  (current_date - i.constate_le::date)::int        as jours_ouvert,
+  -- Un dossier client ouvert depuis plus d'une semaine : le client est parti,
+  -- la bouteille ne reviendra pas toute seule.
+  i.statut in ('signale', 'transmis', 'client_contacte')
+    and (current_date - i.constate_le::date) >= 7  as urgent,
+  -- De quoi chercher sans se soucier de la casse ni des accents.
+  lower(coalesce(i.client_nom, '') || ' ' || i.emplacement || ' ' ||
+        coalesce(i.bouteille, '') || ' ' || coalesce(i.commentaire, '') || ' ' ||
+        i.reference::text)                         as recherche
+from v_incidents_bouteille i;
+
 -- ===== supabase/seed/01_referentiels.sql =====
 -- =============================================================================
 -- Référentiels de départ — Hôtel Parisianer
@@ -4859,12 +5011,12 @@ on conflict (code) do nothing;
 insert into fournisseurs (nom, delai_livraison_jours) values ('Culligan', 7)
 on conflict (nom) do nothing;
 
--- Bouteilles Purezza : 17,50 € facturés au client, 8 € de coût d'achat.
+-- Bouteilles Purezza : 17,50 € facturés au client, 6,50 € de coût d'achat HT.
 -- `seuil_alerte` porte sur la RÉSERVE — le nombre de bouteilles encore
 -- disponibles pour re-doter une chambre. Valeurs à ajuster à l'usage.
 insert into bouteille_types (code, libelle, prix_vente, prix_achat, seuil_alerte, quantite_reappro, couleur) values
-  ('filtree',    'Eau filtrée',    17.50, 8.00, 10, 24, '#3A6499'),
-  ('petillante', 'Eau gazeuse',    17.50, 8.00, 10, 24, '#9E3538')
+  ('filtree',    'Eau filtrée',    17.50, 6.50, 10, 24, '#3A6499'),
+  ('petillante', 'Eau gazeuse',    17.50, 6.50, 10, 24, '#9E3538')
 on conflict (code) do nothing;
 
 -- Culligan fournit les deux types. D'autres fournisseurs peuvent être ajoutés
