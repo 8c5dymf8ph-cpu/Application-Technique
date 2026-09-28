@@ -174,7 +174,7 @@ begin
   select * into v_incident from v_incidents_bouteille where reference =
     (select reference from incidents_bouteille where id = 'aaaaaaaa-0000-0000-0000-000000000003');
   assert not v_incident.facturable_client, 'une casse du personnel n''est pas facturable';
-  assert v_incident.montant = 8.00, format('montant = %s, attendu 8.00 (prix d''achat)', v_incident.montant);
+  assert v_incident.montant = 6.50, format('montant = %s, attendu 6.50 (prix d''achat)', v_incident.montant);
 end $$;
 
 -- Le schéma refuse de facturer une casse imputée au personnel
@@ -187,6 +187,36 @@ begin
   exception when check_violation then
     null;  -- comportement attendu
   end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Cas C ter — Le client emporte une bouteille, mais l'hôtel renonce à la
+-- facturer (dossier classé « perte sèche »). Le coût reste celui de l'ACHAT,
+-- jamais le prix qu'on aurait demandé au client s'il avait payé : une perte
+-- non recouvrée coûte à l'hôtel ce qu'il l'a payée, pas ce qu'il comptait la
+-- vendre.
+-- ---------------------------------------------------------------------------
+insert into incidents_bouteille (id, emplacement_id, nature, responsable, client_nom, constate_par)
+select 'aaaaaaaa-0000-0000-0000-000000000005', e.id, 'emport', 'client', 'Client parti',
+       '22222222-2222-2222-2222-222222222222'
+from emplacements e where e.code = '18';
+insert into incident_lignes_bouteille (incident_id, bouteille_type_id, quantite)
+select 'aaaaaaaa-0000-0000-0000-000000000005', bt.id, 1
+from bouteille_types bt where bt.code = 'filtree';
+
+-- On classe la perte comme sèche, comme le ferait la gouvernante depuis la
+-- fiche : c'est ce passage de statut qui écrit le mouvement `perte`.
+update incidents_bouteille set statut = 'non_facture'
+ where id = 'aaaaaaaa-0000-0000-0000-000000000005';
+
+do $$
+declare v_incident record;
+begin
+  select * into v_incident from v_incidents_bouteille
+   where id = 'aaaaaaaa-0000-0000-0000-000000000005';
+  assert v_incident.montant = 6.50,
+    format('perte sèche : montant = %s, attendu 6.50 (prix d''achat, malgré responsable = client)',
+           v_incident.montant);
 end $$;
 
 -- ---------------------------------------------------------------------------
