@@ -2,6 +2,23 @@
 
 import { useEffect } from "react";
 
+// Vrai si un `popstate` (la flèche arrière ou avant du navigateur) vient
+// d'avoir lieu, juste avant que l'écran qui suit ne se monte. Posé une seule
+// fois au chargement du module — comme `Parcours`, dont c'est le même
+// principe — pas par instance du composant : sans lui, `QuitterSiRevenu` ne
+// pouvait pas distinguer un retour en arrière d'une nouvelle visite
+// volontaire, et bouclait la seconde sur la première. Mesuré : après avoir
+// déclaré une perte, revenir sur `/bouteilles/signaler` pour une SECONDE
+// déclaration — un geste normal, pas un retour — renvoyait aussitôt vers
+// `/bouteilles` sans jamais montrer le formulaire, parce que la marque de la
+// première déclaration n'avait jamais été consommée faute de retour arrière.
+let revenu = false;
+if (typeof window !== "undefined") {
+  window.addEventListener("popstate", () => {
+    revenu = true;
+  });
+}
+
 /**
  * Ne pas rouvrir un formulaire qu'on vient de valider.
  *
@@ -14,7 +31,11 @@ import { useEffect } from "react";
  * trouve en se remontant, l'efface et repart d'où l'on vient. Elle est
  * effacée au passage, donc rouvrir l'écran plus tard pour une VRAIE nouvelle
  * déclaration fonctionne normalement — c'est ce qui distingue le retour en
- * arrière d'une nouvelle saisie.
+ * arrière d'une nouvelle saisie. Mais la marque seule ne suffisait pas à le
+ * distinguer : elle reste posée tant qu'aucun retour ne l'a consommée, et une
+ * simple revisite — cliquer « Déclarer » une seconde fois dans la même
+ * session — la trouvait tout autant qu'un vrai retour. Il faut les DEUX :
+ * la marque, et un `popstate` qui vient d'avoir lieu.
  *
  * Le rechargement est FRANC (`window.location`), pas une navigation du
  * routeur : un dépliant resté ouvert (`<details>`, pas piloté par l'adresse)
@@ -25,6 +46,8 @@ import { useEffect } from "react";
  */
 export function QuitterSiRevenu({ cle, vers }: { cle: string; vers: string }) {
   useEffect(() => {
+    if (!revenu) return;
+    revenu = false;
     try {
       if (sessionStorage.getItem(`valide:${cle}`)) {
         sessionStorage.removeItem(`valide:${cle}`);

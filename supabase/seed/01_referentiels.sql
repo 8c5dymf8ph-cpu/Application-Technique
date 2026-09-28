@@ -112,12 +112,12 @@ on conflict (code) do nothing;
 insert into fournisseurs (nom, delai_livraison_jours) values ('Culligan', 7)
 on conflict (nom) do nothing;
 
--- Bouteilles Purezza : 17,50 € facturés au client, 8 € de coût d'achat.
+-- Bouteilles Purezza : 17,50 € facturés au client, 6,50 € de coût d'achat HT.
 -- `seuil_alerte` porte sur la RÉSERVE — le nombre de bouteilles encore
 -- disponibles pour re-doter une chambre. Valeurs à ajuster à l'usage.
 insert into bouteille_types (code, libelle, prix_vente, prix_achat, seuil_alerte, quantite_reappro, couleur) values
-  ('filtree',    'Eau filtrée',    17.50, 8.00, 10, 24, '#3A6499'),
-  ('petillante', 'Eau gazeuse',    17.50, 8.00, 10, 24, '#9E3538')
+  ('filtree',    'Eau filtrée',    17.50, 6.50, 10, 24, '#3A6499'),
+  ('petillante', 'Eau gazeuse',    17.50, 6.50, 10, 24, '#9E3538')
 on conflict (code) do nothing;
 
 -- Culligan fournit les deux types. D'autres fournisseurs peuvent être ajoutés
