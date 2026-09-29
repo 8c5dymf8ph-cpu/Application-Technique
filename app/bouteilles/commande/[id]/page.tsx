@@ -361,7 +361,12 @@ export default async function DetailCommande({
               <input
                 name="livraison"
                 type="date"
-                defaultValue={commande.date_livraison ?? ""}
+                // Le pilote Postgres rend `date_livraison` en objet Date, pas en
+                // chaîne : passé tel quel, un <input type="date"> refuse la
+                // valeur (elle ne conforme pas à yyyy-MM-dd) et affiche le champ
+                // VIDE — on croit alors que la date saisie n'a pas été prise en
+                // compte, alors qu'elle est bien enregistrée en base.
+                defaultValue={commande.date_livraison ? jourISO(commande.date_livraison) : ""}
                 className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
               />
             </label>
@@ -438,6 +443,16 @@ export default async function DetailCommande({
                 de stock ont été écrites : elles sont visibles dans l’historique des mouvements,
                 et rien ne se « recalcule ».
               </p>
+              {/* Une fois reçue, il n'y a plus rien à valider sur cet écran — le
+                  seul chemin retour était la flèche du navigateur, ou un petit
+                  lien tout en bas d'une page déjà longue. Un vrai bouton, juste
+                  après la confirmation, dit qu'on a fini ici. */}
+              <Link
+                href={"/bouteilles/commandes" as Route}
+                className="h-[48px] rounded-[13px] bg-plum text-white font-display font-semibold text-[14.5px] grid place-items-center"
+              >
+                Terminé — retour aux commandes
+              </Link>
               <form action={redater} className="carte px-3.5 py-3 flex flex-col gap-2">
                 <label className="flex flex-col gap-1">
                   <span className="etiquette">Corriger la date de réception</span>
@@ -487,7 +502,14 @@ export default async function DetailCommande({
                   name="recue_le"
                   type="date"
                   max={aujourdhuiISO()}
-                  defaultValue={aujourdhuiISO()}
+                  // Reprend la date de livraison déjà saisie plus haut (section
+                  // Montants) au lieu d'aujourd'hui : sans ça, une date entrée et
+                  // enregistrée dans les Montants était silencieusement ignorée
+                  // dès qu'on cliquait « Reçue » sans y repenser — le mouvement de
+                  // stock partait à la date du jour, pas à celle de la livraison.
+                  defaultValue={
+                    commande.date_livraison ? jourISO(commande.date_livraison) : aujourdhuiISO()
+                  }
                   className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
                 />
                 <span className="text-[11px] text-ink-faint text-pretty">

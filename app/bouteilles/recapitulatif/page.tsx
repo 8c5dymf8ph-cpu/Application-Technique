@@ -39,6 +39,15 @@ type Livraison = {
   commentaire: string | null;
 };
 
+type Stock = {
+  code: string;
+  libelle: string;
+  couleur: string | null;
+  en_reserve: number;
+  en_chambre: number;
+  parc_detenu: number;
+};
+
 type Dossier = {
   id: string;
   reference: number;
@@ -113,6 +122,46 @@ export default async function Recapitulatif({
   // à l'endroit plutôt que d'afficher une page vide.
   const finBrute = valide(p.fin, defaut.fin);
   const fin = finBrute < debut ? debut : finBrute;
+
+  /**
+   * Le parc détenu à la CLÔTURE de la période — pas celui d'aujourd'hui, même
+   * quand la période finit aujourd'hui. C'est le solde de fin de relevé, au
+   * même sens qu'un solde bancaire : il complète les mouvements de la
+   * période, il ne redit pas « où on en est maintenant » (c'est la question
+   * du tableau de bord, `/bouteilles/tableau`, pas de cet écran). Reconstitué
+   * ligne à ligne plutôt que lu dans `v_stock_bouteilles`, qui ne connaît que
+   * l'instant présent : même logique que cette vue (réserve, chambre, parc
+   * détenu = les deux réunis), mais bornée aux mouvements antérieurs à la fin
+   * de la période, et les chambres d'essai écartées comme `v_bouteilles_positions`
+   * le fait déjà.
+   */
+  const stock = await sql<Stock[]>`
+    with mvt as (
+      select m.*
+        from mouvements_bouteilles m
+        left join emplacements e_de   on e_de.id = m.de_emplacement_id
+        left join emplacements e_vers on e_vers.id = m.vers_emplacement_id
+       where not coalesce(e_de.essai, false)
+         and not coalesce(e_vers.essai, false)
+         and m.date_mouvement < (${fin}::date + 1)
+    ),
+    pos as (
+      select m.bouteille_type_id, f.lieu, f.qte
+        from mvt m
+        cross join lateral (values
+          (m.vers_lieu, m.quantite),
+          (m.de_lieu,  -m.quantite)
+        ) as f (lieu, qte)
+       where f.lieu <> 'hors_parc'
+    )
+    select bt.code, bt.libelle, bt.couleur,
+           coalesce(sum(p.qte) filter (where p.lieu = 'reserve'), 0)::int    as en_reserve,
+           coalesce(sum(p.qte) filter (where p.lieu = 'emplacement'), 0)::int as en_chambre,
+           coalesce(sum(p.qte) filter (where p.lieu in ('reserve', 'emplacement')), 0)::int as parc_detenu
+      from bouteille_types bt
+      left join pos p on p.bouteille_type_id = bt.id
+     group by bt.id, bt.code, bt.libelle, bt.couleur
+     order by bt.libelle`;
 
   /**
    * Ce qui est entré et sorti, par type de mouvement et par bouteille.
@@ -263,6 +312,35 @@ export default async function Recapitulatif({
             ))}
           </div>
         </form>
+
+        {/* Le solde de fin de relevé — réserve et chambres, parc réellement
+            détenu (règle 2bis, jamais le théorique). C'est ce qui clôt le
+            résumé, comme un solde bancaire clôt un relevé. */}
+        <Cadre
+          titre={`Stock au ${new Date(fin).toLocaleDateString("fr-FR")}`}
+          detail="Réserve et chambres réunies — le parc que l’hôtel détient réellement à la fin de la période."
+        >
+          <ul className="flex flex-col divide-y divide-line">
+            {stock.map((s) => (
+              <li key={s.code} className="py-2.5 flex items-center gap-2.5">
+                <span
+                  aria-hidden
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ background: s.couleur ?? "#8E8AA3" }}
+                />
+                <span className="grow min-w-0 flex flex-col gap-0.5">
+                  <span className="text-[14px]">{s.libelle}</span>
+                  <span className="text-[11.5px] text-ink-faint">
+                    {s.en_reserve} en réserve + {s.en_chambre} en chambre
+                  </span>
+                </span>
+                <span className="shrink-0 font-display font-semibold text-[17px] tabular-nums">
+                  {s.parc_detenu}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Cadre>
 
         {/* Les chiffres de la période. « Récupérées » compte autant que
             « sorties » : c'est ce qui revient qui dit si le dispositif marche. */}
