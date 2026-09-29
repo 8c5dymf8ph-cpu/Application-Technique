@@ -110,11 +110,10 @@ export default async function Commandes({
         )}
         <Filtres
           actif={filtre}
-          lien={(f) => `/bouteilles/commandes?filtre=${f}` as Route}
           choix={[
-            { valeur: "tous", libelle: "Toutes", nombre: c.tous },
-            { valeur: "recue", libelle: "Reçues", nombre: c.recues },
-            { valeur: "encours", libelle: "En cours", nombre: c.encours },
+            { valeur: "tous", libelle: "Toutes", nombre: c.tous, href: "/bouteilles/commandes?filtre=tous" as Route },
+            { valeur: "recue", libelle: "Reçues", nombre: c.recues, href: "/bouteilles/commandes?filtre=recue" as Route },
+            { valeur: "encours", libelle: "En cours", nombre: c.encours, href: "/bouteilles/commandes?filtre=encours" as Route },
           ]}
         />
 

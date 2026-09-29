@@ -7,6 +7,7 @@ import { vueContient } from "@/lib/schema";
 import { euros, jourISO } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Cadre, Chiffre, Repartition, SERIES, Tableau } from "@/app/composants/graphiques";
+import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
 
 export const dynamic = "force-dynamic";
 
@@ -311,7 +312,7 @@ export default async function Recapitulatif({
       <div className="px-5 py-5 place-pour-le-calendrier flex flex-col gap-4">
         {/* La période. Elle se règle, et trois raccourcis couvrent ce qu'on
             demande neuf fois sur dix. */}
-        <form method="get" className="carte px-4 py-3.5 flex flex-col gap-3">
+        <FormulaireEnPlace className="carte px-4 py-3.5 flex flex-col gap-3">
           <div className="flex gap-2.5">
             <label className="flex-1 flex flex-col gap-1">
               <span className="etiquette">Du</span>
@@ -340,6 +341,8 @@ export default async function Recapitulatif({
               <Link
                 key={r.l}
                 href={lien(r.debut, r.fin)}
+                replace
+                scroll={false}
                 className={`h-[40px] px-2.5 rounded-[11px] grid place-items-center text-[12.5px] ${
                   debut === r.debut && fin === r.fin
                     ? "bg-plum-soft text-plum font-medium"
@@ -350,7 +353,7 @@ export default async function Recapitulatif({
               </Link>
             ))}
           </div>
-        </form>
+        </FormulaireEnPlace>
 
         {/* Le solde de fin de relevé — réserve et chambres, parc réellement
             détenu (règle 2bis, jamais le théorique). C'est ce qui clôt le

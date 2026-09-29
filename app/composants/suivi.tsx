@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import type { Route } from "next";
 
 type Adresse = Route | (string & {});
@@ -56,22 +59,36 @@ export function Frise({ etapes }: { etapes: { libelle: string; faite: boolean }[
   );
 }
 
-/** Les filtres d'une liste : des pastilles, une seule active, tout tient sur une ligne. */
+/**
+ * Les filtres d'une liste : des pastilles, une seule active, tout tient sur
+ * une ligne.
+ *
+ * En `push`, chaque pastille cliquée empilait une entrée d'historique : sur
+ * un écran déjà filtré, revenir en arrière ne sortait pas de l'écran, il
+ * repassait par chaque filtre essayé avant. Changer de filtre n'est pas
+ * naviguer vers un autre écran (même principe que les mois d'un
+ * récapitulatif, ou les étages d'un passage) : `replace`, pas `push`.
+ *
+ * Chaque choix porte son adresse déjà construite (`href`), jamais une
+ * fonction : `Filtres` est un composant client depuis ce correctif, et une
+ * fonction ordinaire de l'écran serveur qui l'appelle ne peut pas lui être
+ * passée telle quelle (règle 7duodecies — même contrainte que `MenuFiltre`).
+ */
 export function Filtres({
   choix,
   actif,
-  lien,
 }: {
-  choix: { valeur: string; libelle: string; nombre?: number }[];
+  choix: { valeur: string; libelle: string; nombre?: number; href: Adresse }[];
   actif: string;
-  lien: (valeur: string) => Adresse;
 }) {
   return (
     <div className="flex gap-1.5 overflow-x-auto -mx-5 px-5 pb-0.5 [scrollbar-width:none]">
       {choix.map((c) => (
         <Link
           key={c.valeur}
-          href={lien(c.valeur) as Route}
+          href={c.href as Route}
+          replace
+          scroll={false}
           aria-current={c.valeur === actif ? "true" : undefined}
           className={`shrink-0 h-[34px] px-3.5 rounded-pill border text-[12.5px] flex items-center gap-1.5 ${
             c.valeur === actif
@@ -163,7 +180,15 @@ export function Surligne({ texte, mot }: { texte: string; mot?: string }) {
   );
 }
 
-/** La barre de recherche d'une liste, en GET : l'adresse reste partageable. */
+/**
+ * La barre de recherche d'une liste : l'adresse reste partageable (`?q=…`).
+ *
+ * Un `<form method="get">` natif navigue vraiment à chaque envoi, et empile
+ * une entrée d'historique par recherche — comme les pastilles de `Filtres` :
+ * revenir en arrière rejouait les recherches précédentes une par une au lieu
+ * de sortir de l'écran. Interceptée et posée en `replace`, comme
+ * `RechercheVive` le fait déjà pour la recherche au fil de la frappe.
+ */
 export function Recherche({
   valeur,
   placeholder,
@@ -173,8 +198,20 @@ export function Recherche({
   placeholder: string;
   caches?: Record<string, string>;
 }) {
+  const routeur = useRouter();
+  const chemin = usePathname();
   return (
-    <form method="get" className="flex gap-2">
+    <form
+      className="flex gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+        const p = new URLSearchParams(caches ?? {});
+        if (q) p.set("q", q);
+        const suite = p.toString();
+        routeur.replace(`${chemin}${suite ? `?${suite}` : ""}` as Route, { scroll: false });
+      }}
+    >
       {Object.entries(caches ?? {}).map(([n, v]) => (
         <input key={n} type="hidden" name={n} value={v} />
       ))}

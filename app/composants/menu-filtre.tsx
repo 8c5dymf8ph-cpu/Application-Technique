@@ -32,6 +32,10 @@ function normalise(texte: string) {
  * fonction : `MenuFiltre` est un composant client, et une fonction ordinaire
  * de l'écran serveur qui l'appelle ne peut pas lui être passée telle quelle
  * (règle 7duodecies).
+ *
+ * `replace`, pas `push` : changer de tri ou de rayon n'est pas naviguer vers
+ * un autre écran, et sans lui, revenir en arrière rejouait chaque choix
+ * essayé avant de sortir enfin de la liste.
  */
 export function MenuFiltre({
   icone,
@@ -134,6 +138,8 @@ export function MenuFiltre({
                 <Link
                   key={c.valeur}
                   href={c.href as Route}
+                  replace
+                  scroll={false}
                   onClick={() => fenetre.current?.close()}
                   className={`h-[48px] px-3 rounded-[12px] flex items-center gap-3 shrink-0 ${
                     c.valeur === actif ? "bg-plum-soft text-plum" : "text-ink"
