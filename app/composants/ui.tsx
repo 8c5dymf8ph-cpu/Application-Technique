@@ -293,6 +293,13 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "RESEND_API_KEY n’est pas renseignée dans Vercel.",
   },
   modifie: { ton: "green", texte: "Modification enregistrée." },
+  "facture-non-jointe": {
+    ton: "red",
+    texte:
+      "Le prix est enregistré, mais le fichier de la facture n’a pas pu être joint : " +
+      "vérifiez qu’un fournisseur est choisi, et que le fichier est un PDF, JPEG, PNG, " +
+      "WEBP ou HEIC de moins de 4 Mo.",
+  },
   "materiel-retire": {
     ton: "green",
     texte: "Matériel retiré : la pièce revient en réserve.",

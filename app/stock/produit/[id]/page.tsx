@@ -11,7 +11,6 @@ import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 import { enregistrerFichier } from "@/lib/stockage";
-import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
@@ -220,31 +219,13 @@ export default async function FicheProduit({
     const saisie = String(donnees.get("date") ?? "").trim();
     const quand = saisie ? `${saisie} 12:00` : new Date().toISOString();
 
-    // La facture n'est jointe que si un fournisseur ET un fichier sont là :
-    // `factures` exige un émetteur, et un fichier seul ne suffirait pas à en
-    // faire une facture d'achat.
-    const fournisseur = String(donnees.get("fournisseur") ?? "") || null;
-    const reference = String(donnees.get("reference") ?? "").trim() || null;
-    const fichier = donnees.get("facture");
-    let facture_id: string | null = null;
-    if (fournisseur && fichier instanceof File && fichier.size > 0) {
-      const chemin = await enregistrerFichier(fichier);
-      if (chemin) {
-        const [creee] = await sql<{ id: string }[]>`
-          insert into factures (type, fournisseur_id, reference, date_reference, montant_ht,
-                                statut, saisie_par)
-          values ('achat', ${fournisseur}, ${reference}, ${saisie || aujourdhuiISO()}::date,
-                  ${prix !== null ? prix * quantite : null}, 'rapprochee', ${profil_.id})
-          returning id`;
-        await sql`update factures set fichier_url = ${chemin} where id = ${creee.id}`;
-        facture_id = creee.id;
-      }
-    }
-
+    // La facture se joint APRÈS coup, sur l'entrée dans « Derniers
+    // mouvements » (corrigerAchat) — jamais ici : sans facture sous la main
+    // au moment de la livraison, il n'y a rien à demander tout de suite.
     await sql`
       insert into mouvements_stock (produit_id, type, quantite, date_mouvement,
-                                    utilisateur_id, prix_unitaire, facture_id, commentaire)
-      values (${id}, 'entree', ${quantite}, ${quand}, ${profil_.id}, ${prix}, ${facture_id},
+                                    utilisateur_id, prix_unitaire, commentaire)
+      values (${id}, 'entree', ${quantite}, ${quand}, ${profil_.id}, ${prix},
               ${String(donnees.get("commentaire") ?? "").trim() || null})`;
     revalidatePath(`/stock/produit/${id}`);
   }
@@ -269,6 +250,7 @@ export default async function FicheProduit({
     if (!mvt) return;
 
     const prix = donnees.get("prix") ? Number(donnees.get("prix")) : null;
+    const commentaire = String(donnees.get("commentaire") ?? "").trim() || null;
     const fournisseur = String(donnees.get("fournisseur") ?? "") || null;
     const reference = String(donnees.get("reference") ?? "").trim() || null;
     const fichier = donnees.get("facture");
@@ -276,8 +258,13 @@ export default async function FicheProduit({
 
     let facture_id = mvt.facture_id;
     const nouveauFichier = fichier instanceof File && fichier.size > 0;
+    // Un fichier fourni qui ne finit joint à rien — mauvais format, plus de
+    // 4 Mo, ou aucun fournisseur choisi — ne doit jamais se perdre en
+    // silence : le prix s'enregistre quand même, mais l'écran le dit.
+    let fichierPerdu = false;
     if (fournisseur && (nouveauFichier || facture_id)) {
       const chemin = nouveauFichier ? await enregistrerFichier(fichier as File) : null;
+      if (nouveauFichier && !chemin) fichierPerdu = true;
       if (facture_id) {
         // Une facture était déjà jointe : on la corrige, on n'en recrée pas
         // une seconde — sinon la première reste, orpheline, dans la liste.
@@ -295,12 +282,18 @@ export default async function FicheProduit({
           returning id`;
         facture_id = creee.id;
       }
+    } else if (nouveauFichier && !fournisseur) {
+      fichierPerdu = true;
     }
 
     await sql`
-      update mouvements_stock set prix_unitaire = ${prix}, facture_id = ${facture_id}
+      update mouvements_stock
+         set prix_unitaire = ${prix}, facture_id = ${facture_id}, commentaire = ${commentaire}
        where id = ${mouvementId}`;
     revalidatePath(`/stock/produit/${id}`);
+    if (fichierPerdu) {
+      redirect(`/stock/produit/${id}?fait=facture-non-jointe` as Route);
+    }
   }
 
   async function ajuster(donnees: FormData) {
@@ -595,49 +588,20 @@ export default async function FicheProduit({
               placeholder="D’où vient-elle ? (facultatif)"
               className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
             />
-            {tous.length > 0 && (
-              <>
-                <div className="flex gap-2">
-                  <label className="flex-1 min-w-0 flex flex-col gap-1">
-                    <span className="etiquette">Fournisseur (pour la facture)</span>
-                    <select
-                      name="fournisseur"
-                      defaultValue={fournisseurs[0]?.fournisseur_id ?? ""}
-                      className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface-muted text-[15px]"
-                    >
-                      <option value="">Aucun</option>
-                      {tous.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.nom}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex-1 min-w-0 flex flex-col gap-1">
-                    <span className="etiquette">N° de facture (facultatif)</span>
-                    <input
-                      name="reference"
-                      autoComplete="off"
-                      className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
-                    />
-                  </label>
-                </div>
-                <ChampPhotos nom="facture" libelle="Facture (PDF ou photo)" multiple={false} documents />
-                <span className="text-[11px] text-ink-faint text-pretty -mt-1">
-                  Jointe seulement si un fournisseur ET un fichier sont donnés tous les deux.
-                </span>
-              </>
-            )}
             <button className="h-[48px] rounded-[12px] bg-green text-white font-display font-semibold text-[15px]">
               Enregistrer l’entrée
             </button>
+            <p className="text-[11px] text-ink-faint text-pretty -mt-1">
+              La facture se joint après coup, sur cette entrée dans « Derniers mouvements » —
+              le crayon à côté d’elle.
+            </p>
           </form>
         </section>
 
-        {/* Ajuster */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Ajustement</h2>
-          <form action={ajuster} className="carte px-3.5 py-3 flex flex-col gap-2.5">
+        {/* Ajuster — rare (une casse, une erreur), replié pour ne pas
+            concurrencer l'entrée de stock, le geste courant de cet écran. */}
+        <Depliant titre="Ajustement" aide="Casse, perte, erreur de saisie">
+          <form action={ajuster} className="flex flex-col gap-2.5">
             <label className="flex flex-col gap-1">
               <span className="etiquette">Écart — négatif s’il en manque</span>
               <input
@@ -678,7 +642,7 @@ export default async function FicheProduit({
               l’eau — une casse, une erreur — et elle laisse une trace.
             </p>
           </form>
-        </section>
+        </Depliant>
 
         {/* Le prix, et ce qu'il devient */}
         {/* Toujours visible pour qui peut la tenir : sans elle, le premier
@@ -989,10 +953,10 @@ export default async function FicheProduit({
           </section>
         )}
 
-        {/* Les réglages */}
+        {/* Les réglages — changés rarement, repliés pour ne pas concurrencer
+            les gestes du quotidien (entrer du stock, corriger un prix). */}
         {peutValider(profil.role) && (
-          <section className="flex flex-col gap-2">
-            <h2 className="etiquette">Réglages</h2>
+          <Depliant titre="Réglages" aide="Désignation, prix de référence, seuils">
             <form action={reglages} className="carte px-3.5 py-3 flex flex-col gap-2.5">
               <label className="flex flex-col gap-1">
                 <span className="etiquette">Désignation</span>
@@ -1064,7 +1028,7 @@ export default async function FicheProduit({
                 {p.actif ? "Retirer" : "Remettre"}
               </button>
             </form>
-          </section>
+          </Depliant>
         )}
 
         {/* L'historique */}
@@ -1153,6 +1117,7 @@ export default async function FicheProduit({
                         fournisseurs={tous}
                         fournisseurActuelId={m.fournisseur_id}
                         referenceActuelle={m.facture}
+                        commentaireActuel={m.commentaire}
                         dejaJointe={!!m.facture_fichier}
                       />
                     )}
