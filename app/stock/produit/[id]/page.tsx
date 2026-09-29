@@ -12,6 +12,8 @@ import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 import { enregistrerFichier } from "@/lib/stockage";
 import { ChampPhotos } from "@/app/composants/photos";
+import { VoirDocument } from "@/app/composants/fenetre";
+import { ApercuFil } from "@/app/composants/apercu-fil";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +85,9 @@ type Mouvement = {
   essai: boolean;
   anomalie: string | null;
   commentaire: string | null;
+  prix_unitaire: number | null;
+  facture: string | null;
+  facture_fichier: string | null;
 };
 
 const MOTIFS = [
@@ -161,13 +166,17 @@ export default async function FicheProduit({
            e.code                            as emplacement,
            ${marqueEssai ? sql`coalesce(e.essai, false)` : sql`false`} as essai,
            a.description                     as anomalie,
-           m.commentaire
+           m.commentaire,
+           m.prix_unitaire,
+           fa.reference                      as facture,
+           fa.fichier_url                    as facture_fichier
     from mouvements_stock m
     left join utilisateurs u   on u.id = m.utilisateur_id
     left join prestataires pr  on pr.id = m.prestataire_id
     left join emplacements e   on e.id = m.emplacement_id
     left join interventions i  on i.id = m.intervention_id
     left join anomalies a      on a.id = i.anomalie_id
+    left join factures fa      on fa.id = m.facture_id
     where m.produit_id = ${id}
     order by m.date_mouvement desc, m.id
     limit 40`;
@@ -671,15 +680,14 @@ export default async function FicheProduit({
                         )}
                         <span className="tabular-nums shrink-0">{euros(a.prix_unitaire)}</span>
                         {a.facture_fichier && (
-                          <a
-                            href={`/photo/${a.facture_fichier}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label="Voir la facture"
+                          <VoirDocument
+                            chemin={a.facture_fichier}
+                            titre={`Facture · ${a.fournisseur ?? p.designation} · ${new Date(a.date_mouvement).toLocaleDateString("fr-FR")}`}
+                            ariaLabel="Voir la facture"
                             className="text-plum underline underline-offset-2 text-[11px] shrink-0"
                           >
                             facture
-                          </a>
+                          </VoirDocument>
                         )}
                       </li>
                     );
@@ -1025,9 +1033,39 @@ export default async function FicheProduit({
                       <span className="block text-[11px] text-ink-faint">
                         {new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
                         {m.anomalie && ` · ${m.anomalie}`}
-                        {m.commentaire && ` · ${m.commentaire}`}
+                        {entree && m.prix_unitaire !== null && ` · ${euros(m.prix_unitaire)}`}
                       </span>
                     </span>
+                    {m.facture_fichier && (
+                      <VoirDocument
+                        chemin={m.facture_fichier}
+                        titre={`Facture · ${m.facture ?? p.designation} · ${new Date(m.date_mouvement).toLocaleDateString("fr-FR")}`}
+                        ariaLabel="Voir la facture"
+                        className="shrink-0 w-8 h-8 rounded-full bg-surface-muted grid place-items-center text-ink-faint"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                          <path d="M14 3v5h5" />
+                        </svg>
+                      </VoirDocument>
+                    )}
+                    <ApercuFil
+                      messages={
+                        m.commentaire
+                          ? [
+                              {
+                                commentaire_id: m.id,
+                                source: "commentaire",
+                                auteur: m.qui,
+                                texte: m.commentaire,
+                                date_commentaire: m.date_mouvement,
+                                decision: null,
+                              },
+                            ]
+                          : []
+                      }
+                    />
                     <span
                       className={`shrink-0 font-display font-semibold text-[15px] tabular-nums ${
                         m.essai
