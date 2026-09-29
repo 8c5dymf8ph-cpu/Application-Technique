@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { BoutonEnvoi } from "./bouton-envoi";
+import { VoirDocument } from "./fenetre";
 
 /**
  * Corriger le prix et la facture d'une entrée déjà enregistrée.
@@ -12,9 +13,14 @@ import { BoutonEnvoi } from "./bouton-envoi";
  * vrai historique de prix, seulement ce qu'on avait pensé à saisir tout de
  * suite. Un crayon sur chaque entrée ouvre le MÊME genre de formulaire,
  * pré-rempli avec ce qui existe déjà.
+ *
+ * Une facture déjà jointe se REGARDE depuis ce même écran — pas seulement
+ * depuis l'icône du document dans la liste, repliée dès qu'on ouvre le
+ * crayon — et se retire d'ici si elle a été jointe par erreur.
  */
 export function CorrigerAchat({
   action,
+  retirerAction,
   mouvementId,
   date,
   prixActuel,
@@ -22,9 +28,10 @@ export function CorrigerAchat({
   fournisseurActuelId,
   referenceActuelle,
   commentaireActuel,
-  dejaJointe,
+  factureFichier,
 }: {
   action: (donnees: FormData) => void | Promise<void>;
+  retirerAction: (donnees: FormData) => void | Promise<void>;
   mouvementId: string;
   date: string;
   prixActuel: number | null;
@@ -32,9 +39,12 @@ export function CorrigerAchat({
   fournisseurActuelId: string | null;
   referenceActuelle: string | null;
   commentaireActuel: string | null;
-  dejaJointe: boolean;
+  /** Le fichier déjà joint, s'il y en a un — pour le regarder ou le retirer. */
+  factureFichier: string | null;
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
+  const [confirmerRetrait, setConfirmerRetrait] = useState(false);
+  const dejaJointe = !!factureFichier;
 
   return (
     <>
@@ -102,6 +112,23 @@ export function CorrigerAchat({
             />
           </label>
 
+          {/* La facture déjà jointe se regarde ici, sans quitter le crayon. */}
+          {dejaJointe && (
+            <VoirDocument
+              chemin={factureFichier!}
+              titre={`Facture · Entrée du ${date}`}
+              ariaLabel="Voir la facture déjà jointe"
+              className="flex items-center gap-2 h-[42px] px-3 rounded-[11px] bg-plum-soft text-plum text-[13.5px] font-medium self-start"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                <path d="M14 3v5h5" />
+              </svg>
+              Voir la facture déjà jointe
+            </VoirDocument>
+          )}
+
           {fournisseurs.length === 0 ? (
             <p className="rounded-card bg-amber-soft px-3.5 py-2.5 text-[12.5px] text-amber text-pretty leading-snug">
               Aucun fournisseur n’est encore enregistré dans l’application : la facture ne peut
@@ -163,6 +190,49 @@ export function CorrigerAchat({
             Enregistrer
           </BoutonEnvoi>
         </form>
+
+        {/* Retirer une facture jointe par erreur — en deux temps, comme
+            toute suppression dans l'application. Le prix, lui, ne bouge
+            pas : ce sont deux informations distinctes. */}
+        {dejaJointe && (
+          <div className="px-5 pb-5 -mt-1">
+            {!confirmerRetrait ? (
+              <button
+                type="button"
+                onClick={() => setConfirmerRetrait(true)}
+                className="text-[12.5px] text-red underline underline-offset-4"
+              >
+                Retirer cette facture
+              </button>
+            ) : (
+              <form
+                action={retirerAction}
+                className="rounded-card bg-red-soft px-3.5 py-3 flex flex-col gap-2.5"
+              >
+                <input type="hidden" name="mouvement_id" value={mouvementId} />
+                <p className="text-[12.5px] text-red text-pretty leading-snug">
+                  Le fichier et le fournisseur rattachés à cette entrée seront retirés. Le prix
+                  reste enregistré.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmerRetrait(false)}
+                    className="flex-1 h-[38px] rounded-[10px] bg-surface border border-line text-[12.5px] text-ink-soft"
+                  >
+                    Annuler
+                  </button>
+                  <BoutonEnvoi
+                    pendant="Retrait…"
+                    className="flex-1 h-[38px] rounded-[10px] bg-red text-white text-[12.5px] font-medium"
+                  >
+                    Oui, retirer
+                  </BoutonEnvoi>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
       </dialog>
     </>
   );

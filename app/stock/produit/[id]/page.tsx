@@ -101,6 +101,18 @@ const MOTIFS = [
   { v: "autre", l: "Autre" },
 ] as const;
 
+// Certaines anomalies reprises portent, dans leur fil, un mot qui répète
+// simplement leur propre libellé (l'anomalie 832 : le commentaire ET la
+// description valent tous deux « bloc secour/batterie a changer ») — un
+// artefact de la reprise, pas un vrai mot écrit par quelqu'un. Une bulle qui
+// promet un commentaire pour ne montrer que ce qui est déjà lu juste
+// au-dessus n'a rien à montrer : elle ne s'affiche pas dans ce cas.
+function repeteLeLibelle(texte: string, libelle: string | null): boolean {
+  if (!libelle) return false;
+  const n = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  return n(texte) === n(libelle);
+}
+
 export default async function FicheProduit({
   params,
   searchParams,
@@ -338,6 +350,30 @@ export default async function FicheProduit({
     if (fichierPerdu) {
       redirect(`/stock/produit/${id}?fait=facture-non-jointe` as Route);
     }
+  }
+
+  /**
+   * Retirer une facture jointe par erreur — sans toucher au prix, une
+   * information distincte. La facture ne servant plus à rien une fois
+   * détachée (rien d'autre ne la référence), elle est supprimée plutôt que
+   * laissée orpheline dans la table.
+   */
+  async function retirerFacture(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/profil");
+    const mouvementId = String(donnees.get("mouvement_id") ?? "");
+    if (!mouvementId) return;
+
+    const [mvt] = await sql<{ facture_id: string | null }[]>`
+      select facture_id from mouvements_stock
+       where id = ${mouvementId} and produit_id = ${id} and type = 'entree'`;
+    if (!mvt?.facture_id) return;
+
+    await sql`update mouvements_stock set facture_id = null where id = ${mouvementId}`;
+    await sql`delete from factures where id = ${mvt.facture_id}`;
+    revalidatePath(`/stock/produit/${id}`);
+    redirect(`/stock/produit/${id}?fait=facture-retiree` as Route);
   }
 
   async function ajuster(donnees: FormData) {
@@ -1186,6 +1222,7 @@ export default async function FicheProduit({
                     {m.type === "entree" && peutValider(profil.role) && (
                       <CorrigerAchat
                         action={corrigerAchat}
+                        retirerAction={retirerFacture}
                         mouvementId={m.id}
                         date={new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
                         prixActuel={m.prix_unitaire}
@@ -1193,20 +1230,24 @@ export default async function FicheProduit({
                         fournisseurActuelId={m.fournisseur_id}
                         referenceActuelle={m.facture}
                         commentaireActuel={m.commentaire}
-                        dejaJointe={!!m.facture_fichier}
+                        factureFichier={m.facture_fichier}
                       />
                     )}
                     {/* Sur une sortie liée à une intervention, le vrai fil
                         est celui de l'ANOMALIE (v_fil_commentaires) : les mots
                         que quelqu'un a écrits, pas « Intervention —
                         <description> », qui ne fait que répéter ce qui est
-                        déjà lu juste au-dessus via m.anomalie. Une entrée ou
-                        un ajustement n'a pas d'anomalie : son commentaire, à
+                        déjà lu juste au-dessus via m.anomalie. Un message qui
+                        répète simplement ce libellé (règle repeteLeLibelle)
+                        n'est pas un vrai mot non plus. Une entrée ou un
+                        ajustement n'a pas d'anomalie : son commentaire, à
                         lui, est un vrai mot écrit à la saisie. */}
                     <ApercuFil
                       messages={
                         m.anomalie_id
-                          ? (filParAnomalie.get(m.anomalie_id) ?? [])
+                          ? (filParAnomalie.get(m.anomalie_id) ?? []).filter(
+                              (msg) => !repeteLeLibelle(msg.texte, m.anomalie),
+                            )
                           : m.commentaire
                             ? [
                                 {
