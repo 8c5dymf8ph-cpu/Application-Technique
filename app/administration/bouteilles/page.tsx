@@ -24,6 +24,16 @@ type Type = {
   en_reserve: number;
 };
 
+type Regularisation = {
+  id: string;
+  bouteille_type_id: string;
+  quantite: number;
+  de_lieu: string;
+  date_mouvement: string | Date;
+  commentaire: string | null;
+  utilisateur: string | null;
+};
+
 export default async function ReglagesBouteilles() {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
@@ -36,6 +46,60 @@ export default async function ReglagesBouteilles() {
     from bouteille_types bt
     join v_stock_bouteilles s on s.bouteille_type_id = bt.id
     order by bt.libelle`;
+
+  // Les cinq dernières, par type — assez pour retrouver une régularisation
+  // qu'on vient de saisir, sans remonter tout l'historique.
+  const regularisations = await sql<Regularisation[]>`
+    select m.id, m.bouteille_type_id, m.quantite, m.de_lieu::text,
+           m.date_mouvement, m.commentaire, u.nom as utilisateur
+      from mouvements_bouteilles m
+      left join utilisateurs u on u.id = m.utilisateur_id
+     where m.type = 'regularisation'
+     order by m.date_mouvement desc
+     limit 40`;
+
+  async function ajusterBouteille(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/bouteilles");
+
+    const type = String(donnees.get("type"));
+    const ecart = Number(donnees.get("ecart") ?? 0);
+    if (!ecart) return;
+    const mot = String(donnees.get("commentaire") ?? "").trim() || null;
+
+    // Aucune chambre connue : on ne peut pas dire quelle chambre a perdu la
+    // bouteille (règle 2 — un dossier porte une chambre), donc ça ne passe
+    // pas par un dossier. C'est exactement ce à quoi sert la régularisation
+    // (règle 4) : un écart tracé, jamais une écriture directe du stock.
+    if (ecart < 0) {
+      await sql`
+        insert into mouvements_bouteilles
+          (type, bouteille_type_id, quantite, de_lieu, vers_lieu, utilisateur_id, commentaire)
+        values ('regularisation', ${type}, ${Math.abs(ecart)}, 'reserve', 'hors_parc',
+                ${profil_.id}, ${mot})`;
+    } else {
+      await sql`
+        insert into mouvements_bouteilles
+          (type, bouteille_type_id, quantite, de_lieu, vers_lieu, utilisateur_id, commentaire)
+        values ('regularisation', ${type}, ${ecart}, 'hors_parc', 'reserve',
+                ${profil_.id}, ${mot})`;
+    }
+    revalidatePath("/administration/bouteilles");
+  }
+
+  // Supprime la ligne : pas de mouvement inverse, rien ne garde la trace que
+  // cette régularisation a existé. Réservé à peutValider, et limité au type
+  // regularisation — jamais un mouvement réel (entrée, emport…).
+  async function supprimerRegularisation(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/bouteilles");
+    await sql`
+      delete from mouvements_bouteilles
+       where id = ${String(donnees.get("mouvement"))} and type = 'regularisation'`;
+    revalidatePath("/administration/bouteilles");
+  }
 
   async function enregistrer(donnees: FormData) {
     "use server";
@@ -82,12 +146,12 @@ export default async function ReglagesBouteilles() {
         </p>
 
         {types.map((t) => (
-          <form
+          <div
             key={t.id}
-            action={enregistrer}
             className="carte px-4 py-4 flex flex-col gap-3 border-2"
             style={{ borderColor: t.couleur ?? "#E7E4EF" }}
           >
+          <form action={enregistrer} className="flex flex-col gap-3">
             <input type="hidden" name="type" value={t.id} />
 
             <div className="flex items-start gap-3">
@@ -192,6 +256,78 @@ export default async function ReglagesBouteilles() {
               )}
             </div>
           </form>
+
+          {/* Un écart sans chambre connue (une bouteille que Victoria
+              recherche encore) ne passe pas par un dossier — un dossier porte
+              une chambre. C'est exactement le cas de la régularisation :
+              un écart tracé, jamais une écriture directe du stock. */}
+          <div className="border-t border-line pt-3 flex flex-col gap-2.5">
+            <span className="etiquette">Régulariser le parc</span>
+            <form action={ajusterBouteille} className="flex flex-col gap-2">
+              <input type="hidden" name="type" value={t.id} />
+              <div className="flex gap-2">
+                <input
+                  name="ecart"
+                  type="number"
+                  step="1"
+                  inputMode="numeric"
+                  placeholder="−1 s’il en manque une"
+                  className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] tabular-nums placeholder:text-ink-faint"
+                />
+                <button className="shrink-0 h-[44px] px-4 rounded-[11px] bg-surface-muted border border-line text-[13.5px] font-medium">
+                  Enregistrer
+                </button>
+              </div>
+              <input
+                name="commentaire"
+                autoComplete="off"
+                required
+                placeholder="Pourquoi — sans dossier, c’est la seule trace"
+                className="w-full h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
+              />
+            </form>
+
+            {regularisations.filter((r) => r.bouteille_type_id === t.id).length > 0 && (
+              <ul className="flex flex-col divide-y divide-line">
+                {regularisations
+                  .filter((r) => r.bouteille_type_id === t.id)
+                  .map((r) => (
+                    <li key={r.id} className="py-2 flex items-center gap-2.5">
+                      <span
+                        className={`shrink-0 font-display font-semibold text-[14px] tabular-nums ${
+                          r.de_lieu === "reserve" ? "text-red" : "text-green"
+                        }`}
+                      >
+                        {r.de_lieu === "reserve" ? "−" : "+"}
+                        {r.quantite}
+                      </span>
+                      <span className="grow min-w-0 flex flex-col">
+                        <span className="text-[12.5px] text-ink-soft text-pretty leading-snug">
+                          {r.commentaire ?? "Sans motif noté"}
+                        </span>
+                        <span className="text-[11px] text-ink-faint">
+                          {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
+                          {r.utilisateur ? ` · ${r.utilisateur}` : ""}
+                        </span>
+                      </span>
+                      <form action={supprimerRegularisation}>
+                        <input type="hidden" name="mouvement" value={r.id} />
+                        <button
+                          aria-label="Supprimer"
+                          className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
+                               strokeWidth="2.2" strokeLinecap="round">
+                            <path d="M6 12h12" />
+                          </svg>
+                        </button>
+                      </form>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+          </div>
         ))}
 
         <Link
