@@ -4,9 +4,11 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { aujourdhuiISO, euros, peutValider } from "@/lib/domaine";
+import { aujourdhuiISO, euros, jourISO, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
+import { Depliant } from "@/app/composants/depliant";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { enregistrerFichier } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
@@ -47,12 +49,13 @@ export default async function ReglagesBouteilles() {
     join v_stock_bouteilles s on s.bouteille_type_id = bt.id
     order by bt.libelle`;
 
-  // Les dernières régularisations SAISIES ICI — pas celles qu'un inventaire a
-  // déjà posées de son côté (`inventaire_id` non nul) : celles-là ont leur
-  // propre écran, `/bouteilles/inventaire/[id]`, où leur écart s'explique par
-  // un comptage. Les mélanger dans cette liste-ci montrait des lignes sans
-  // aucun contexte — « +1 » un jour donné, sans dire qu'un inventaire venait
-  // d'être validé ce jour-là.
+  // Les régularisations SAISIES ICI — pas celles qu'un inventaire a déjà
+  // posées de son côté (`inventaire_id` non nul, propre écran où leur écart
+  // s'explique par un comptage), ni celles que la reprise de l'ancienne
+  // application a posées pour créditer chaque chambre dotée
+  // (`outils/importer_bouteilles.py`, un « +1 » par chambre, toutes datées du
+  // même jour). Les mélanger dans cette liste-ci montrait des dizaines de
+  // lignes identiques sans aucun contexte.
   const regularisations = await sql<Regularisation[]>`
     select m.id, m.bouteille_type_id, m.quantite, m.de_lieu::text,
            m.date_mouvement, m.commentaire, u.nom as utilisateur
@@ -60,8 +63,9 @@ export default async function ReglagesBouteilles() {
       left join utilisateurs u on u.id = m.utilisateur_id
      where m.type = 'regularisation'
        and m.inventaire_id is null
+       and m.commentaire is distinct from 'Parc constaté à la reprise de l''ancienne application'
      order by m.date_mouvement desc
-     limit 40`;
+     limit 200`;
 
   async function ajusterBouteille(donnees: FormData) {
     "use server";
@@ -144,6 +148,26 @@ export default async function ReglagesBouteilles() {
     await sql`update bouteille_types set photo = null where id = ${String(donnees.get("type"))}`;
     revalidatePath("/administration/bouteilles");
   }
+
+  // Un mois par section, repliable — une par une elles s'accumulent vite, et
+  // rien ne dit qu'il y en a d'autres plus loin si la liste ne se raccourcit
+  // jamais.
+  const parMois = (liste: Regularisation[]) => {
+    const groupes = new Map<string, Regularisation[]>();
+    for (const r of liste) {
+      const cle = jourISO(r.date_mouvement).slice(0, 7);
+      if (!groupes.has(cle)) groupes.set(cle, []);
+      groupes.get(cle)!.push(r);
+    }
+    return [...groupes.entries()].map(([cle, items]) => ({
+      cle,
+      libelle: new Date(items[0].date_mouvement).toLocaleDateString("fr-FR", {
+        month: "long",
+        year: "numeric",
+      }),
+      items,
+    }));
+  };
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -253,16 +277,16 @@ export default async function ReglagesBouteilles() {
             </p>
 
             <div className="flex gap-2">
-              <button className="grow h-[46px] rounded-[12px] bg-plum text-white font-display font-semibold text-[14.5px]">
+              <BoutonEnvoi className="grow h-[46px] rounded-[12px] bg-plum text-white font-display font-semibold text-[14.5px]">
                 Enregistrer
-              </button>
+              </BoutonEnvoi>
               {t.photo && (
-                <button
+                <BoutonEnvoi
                   formAction={retirerPhoto}
                   className="h-[46px] px-3 rounded-[12px] bg-surface border border-line text-[13px] text-ink-faint"
                 >
                   Retirer la photo
-                </button>
+                </BoutonEnvoi>
               )}
             </div>
           </form>
@@ -284,9 +308,9 @@ export default async function ReglagesBouteilles() {
                   placeholder="−1 s’il en manque une"
                   className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] tabular-nums placeholder:text-ink-faint"
                 />
-                <button className="shrink-0 h-[44px] px-4 rounded-[11px] bg-surface-muted border border-line text-[13.5px] font-medium">
+                <BoutonEnvoi className="shrink-0 h-[44px] px-4 rounded-[11px] bg-surface-muted border border-line text-[13.5px] font-medium">
                   Enregistrer
-                </button>
+                </BoutonEnvoi>
               </div>
               <input
                 name="commentaire"
@@ -307,44 +331,51 @@ export default async function ReglagesBouteilles() {
               </label>
             </form>
 
-            {regularisations.filter((r) => r.bouteille_type_id === t.id).length > 0 && (
-              <ul className="flex flex-col divide-y divide-line">
-                {regularisations
-                  .filter((r) => r.bouteille_type_id === t.id)
-                  .map((r) => (
-                    <li key={r.id} className="py-2 flex items-center gap-2.5">
-                      <span
-                        className={`shrink-0 font-display font-semibold text-[14px] tabular-nums ${
-                          r.de_lieu === "reserve" ? "text-red" : "text-green"
-                        }`}
-                      >
-                        {r.de_lieu === "reserve" ? "−" : "+"}
-                        {r.quantite}
-                      </span>
-                      <span className="grow min-w-0 flex flex-col">
-                        <span className="text-[12.5px] text-ink-soft text-pretty leading-snug">
-                          {r.commentaire ?? "Sans motif noté"}
-                        </span>
-                        <span className="text-[11px] text-ink-faint">
-                          {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
-                          {r.utilisateur ? ` · ${r.utilisateur}` : ""}
-                        </span>
-                      </span>
-                      <form action={supprimerRegularisation}>
-                        <input type="hidden" name="mouvement" value={r.id} />
-                        <button
-                          aria-label="Supprimer"
-                          className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
+            {parMois(regularisations.filter((r) => r.bouteille_type_id === t.id)).map(
+              (groupe, i) => (
+                <Depliant
+                  key={groupe.cle}
+                  titre={groupe.libelle}
+                  indice={`${groupe.items.length}`}
+                  ouvert={i === 0}
+                >
+                  <ul className="flex flex-col divide-y divide-line">
+                    {groupe.items.map((r) => (
+                      <li key={r.id} className="py-2 flex items-center gap-2.5">
+                        <span
+                          className={`shrink-0 font-display font-semibold text-[14px] tabular-nums ${
+                            r.de_lieu === "reserve" ? "text-red" : "text-green"
+                          }`}
                         >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
-                               strokeWidth="2.2" strokeLinecap="round">
-                            <path d="M6 12h12" />
-                          </svg>
-                        </button>
-                      </form>
-                    </li>
-                  ))}
-              </ul>
+                          {r.de_lieu === "reserve" ? "−" : "+"}
+                          {r.quantite}
+                        </span>
+                        <span className="grow min-w-0 flex flex-col">
+                          <span className="text-[12.5px] text-ink-soft text-pretty leading-snug">
+                            {r.commentaire ?? "Sans motif noté"}
+                          </span>
+                          <span className="text-[11px] text-ink-faint">
+                            {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
+                            {r.utilisateur ? ` · ${r.utilisateur}` : ""}
+                          </span>
+                        </span>
+                        <form action={supprimerRegularisation}>
+                          <input type="hidden" name="mouvement" value={r.id} />
+                          <BoutonEnvoi
+                            aria-label="Supprimer"
+                            className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
+                                 strokeWidth="2.2" strokeLinecap="round">
+                              <path d="M6 12h12" />
+                            </svg>
+                          </BoutonEnvoi>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                </Depliant>
+              ),
             )}
           </div>
           </div>

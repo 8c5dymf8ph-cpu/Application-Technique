@@ -8,6 +8,8 @@ import { aujourdhuiISO, euros, jourISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
+import { Depliant } from "@/app/composants/depliant";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { enregistrerFichier } from "@/lib/stockage";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
@@ -231,8 +233,12 @@ export default async function DetailCommande({
 
       <div className="px-5 py-4 flex flex-col gap-5">
         {/* Les articles */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Articles</h2>
+        <Depliant
+          titre="Articles"
+          indice={`${lignes.length} article${lignes.length > 1 ? "s" : ""}`}
+          ouvert
+          enCarte={false}
+        >
           {lignes.length === 0 ? (
             <p className="text-[13.5px] text-ink-faint">Aucun article pour l’instant.</p>
           ) : (
@@ -309,16 +315,15 @@ export default async function DetailCommande({
                   />
                 </label>
               </div>
-              <button className="h-[46px] rounded-[12px] bg-surface-muted border border-line text-[14.5px]">
+              <BoutonEnvoi className="h-[46px] rounded-[12px] bg-surface-muted border border-line text-[14.5px]">
                 Ajouter l’article
-              </button>
+              </BoutonEnvoi>
             </form>
           )}
-        </section>
+        </Depliant>
 
         {/* Les montants */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Montants</h2>
+        <Depliant titre="Montants" indice={euros(commande.montant_ttc)} ouvert enCarte={false}>
           <form action={enregistrerMontants} className="carte px-3.5 py-3 flex flex-col gap-2.5">
             <div className="flex gap-2">
               <label className="flex-1 min-w-0 flex flex-col gap-1">
@@ -380,15 +385,19 @@ export default async function DetailCommande({
                 className="px-3 py-2.5 rounded-[11px] border border-line bg-surface text-[15px] leading-snug resize-none"
               />
             </label>
-            <button className="h-[46px] rounded-[12px] bg-surface-muted border border-line text-[14.5px]">
+            <BoutonEnvoi className="h-[46px] rounded-[12px] bg-surface-muted border border-line text-[14.5px]">
               Enregistrer
-            </button>
+            </BoutonEnvoi>
           </form>
-        </section>
+        </Depliant>
 
         {/* La facture */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Facture du fournisseur</h2>
+        <Depliant
+          titre="Facture du fournisseur"
+          indice={commande.facture_fichier ? "jointe" : "aucune"}
+          ouvert
+          enCarte={false}
+        >
           {commande.facture_fichier ? (
             <VoirDocument
               chemin={commande.facture_fichier}
@@ -425,17 +434,18 @@ export default async function DetailCommande({
               />
             </label>
             <ChampPhotos nom="facture" libelle={"Le document (PDF ou photo)"} multiple={false} documents />
-            <button className="h-[46px] rounded-[12px] bg-surface-muted border border-line text-[14.5px]">
+            <BoutonEnvoi className="h-[46px] rounded-[12px] bg-surface-muted border border-line text-[14.5px]">
               {commande.facture_fichier ? "Remplacer la facture" : "Joindre la facture"}
-            </button>
+            </BoutonEnvoi>
           </form>
-        </section>
+        </Depliant>
 
         {/* Le cycle de vie */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">
-            {commande.statut === "recue" ? "Reçue" : "Où en est la commande"}
-          </h2>
+        <Depliant
+          titre={commande.statut === "recue" ? "Reçue" : "Où en est la commande"}
+          ouvert
+          enCarte={false}
+        >
           {commande.statut === "recue" ? (
             <div className="flex flex-col gap-2">
               <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
@@ -443,16 +453,6 @@ export default async function DetailCommande({
                 de stock ont été écrites : elles sont visibles dans l’historique des mouvements,
                 et rien ne se « recalcule ».
               </p>
-              {/* Une fois reçue, il n'y a plus rien à valider sur cet écran — le
-                  seul chemin retour était la flèche du navigateur, ou un petit
-                  lien tout en bas d'une page déjà longue. Un vrai bouton, juste
-                  après la confirmation, dit qu'on a fini ici. */}
-              <Link
-                href={"/bouteilles/commandes" as Route}
-                className="h-[48px] rounded-[13px] bg-plum text-white font-display font-semibold text-[14.5px] grid place-items-center"
-              >
-                Terminé — retour aux commandes
-              </Link>
               <form action={redater} className="carte px-3.5 py-3 flex flex-col gap-2">
                 <label className="flex flex-col gap-1">
                   <span className="etiquette">Corriger la date de réception</span>
@@ -464,9 +464,9 @@ export default async function DetailCommande({
                     className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
                   />
                 </label>
-                <button className="h-[44px] rounded-[12px] bg-surface-muted border border-line text-[14px]">
+                <BoutonEnvoi className="h-[44px] rounded-[12px] bg-surface-muted border border-line text-[14px]">
                   Enregistrer la nouvelle date
-                </button>
+                </BoutonEnvoi>
                 <p className="text-[11px] text-ink-faint text-pretty leading-snug">
                   Les entrées de stock suivent : une entrée porte la date de la livraison, pas
                   celle de sa saisie.
@@ -519,30 +519,30 @@ export default async function DetailCommande({
 
               <div className="flex gap-2">
                 {commande.statut === "brouillon" && (
-                  <button
+                  <BoutonEnvoi
                     name="vers"
                     value="envoyee"
                     className="flex-1 h-[50px] rounded-[13px] bg-amber-soft text-amber font-display font-semibold text-[14.5px]"
                   >
                     Envoyée
-                  </button>
+                  </BoutonEnvoi>
                 )}
-                <button
+                <BoutonEnvoi
                   name="vers"
                   value="recue"
                   disabled={lignes.length === 0}
                   className="flex-1 h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[14.5px] disabled:opacity-40"
                 >
                   Reçue — entrer en stock
-                </button>
+                </BoutonEnvoi>
               </div>
-              <button
+              <BoutonEnvoi
                 name="vers"
                 value="annulee"
                 className="h-[44px] rounded-[12px] bg-surface border border-line text-[13px] text-ink-faint"
               >
                 Annuler la commande
-              </button>
+              </BoutonEnvoi>
             </form>
           )}
 
@@ -550,19 +550,31 @@ export default async function DetailCommande({
               « annulé » dans la liste. */}
           {commande.statut === "brouillon" && (
             <form action={supprimerBrouillon}>
-              <button className="w-full h-[44px] rounded-[12px] bg-red-soft text-red text-[13.5px]">
+              <BoutonEnvoi className="w-full h-[44px] rounded-[12px] bg-red-soft text-red text-[13.5px]">
                 Supprimer ce brouillon
-              </button>
+              </BoutonEnvoi>
             </form>
           )}
-        </section>
+        </Depliant>
 
-        <Link
-          href={"/bouteilles/commandes" as Route}
-          className="text-[12.5px] text-plum underline underline-offset-4 self-start"
-        >
-          Toutes les commandes
-        </Link>
+        {/* En bas de page, toujours : une fois reçue, il n'y a plus rien à
+            valider ici — le bouton principal dit qu'on a fini. Sinon, un
+            simple lien suffit, la commande reste à finir. */}
+        {commande.statut === "recue" ? (
+          <Link
+            href={"/bouteilles/commandes" as Route}
+            className="h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[14.5px] grid place-items-center"
+          >
+            Terminé — retour aux commandes
+          </Link>
+        ) : (
+          <Link
+            href={"/bouteilles/commandes" as Route}
+            className="text-[12.5px] text-plum underline underline-offset-4 self-start"
+          >
+            Toutes les commandes
+          </Link>
+        )}
       </div>
     </main>
   );
