@@ -10,6 +10,7 @@ import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { PhotoProduit } from "@/app/composants/photo-produit";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
+import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
 import { enregistrerPhoto } from "@/lib/stockage";
 import { colonneExiste } from "@/lib/schema";
 import { alerterSiSousSeuil } from "@/lib/seuil";
@@ -435,7 +436,7 @@ export default async function TraiterAnomalie({
               </svg>
               {q ? `Recherche : « ${q} »` : "Chercher un article"}
             </summary>
-            <form method="get" className="flex gap-2 pt-2">
+            <FormulaireEnPlace className="flex gap-2 pt-2">
               {par && <input type="hidden" name="par" value={par} />}
               <input type="hidden" name="pris" value={pris} />
               <input
@@ -449,7 +450,7 @@ export default async function TraiterAnomalie({
               <button className="px-4 rounded-card bg-surface border border-line text-[15px]">
                 Chercher
               </button>
-            </form>
+            </FormulaireEnPlace>
           </details>
 
           <ul className="flex flex-col gap-1.5">

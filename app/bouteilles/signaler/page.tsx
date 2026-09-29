@@ -236,6 +236,8 @@ export default async function Signaler({
             <Link
               key={m.v}
               href={lien({ mode: m.v })}
+              replace
+              scroll={false}
               className={`flex-1 min-w-0 rounded-card border px-2.5 py-2.5 flex flex-col gap-0.5 ${
                 mode === m.v ? "border-plum bg-plum-soft" : "border-line bg-surface"
               }`}
@@ -281,6 +283,8 @@ export default async function Signaler({
                       <Link
                         key={c.code}
                         href={lien({ lieu: c.code })}
+                        replace
+                        scroll={false}
                         data-cible
                         className={`px-3.5 flex items-center justify-center min-w-[54px] rounded-pill border text-[15px] ${
                           c.essai
@@ -316,6 +320,8 @@ export default async function Signaler({
                 <h2 className="etiquette">Quelles bouteilles&nbsp;?</h2>
                 <Link
                   href={lien({ lieu: "" })}
+                  replace
+                  scroll={false}
                   className="text-[12.5px] text-plum underline underline-offset-4"
                 >
                   Changer de chambre

@@ -352,6 +352,8 @@ export default async function PassagesEtFactures({
             <Link
               key={o.v}
               href={ici({ vue: o.v })}
+              replace
+              scroll={false}
               aria-current={o.v === vue ? "true" : undefined}
               className={`flex-1 h-[38px] rounded-pill flex items-center justify-center gap-1.5 text-[13.5px] ${
                 o.v === vue
@@ -414,6 +416,8 @@ export default async function PassagesEtFactures({
                     <li key={a.prestataire_id}>
                       <Link
                         href={ici({ vue: "passages", qui: a.prestataire })}
+                        replace
+                        scroll={false}
                         className="carte px-3.5 py-2.5 flex items-center gap-3 active:bg-surface-muted"
                       >
                         <span className="grow min-w-0">
@@ -441,12 +445,11 @@ export default async function PassagesEtFactures({
 
             <Filtres
               actif={filtre}
-              lien={(f) => ici({ filtre: f })}
               choix={[
-                { valeur: "a_rapprocher", libelle: "À rapprocher", nombre: c.a_rapprocher },
-                { valeur: "rapprochee", libelle: "Rapprochées" },
-                { valeur: "reglee", libelle: "Réglées" },
-                { valeur: "toutes", libelle: "Toutes", nombre: c.toutes },
+                { valeur: "a_rapprocher", libelle: "À rapprocher", nombre: c.a_rapprocher, href: ici({ filtre: "a_rapprocher" }) },
+                { valeur: "rapprochee", libelle: "Rapprochées", href: ici({ filtre: "rapprochee" }) },
+                { valeur: "reglee", libelle: "Réglées", href: ici({ filtre: "reglee" }) },
+                { valeur: "toutes", libelle: "Toutes", nombre: c.toutes, href: ici({ filtre: "toutes" }) },
               ]}
             />
 
@@ -551,13 +554,13 @@ export default async function PassagesEtFactures({
           <>
             <Filtres
               actif={qui}
-              lien={(v) => ici({ qui: v })}
               choix={[
-                { valeur: "tous", libelle: "Tous", nombre: c.lots },
+                { valeur: "tous", libelle: "Tous", nombre: c.lots, href: ici({ qui: "tous" }) },
                 ...gens.map((g) => ({
                   valeur: g.intervenant,
                   libelle: g.intervenant,
                   nombre: g.nombre,
+                  href: ici({ qui: g.intervenant }),
                 })),
               ]}
             />

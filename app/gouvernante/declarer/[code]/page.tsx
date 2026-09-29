@@ -545,6 +545,8 @@ export default async function Declarer({
                 <li key={r.id}>
                   <Link
                     href={lien({ q, choix: r.id })}
+                    replace
+                    scroll={false}
                     className="carte w-full px-4 py-3.5 flex items-center gap-3 text-left active:bg-surface-muted"
                   >
                     <span className="flex flex-col gap-0.5 grow min-w-0">
@@ -592,6 +594,8 @@ export default async function Declarer({
             </p>
             <Link
               href={lien({ q })}
+              replace
+              scroll={false}
               className="self-start text-[13.5px] text-plum underline underline-offset-4"
             >
               Choisir autre chose
@@ -689,6 +693,8 @@ export default async function Declarer({
               <div className="flex gap-2">
               <Link
                 href={lien({ q })}
+                replace
+                scroll={false}
                 className="carte px-5 grid place-items-center text-[15px] text-ink-soft"
               >
                 Annuler

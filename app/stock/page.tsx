@@ -251,13 +251,12 @@ export default async function Stock({
             sans rien ouvrir. */}
         <Filtres
           actif={etat}
-          lien={(v) => lien("etat", v)}
           choix={[
-            { valeur: "tous", libelle: "Tous", nombre: c.produits },
-            { valeur: "alertes", libelle: "Sous le seuil", nombre: c.alertes },
-            { valeur: "rupture", libelle: "À zéro", nombre: c.rupture },
+            { valeur: "tous", libelle: "Tous", nombre: c.produits, href: lien("etat", "tous") },
+            { valeur: "alertes", libelle: "Sous le seuil", nombre: c.alertes, href: lien("etat", "alertes") },
+            { valeur: "rupture", libelle: "À zéro", nombre: c.rupture, href: lien("etat", "rupture") },
             ...(retires > 0
-              ? [{ valeur: "retires", libelle: "Retirés", nombre: retires }]
+              ? [{ valeur: "retires", libelle: "Retirés", nombre: retires, href: lien("etat", "retires") }]
               : []),
           ]}
         />
@@ -433,7 +432,7 @@ export default async function Stock({
             ) : affines.length > 0 ? (
               <>
                 Aucun produit en {affines.join(" et ")}.{" "}
-                <Link href={sansAffinage} className="underline underline-offset-4">
+                <Link href={sansAffinage} replace scroll={false} className="underline underline-offset-4">
                   {affines.length > 1 ? "Enlever les deux filtres" : "Enlever le filtre"}
                 </Link>
               </>
