@@ -8,6 +8,7 @@ import { euros } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Filtres } from "@/app/composants/suivi";
 import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
+import { VoirDocument } from "@/app/composants/fenetre";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +117,7 @@ export default async function Commandes({
         ) : (
           <ul className="flex flex-col gap-2">
             {commandes.map((cd) => (
-              <li key={cd.id}>
+              <li key={cd.id} className="relative">
                 <Link
                   href={`/bouteilles/commande/${cd.id}` as Route}
                   className="carte px-4 py-3.5 flex flex-col gap-2 active:bg-surface-muted"
@@ -149,11 +150,27 @@ export default async function Commandes({
                       {euros(cd.montant_ht)} HT
                       {cd.montant_tva !== null && ` · TVA ${euros(cd.montant_tva)}`}
                     </span>
-                    {cd.facture_fichier && (
-                      <span className="ml-auto text-[11.5px] text-green">facture jointe</span>
-                    )}
+                    {cd.facture_fichier && <span className="ml-auto w-[92px]" aria-hidden />}
                   </div>
                 </Link>
+                {/* À CÔTÉ du lien, jamais dedans (règle du bouton dans un
+                    lien) : la carte mène à la fiche pour la modifier, ce
+                    bouton montre juste le document, sans y entrer. */}
+                {cd.facture_fichier && (
+                  <VoirDocument
+                    chemin={cd.facture_fichier}
+                    titre={`Facture — commande n° ${cd.reference}`}
+                    ariaLabel="Voir la facture jointe"
+                    className="absolute right-4 bottom-3.5 flex items-center gap-1.5 px-2.5 h-7 rounded-md bg-green-soft text-green text-[11.5px] font-medium"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#357051"
+                         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                      <path d="M14 3v5h5" />
+                    </svg>
+                    Voir la facture
+                  </VoirDocument>
+                )}
               </li>
             ))}
           </ul>

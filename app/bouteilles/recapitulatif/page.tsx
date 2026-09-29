@@ -173,9 +173,18 @@ export default async function Recapitulatif({
    * La dotation n'est PAS un mouvement de parc : c'est un déplacement de la
    * réserve vers la chambre (règle 2bis). Elle est comptée à part.
    */
+  // Une régularisation n'a pas de sens fixe (elle peut aller dans les deux
+  // sens, migration 0001 — `flux_coherent_avec_type` ne lui impose rien) :
+  // sommer sa quantité brute mélangerait un « +1 » et un « −1 » du mois en un
+  // seul « 2 » sans direction. On la signe donc ici, sur le même critère que
+  // le parc détenu (réserve + chambre) — un mouvement qui l'alimente compte
+  // en plus, un mouvement qui l'appauvrit compte en moins.
   const bilan = await sql<Bilan[]>`
     select m.type::text, bt.libelle as bouteille, bt.couleur,
-           sum(m.quantite)::int as quantite
+           sum(case when m.type = 'regularisation'
+                    then (case when m.vers_lieu in ('reserve', 'emplacement') then m.quantite else 0 end)
+                       - (case when m.de_lieu   in ('reserve', 'emplacement') then m.quantite else 0 end)
+                    else m.quantite end)::int as quantite
       from mouvements_bouteilles m
       join bouteille_types bt on bt.id = m.bouteille_type_id
      where m.date_mouvement >= ${debut}::date
@@ -222,6 +231,7 @@ export default async function Recapitulatif({
   const recuperees = somme("retour");
   const perdues = somme("perte");
   const livrees = somme("entree");
+  const regularisations = somme("regularisation");
   const enJeu = dossiers.reduce((n, d) => n + Number(d.montant ?? 0), 0);
   const facture = dossiers
     .filter((d) => d.statut === "facture")
@@ -235,7 +245,10 @@ export default async function Recapitulatif({
   // Le solde du parc détenu sur la période : ce qui est entré moins ce qui en
   // est sorti pour de bon. Une bouteille chez un client n'est pas perdue, mais
   // elle n'est plus détenue — c'est la règle 2bis, et c'est ce que dit ce solde.
-  const solde = livrees + recuperees - sorties;
+  // Une régularisation en fait partie : sans elle, le solde affiché ne
+  // recollerait plus avec le stock reconstitué juste au-dessus dès qu'un
+  // écart sans chambre connue a été posé pendant la période.
+  const solde = livrees + recuperees - sorties + regularisations;
 
   const lien = (d: string, f: string) =>
     `/bouteilles/recapitulatif?debut=${d}&fin=${f}` as Route;
@@ -401,7 +414,11 @@ export default async function Recapitulatif({
                     dotation: "Re-dotation",
                     regularisation: "Régularisation",
                   }[b.type] ?? b.type,
-                  b.quantite,
+                  // Signée : une régularisation va dans les deux sens, et
+                  // « 1 » seul ne dit pas lequel.
+                  b.type === "regularisation" && b.quantite > 0
+                    ? `+${b.quantite}`
+                    : b.quantite,
                 ])}
               />
               <Repartition
