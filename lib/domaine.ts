@@ -119,24 +119,35 @@ export function eurosCourt(n: number | null): string {
   return `${Math.round(n).toLocaleString("fr-FR")} €`;
 }
 
+/** L'hôtel est à Paris ; Vercel exécute en UTC. Jamais l'inverse. */
+const FUSEAU_HOTEL = "Europe/Paris";
+
 /**
  * Une date au format d'un champ `<input type="date">`.
  *
  * Le pilote PostgreSQL rend les colonnes `date` sous forme d'objet Date, pas de
  * chaîne : découper la chaîne à la main échoue en production alors que tout
  * passe au typage. Cette fonction accepte les deux.
+ *
+ * Toujours en heure de PARIS, jamais celle du serveur : un `getFullYear()` /
+ * `getDate()` classique lit l'horloge de la machine qui exécute le code, et
+ * Vercel exécute en UTC. Entre minuit et 1h ou 2h du matin heure française —
+ * une commande passée tard le soir, une déclaration de fin de journée — la
+ * date reculait d'un jour sans que rien ne le signale.
  */
 export function jourISO(v: string | Date | null | undefined): string {
   if (!v) return "";
   const d = v instanceof Date ? v : new Date(v);
   if (Number.isNaN(d.getTime())) return "";
-  // En heure locale : une date de facture ne doit pas reculer d'un jour.
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: FUSEAU_HOTEL,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
-/** La date du jour, pour la valeur par défaut d'un champ date. */
+/** La date du jour à Paris, pour la valeur par défaut d'un champ date. */
 export function aujourdhuiISO(): string {
   return jourISO(new Date());
 }

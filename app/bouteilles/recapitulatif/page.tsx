@@ -39,6 +39,16 @@ type Livraison = {
   commentaire: string | null;
 };
 
+type Regularisation = {
+  date_mouvement: string | Date;
+  bouteille: string;
+  couleur: string | null;
+  quantite: number;
+  de_lieu: string;
+  commentaire: string | null;
+  utilisateur: string | null;
+};
+
 type Stock = {
   code: string;
   libelle: string;
@@ -203,6 +213,22 @@ export default async function Recapitulatif({
        and m.date_mouvement < (${fin}::date + 1)
      order by m.date_mouvement desc`;
 
+  // Ce que les chiffres du tableau ne disent pas : LAQUELLE, pourquoi, par
+  // qui. Contrairement à la liste de saisie de /administration/bouteilles,
+  // rien n'est écarté ici — une régularisation posée par un inventaire ou par
+  // la reprise de l'ancienne application a quand même changé le parc pendant
+  // la période, et c'est justement ce que ce récapitulatif raconte.
+  const regularisations = await sql<Regularisation[]>`
+    select m.date_mouvement, bt.libelle as bouteille, bt.couleur,
+           m.quantite, m.de_lieu::text, m.commentaire, u.nom as utilisateur
+      from mouvements_bouteilles m
+      join bouteille_types bt on bt.id = m.bouteille_type_id
+      left join utilisateurs u on u.id = m.utilisateur_id
+     where m.type = 'regularisation'
+       and m.date_mouvement >= ${debut}::date
+       and m.date_mouvement < (${fin}::date + 1)
+     order by m.date_mouvement desc`;
+
   // La colonne n'existe dans la vue que depuis la migration 0027 : deux
   // requêtes, jamais une condition booléenne dans le SQL.
   const remplacementVisible = await vueContient("v_incidents_bouteille", "i.redoter");
@@ -231,7 +257,7 @@ export default async function Recapitulatif({
   const recuperees = somme("retour");
   const perdues = somme("perte");
   const livrees = somme("entree");
-  const regularisations = somme("regularisation");
+  const regularisationsNet = somme("regularisation");
   const enJeu = dossiers.reduce((n, d) => n + Number(d.montant ?? 0), 0);
   const facture = dossiers
     .filter((d) => d.statut === "facture")
@@ -248,7 +274,7 @@ export default async function Recapitulatif({
   // Une régularisation en fait partie : sans elle, le solde affiché ne
   // recollerait plus avec le stock reconstitué juste au-dessus dès qu'un
   // écart sans chambre connue a été posé pendant la période.
-  const solde = livrees + recuperees - sorties + regularisations;
+  const solde = livrees + recuperees - sorties + regularisationsNet;
 
   const lien = (d: string, f: string) =>
     `/bouteilles/recapitulatif?debut=${d}&fin=${f}` as Route;
@@ -470,6 +496,44 @@ export default async function Recapitulatif({
             </ul>
           )}
         </Cadre>
+
+        {/* Les régularisations : un écart tracé, jamais lié à un dossier —
+            elles n'apparaissaient donc nulle part ailleurs dans ce
+            récapitulatif que noyées dans le tableau des mouvements. */}
+        {regularisations.length > 0 && (
+          <Cadre
+            titre="Régularisations"
+            detail="Un écart posé sans dossier — inventaire, reprise de l’ancienne application, ou ajustement ponctuel."
+          >
+            <ul className="flex flex-col divide-y divide-line">
+              {regularisations.map((r, i) => (
+                <li key={i} className="py-2.5 flex items-center gap-2.5">
+                  <span
+                    aria-hidden
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ background: r.couleur ?? "#8E8AA3" }}
+                  />
+                  <span className="grow min-w-0 flex flex-col gap-0.5">
+                    <span className="text-[14px]">{r.bouteille}</span>
+                    <span className="text-[11.5px] text-ink-faint text-pretty">
+                      {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
+                      {r.commentaire ? ` · ${r.commentaire}` : ""}
+                      {r.utilisateur ? ` · ${r.utilisateur}` : ""}
+                    </span>
+                  </span>
+                  <span
+                    className={`shrink-0 font-display font-semibold text-[17px] tabular-nums ${
+                      r.de_lieu === "reserve" ? "text-red" : "text-green"
+                    }`}
+                  >
+                    {r.de_lieu === "reserve" ? "−" : "+"}
+                    {r.quantite}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Cadre>
+        )}
 
         {/* Ce que les chiffres ne disent pas : chaque dossier, par date, avec
             son commentaire. C'est la partie qu'on lit vraiment. */}
