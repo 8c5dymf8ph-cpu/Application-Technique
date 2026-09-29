@@ -334,6 +334,11 @@ def main(quoi: str, chemin: str) -> None:
     print("  from raccroches where date_en_base is distinct from fait_le;")
 
     print("\n-- Et seulement s'il n'y en avait aucun à raccrocher, on le recrée.")
+    print("-- Une quantité EXPLICITEMENT à 0 dans le tableau veut dire « rien")
+    print("-- constaté, rien sorti » (le commentaire le dit souvent) — coalesce()")
+    print("-- ne remplace que le NULL, jamais le 0 : sans cette exclusion,")
+    print("-- greatest(coalesce(0, 1), 1) vaut 1 et invente une sortie qui n'a")
+    print("-- jamais eu lieu (anomalie 819, NI-Cd, corrigée en production).")
     print("insert into mouvements_stock (produit_id, type, quantite, utilisateur_id,")
     print("                             prestataire_id, emplacement_id, intervention_id,")
     print("                             date_mouvement, commentaire)")
@@ -349,6 +354,7 @@ def main(quoi: str, chemin: str) -> None:
     print("  left join utilisateurs u on lower(u.nom) = lower(d.par)")
     print("  left join prestataires p on lower(p.nom) = lower(d.prestataire)")
     print(" where d.produit <> '' and d.fait_le is not null")
+    print("   and d.quantite is distinct from 0")
     print("   and not exists (select 1 from mouvements_stock m")
     print("        where m.intervention_id = i.id and m.produit_id = pr.id);")
 

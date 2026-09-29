@@ -332,10 +332,15 @@ def main(chemin: str) -> None:
     print("insert into mouvements_stock (produit_id, type, quantite, utilisateur_id,")
     print("                             prestataire_id, emplacement_id, intervention_id,")
     print("                             date_mouvement, commentaire)")
-    # Une quantité vide OU à zéro vaut une : le tableau nomme un produit, donc
-    # il a servi — c'est le compte qui n'a pas été noté. Et le schéma refuse un
-    # mouvement de zéro, à juste titre : un mouvement qui ne déplace rien n'est
-    # pas un mouvement.
+    # Une quantité VIDE vaut une : le tableau nomme un produit, donc il a
+    # servi — c'est le compte qui n'a pas été noté. Un 0 EXPLICITE est autre
+    # chose : quelqu'un l'a compté, et zéro veut dire rien sorti — l'anomalie
+    # 819 (NI-Cd) porte un tel 0, avec un commentaire qui le confirme
+    # (« je n'ai pas modifié le stock »), et coalesce(0, 1) le traitait comme
+    # « pas noté » et créait une sortie de 1 qui n'a jamais eu lieu, corrigée
+    # en production. Le schéma refuse par ailleurs un mouvement de zéro, à
+    # juste titre : un mouvement qui ne déplace rien n'est pas un mouvement —
+    # zéro doit donc écarter la ligne, jamais se transformer en un.
     print("select pr.id, 'sortie', -greatest(coalesce(r.quantite, 1), 1),")
     print("       case when r.externe then null else u.id end,")
     print("       case when r.externe then p.id else null end,")
@@ -348,6 +353,7 @@ def main(chemin: str) -> None:
     print("  left join utilisateurs u on lower(u.nom) = lower(r.par)")
     print("  left join prestataires p on lower(p.nom) = lower(r.prestataire)")
     print(" where r.produit <> '' and r.fait_le is not null")
+    print("   and r.quantite is distinct from 0")
     print("   and not exists (select 1 from mouvements_stock m")
     print("        where m.intervention_id = i.id and m.produit_id = pr.id);")
 
