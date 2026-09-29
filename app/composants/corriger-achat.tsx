@@ -21,6 +21,7 @@ export function CorrigerAchat({
   fournisseurs,
   fournisseurActuelId,
   referenceActuelle,
+  commentaireActuel,
   dejaJointe,
 }: {
   action: (donnees: FormData) => void | Promise<void>;
@@ -30,6 +31,7 @@ export function CorrigerAchat({
   fournisseurs: { id: string; nom: string }[];
   fournisseurActuelId: string | null;
   referenceActuelle: string | null;
+  commentaireActuel: string | null;
   dejaJointe: boolean;
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
@@ -75,62 +77,84 @@ export function CorrigerAchat({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1">
-              <span className="etiquette">Prix payé (unité)</span>
-              <input
-                name="prix"
-                type="number"
-                step="0.01"
-                min={0}
-                inputMode="decimal"
-                defaultValue={prixActuel ?? undefined}
-                placeholder="—"
-                className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px] tabular-nums"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="etiquette">Fournisseur</span>
-              <select
-                name="fournisseur"
-                defaultValue={fournisseurActuelId ?? ""}
-                className="h-[46px] rounded-[12px] border border-line px-2 bg-surface text-[14px]"
-              >
-                <option value="">Aucun</option>
-                {fournisseurs.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nom}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <label className="flex flex-col gap-1">
+            <span className="etiquette">Prix payé (unité)</span>
+            <input
+              name="prix"
+              type="number"
+              step="0.01"
+              min={0}
+              inputMode="decimal"
+              defaultValue={prixActuel ?? undefined}
+              placeholder="—"
+              className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[16px] tabular-nums"
+            />
+          </label>
 
           <label className="flex flex-col gap-1">
-            <span className="etiquette">N° de facture (facultatif)</span>
+            <span className="etiquette">Commentaire (facultatif)</span>
             <input
-              name="reference"
-              defaultValue={referenceActuelle ?? ""}
+              name="commentaire"
+              defaultValue={commentaireActuel ?? ""}
               autoComplete="off"
-              className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px]"
+              placeholder="D’où vient-elle ?"
+              className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px] placeholder:text-ink-faint"
             />
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="etiquette">
-              {dejaJointe ? "Remplacer la facture (facultatif)" : "Facture (PDF ou photo)"}
-            </span>
-            <input
-              name="facture"
-              type="file"
-              accept="application/pdf,image/*"
-              className="text-[13.5px] file:mr-3 file:h-[38px] file:px-3 file:rounded-[10px] file:border-0 file:bg-surface-muted file:text-[13px]"
-            />
-          </label>
-          <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1.5">
-            Jointe seulement si un fournisseur ET un fichier sont donnés tous les deux
-            {dejaJointe && " — sans nouveau fichier, la facture déjà jointe est gardée"}.
-          </p>
+          {fournisseurs.length === 0 ? (
+            <p className="rounded-card bg-amber-soft px-3.5 py-2.5 text-[12.5px] text-amber text-pretty leading-snug">
+              Aucun fournisseur n’est encore enregistré dans l’application : la facture ne peut
+              pas se joindre tant qu’il n’y en a pas un. Ajoutez-en un depuis la section
+              « Fournisseurs » plus bas — le champ ci-dessous les proposera tous, pas seulement
+              celui déjà rattaché à ce produit.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="etiquette">Fournisseur</span>
+                  <select
+                    name="fournisseur"
+                    defaultValue={fournisseurActuelId ?? ""}
+                    className="h-[46px] rounded-[12px] border border-line px-2 bg-surface text-[14px]"
+                  >
+                    <option value="">Aucun</option>
+                    {fournisseurs.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.nom}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="etiquette">N° de facture (facultatif)</span>
+                  <input
+                    name="reference"
+                    defaultValue={referenceActuelle ?? ""}
+                    autoComplete="off"
+                    className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px]"
+                  />
+                </label>
+              </div>
+
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">
+                  {dejaJointe ? "Remplacer la facture (facultatif)" : "Facture (PDF ou photo)"}
+                </span>
+                <input
+                  name="facture"
+                  type="file"
+                  accept="application/pdf,image/*"
+                  className="text-[13.5px] file:mr-3 file:h-[38px] file:px-3 file:rounded-[10px] file:border-0 file:bg-surface-muted file:text-[13px]"
+                />
+              </label>
+              <p className="text-[11.5px] text-ink-faint text-pretty leading-snug -mt-1.5">
+                Jointe seulement si un fournisseur ET un fichier sont donnés tous les deux
+                {dejaJointe && " — sans nouveau fichier, la facture déjà jointe est gardée"}.
+              </p>
+            </>
+          )}
 
           <BoutonEnvoi
             pendant="Enregistrement…"
