@@ -35,17 +35,25 @@ type Anomalie = {
   priorite: string;
 };
 
+type MaterielLigne = {
+  id: string;
+  produit: string;
+  quantite: number;
+  date_mouvement: string;
+  qui: string | null;
+};
+
 export default async function DetailAnomalie({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ fait?: string; supprimer?: string }>;
+  searchParams: Promise<{ fait?: string; supprimer?: string; retirer?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
-  const { fait, supprimer: confirmeSuppression } = await searchParams;
+  const { fait, supprimer: confirmeSuppression, retirer: aRetirer } = await searchParams;
 
   const [anomalie] = await sql<Anomalie[]>`
     select anomalie_id as id, reference, description, statut, emplacement, declare_le,
@@ -101,6 +109,23 @@ export default async function DetailAnomalie({
   // terrain : Sarah P et Miguel. La gouvernante déclare et supprime ce qui
   // n'aurait pas dû exister ; elle ne réécrit pas l'historique.
   const modifiable = suitLesDossiers(profil.role);
+
+  // Le matériel sorti pour cette anomalie — toutes ses interventions
+  // confondues — pour qu'une sortie enregistrée par erreur (une quantité
+  // comptée à zéro que la reprise a quand même écrite, un mauvais produit)
+  // puisse se retirer sans passer par une correction en base.
+  const materiel = modifiable
+    ? await sql<MaterielLigne[]>`
+        select m.id, pr.designation as produit, m.quantite, m.date_mouvement,
+               coalesce(u.nom, p.nom) as qui
+          from mouvements_stock m
+          join interventions i on i.id = m.intervention_id
+          join produits pr     on pr.id = m.produit_id
+          left join utilisateurs u  on u.id = m.utilisateur_id
+          left join prestataires p  on p.id = m.prestataire_id
+         where i.anomalie_id = ${id} and m.type = 'sortie'
+         order by m.date_mouvement desc`
+    : [];
 
   const PRIORITES = ["basse", "normale", "haute", "urgente"] as const;
 
@@ -163,6 +188,33 @@ export default async function DetailAnomalie({
     }
     revalidatePath(`/anomalie/${id}`);
     redirect(`/anomalie/${id}?fait=modifie` as Route);
+  }
+
+  /**
+   * Retirer une ligne de matériel enregistrée par erreur.
+   *
+   * Décocher une déclaration supprime son matériel tant que la tournée est
+   * ouverte (règle 10bis) ; passé ce moment, rien ne permettait de défaire
+   * une sortie mal comptée sans une correction écrite à la main en base — ce
+   * qui vient d'arriver sur une batterie NI-Cd sortie pour zéro pièce
+   * réellement constatée. La pièce revient en réserve : le stock est une
+   * somme (règle 1), retirer le mouvement suffit à la remonter.
+   */
+  async function retirerMateriel(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!suitLesDossiers(profil_?.role)) redirect(`/anomalie/${id}` as Route);
+    const mouvementId = String(donnees.get("mouvement_id") ?? "");
+    if (!mouvementId) return;
+    await sql`
+      delete from mouvements_stock m
+       using interventions i
+       where m.id = ${mouvementId}
+         and m.intervention_id = i.id
+         and i.anomalie_id = ${id}
+         and m.type = 'sortie'`;
+    revalidatePath(`/anomalie/${id}`);
+    redirect(`/anomalie/${id}?fait=materiel-retire` as Route);
   }
 
   /**
@@ -338,6 +390,65 @@ export default async function DetailAnomalie({
               </BoutonEnvoi>
             </form>
           </details>
+        )}
+
+        {/* Une ligne se retire, pas la sortie entière : c'est le geste qui
+            corrige un matériel mal compté sans toucher au reste — l'avis du
+            technicien, les photos, la clôture. Confirmé comme une
+            suppression, en plus léger : la pièce revient en réserve, ce
+            n'est pas une trace qui disparaît. */}
+        {modifiable && materiel.length > 0 && (
+          <section className="flex flex-col gap-2 border-t border-line pt-5">
+            <h2 className="etiquette">Matériel utilisé</h2>
+            <ul className="carte divide-y divide-line">
+              {materiel.map((m) => (
+                <li key={m.id} className="px-3.5 py-2.5 flex items-center gap-3">
+                  <span className="grow min-w-0">
+                    <span className="block text-[13.5px]">
+                      {m.produit} · {Math.abs(Number(m.quantite))}
+                    </span>
+                    <span className="block text-[11px] text-ink-faint">
+                      {new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
+                      {m.qui && ` · ${m.qui}`}
+                    </span>
+                  </span>
+                  {aRetirer === m.id ? (
+                    <span className="shrink-0 flex items-center gap-1.5">
+                      <Link
+                        href={`/anomalie/${id}` as Route}
+                        replace
+                        className="h-[34px] px-2.5 rounded-lg bg-surface-muted text-[12.5px] text-ink-soft grid place-items-center"
+                      >
+                        Annuler
+                      </Link>
+                      <form action={retirerMateriel}>
+                        <input type="hidden" name="mouvement_id" value={m.id} />
+                        <BoutonEnvoi
+                          pendant="…"
+                          className="h-[34px] px-2.5 rounded-lg bg-red text-white text-[12.5px] font-medium"
+                        >
+                          Oui, retirer
+                        </BoutonEnvoi>
+                      </form>
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/anomalie/${id}?retirer=${m.id}` as Route}
+                      replace
+                      className="shrink-0 text-[12px] text-ink-faint underline underline-offset-4"
+                    >
+                      Retirer
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+              La pièce revient en réserve — à réserver à une sortie qui n’a pas réellement eu
+              lieu (une quantité comptée à zéro, un mauvais produit). Ce qui a été réellement
+              posé se laisse : le retirer fausserait le stock.
+            </p>
+          </section>
         )}
 
         {/* Supprimer se confirme, en deux temps, comme « Fin d'intervention ».

@@ -293,6 +293,10 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "RESEND_API_KEY n’est pas renseignée dans Vercel.",
   },
   modifie: { ton: "green", texte: "Modification enregistrée." },
+  "materiel-retire": {
+    ton: "green",
+    texte: "Matériel retiré : la pièce revient en réserve.",
+  },
   "en-avant": {
     ton: "green",
     texte: "Mise en avant. C’est celle que le technicien voit en premier.",

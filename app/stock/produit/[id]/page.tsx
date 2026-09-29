@@ -14,6 +14,7 @@ import { enregistrerFichier } from "@/lib/stockage";
 import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
+import type { Message } from "@/app/composants/fil";
 import { CorrigerAchat } from "@/app/composants/corriger-achat";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +86,7 @@ type Mouvement = {
   emplacement: string | null;
   essai: boolean;
   anomalie: string | null;
+  anomalie_id: string | null;
   commentaire: string | null;
   prix_unitaire: number | null;
   facture: string | null;
@@ -168,6 +170,7 @@ export default async function FicheProduit({
            e.code                            as emplacement,
            ${marqueEssai ? sql`coalesce(e.essai, false)` : sql`false`} as essai,
            a.description                     as anomalie,
+           a.id                               as anomalie_id,
            m.commentaire,
            m.prix_unitaire,
            fa.reference                      as facture,
@@ -183,6 +186,27 @@ export default async function FicheProduit({
     where m.produit_id = ${id}
     order by m.date_mouvement desc, m.id
     limit 40`;
+
+  // Le fil d'une sortie liée à une intervention est celui de l'ANOMALIE
+  // (v_fil_commentaires) — les vrais mots que quelqu'un a écrits, pas
+  // « Intervention — <description> », qui ne fait que répéter ce que la
+  // ligne dit déjà. Un seul aller-retour pour toutes les anomalies
+  // rencontrées, plutôt qu'une requête par ligne.
+  const anomalieIds = [...new Set(mouvements.map((m) => m.anomalie_id).filter((x): x is string => !!x))];
+  const filsAnomalies =
+    anomalieIds.length > 0
+      ? await sql<(Message & { anomalie_id: string })[]>`
+          select anomalie_id, commentaire_id, source, auteur, texte,
+                 date_commentaire, decision::text
+          from v_fil_commentaires where anomalie_id = any(${anomalieIds}::uuid[])
+          order by date_commentaire`
+      : [];
+  const filParAnomalie = new Map<string, Message[]>();
+  for (const f of filsAnomalies) {
+    const liste = filParAnomalie.get(f.anomalie_id) ?? [];
+    liste.push(f);
+    filParAnomalie.set(f.anomalie_id, liste);
+  }
 
   async function entrer(donnees: FormData) {
     "use server";
@@ -1132,27 +1156,29 @@ export default async function FicheProduit({
                         dejaJointe={!!m.facture_fichier}
                       />
                     )}
-                    {/* Sur une sortie liée à une intervention, le commentaire
-                        n'est jamais un mot écrit par quelqu'un : c'est
-                        toujours « Intervention — <description> », la même
-                        description déjà lue juste au-dessus via m.anomalie.
-                        L'afficher dans le fil ferait passer ce lien pour un
-                        commentaire — la bulle ne porte donc que les VRAIS
-                        commentaires (saisis à l'entrée ou à l'ajustement). */}
+                    {/* Sur une sortie liée à une intervention, le vrai fil
+                        est celui de l'ANOMALIE (v_fil_commentaires) : les mots
+                        que quelqu'un a écrits, pas « Intervention —
+                        <description> », qui ne fait que répéter ce qui est
+                        déjà lu juste au-dessus via m.anomalie. Une entrée ou
+                        un ajustement n'a pas d'anomalie : son commentaire, à
+                        lui, est un vrai mot écrit à la saisie. */}
                     <ApercuFil
                       messages={
-                        m.commentaire && !m.anomalie
-                          ? [
-                              {
-                                commentaire_id: m.id,
-                                source: "commentaire",
-                                auteur: m.qui,
-                                texte: m.commentaire,
-                                date_commentaire: m.date_mouvement,
-                                decision: null,
-                              },
-                            ]
-                          : []
+                        m.anomalie_id
+                          ? (filParAnomalie.get(m.anomalie_id) ?? [])
+                          : m.commentaire
+                            ? [
+                                {
+                                  commentaire_id: m.id,
+                                  source: "commentaire",
+                                  auteur: m.qui,
+                                  texte: m.commentaire,
+                                  date_commentaire: m.date_mouvement,
+                                  decision: null,
+                                },
+                              ]
+                            : []
                       }
                     />
                     <span

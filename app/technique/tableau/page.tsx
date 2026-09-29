@@ -1,6 +1,8 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { exigerEncadrement } from "@/lib/acces";
-import { euros, eurosCourt } from "@/lib/domaine";
+import { euros, eurosCourt, jourISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import {
   Barres,
@@ -12,6 +14,7 @@ import {
   SERIES,
   Tableau,
 } from "@/app/composants/graphiques";
+import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +54,17 @@ type Produit = {
   actif: boolean;
 };
 
+type VariationPrix = {
+  designation: string;
+  premier_prix: number;
+  dernier_prix: number;
+  nb_achats: number;
+};
+
+function valideDate(v: string | undefined, repli: string): string {
+  return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : repli;
+}
+
 const MOIS_COURT = ["jan", "fév", "mar", "avr", "mai", "juin",
                     "juil", "août", "sep", "oct", "nov", "déc"];
 
@@ -60,8 +74,27 @@ function evolution(courant: number, precedent: number): string | undefined {
   return `${delta > 0 ? "+" : "−"}${Math.abs(delta).toLocaleString("fr-FR")} vs mois dernier`;
 }
 
-export default async function TableauTechnique() {
+export default async function TableauTechnique({
+  searchParams,
+}: {
+  searchParams: Promise<{ debut?: string; fin?: string }>;
+}) {
   await exigerEncadrement();
+
+  // Ce qui part de la réserve et la variation de prix se regardent sur une
+  // période choisie — comparer un prix demande souvent une fenêtre plus
+  // fine ou plus large que douze mois. Le reste du tableau (déclarées,
+  // traitées, où ça tombe, qui intervient) garde son cadre fixe de douze
+  // mois glissants : ce sont des tendances mensuelles, une période libre n'y
+  // aurait pas de sens.
+  const aujourdhui = jourISO(new Date());
+  const defautDebut = jourISO(
+    new Date(new Date().getFullYear(), new Date().getMonth() - 11, new Date().getDate()),
+  );
+  const p = await searchParams;
+  const debut = valideDate(p.debut, defautDebut);
+  const finBrute = valideDate(p.fin, aujourdhui);
+  const fin = finBrute < debut ? debut : finBrute;
 
   // Douze mois pleins, trous compris : un mois sans anomalie est une
   // information, pas une absence de colonne.
@@ -150,9 +183,37 @@ export default async function TableauTechnique() {
       from v_mouvements_reels m
       join produits p on p.id = m.produit_id
      where m.type = 'sortie'
-       and m.date_mouvement >= current_date - interval '12 months'
+       and m.date_mouvement >= ${debut}::date
+       and m.date_mouvement < (${fin}::date + 1)
      group by p.designation
      order by 2 desc limit 8`;
+
+  /**
+   * La variation du prix payé, sur la période choisie : le premier et le
+   * dernier prix d'achat de chaque article qui en a eu au moins deux, comme
+   * `v_achats_produit` le fait déjà pour un seul produit sur sa fiche — ici
+   * regroupé pour voir d'un coup lesquels ont bougé.
+   */
+  const variationsPrix = await sql<VariationPrix[]>`
+    with achats as (
+      select m.produit_id, m.prix_unitaire,
+             row_number() over (partition by m.produit_id
+                                 order by m.date_mouvement, m.id)       as rang_asc,
+             row_number() over (partition by m.produit_id
+                                 order by m.date_mouvement desc, m.id desc) as rang_desc
+        from mouvements_stock m
+       where m.type = 'entree' and m.prix_unitaire is not null
+         and m.date_mouvement >= ${debut}::date
+         and m.date_mouvement < (${fin}::date + 1)
+    )
+    select p.designation,
+           min(a.prix_unitaire) filter (where a.rang_asc = 1)  as premier_prix,
+           min(a.prix_unitaire) filter (where a.rang_desc = 1) as dernier_prix,
+           count(*)::int as nb_achats
+      from achats a
+      join produits p on p.id = a.produit_id
+     group by p.id, p.designation
+    having count(*) >= 2`;
 
   const produits = await sql<Produit[]>`
     select s.designation, s.stock, s.seuil_alerte, s.valeur_stock, s.prix_inconnu,
@@ -175,6 +236,45 @@ export default async function TableauTechnique() {
 
   const coutMois = (m: Mois) =>
     Number(m.cout_materiel ?? 0) + Number(m.cout_prestataire ?? 0);
+
+  // Seuls les articles qui ont réellement bougé, les plus francs d'abord —
+  // un prix qui n'a pas varié n'a rien à montrer ici.
+  const variations = variationsPrix
+    .map((v) => {
+      const premier = Number(v.premier_prix);
+      const dernier = Number(v.dernier_prix);
+      return {
+        designation: v.designation,
+        premier,
+        dernier,
+        delta: dernier - premier,
+        pct: premier !== 0 ? ((dernier - premier) / premier) * 100 : 0,
+      };
+    })
+    .filter((v) => Math.abs(v.delta) >= 0.01)
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 8);
+
+  const lienPeriode = (d: string, f: string) =>
+    `/technique/tableau?debut=${d}&fin=${f}` as Route;
+  const raccourcisPeriode = [
+    {
+      l: "30 jours",
+      debut: jourISO(new Date(new Date().setDate(new Date().getDate() - 30))),
+      fin: aujourdhui,
+    },
+    {
+      l: "3 mois",
+      debut: jourISO(new Date(new Date().getFullYear(), new Date().getMonth() - 3, new Date().getDate())),
+      fin: aujourdhui,
+    },
+    { l: "12 mois", debut: defautDebut, fin: aujourdhui },
+    {
+      l: "Cette année",
+      debut: jourISO(new Date(new Date().getFullYear(), 0, 1)),
+      fin: aujourdhui,
+    },
+  ];
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -310,14 +410,59 @@ export default async function TableauTechnique() {
         </Cadre>
 
         {/* Le matériel. Le stock se lisait article par article, sans jamais
-            dire ce qui part ni ce qui va manquer. */}
+            dire ce qui part ni ce qui va manquer. Ce qui part et sa
+            variation de prix se regardent sur une période choisie — quatre
+            raccourcis couvrent l'essentiel, et les dates se règlent. */}
+        <FormulaireEnPlace className="carte px-4 py-3.5 flex flex-col gap-3">
+          <div className="flex gap-2.5">
+            <label className="flex-1 flex flex-col gap-1">
+              <span className="etiquette">Du</span>
+              <input
+                type="date"
+                name="debut"
+                defaultValue={debut}
+                className="h-[42px] rounded-[11px] border border-line px-2.5 bg-white text-[14px]"
+              />
+            </label>
+            <label className="flex-1 flex flex-col gap-1">
+              <span className="etiquette">Au</span>
+              <input
+                type="date"
+                name="fin"
+                defaultValue={fin}
+                className="h-[42px] rounded-[11px] border border-line px-2.5 bg-white text-[14px]"
+              />
+            </label>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className="h-[40px] px-4 rounded-[11px] bg-plum text-white font-display font-semibold text-[14px] active:opacity-80">
+              Afficher
+            </button>
+            {raccourcisPeriode.map((r) => (
+              <Link
+                key={r.l}
+                href={lienPeriode(r.debut, r.fin)}
+                replace
+                scroll={false}
+                className={`h-[40px] px-2.5 rounded-[11px] grid place-items-center text-[12.5px] ${
+                  debut === r.debut && fin === r.fin
+                    ? "bg-plum-soft text-plum font-medium"
+                    : "bg-surface-muted text-ink-soft"
+                }`}
+              >
+                {r.l}
+              </Link>
+            ))}
+          </div>
+        </FormulaireEnPlace>
+
         <Cadre
           titre="Ce qui part de la réserve"
-          detail="Les huit articles les plus sortis sur douze mois, et ce qu’ils ont coûté. Les essais en 06 et 07 n’y sont pas."
+          detail={`Les huit articles les plus sortis du ${new Date(debut).toLocaleDateString("fr-FR")} au ${new Date(fin).toLocaleDateString("fr-FR")}, et ce qu’ils ont coûté. Les essais en 06 et 07 n’y sont pas.`}
         >
           {consommes.length === 0 ? (
             <p className="text-[13px] text-ink-faint">
-              Aucune sortie de matériel sur douze mois.
+              Aucune sortie de matériel sur cette période.
             </p>
           ) : (
             <>
@@ -331,6 +476,36 @@ export default async function TableauTechnique() {
                 ])}
               />
             </>
+          )}
+        </Cadre>
+
+        <Cadre
+          titre="Variation du prix (HT)"
+          detail="Premier et dernier prix payé sur la période, pour les articles achetés au moins deux fois. Le prix payé se lit dans les mouvements, ce n’est jamais un tarif négocié."
+        >
+          {variations.length === 0 ? (
+            <p className="text-[13px] text-ink-faint">
+              Aucun article acheté deux fois sur cette période : rien à comparer.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {variations.map((v) => (
+                <li key={v.designation} className="flex items-baseline gap-2 text-[13px]">
+                  <span className="grow min-w-0 truncate">{v.designation}</span>
+                  <span className="text-ink-faint tabular-nums text-[12px] shrink-0">
+                    {euros(v.premier)} → {euros(v.dernier)}
+                  </span>
+                  <span
+                    className={`shrink-0 px-2 py-0.5 rounded-md text-[12.5px] tabular-nums ${
+                      v.delta > 0 ? "bg-red-soft text-red" : "bg-green-soft text-green"
+                    }`}
+                  >
+                    {v.delta > 0 ? "+" : "−"}
+                    {Math.abs(v.pct).toFixed(1)} %
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </Cadre>
 
