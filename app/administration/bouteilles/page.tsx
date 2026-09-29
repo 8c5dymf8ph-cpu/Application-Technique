@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros, peutValider } from "@/lib/domaine";
+import { aujourdhuiISO, euros, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
 import { enregistrerFichier } from "@/lib/stockage";
@@ -47,14 +47,19 @@ export default async function ReglagesBouteilles() {
     join v_stock_bouteilles s on s.bouteille_type_id = bt.id
     order by bt.libelle`;
 
-  // Les cinq dernières, par type — assez pour retrouver une régularisation
-  // qu'on vient de saisir, sans remonter tout l'historique.
+  // Les dernières régularisations SAISIES ICI — pas celles qu'un inventaire a
+  // déjà posées de son côté (`inventaire_id` non nul) : celles-là ont leur
+  // propre écran, `/bouteilles/inventaire/[id]`, où leur écart s'explique par
+  // un comptage. Les mélanger dans cette liste-ci montrait des lignes sans
+  // aucun contexte — « +1 » un jour donné, sans dire qu'un inventaire venait
+  // d'être validé ce jour-là.
   const regularisations = await sql<Regularisation[]>`
     select m.id, m.bouteille_type_id, m.quantite, m.de_lieu::text,
            m.date_mouvement, m.commentaire, u.nom as utilisateur
       from mouvements_bouteilles m
       left join utilisateurs u on u.id = m.utilisateur_id
      where m.type = 'regularisation'
+       and m.inventaire_id is null
      order by m.date_mouvement desc
      limit 40`;
 
@@ -67,6 +72,9 @@ export default async function ReglagesBouteilles() {
     const ecart = Number(donnees.get("ecart") ?? 0);
     if (!ecart) return;
     const mot = String(donnees.get("commentaire") ?? "").trim() || null;
+    // Une bouteille cherchée pendant des semaines se déclare perdue à la date
+    // où on l'a constatée, pas au jour où on finit par l'enregistrer.
+    const quand = String(donnees.get("date") ?? "").trim() || null;
 
     // Aucune chambre connue : on ne peut pas dire quelle chambre a perdu la
     // bouteille (règle 2 — un dossier porte une chambre), donc ça ne passe
@@ -75,15 +83,17 @@ export default async function ReglagesBouteilles() {
     if (ecart < 0) {
       await sql`
         insert into mouvements_bouteilles
-          (type, bouteille_type_id, quantite, de_lieu, vers_lieu, utilisateur_id, commentaire)
+          (type, bouteille_type_id, quantite, de_lieu, vers_lieu, date_mouvement,
+           utilisateur_id, commentaire)
         values ('regularisation', ${type}, ${Math.abs(ecart)}, 'reserve', 'hors_parc',
-                ${profil_.id}, ${mot})`;
+                coalesce(${quand}::timestamptz, now()), ${profil_.id}, ${mot})`;
     } else {
       await sql`
         insert into mouvements_bouteilles
-          (type, bouteille_type_id, quantite, de_lieu, vers_lieu, utilisateur_id, commentaire)
+          (type, bouteille_type_id, quantite, de_lieu, vers_lieu, date_mouvement,
+           utilisateur_id, commentaire)
         values ('regularisation', ${type}, ${ecart}, 'hors_parc', 'reserve',
-                ${profil_.id}, ${mot})`;
+                coalesce(${quand}::timestamptz, now()), ${profil_.id}, ${mot})`;
     }
     revalidatePath("/administration/bouteilles");
   }
@@ -285,6 +295,16 @@ export default async function ReglagesBouteilles() {
                 placeholder="Pourquoi — sans dossier, c’est la seule trace"
                 className="w-full h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
               />
+              <label className="flex items-center gap-2">
+                <span className="etiquette shrink-0">Constatée le</span>
+                <input
+                  name="date"
+                  type="date"
+                  max={aujourdhuiISO()}
+                  defaultValue={aujourdhuiISO()}
+                  className="flex-1 min-w-0 h-[40px] px-3 rounded-[11px] border border-line bg-surface text-[14px]"
+                />
+              </label>
             </form>
 
             {regularisations.filter((r) => r.bouteille_type_id === t.id).length > 0 && (

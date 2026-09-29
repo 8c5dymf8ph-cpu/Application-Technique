@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { aujourdhuiISO, euros, jourISO } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
+import { VoirDocument } from "@/app/composants/fenetre";
 import { enregistrerFichier } from "@/lib/stockage";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
@@ -389,11 +390,10 @@ export default async function DetailCommande({
         <section className="flex flex-col gap-2">
           <h2 className="etiquette">Facture du fournisseur</h2>
           {commande.facture_fichier ? (
-            <a
-              href={`/photo/${commande.facture_fichier}`}
-              target="_blank"
-              rel="noreferrer"
-              className="carte px-4 py-3.5 flex items-center gap-3 active:bg-surface-muted"
+            <VoirDocument
+              chemin={commande.facture_fichier}
+              titre={commande.facture_reference ?? `Facture — commande n° ${commande.reference}`}
+              className="carte px-4 py-3.5 flex items-center gap-3 active:bg-surface-muted w-full text-left"
             >
               <span className="w-10 h-10 shrink-0 rounded-[11px] bg-green-soft grid place-items-center">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#357051"
@@ -406,9 +406,9 @@ export default async function DetailCommande({
                 <span className="block text-[14.5px]">
                   {commande.facture_reference ?? "Facture jointe"}
                 </span>
-                <span className="block text-[11.5px] text-ink-faint">Ouvrir le document</span>
+                <span className="block text-[11.5px] text-ink-faint">Voir le document</span>
               </span>
-            </a>
+            </VoirDocument>
           ) : (
             <p className="text-[13px] text-ink-faint text-pretty">
               Aucune facture jointe. Elle arrive souvent après la livraison.
