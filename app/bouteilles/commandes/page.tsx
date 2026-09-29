@@ -48,7 +48,7 @@ export default async function Commandes({
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { filtre = "encours", fait } = await searchParams;
+  const { filtre = "tous", fait } = await searchParams;
 
   const [c] = await sql<{ encours: number; recues: number; tous: number; ht_annee: number }[]>`
     select
@@ -131,7 +131,7 @@ export default async function Commandes({
                   <div className="flex items-start gap-3">
                     <div className="grow min-w-0">
                       <p className="text-[10.5px] text-ink-faint tabular-nums">
-                        Commande n° {cd.reference} ·{" "}
+                        Commande n° {cd.reference} · créée le{" "}
                         {new Date(cd.date_commande).toLocaleDateString("fr-FR")}
                       </p>
                       <p className="font-display font-semibold text-[15.5px]">{cd.fournisseur}</p>

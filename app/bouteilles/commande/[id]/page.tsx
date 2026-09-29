@@ -239,7 +239,7 @@ export default async function DetailCommande({
       {neuf && <MarquerValide key={id} cle="commande" />}
       <Entete
         titre={`Commande n° ${commande.reference}`}
-        sous_titre={`${commande.fournisseur} · ${new Date(commande.date_commande).toLocaleDateString("fr-FR")}`}
+        sous_titre={`${commande.fournisseur} · créée le ${new Date(commande.date_commande).toLocaleDateString("fr-FR")}`}
         retour="/bouteilles/commandes"
       />
 
