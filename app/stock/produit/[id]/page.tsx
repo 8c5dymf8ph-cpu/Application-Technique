@@ -11,6 +11,7 @@ import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 import { enregistrerFichier } from "@/lib/stockage";
+import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
@@ -140,12 +141,26 @@ export default async function FicheProduit({
     where af.produit_id = ${id}
     order by af.prefere desc, f.nom`;
 
+  // Un fournisseur déjà porté par une facture de ce produit doit rester
+  // choisissable même s'il a été désactivé depuis (ou, une fois la 0005
+  // jouée, marqué « pour bouteilles ») : sans lui dans la liste, le
+  // `<select>` retombe en silence sur « Aucun », et corriger le reste de la
+  // facture EFFACE le fournisseur qu'on croyait garder.
   const tous = tri
     ? await sql<{ id: string; nom: string; email: string | null }[]>`
         select id, nom, email from fournisseurs
-         where actif and not pour_bouteilles order by nom`
+         where (actif and not pour_bouteilles)
+            or id in (select fa.fournisseur_id from mouvements_stock m
+                        join factures fa on fa.id = m.facture_id
+                       where m.produit_id = ${id} and fa.fournisseur_id is not null)
+         order by nom`
     : await sql<{ id: string; nom: string; email: string | null }[]>`
-        select id, nom, email from fournisseurs where actif order by nom`;
+        select id, nom, email from fournisseurs
+         where actif
+            or id in (select fa.fournisseur_id from mouvements_stock m
+                        join factures fa on fa.id = m.facture_id
+                       where m.produit_id = ${id} and fa.fournisseur_id is not null)
+         order by nom`;
 
   const [prix] = await sql<Prix[]>`
     select prix_reference, dernier_prix, dernier_achat, dernier_fournisseur,
@@ -219,15 +234,44 @@ export default async function FicheProduit({
     const saisie = String(donnees.get("date") ?? "").trim();
     const quand = saisie ? `${saisie} 12:00` : new Date().toISOString();
 
-    // La facture se joint APRÈS coup, sur l'entrée dans « Derniers
-    // mouvements » (corrigerAchat) — jamais ici : sans facture sous la main
-    // au moment de la livraison, il n'y a rien à demander tout de suite.
+    // La facture n'est jointe que si un fournisseur ET un fichier sont là :
+    // `factures` exige un émetteur. Sans l'un des deux au moment de la
+    // livraison, elle se joint après coup, sur le crayon de cette entrée
+    // dans « Derniers mouvements » (corrigerAchat).
+    const fournisseur = String(donnees.get("fournisseur") ?? "") || null;
+    const reference = String(donnees.get("reference") ?? "").trim() || null;
+    const fichier = donnees.get("facture");
+    const nouveauFichier = fichier instanceof File && fichier.size > 0;
+    let facture_id: string | null = null;
+    // Un fichier fourni qui ne finit joint à rien ne doit jamais se perdre en
+    // silence : le geste s'enregistre quand même, mais l'écran le dit.
+    let fichierPerdu = false;
+    if (fournisseur && nouveauFichier) {
+      const chemin = await enregistrerFichier(fichier as File);
+      if (chemin) {
+        const [creee] = await sql<{ id: string }[]>`
+          insert into factures (type, fournisseur_id, reference, date_reference, montant_ht,
+                                statut, saisie_par, fichier_url)
+          values ('achat', ${fournisseur}, ${reference}, ${saisie || aujourdhuiISO()}::date,
+                  ${prix !== null ? prix * quantite : null}, 'rapprochee', ${profil_.id}, ${chemin})
+          returning id`;
+        facture_id = creee.id;
+      } else {
+        fichierPerdu = true;
+      }
+    } else if (nouveauFichier && !fournisseur) {
+      fichierPerdu = true;
+    }
+
     await sql`
       insert into mouvements_stock (produit_id, type, quantite, date_mouvement,
-                                    utilisateur_id, prix_unitaire, commentaire)
-      values (${id}, 'entree', ${quantite}, ${quand}, ${profil_.id}, ${prix},
+                                    utilisateur_id, prix_unitaire, facture_id, commentaire)
+      values (${id}, 'entree', ${quantite}, ${quand}, ${profil_.id}, ${prix}, ${facture_id},
               ${String(donnees.get("commentaire") ?? "").trim() || null})`;
     revalidatePath(`/stock/produit/${id}`);
+    if (fichierPerdu) {
+      redirect(`/stock/produit/${id}?fait=facture-non-jointe` as Route);
+    }
   }
 
   /**
@@ -588,13 +632,44 @@ export default async function FicheProduit({
               placeholder="D’où vient-elle ? (facultatif)"
               className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
             />
+            {tous.length > 0 && (
+              <>
+                <div className="flex gap-2">
+                  <label className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span className="etiquette">Fournisseur (pour la facture)</span>
+                    <select
+                      name="fournisseur"
+                      defaultValue={fournisseurs[0]?.fournisseur_id ?? ""}
+                      className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface-muted text-[15px]"
+                    >
+                      <option value="">Aucun</option>
+                      {tous.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.nom}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span className="etiquette">N° de facture (facultatif)</span>
+                    <input
+                      name="reference"
+                      autoComplete="off"
+                      className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
+                    />
+                  </label>
+                </div>
+                <ChampPhotos nom="facture" libelle="Facture (PDF ou photo)" multiple={false} documents />
+                <span className="text-[11px] text-ink-faint text-pretty -mt-1">
+                  Jointe seulement si un fournisseur ET un fichier sont donnés tous les deux —
+                  sinon, le crayon de cette entrée dans « Derniers mouvements » permet de le
+                  faire après coup.
+                </span>
+              </>
+            )}
             <button className="h-[48px] rounded-[12px] bg-green text-white font-display font-semibold text-[15px]">
               Enregistrer l’entrée
             </button>
-            <p className="text-[11px] text-ink-faint text-pretty -mt-1">
-              La facture se joint après coup, sur cette entrée dans « Derniers mouvements » —
-              le crayon à côté d’elle.
-            </p>
           </form>
         </section>
 
