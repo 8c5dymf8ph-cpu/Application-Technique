@@ -5,9 +5,9 @@ import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
 import { euros } from "@/lib/domaine";
-import { Entete, Vide } from "@/app/composants/ui";
+import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres } from "@/app/composants/suivi";
-import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
+import { MarquerApresSuppression, QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { VoirDocument } from "@/app/composants/fenetre";
 
 export const dynamic = "force-dynamic";
@@ -44,11 +44,11 @@ const TON: Record<string, string> = {
 export default async function Commandes({
   searchParams,
 }: {
-  searchParams: Promise<{ filtre?: string }>;
+  searchParams: Promise<{ filtre?: string; fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { filtre = "encours" } = await searchParams;
+  const { filtre = "encours", fait } = await searchParams;
 
   const [c] = await sql<{ encours: number; recues: number; tous: number; ht_annee: number }[]>`
     select
@@ -102,13 +102,19 @@ export default async function Commandes({
       />
 
       <div className="px-5 py-4 flex flex-col gap-3.5">
+        {/* On arrive ici après avoir supprimé une commande : sans un mot, on
+            ne sait pas si le geste a eu lieu. */}
+        <Confirmation quoi={fait} />
+        {fait === "commande-supprimee" && (
+          <MarquerApresSuppression vers="/bouteilles/commandes" />
+        )}
         <Filtres
           actif={filtre}
           lien={(f) => `/bouteilles/commandes?filtre=${f}` as Route}
           choix={[
-            { valeur: "encours", libelle: "En cours", nombre: c.encours },
-            { valeur: "recue", libelle: "Reçues", nombre: c.recues },
             { valeur: "tous", libelle: "Toutes", nombre: c.tous },
+            { valeur: "recue", libelle: "Reçues", nombre: c.recues },
+            { valeur: "encours", libelle: "En cours", nombre: c.encours },
           ]}
         />
 

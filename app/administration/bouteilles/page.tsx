@@ -10,6 +10,7 @@ import { ChampPhotos } from "@/app/composants/photos";
 import { Depliant } from "@/app/composants/depliant";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { enregistrerFichier } from "@/lib/stockage";
+import { demanderDevisBouteille } from "@/lib/devis";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +37,15 @@ type Regularisation = {
   utilisateur: string | null;
 };
 
-export default async function ReglagesBouteilles() {
+export default async function ReglagesBouteilles({
+  searchParams,
+}: {
+  searchParams: Promise<{ supprimer?: string; devisType?: string; devisEnvoyes?: string; devisSansAdresse?: string }>;
+}) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   if (!peutValider(profil.role)) redirect("/bouteilles");
+  const { supprimer, devisType, devisEnvoyes, devisSansAdresse } = await searchParams;
 
   const types = await sql<Type[]>`
     select bt.id, bt.code, bt.libelle, bt.couleur, bt.photo,
@@ -149,6 +155,20 @@ export default async function ReglagesBouteilles() {
     revalidatePath("/administration/bouteilles");
   }
 
+  // Une demande de devis, sur demande — pas seulement quand le seuil est
+  // franchi. Un mail par fournisseur lié à ce type (règle 7 : comparer).
+  async function demanderDevis(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/bouteilles");
+    const type = String(donnees.get("type"));
+    const resultat = await demanderDevisBouteille(type);
+    redirect(
+      `/administration/bouteilles?devisType=${type}&devisEnvoyes=${resultat?.envoyes.length ?? 0}` +
+        `&devisSansAdresse=${resultat?.sansAdresse.length ?? 0}` as Route,
+    );
+  }
+
   // Un mois par section, repliable — une par une elles s'accumulent vite, et
   // rien ne dit qu'il y en a d'autres plus loin si la liste ne se raccourcit
   // jamais.
@@ -168,6 +188,11 @@ export default async function ReglagesBouteilles() {
       items,
     }));
   };
+
+  // La suppression n'écrit rien en retour (l'utilisateur l'a voulu ainsi,
+  // suppression pure) : elle mérite donc une confirmation, comme partout
+  // ailleurs où supprimer ne laisse plus de trace.
+  const aConfirmer = supprimer ? regularisations.find((r) => r.id === supprimer) : undefined;
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
@@ -291,77 +316,159 @@ export default async function ReglagesBouteilles() {
             </div>
           </form>
 
-          {/* Un écart sans chambre connue (une bouteille que Victoria
-              recherche encore) ne passe pas par un dossier — un dossier porte
-              une chambre. C'est exactement le cas de la régularisation :
-              un écart tracé, jamais une écriture directe du stock. */}
-          <div className="border-t border-line pt-3 flex flex-col gap-2.5">
-            <span className="etiquette">Régulariser le parc</span>
-            <form action={ajusterBouteille} className="flex flex-col gap-2">
-              <input type="hidden" name="type" value={t.id} />
-              <div className="flex gap-2">
-                <input
-                  name="ecart"
-                  type="number"
-                  step="1"
-                  inputMode="numeric"
-                  placeholder="−1 s’il en manque une"
-                  className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] tabular-nums placeholder:text-ink-faint"
-                />
-                <BoutonEnvoi className="shrink-0 h-[44px] px-4 rounded-[11px] bg-surface-muted border border-line text-[13.5px] font-medium">
-                  Enregistrer
-                </BoutonEnvoi>
-              </div>
-              <input
-                name="commentaire"
-                autoComplete="off"
-                required
-                placeholder="Pourquoi — sans dossier, c’est la seule trace"
-                className="w-full h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
-              />
-              <label className="flex items-center gap-2">
-                <span className="etiquette shrink-0">Constatée le</span>
-                <input
-                  name="date"
-                  type="date"
-                  max={aujourdhuiISO()}
-                  defaultValue={aujourdhuiISO()}
-                  className="flex-1 min-w-0 h-[40px] px-3 rounded-[11px] border border-line bg-surface text-[14px]"
-                />
-              </label>
-            </form>
+          {devisType === t.id && (
+            <p
+              className={`text-[12px] text-pretty leading-snug rounded-card px-3 py-2 ${
+                Number(devisEnvoyes) > 0 ? "bg-green-soft text-green" : "bg-amber-soft text-amber"
+              }`}
+            >
+              {Number(devisEnvoyes) > 0
+                ? `Devis demandé à ${devisEnvoyes} fournisseur${Number(devisEnvoyes) > 1 ? "s" : ""}.`
+                : "Aucun mail envoyé."}
+              {Number(devisSansAdresse) > 0 &&
+                ` ${devisSansAdresse} fournisseur${Number(devisSansAdresse) > 1 ? "s" : ""} sans adresse enregistrée.`}
+              {Number(devisEnvoyes) === 0 && Number(devisSansAdresse) === 0 &&
+                " Aucun fournisseur n'est lié à cette bouteille — ajoutez-en un depuis sa fiche."}
+            </p>
+          )}
+          <form action={demanderDevis}>
+            <input type="hidden" name="type" value={t.id} />
+            <BoutonEnvoi className="w-full h-[42px] rounded-[11px] bg-surface border border-line text-[13px] text-ink-soft">
+              Demander un devis
+            </BoutonEnvoi>
+          </form>
+          </div>
+        ))}
 
-            {parMois(regularisations.filter((r) => r.bouteille_type_id === t.id)).map(
-              (groupe, i) => (
-                <Depliant
-                  key={groupe.cle}
-                  titre={groupe.libelle}
-                  indice={`${groupe.items.length}`}
-                  ouvert={i === 0}
+        {/* Un bloc à part : ce n'est pas un réglage du type de bouteille
+            (photo, prix, seuil) mais un geste ponctuel, sur un écart réel.
+            Les mélanger dans la même carte laissait croire que c'était un
+            paramètre de plus à régler une fois pour toutes. */}
+        <section className="flex flex-col gap-4">
+          <div>
+            <h2 className="font-display font-semibold text-[18px]">Régulariser le parc</h2>
+            <p className="text-[12.5px] text-ink-faint text-pretty leading-snug">
+              Un écart sans chambre connue — une bouteille que Victoria recherche encore — ne
+              passe pas par un dossier (règle 2 : un dossier porte une chambre). C'est un
+              mouvement tracé, jamais une écriture directe du stock (règle 4).
+            </p>
+          </div>
+
+          {aConfirmer && (
+            <div className="carte px-4 py-4 flex flex-col gap-3 border-2 border-red">
+              <p className="text-[14px] text-pretty leading-snug">
+                Supprimer la régularisation{" "}
+                <strong>
+                  {aConfirmer.de_lieu === "reserve" ? "−" : "+"}
+                  {aConfirmer.quantite}
+                </strong>{" "}
+                du {new Date(aConfirmer.date_mouvement).toLocaleDateString("fr-FR")}
+                {aConfirmer.commentaire ? ` (« ${aConfirmer.commentaire} »)` : ""} ?
+              </p>
+              <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+                Suppression pure : rien ne garde la trace qu'elle a existé. Si la chambre a
+                depuis été retrouvée, déclare plutôt le vrai dossier une fois celle-ci
+                supprimée.
+              </p>
+              <div className="flex gap-2">
+                <Link
+                  href={"/administration/bouteilles" as Route}
+                  className="flex-1 h-[46px] rounded-[12px] bg-surface-muted border border-line grid place-items-center text-[14.5px]"
                 >
-                  <ul className="flex flex-col divide-y divide-line">
-                    {groupe.items.map((r) => (
-                      <li key={r.id} className="py-2 flex items-center gap-2.5">
-                        <span
-                          className={`shrink-0 font-display font-semibold text-[14px] tabular-nums ${
-                            r.de_lieu === "reserve" ? "text-red" : "text-green"
-                          }`}
-                        >
-                          {r.de_lieu === "reserve" ? "−" : "+"}
-                          {r.quantite}
-                        </span>
-                        <span className="grow min-w-0 flex flex-col">
-                          <span className="text-[12.5px] text-ink-soft text-pretty leading-snug">
-                            {r.commentaire ?? "Sans motif noté"}
+                  Annuler
+                </Link>
+                <form action={supprimerRegularisation} className="flex-1">
+                  <input type="hidden" name="mouvement" value={aConfirmer.id} />
+                  <BoutonEnvoi className="w-full h-[46px] rounded-[12px] bg-red text-white font-display font-semibold text-[14.5px]">
+                    Oui, supprimer
+                  </BoutonEnvoi>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {types.map((t) => (
+            <div
+              key={t.id}
+              className="carte px-4 py-4 flex flex-col gap-2.5 border-2"
+              style={{ borderColor: t.couleur ?? "#E7E4EF" }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ background: t.couleur ?? "#8E8AA3" }}
+                />
+                <span className="font-display font-semibold text-[15px]">{t.libelle}</span>
+                <span className="text-[11.5px] text-ink-faint ml-auto">
+                  {t.en_reserve} en réserve
+                </span>
+              </div>
+
+              <form action={ajusterBouteille} className="flex flex-col gap-2">
+                <input type="hidden" name="type" value={t.id} />
+                <div className="flex gap-2">
+                  <input
+                    name="ecart"
+                    type="number"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="−1 s’il en manque une"
+                    className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] tabular-nums placeholder:text-ink-faint"
+                  />
+                  <BoutonEnvoi className="shrink-0 h-[44px] px-4 rounded-[11px] bg-surface-muted border border-line text-[13.5px] font-medium">
+                    Enregistrer
+                  </BoutonEnvoi>
+                </div>
+                <input
+                  name="commentaire"
+                  autoComplete="off"
+                  required
+                  placeholder="Pourquoi — sans dossier, c’est la seule trace"
+                  className="w-full h-[42px] px-3 rounded-[11px] border border-line bg-surface text-[14px] placeholder:text-ink-faint"
+                />
+                <label className="flex items-center gap-2">
+                  <span className="etiquette shrink-0">Constatée le</span>
+                  <input
+                    name="date"
+                    type="date"
+                    max={aujourdhuiISO()}
+                    defaultValue={aujourdhuiISO()}
+                    className="flex-1 min-w-0 h-[40px] px-3 rounded-[11px] border border-line bg-surface text-[14px]"
+                  />
+                </label>
+              </form>
+
+              {parMois(regularisations.filter((r) => r.bouteille_type_id === t.id)).map(
+                (groupe, i) => (
+                  <Depliant
+                    key={groupe.cle}
+                    titre={groupe.libelle}
+                    indice={`${groupe.items.length}`}
+                    ouvert={i === 0}
+                  >
+                    <ul className="flex flex-col divide-y divide-line">
+                      {groupe.items.map((r) => (
+                        <li key={r.id} className="py-2 flex items-center gap-2.5">
+                          <span
+                            className={`shrink-0 font-display font-semibold text-[14px] tabular-nums ${
+                              r.de_lieu === "reserve" ? "text-red" : "text-green"
+                            }`}
+                          >
+                            {r.de_lieu === "reserve" ? "−" : "+"}
+                            {r.quantite}
                           </span>
-                          <span className="text-[11px] text-ink-faint">
-                            {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
-                            {r.utilisateur ? ` · ${r.utilisateur}` : ""}
+                          <span className="grow min-w-0 flex flex-col">
+                            <span className="text-[12.5px] text-ink-soft text-pretty leading-snug">
+                              {r.commentaire ?? "Sans motif noté"}
+                            </span>
+                            <span className="text-[11px] text-ink-faint">
+                              {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
+                              {r.utilisateur ? ` · ${r.utilisateur}` : ""}
+                            </span>
                           </span>
-                        </span>
-                        <form action={supprimerRegularisation}>
-                          <input type="hidden" name="mouvement" value={r.id} />
-                          <BoutonEnvoi
+                          <Link
+                            href={`/administration/bouteilles?supprimer=${r.id}` as Route}
                             aria-label="Supprimer"
                             className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
                           >
@@ -369,17 +476,16 @@ export default async function ReglagesBouteilles() {
                                  strokeWidth="2.2" strokeLinecap="round">
                               <path d="M6 12h12" />
                             </svg>
-                          </BoutonEnvoi>
-                        </form>
-                      </li>
-                    ))}
-                  </ul>
-                </Depliant>
-              ),
-            )}
-          </div>
-          </div>
-        ))}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </Depliant>
+                ),
+              )}
+            </div>
+          ))}
+        </section>
 
         <Link
           href={"/bouteilles" as Route}

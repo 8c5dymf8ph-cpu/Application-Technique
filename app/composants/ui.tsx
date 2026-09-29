@@ -244,6 +244,10 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "Facture supprimée. Les interventions qu’elle couvrait reprennent leur " +
       "coût matériel seul.",
   },
+  "commande-supprimee": {
+    ton: "green",
+    texte: "Commande supprimée. Si elle était reçue, ses entrées de stock sont parties avec elle.",
+  },
   "passage-repris": {
     ton: "green",
     texte:

@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { aujourdhuiISO, euros, jourISO } from "@/lib/domaine";
+import { aujourdhuiISO, euros, jourISO, peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
@@ -51,12 +51,12 @@ export default async function DetailCommande({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ neuf?: string }>;
+  searchParams: Promise<{ neuf?: string; supprimer?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
-  const { neuf } = await searchParams;
+  const { neuf, supprimer } = await searchParams;
 
   const [commande] = await sql<Commande[]>`
     select id, reference, fournisseur, fournisseur_id, date_commande, date_livraison,
@@ -65,6 +65,11 @@ export default async function DetailCommande({
            commentaire, saisie_par
     from v_commandes where id = ${id}`;
   if (!commande) notFound();
+
+  // Combien de mouvements de stock disparaîtraient avec elle si elle est
+  // reçue — c'est ce que l'écran doit dire AVANT de proposer de supprimer.
+  const [{ nb_mouvements }] = await sql<{ nb_mouvements: number }[]>`
+    select count(*)::int as nb_mouvements from mouvements_bouteilles where commande_id = ${id}`;
 
   const lignes = await sql<Ligne[]>`
     select cl.id,
@@ -191,17 +196,24 @@ export default async function DetailCommande({
   }
 
   /**
-   * Jeter un brouillon.
-   *
-   * Un brouillon n'a rien produit : ni entrée de stock, ni message parti. Le
-   * garder « annulé » encombre la liste sans rien apprendre. Une commande
-   * envoyée ou reçue, elle, s'annule mais ne s'efface pas — elle a existé
-   * au-dehors.
+   * Supprimer la commande — un brouillon, une commande créée par erreur, un
+   * doublon. Un brouillon ou une commande annulée/envoyée n'a rien produit :
+   * la supprimer ne touche que la commande elle-même. Une commande REÇUE a
+   * écrit des entrées de stock (le déclencheur de réception) : les supprimer
+   * avec elle est le prix d'une vraie correction — sinon le parc resterait
+   * augmenté d'une livraison qui n'a jamais eu lieu depuis CETTE commande.
+   * Réservé à peutValider, et confirmé à l'écran (nb_mouvements) avant le
+   * geste, puisque rien ne le rattrape ensuite.
    */
-  async function supprimerBrouillon() {
+  async function supprimerCommande() {
     "use server";
-    await sql`delete from commandes where id = ${id} and statut = 'brouillon'`;
-    redirect("/bouteilles/commandes" as Route);
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/bouteilles/commande/${id}` as Route);
+    if (commande.statut === "recue") {
+      await sql`delete from mouvements_bouteilles where commande_id = ${id}`;
+    }
+    await sql`delete from commandes where id = ${id}`;
+    redirect("/bouteilles/commandes?fait=commande-supprimee" as Route);
   }
 
   // Corriger la date d'une réception déjà faite : le déclencheur déplace les
@@ -236,7 +248,6 @@ export default async function DetailCommande({
         <Depliant
           titre="Articles"
           indice={`${lignes.length} article${lignes.length > 1 ? "s" : ""}`}
-          ouvert
           enCarte={false}
         >
           {lignes.length === 0 ? (
@@ -323,7 +334,7 @@ export default async function DetailCommande({
         </Depliant>
 
         {/* Les montants */}
-        <Depliant titre="Montants" indice={euros(commande.montant_ttc)} ouvert enCarte={false}>
+        <Depliant titre="Montants" indice={euros(commande.montant_ttc)} enCarte={false}>
           <form action={enregistrerMontants} className="carte px-3.5 py-3 flex flex-col gap-2.5">
             <div className="flex gap-2">
               <label className="flex-1 min-w-0 flex flex-col gap-1">
@@ -395,7 +406,6 @@ export default async function DetailCommande({
         <Depliant
           titre="Facture du fournisseur"
           indice={commande.facture_fichier ? "jointe" : "aucune"}
-          ouvert
           enCarte={false}
         >
           {commande.facture_fichier ? (
@@ -443,7 +453,6 @@ export default async function DetailCommande({
         {/* Le cycle de vie */}
         <Depliant
           titre={commande.statut === "recue" ? "Reçue" : "Où en est la commande"}
-          ouvert
           enCarte={false}
         >
           {commande.statut === "recue" ? (
@@ -546,15 +555,47 @@ export default async function DetailCommande({
             </form>
           )}
 
-          {/* Un brouillon n'a rien produit : il se jette, au lieu de rester
-              « annulé » dans la liste. */}
-          {commande.statut === "brouillon" && (
-            <form action={supprimerBrouillon}>
-              <BoutonEnvoi className="w-full h-[44px] rounded-[12px] bg-red-soft text-red text-[13.5px]">
-                Supprimer ce brouillon
-              </BoutonEnvoi>
-            </form>
-          )}
+          {/* Une commande créée par erreur, un doublon : ça se supprime, pas
+              seulement un brouillon. Réservé à peutValider, et confirmé —
+              une commande REÇUE a produit de vraies entrées de stock. */}
+          {peutValider(profil.role) &&
+            (supprimer ? (
+              <div className="carte px-4 py-4 flex flex-col gap-3 border-2 border-red">
+                <p className="text-[14px] text-pretty leading-snug">
+                  Supprimer la commande n° {commande.reference} ({commande.fournisseur}) ?
+                </p>
+                {commande.statut === "recue" && nb_mouvements > 0 && (
+                  <p className="text-[12.5px] text-amber text-pretty leading-snug">
+                    Elle est reçue : {nb_mouvements} mouvement{nb_mouvements > 1 ? "s" : ""} de
+                    stock ({euros(commande.montant_ttc)} TTC) partiront avec elle — le parc
+                    reviendra à ce qu'il était avant cette livraison.
+                  </p>
+                )}
+                <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+                  Rien ne garde la trace de cette commande une fois supprimée.
+                </p>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/bouteilles/commande/${id}` as Route}
+                    className="flex-1 h-[46px] rounded-[12px] bg-surface-muted border border-line grid place-items-center text-[14.5px]"
+                  >
+                    Annuler
+                  </Link>
+                  <form action={supprimerCommande} className="flex-1">
+                    <BoutonEnvoi className="w-full h-[46px] rounded-[12px] bg-red text-white font-display font-semibold text-[14.5px]">
+                      Oui, supprimer
+                    </BoutonEnvoi>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              <Link
+                href={(`/bouteilles/commande/${id}?supprimer=1`) as Route}
+                className="h-[44px] rounded-[12px] bg-surface border border-line text-[13px] text-red grid place-items-center"
+              >
+                Supprimer cette commande
+              </Link>
+            ))}
         </Depliant>
 
         {/* En bas de page, toujours : une fois reçue, il n'y a plus rien à
