@@ -1307,6 +1307,12 @@ update mouvements_stock m
 -- Une sortie que le tableau annonce et que la base n'a pas. On ne
 -- sort que ce que le catalogue connaît : un nom inconnu est signalé
 -- dans le compte-rendu plutôt que d'inventer un produit.
+-- Une quantité VIDE vaut une (le compte n'a pas été noté) ; un 0 EXPLICITE
+-- veut dire rien sorti — l'anomalie 819 (NI-Cd) en porte un, confirmé par
+-- son commentaire (« je n'ai pas modifié le stock »), et coalesce(0, 1) le
+-- traitait comme « pas noté », créant une sortie de 1 qui n'a jamais eu
+-- lieu (corrigée en production par
+-- donnees/recuperation/5_corriger_sortie_ni_cd_819.sql).
 insert into mouvements_stock (produit_id, type, quantite, utilisateur_id,
                              prestataire_id, emplacement_id, intervention_id,
                              date_mouvement, commentaire)
@@ -1322,6 +1328,7 @@ select pr.id, 'sortie', -greatest(coalesce(r.quantite, 1), 1),
   left join utilisateurs u on lower(u.nom) = lower(r.par)
   left join prestataires p on lower(p.nom) = lower(r.prestataire)
  where r.produit <> '' and r.fait_le is not null
+   and r.quantite is distinct from 0
    and not exists (select 1 from mouvements_stock m
         where m.intervention_id = i.id and m.produit_id = pr.id);
 

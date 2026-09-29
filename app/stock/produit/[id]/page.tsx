@@ -14,6 +14,7 @@ import { enregistrerFichier } from "@/lib/stockage";
 import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
+import { CorrigerAchat } from "@/app/composants/corriger-achat";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,7 @@ type Mouvement = {
   prix_unitaire: number | null;
   facture: string | null;
   facture_fichier: string | null;
+  fournisseur_id: string | null;
 };
 
 const MOTIFS = [
@@ -169,7 +171,8 @@ export default async function FicheProduit({
            m.commentaire,
            m.prix_unitaire,
            fa.reference                      as facture,
-           fa.fichier_url                    as facture_fichier
+           fa.fichier_url                    as facture_fichier,
+           fa.fournisseur_id                 as fournisseur_id
     from mouvements_stock m
     left join utilisateurs u   on u.id = m.utilisateur_id
     left join prestataires pr  on pr.id = m.prestataire_id
@@ -197,15 +200,16 @@ export default async function FicheProduit({
     // `factures` exige un émetteur, et un fichier seul ne suffirait pas à en
     // faire une facture d'achat.
     const fournisseur = String(donnees.get("fournisseur") ?? "") || null;
+    const reference = String(donnees.get("reference") ?? "").trim() || null;
     const fichier = donnees.get("facture");
     let facture_id: string | null = null;
     if (fournisseur && fichier instanceof File && fichier.size > 0) {
       const chemin = await enregistrerFichier(fichier);
       if (chemin) {
         const [creee] = await sql<{ id: string }[]>`
-          insert into factures (type, fournisseur_id, date_reference, montant_ht,
+          insert into factures (type, fournisseur_id, reference, date_reference, montant_ht,
                                 statut, saisie_par)
-          values ('achat', ${fournisseur}, ${saisie || aujourdhuiISO()}::date,
+          values ('achat', ${fournisseur}, ${reference}, ${saisie || aujourdhuiISO()}::date,
                   ${prix !== null ? prix * quantite : null}, 'rapprochee', ${profil_.id})
           returning id`;
         await sql`update factures set fichier_url = ${chemin} where id = ${creee.id}`;
@@ -218,6 +222,60 @@ export default async function FicheProduit({
                                     utilisateur_id, prix_unitaire, facture_id, commentaire)
       values (${id}, 'entree', ${quantite}, ${quand}, ${profil_.id}, ${prix}, ${facture_id},
               ${String(donnees.get("commentaire") ?? "").trim() || null})`;
+    revalidatePath(`/stock/produit/${id}`);
+  }
+
+  /**
+   * Corriger le prix et la facture d'une entrée DÉJÀ enregistrée — ancienne
+   * (reprise, sans prix du tout) ou récente (saisie sans facture sous la
+   * main). Sans ce geste, seule l'entrée du jour pouvait porter un prix :
+   * l'historique n'avait rien d'un vrai historique.
+   */
+  async function corrigerAchat(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/profil");
+
+    const mouvementId = String(donnees.get("mouvement_id") ?? "");
+    if (!mouvementId) return;
+
+    const [mvt] = await sql<{ id: string; quantite: number; facture_id: string | null }[]>`
+      select id, quantite, facture_id from mouvements_stock
+       where id = ${mouvementId} and produit_id = ${id} and type = 'entree'`;
+    if (!mvt) return;
+
+    const prix = donnees.get("prix") ? Number(donnees.get("prix")) : null;
+    const fournisseur = String(donnees.get("fournisseur") ?? "") || null;
+    const reference = String(donnees.get("reference") ?? "").trim() || null;
+    const fichier = donnees.get("facture");
+    const montant = prix !== null ? prix * Number(mvt.quantite) : null;
+
+    let facture_id = mvt.facture_id;
+    const nouveauFichier = fichier instanceof File && fichier.size > 0;
+    if (fournisseur && (nouveauFichier || facture_id)) {
+      const chemin = nouveauFichier ? await enregistrerFichier(fichier as File) : null;
+      if (facture_id) {
+        // Une facture était déjà jointe : on la corrige, on n'en recrée pas
+        // une seconde — sinon la première reste, orpheline, dans la liste.
+        await sql`
+          update factures
+             set fournisseur_id = ${fournisseur}, reference = ${reference},
+                 montant_ht = ${montant}${chemin ? sql`, fichier_url = ${chemin}` : sql``}
+           where id = ${facture_id}`;
+      } else if (chemin) {
+        const [creee] = await sql<{ id: string }[]>`
+          insert into factures (type, fournisseur_id, reference, date_reference, montant_ht,
+                                statut, saisie_par, fichier_url)
+          values ('achat', ${fournisseur}, ${reference}, ${aujourdhuiISO()}::date, ${montant},
+                  'rapprochee', ${profil_.id}, ${chemin})
+          returning id`;
+        facture_id = creee.id;
+      }
+    }
+
+    await sql`
+      update mouvements_stock set prix_unitaire = ${prix}, facture_id = ${facture_id}
+       where id = ${mouvementId}`;
     revalidatePath(`/stock/produit/${id}`);
   }
 
@@ -531,10 +589,16 @@ export default async function FicheProduit({
                       ))}
                     </select>
                   </label>
-                  <div className="flex-1 min-w-0">
-                    <ChampPhotos nom="facture" libelle="Facture (PDF ou photo)" multiple={false} documents />
-                  </div>
+                  <label className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span className="etiquette">N° de facture (facultatif)</span>
+                    <input
+                      name="reference"
+                      autoComplete="off"
+                      className="w-full h-[48px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
+                    />
+                  </label>
                 </div>
+                <ChampPhotos nom="facture" libelle="Facture (PDF ou photo)" multiple={false} documents />
                 <span className="text-[11px] text-ink-faint text-pretty -mt-1">
                   Jointe seulement si un fournisseur ET un fichier sont donnés tous les deux.
                 </span>
@@ -1050,9 +1114,34 @@ export default async function FicheProduit({
                         </svg>
                       </VoirDocument>
                     )}
+                    {/* Une entrée ancienne (reprise) n'a jamais eu de prix ;
+                        une entrée récente peut avoir été saisie sans facture
+                        sous la main. Le crayon corrige les deux, pas
+                        seulement celle du jour — sinon il n'y a pas de vrai
+                        historique de prix, juste ce qu'on a pensé à saisir
+                        tout de suite. */}
+                    {m.type === "entree" && peutValider(profil.role) && (
+                      <CorrigerAchat
+                        action={corrigerAchat}
+                        mouvementId={m.id}
+                        date={new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
+                        prixActuel={m.prix_unitaire}
+                        fournisseurs={tous}
+                        fournisseurActuelId={m.fournisseur_id}
+                        referenceActuelle={m.facture}
+                        dejaJointe={!!m.facture_fichier}
+                      />
+                    )}
+                    {/* Sur une sortie liée à une intervention, le commentaire
+                        n'est jamais un mot écrit par quelqu'un : c'est
+                        toujours « Intervention — <description> », la même
+                        description déjà lue juste au-dessus via m.anomalie.
+                        L'afficher dans le fil ferait passer ce lien pour un
+                        commentaire — la bulle ne porte donc que les VRAIS
+                        commentaires (saisis à l'entrée ou à l'ajustement). */}
                     <ApercuFil
                       messages={
-                        m.commentaire
+                        m.commentaire && !m.anomalie
                           ? [
                               {
                                 commentaire_id: m.id,

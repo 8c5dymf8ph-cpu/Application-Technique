@@ -841,6 +841,11 @@ select sharepoint_id as "n° d'origine", fait_le as "le tableau dit",
   from raccroches where date_en_base is distinct from fait_le;
 
 -- Et seulement s'il n'y en avait aucun à raccrocher, on le recrée.
+-- Une quantité EXPLICITEMENT à 0 dans le tableau veut dire « rien constaté,
+-- rien sorti » (le commentaire le dit souvent) — coalesce() ne remplace que
+-- le NULL, jamais le 0 : sans cette exclusion, greatest(coalesce(0, 1), 1)
+-- vaut 1 et invente une sortie qui n'a jamais eu lieu (anomalie 819, NI-Cd,
+-- corrigée en production par donnees/recuperation/5_corriger_sortie_ni_cd_819.sql).
 insert into mouvements_stock (produit_id, type, quantite, utilisateur_id,
                              prestataire_id, emplacement_id, intervention_id,
                              date_mouvement, commentaire)
@@ -856,6 +861,7 @@ select pr.id, 'sortie', -greatest(coalesce(d.quantite, 1), 1),
   left join utilisateurs u on lower(u.nom) = lower(d.par)
   left join prestataires p on lower(p.nom) = lower(d.prestataire)
  where d.produit <> '' and d.fait_le is not null
+   and d.quantite is distinct from 0
    and not exists (select 1 from mouvements_stock m
         where m.intervention_id = i.id and m.produit_id = pr.id);
 
