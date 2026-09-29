@@ -293,6 +293,10 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "RESEND_API_KEY n’est pas renseignée dans Vercel.",
   },
   modifie: { ton: "green", texte: "Modification enregistrée." },
+  "facture-retiree": {
+    ton: "green",
+    texte: "Facture retirée. Le prix de cette entrée reste enregistré.",
+  },
   "facture-non-jointe": {
     ton: "red",
     texte:
