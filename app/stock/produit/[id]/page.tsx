@@ -891,7 +891,7 @@ export default async function FicheProduit({
                       }`}
                     >
                       {Number(prix.variation_pct) > 0 ? "+" : "−"}
-                      {Math.abs(Number(prix.variation_pct))} %
+                      {Math.abs(Number(prix.variation_pct)).toLocaleString("fr-FR")} %
                     </span>
                   )}
                 </div>
@@ -909,7 +909,7 @@ export default async function FicheProduit({
                         Le prix de référence est {euros(prix.prix_reference)}, le dernier payé{" "}
                         {euros(prix.dernier_prix)} —{" "}
                         {Number(prix.ecart_reference_pct) > 0 ? "+" : "−"}
-                        {Math.abs(Number(prix.ecart_reference_pct))} %. La valeur du stock est
+                        {Math.abs(Number(prix.ecart_reference_pct)).toLocaleString("fr-FR")} %. La valeur du stock est
                         calculée sur la référence.
                       </p>
                       {peutValider(profil.role) && (
