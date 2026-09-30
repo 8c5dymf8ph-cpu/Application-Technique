@@ -265,22 +265,39 @@ export default async function FicheProduit({
   }
 
   // Une sortie SANS anomalie liée (intervention_id nul) retombe sur le
-  // commentaire posé sur le MOUVEMENT lui-même — mais `outils/importer_stock.py`
-  // reprend cette colonne d'un tableau distinct (MouvementsStock.xlsm), où le
-  // même motif est parfois recopié sur plusieurs lignes du même jour, pour le
-  // même intervenant, dans des lieux différents (mesuré : Alain, 10/07/2024,
-  // « bloc secour/batterie a changer » sur cinq emplacements). Ce n'est pas un
-  // mot écrit sur CETTE sortie-là : c'est le même 832 que le catalogue de mots
-  // n'attrape pas, faute d'un libellé d'anomalie à comparer ici.
+  // commentaire posé sur le MOUVEMENT lui-même. Deux origines connues :
+  // `outils/importer_stock.py`, qui reprend cette colonne d'un tableau
+  // distinct (MouvementsStock.xlsm) où le même motif est parfois recopié
+  // (Alain, 10/07/2024, « bloc secour/batterie a changer » sur cinq
+  // emplacements ET un sixième d'un autre intervenant, Farid) ; et une
+  // anomalie supprimée AVANT la migration 0022, qui détachait le mouvement
+  // (`intervention_id` à nul) au lieu de l'emporter — son texte synthétique
+  // « Intervention — <description> » peut alors se répéter sur PLUSIEURS
+  // PRODUITS le même jour, si l'intervention avait sorti plus d'un article.
+  // Un texte identique qui revient plus d'une fois n'est jamais un mot écrit
+  // sur CETTE ligne précise : on le vérifie sur toute la table, pas
+  // seulement sur les mouvements déjà chargés pour ce produit — sinon les
+  // doublons répartis sur d'autres produits, ou d'autres jours, passent au
+  // travers.
+  const textesCandidats = [
+    ...new Set(
+      mouvements
+        .filter(
+          (m): m is Mouvement & { commentaire: string } =>
+            m.type === "sortie" && !m.anomalie_id && !!m.commentaire,
+        )
+        .map((m) => m.commentaire),
+    ),
+  ];
   const commentairesRepetes = new Set<string>();
-  {
-    const compte = new Map<string, number>();
-    for (const m of mouvements) {
-      if (m.type !== "sortie" || m.anomalie_id || !m.commentaire) continue;
-      const cle = `${m.qui ?? ""}|${jourISO(m.date_mouvement)}|${m.commentaire}`;
-      compte.set(cle, (compte.get(cle) ?? 0) + 1);
-    }
-    for (const [cle, n] of compte) if (n > 1) commentairesRepetes.add(cle);
+  if (textesCandidats.length > 0) {
+    const repetes = await sql<{ commentaire: string }[]>`
+      select commentaire from mouvements_stock
+       where type = 'sortie' and intervention_id is null
+         and commentaire = any(${textesCandidats}::text[])
+       group by commentaire
+      having count(*) > 1`;
+    for (const r of repetes) commentairesRepetes.add(r.commentaire);
   }
 
   async function entrer(donnees: FormData) {
@@ -305,8 +322,12 @@ export default async function FicheProduit({
     const nouveauFichier = fichier instanceof File && fichier.size > 0;
     let facture_id: string | null = null;
     // Un fichier fourni qui ne finit joint à rien ne doit jamais se perdre en
-    // silence : le geste s'enregistre quand même, mais l'écran le dit.
-    let fichierPerdu = false;
+    // silence : le geste s'enregistre quand même, mais l'écran le dit — et
+    // dit LEQUEL des deux motifs, pas les deux à la fois (mesuré : « je
+    // n'avais pas ajouté le fournisseur » a pris un aller-retour à
+    // diagnostiquer sur un message qui couvrait aussi le format et la
+    // taille).
+    let echecFacture: "sans-fournisseur" | "fichier-refuse" | null = null;
     if (fournisseur && nouveauFichier) {
       const chemin = await enregistrerFichier(fichier as File);
       if (chemin) {
@@ -318,10 +339,10 @@ export default async function FicheProduit({
           returning id`;
         facture_id = creee.id;
       } else {
-        fichierPerdu = true;
+        echecFacture = "fichier-refuse";
       }
     } else if (nouveauFichier && !fournisseur) {
-      fichierPerdu = true;
+      echecFacture = "sans-fournisseur";
     }
 
     await sql`
@@ -330,8 +351,8 @@ export default async function FicheProduit({
       values (${id}, 'entree', ${quantite}, ${quand}, ${profil_.id}, ${prix}, ${facture_id},
               ${String(donnees.get("commentaire") ?? "").trim() || null})`;
     revalidatePath(`/stock/produit/${id}`);
-    if (fichierPerdu) {
-      redirect(`/stock/produit/${id}?fait=facture-non-jointe` as Route);
+    if (echecFacture) {
+      redirect(`/stock/produit/${id}?fait=facture-${echecFacture}` as Route);
     }
   }
 
@@ -369,13 +390,15 @@ export default async function FicheProduit({
 
     let facture_id = mvt.facture_id;
     const nouveauFichier = fichier instanceof File && fichier.size > 0;
-    // Un fichier fourni qui ne finit joint à rien — mauvais format, plus de
-    // 4 Mo, ou aucun fournisseur choisi — ne doit jamais se perdre en
-    // silence : le prix s'enregistre quand même, mais l'écran le dit.
-    let fichierPerdu = false;
+    // Un fichier fourni qui ne finit joint à rien ne doit jamais se perdre en
+    // silence : le prix s'enregistre quand même, mais l'écran le dit — et dit
+    // LEQUEL des deux motifs (mesuré : « je n'avais pas ajouté le
+    // fournisseur » a pris un aller-retour à diagnostiquer sur un message qui
+    // couvrait aussi le format et la taille du fichier).
+    let echecFacture: "sans-fournisseur" | "fichier-refuse" | null = null;
     if (fournisseur && (nouveauFichier || facture_id)) {
       const chemin = nouveauFichier ? await enregistrerFichier(fichier as File) : null;
-      if (nouveauFichier && !chemin) fichierPerdu = true;
+      if (nouveauFichier && !chemin) echecFacture = "fichier-refuse";
       if (facture_id) {
         // Une facture était déjà jointe : on la corrige, on n'en recrée pas
         // une seconde — sinon la première reste, orpheline, dans la liste.
@@ -394,7 +417,7 @@ export default async function FicheProduit({
         facture_id = creee.id;
       }
     } else if (nouveauFichier && !fournisseur) {
-      fichierPerdu = true;
+      echecFacture = "sans-fournisseur";
     }
 
     await sql`
@@ -403,8 +426,8 @@ export default async function FicheProduit({
              date_mouvement = coalesce(${quand}::timestamptz, date_mouvement)
        where id = ${mouvementId}`;
     revalidatePath(`/stock/produit/${id}`);
-    if (fichierPerdu) {
-      redirect(`/stock/produit/${id}?fait=facture-non-jointe` as Route);
+    if (echecFacture) {
+      redirect(`/stock/produit/${id}?fait=facture-${echecFacture}` as Route);
     }
   }
 
@@ -1300,20 +1323,17 @@ export default async function FicheProduit({
                         vrai mot non plus. Une entrée ou un ajustement n'a pas
                         d'anomalie : son commentaire, à lui, est un vrai mot
                         écrit à la saisie — sauf une sortie SANS anomalie liée
-                        dont le commentaire est répété à l'identique sur
-                        plusieurs lieux le même jour pour le même intervenant
-                        (commentairesRepetes) : c'est un motif recopié par
-                        l'import, pas un mot écrit sur cette ligne-là. */}
+                        dont le texte est identique à celui d'une AUTRE sortie
+                        sans anomalie, n'importe où dans la table
+                        (commentairesRepetes) : c'est un motif recopié, pas un
+                        mot écrit sur cette ligne-là. */}
                     <ApercuFil
                       messages={
                         m.anomalie_id
                           ? (filParAnomalie.get(m.anomalie_id) ?? []).filter(
                               (msg) => !neDitRienDePlus(msg.texte, m.anomalie, m.catalogue_libelle),
                             )
-                          : m.commentaire &&
-                              !commentairesRepetes.has(
-                                `${m.qui ?? ""}|${jourISO(m.date_mouvement)}|${m.commentaire}`,
-                              )
+                          : m.commentaire && !commentairesRepetes.has(m.commentaire)
                             ? [
                                 {
                                   commentaire_id: m.id,
