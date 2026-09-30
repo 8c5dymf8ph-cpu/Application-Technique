@@ -14,6 +14,7 @@ import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
+import { Depliant } from "@/app/composants/depliant";
 import { deposerRecap } from "@/lib/recap";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +69,7 @@ type Ligne = {
   decision_technicien: string | null;
   commentaire_technicien: string | null;
   decision_gouvernante: string | null;
+  decide_gouvernante_le: string | Date | null;
   commentaire_gouvernante: string | null;
   gouvernante: string | null;
   non_validee_par_gouvernante: boolean;
@@ -116,7 +118,7 @@ export default async function DetailTournee({
   const lignes = await sql<Ligne[]>`
     select r.intervention_id, r.anomalie_id, r.emplacement, r.description,
            r.decision_technicien::text, r.commentaire_technicien,
-           r.decision_gouvernante::text, r.commentaire_gouvernante, r.gouvernante,
+           r.decision_gouvernante::text, r.decide_gouvernante_le, r.commentaire_gouvernante, r.gouvernante,
            coalesce(r.non_validee_par_gouvernante, false) as non_validee_par_gouvernante,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
@@ -701,22 +703,17 @@ export default async function DetailTournee({
             </details>
           )}
 
-          {/* Ce que la facture couvre — VISIBLE, pas replié sous « Corriger la
-              facture ». C'est la question qu'on se pose en ouvrant le passage :
-              cette pièce, elle couvre quoi ? Et les gestes portent des MOTS :
-              un « + » nu ne dit pas ce qu'il ajoute ni à quoi. */
-          }
+          {/* Repliée, fermée à l'arrivée sur l'écran — un choix qui revient
+              sur la 16terdecies (« pas repliée sous Corriger la facture,
+              c'est la question qu'on se pose en ouvrant ») : demandé
+              explicitement, pour ne pas surcharger l'écran par défaut. Les
+              gestes gardent des MOTS : un « + » nu ne dit pas ce qu'il
+              ajoute ni à quoi. */}
           {facture && journees.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-baseline gap-2">
-                <h3 className="etiquette grow">Ce que cette facture couvre</h3>
-                <span className="text-[11.5px] text-ink-faint tabular-nums">
-                  {couvertes.length} journée{couvertes.length > 1 ? "s" : ""} ·{" "}
-                  {couvertes.reduce((n, j) => n + j.nb_anomalies, 0)} anomalie
-                  {couvertes.reduce((n, j) => n + j.nb_anomalies, 0) > 1 ? "s" : ""}
-                </span>
-              </div>
-
+            <Depliant
+              titre="Ce que cette facture couvre"
+              indice={`${couvertes.length} journée${couvertes.length > 1 ? "s" : ""} · ${couvertes.reduce((n, j) => n + j.nb_anomalies, 0)} anomalie${couvertes.reduce((n, j) => n + j.nb_anomalies, 0) > 1 ? "s" : ""}`}
+            >
               <ul className="flex flex-col gap-1.5">
                 {journees.map((j) => {
                   const cette = jourISO(j.date_intervention) === jourISO(lot.date_tournee);
@@ -836,7 +833,7 @@ export default async function DetailTournee({
                 pointillé : la déplacer ici l’en retire, parce qu’une ligne comptée deux
                 fois compterait deux fois.
               </p>
-            </div>
+            </Depliant>
           )}
         </section>
 
@@ -911,6 +908,8 @@ export default async function DetailTournee({
                       <span className={`px-2 py-0.5 rounded-md text-[11px] ${d.fond} ${d.texte}`}>
                         {d.l}
                         {l.gouvernante && ` · ${l.gouvernante}`}
+                        {l.decide_gouvernante_le &&
+                          ` · ${new Date(l.decide_gouvernante_le).toLocaleDateString("fr-FR")}`}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-md bg-amber-soft text-amber text-[11px]">
