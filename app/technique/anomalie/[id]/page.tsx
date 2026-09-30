@@ -426,6 +426,11 @@ export default async function TraiterAnomalie({
               pour l’ajouter.
             </p>
 
+          {/* La recherche reste À L'ŒIL pendant qu'on parcourt la galerie :
+              épinglée en haut, elle ne défile pas avec les articles. Sans
+              ça, chercher un second mot demandait de remonter toute la
+              liste pour la retrouver. */}
+          <div className="sticky top-0 z-10 bg-ground pb-1.5 -mx-5 px-5">
           {/* La recherche raccourcit la liste ; elle ne sert pas à la faire
               apparaître. Un technicien debout ne tape pas « joint torique ». */}
           <details className="group/chercher">
@@ -452,8 +457,13 @@ export default async function TraiterAnomalie({
               </button>
             </FormulaireEnPlace>
           </details>
+          </div>
 
-          <ul className="flex flex-col gap-1.5">
+          {/* La galerie défile dans SA propre hauteur, entre la recherche et
+              la barre du bas (commentaire, photo, bouton) — jamais toute la
+              page : avec une quarantaine d'articles, il fallait sinon tout
+              faire défiler pour atteindre « C'est fait ». */}
+          <ul className="flex flex-col gap-1.5 overflow-y-auto max-h-[46vh] -mx-1 px-1">
             {produits
               .filter((p) => !choisis.includes(p.id))
               .map((p) => {
@@ -509,8 +519,8 @@ export default async function TraiterAnomalie({
         <form action={enregistrer} className="flex flex-col gap-3">
           <input type="hidden" name="intervenant" value={par ?? profil.nom} />
           <input type="hidden" name="pris" value={pris} />
-          <ChampCommentaire libelle="Un mot sur ce que vous avez fait" lignes={2} />
-          <ChampPhotos libelle="Photographier le travail fait (facultatif)" />
+          <ChampCommentaire libelle="Un mot sur ce que vous avez fait" lignes={2} compact />
+          <ChampPhotos libelle="Photographier le travail fait (facultatif)" compact />
           <BoutonEnvoi
                 pendant="Enregistrement…"
                 className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
