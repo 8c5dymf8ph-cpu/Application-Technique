@@ -26,6 +26,7 @@ export function CorrigerAchat({
   mouvementId,
   date,
   dateISO,
+  quantiteActuelle,
   prixActuel,
   fournisseurs,
   fournisseurActuelId,
@@ -41,6 +42,7 @@ export function CorrigerAchat({
   date: string;
   /** La même date, au format YYYY-MM-DD — pour le champ, qui n'affiche pas le français. */
   dateISO: string;
+  quantiteActuelle: number;
   prixActuel: number | null;
   fournisseurs: { id: string; nom: string }[];
   fournisseurActuelId: string | null;
@@ -103,6 +105,19 @@ export function CorrigerAchat({
               max={aujourdhuiISO()}
               defaultValue={dateISO}
               className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[16px]"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="etiquette">Quantité reçue</span>
+            <input
+              name="quantite"
+              type="number"
+              step="0.01"
+              min={0.01}
+              inputMode="decimal"
+              defaultValue={quantiteActuelle}
+              className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[16px] tabular-nums"
             />
           </label>
 

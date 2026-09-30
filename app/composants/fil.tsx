@@ -67,6 +67,7 @@ export function ChampCommentaire({
   libelle = "Commentaire (facultatif)",
   lignes = 3,
   valeur,
+  compact = false,
 }: {
   nom?: string;
   libelle?: string;
@@ -74,15 +75,19 @@ export function ChampCommentaire({
   /** Ce qui a déjà été écrit ailleurs — au moment de créer le libellé, par
    *  exemple : on ne le retape pas. */
   valeur?: string;
+  /** Moins de hauteur : pour une barre du bas qui manque déjà de place. */
+  compact?: boolean;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="etiquette">{libelle}</span>
+    <label className={`flex flex-col ${compact ? "gap-1" : "gap-1.5"}`}>
+      <span className={compact ? "text-[11px] text-ink-faint" : "etiquette"}>{libelle}</span>
       <textarea
         name={nom}
         rows={lignes}
         defaultValue={valeur}
-        className="carte px-4 py-3 text-[15px] leading-snug resize-none placeholder:text-ink-faint"
+        className={`carte text-[15px] leading-snug resize-none placeholder:text-ink-faint ${
+          compact ? "px-3.5 py-2" : "px-4 py-3"
+        }`}
         placeholder="Ce qu’il faut savoir…"
       />
     </label>

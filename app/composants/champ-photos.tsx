@@ -83,6 +83,7 @@ export function ChampPhotos({
   libelle = "Ajouter une ou plusieurs photos",
   multiple = true,
   documents = false,
+  compact = false,
 }: {
   nom?: string;
   libelle?: string;
@@ -90,6 +91,8 @@ export function ChampPhotos({
   multiple?: boolean;
   /** Une facture arrive en PDF aussi souvent qu'en photo. */
   documents?: boolean;
+  /** Moins de hauteur : pour une barre du bas qui manque déjà de place. */
+  compact?: boolean;
 }) {
   const champ = useRef<HTMLInputElement>(null);
   const [pretes, setPretes] = useState<Prete[]>([]);
@@ -143,20 +146,26 @@ export function ChampPhotos({
     <div className="flex flex-col gap-2">
       <label
         data-cible
-        className="carte px-4 py-3.5 flex items-center gap-3 cursor-pointer active:bg-surface-muted"
+        className={`carte flex items-center gap-3 cursor-pointer active:bg-surface-muted ${
+          compact ? "px-3.5 py-2" : "px-4 py-3.5"
+        }`}
       >
-        <span className="w-10 h-10 shrink-0 rounded-[11px] bg-plum-soft grid place-items-center">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
-               strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <span
+          className={`shrink-0 rounded-[11px] bg-plum-soft grid place-items-center ${
+            compact ? "w-8 h-8" : "w-10 h-10"
+          }`}
+        >
+          <svg width={compact ? "16" : "20"} height={compact ? "16" : "20"} viewBox="0 0 24 24"
+               fill="none" stroke="#453A6E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 8a2 2 0 0 1 2-2h2l1.2-1.6A1 1 0 0 1 10 4h4a1 1 0 0 1 .8.4L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
             <circle cx="12" cy="12.5" r="3.2" />
           </svg>
         </span>
         <span className="flex flex-col grow min-w-0">
-          <span className="text-[14.5px] text-ink-soft">
+          <span className={compact ? "text-[13px] text-ink-soft" : "text-[14.5px] text-ink-soft"}>
             {pretes.length > 0 && multiple ? "Ajouter une autre photo" : libelle}
           </span>
-          <span className="text-[11.5px] text-ink-faint">
+          <span className={compact ? "text-[10.5px] text-ink-faint" : "text-[11.5px] text-ink-faint"}>
             {prepare ? "Préparation…" : <Etat nombre={pretes.length} />}
           </span>
         </span>
