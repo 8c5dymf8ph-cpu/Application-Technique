@@ -87,6 +87,7 @@ type Mouvement = {
   essai: boolean;
   anomalie: string | null;
   anomalie_id: string | null;
+  catalogue_libelle: string | null;
   commentaire: string | null;
   prix_unitaire: number | null;
   facture: string | null;
@@ -101,16 +102,38 @@ const MOTIFS = [
   { v: "autre", l: "Autre" },
 ] as const;
 
-// Certaines anomalies reprises portent, dans leur fil, un mot qui répète
-// simplement leur propre libellé (l'anomalie 832 : le commentaire ET la
-// description valent tous deux « bloc secour/batterie a changer ») — un
-// artefact de la reprise, pas un vrai mot écrit par quelqu'un. Une bulle qui
-// promet un commentaire pour ne montrer que ce qui est déjà lu juste
-// au-dessus n'a rien à montrer : elle ne s'affiche pas dans ce cas.
-function repeteLeLibelle(texte: string, libelle: string | null): boolean {
-  if (!libelle) return false;
-  const n = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-  return n(texte) === n(libelle);
+// Beaucoup d'anomalies reprises portent, dans leur fil, un mot qui ne dit
+// rien de plus que ce qui est déjà lu juste au-dessus — pas seulement un
+// double exact (l'anomalie 832 : commentaire et description valaient tous
+// deux « bloc secour/batterie a changer ») mais aussi une simple variante
+// d'orthographe du libellé DU CATALOGUE, réutilisé tel quel comme
+// « commentaire » par la reprise pour des dizaines de lignes (Alain, Farid…
+// « bloc secour/batterie a changer » contre « Batterie du bloc secours à
+// changer »). Comparer les MOTS plutôt que le texte exact absorbe ces
+// variantes (accents, pluriel, ordre) sans réglage de seuil à deviner : si
+// chaque mot du commentaire se retrouve, tronqué à cinq lettres, dans la
+// description OU dans le libellé du catalogue, il n'ajoute rien — la bulle
+// promet un mot que personne n'a vraiment écrit.
+function motsSignificatifs(texte: string): Set<string> {
+  return new Set(
+    texte
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((m) => m.length >= 4)
+      .map((m) => m.slice(0, 5)),
+  );
+}
+function neDitRienDePlus(texte: string, ...libelles: (string | null)[]): boolean {
+  const mots = motsSignificatifs(texte);
+  if (mots.size === 0) return false;
+  return libelles.some((libelle) => {
+    if (!libelle) return false;
+    const motsLibelle = motsSignificatifs(libelle);
+    return [...mots].every((m) => motsLibelle.has(m));
+  });
 }
 
 export default async function FicheProduit({
@@ -179,11 +202,16 @@ export default async function FicheProduit({
            variation_pct, ecart_reference_pct, nb_achats, prix_min, prix_max, prix_moyen
     from v_prix_produit where produit_id = ${id}`;
 
+  // Pas de limite : une entrée backdatée (une livraison rattrapée des mois
+  // plus tard) doit rester dans « Le prix » même si le produit a déjà
+  // beaucoup d'achats plus récents — sinon la liste dit « 20 achats » et
+  // n'en montre que 12, et celle qu'on vient d'ajouter reste introuvable ici
+  // alors qu'elle est bien dans « Derniers mouvements ».
   const achats = await sql<Achat[]>`
     select mouvement_id, date_mouvement, quantite, prix_unitaire, fournisseur,
            facture_fichier, facture, prix_precedent
     from v_achats_produit where produit_id = ${id}
-    order by date_mouvement desc, mouvement_id desc limit 12`;
+    order by date_mouvement desc, mouvement_id desc`;
 
   // Une sortie faite dans une chambre d'essai apparaît ici — c'est un geste
   // qui a bien eu lieu — mais elle n'a pas bougé le stock. Sans la marquer,
@@ -197,6 +225,7 @@ export default async function FicheProduit({
            ${marqueEssai ? sql`coalesce(e.essai, false)` : sql`false`} as essai,
            a.description                     as anomalie,
            a.id                               as anomalie_id,
+           ca.libelle                         as catalogue_libelle,
            m.commentaire,
            m.prix_unitaire,
            fa.reference                      as facture,
@@ -208,6 +237,7 @@ export default async function FicheProduit({
     left join emplacements e   on e.id = m.emplacement_id
     left join interventions i  on i.id = m.intervention_id
     left join anomalies a      on a.id = i.anomalie_id
+    left join catalogue_anomalies ca on ca.id = a.catalogue_id
     left join factures fa      on fa.id = m.facture_id
     where m.produit_id = ${id}
     order by m.date_mouvement desc, m.id
@@ -1238,15 +1268,16 @@ export default async function FicheProduit({
                         que quelqu'un a écrits, pas « Intervention —
                         <description> », qui ne fait que répéter ce qui est
                         déjà lu juste au-dessus via m.anomalie. Un message qui
-                        répète simplement ce libellé (règle repeteLeLibelle)
-                        n'est pas un vrai mot non plus. Une entrée ou un
-                        ajustement n'a pas d'anomalie : son commentaire, à
-                        lui, est un vrai mot écrit à la saisie. */}
+                        ne dit rien de plus que ce libellé OU que le libellé
+                        du catalogue (règle neDitRienDePlus) n'est pas un
+                        vrai mot non plus. Une entrée ou un ajustement n'a pas
+                        d'anomalie : son commentaire, à lui, est un vrai mot
+                        écrit à la saisie. */}
                     <ApercuFil
                       messages={
                         m.anomalie_id
                           ? (filParAnomalie.get(m.anomalie_id) ?? []).filter(
-                              (msg) => !repeteLeLibelle(msg.texte, m.anomalie),
+                              (msg) => !neDitRienDePlus(msg.texte, m.anomalie, m.catalogue_libelle),
                             )
                           : m.commentaire
                             ? [
