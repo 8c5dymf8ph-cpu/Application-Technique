@@ -23,6 +23,7 @@ type Fournisseur = {
   nom: string;
   email: string | null;
   email_2: string | null;
+  contact: string | null;
 };
 
 export type ResultatDevis = {
@@ -32,16 +33,17 @@ export type ResultatDevis = {
 
 export async function demanderDevisBouteille(bouteilleTypeId: string): Promise<ResultatDevis | null> {
   const [bouteille] = await sql<
-    { libelle: string; en_reserve: number; seuil_alerte: number; quantite_reappro: number | null }[]
+    { libelle: string; en_reserve: number; seuil_alerte: number; quantite_reappro: number | null;
+      prix_achat: number | null }[]
   >`
-    select bt.libelle, s.en_reserve::int, bt.seuil_alerte, bt.quantite_reappro
+    select bt.libelle, s.en_reserve::int, bt.seuil_alerte, bt.quantite_reappro, bt.prix_achat
       from bouteille_types bt
       join v_stock_bouteilles s on s.bouteille_type_id = bt.id
      where bt.id = ${bouteilleTypeId}`;
   if (!bouteille) return null;
 
   const fournisseurs = await sql<Fournisseur[]>`
-    select f.id, f.nom, f.email, f.email_2
+    select f.id, f.nom, f.email, f.email_2, f.contact
       from article_fournisseurs af
       join fournisseurs f on f.id = af.fournisseur_id
      where af.bouteille_type_id = ${bouteilleTypeId} and f.actif
@@ -60,7 +62,7 @@ export async function demanderDevisBouteille(bouteilleTypeId: string): Promise<R
       insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
       values ('devis', ${bouteilleTypeId}, ${destinataires},
               ${`Demande de devis — ${bouteille.libelle}`},
-              ${corpsDevis(bouteille.libelle, bouteille.en_reserve, quantite)})`;
+              ${corpsDevis(f.contact, bouteille.libelle, quantite, bouteille.prix_achat)})`;
     resultat.envoyes.push({ fournisseur: f.nom });
   }
 
@@ -68,16 +70,39 @@ export async function demanderDevisBouteille(bouteilleTypeId: string): Promise<R
   return resultat;
 }
 
-function corpsDevis(libelle: string, enReserve: number, quantite: number): string {
+/**
+ * Le corps du mail — même trame pour les bouteilles et le stock technique
+ * (voir `corpsDevisProduit`) : on annonce ce qu'on prévoit de commander, on
+ * rappelle le prix déjà obtenu pour donner une base de négociation plutôt que
+ * de laisser le fournisseur repartir d'une proposition plus haute, et on
+ * demande délai, frais de port et validité de l'offre — ce qu'un devis utile
+ * doit dire et que l'ancienne version, une seule phrase, ne demandait pas.
+ */
+function corpsDevis(
+  contact: string | null,
+  libelle: string,
+  quantite: number,
+  prixActuel: number | null,
+): string {
   return [
-    "Bonjour,",
+    `Bonjour${contact ? ` ${contact}` : ""},`,
     "",
-    `Pourriez-vous nous indiquer votre délai et votre tarif pour une commande de ${libelle} ` +
-      `— environ ${quantite} bouteilles ?`,
+    `Nous prévoyons de commander prochainement ${quantite} bouteilles d'${libelle.toLowerCase()}.`,
     "",
-    `Notre réserve actuelle : ${enReserve} bouteilles.`,
+    ...(prixActuel !== null
+      ? [
+          `Nous achetons actuellement ce produit à ${euros(prixActuel)} HT l'unité. Nous serions ` +
+            "heureux de vous confier cette commande : pourriez-vous nous confirmer si vous êtes en " +
+            "mesure de vous aligner sur ce tarif, ou nous faire votre meilleure proposition ?",
+        ]
+      : ["Pourriez-vous nous faire votre meilleure proposition de tarif pour cette quantité ?"]),
     "",
-    "Merci d'avance,",
+    "Merci de nous indiquer vos conditions de livraison (délai, frais de port) ainsi que la " +
+      "validité de votre offre.",
+    "",
+    "Je reste disponible pour tout complément d'information.",
+    "",
+    "Bien cordialement,",
     "L'Hôtel Parisianer",
   ].join("\n");
 }
@@ -94,10 +119,10 @@ function corpsDevis(libelle: string, enReserve: number, quantite: number): strin
  */
 export async function demanderDevisProduit(produitId: string): Promise<ResultatDevis | null> {
   const [produit] = await sql<
-    { designation: string; stock: number; seuil_alerte: number; quantite_reappro: number | null;
-      prix_min: number | null }[]
+    { code: string; designation: string; stock: number; seuil_alerte: number;
+      quantite_reappro: number | null; prix_min: number | null }[]
   >`
-    select p.designation, s.stock::numeric, p.seuil_alerte, p.quantite_reappro, pr.prix_min
+    select p.code, p.designation, s.stock::numeric, p.seuil_alerte, p.quantite_reappro, pr.prix_min
       from produits p
       join v_stock_produits s on s.id = p.id
       left join v_prix_produit pr on pr.produit_id = p.id
@@ -105,7 +130,7 @@ export async function demanderDevisProduit(produitId: string): Promise<ResultatD
   if (!produit) return null;
 
   const fournisseurs = await sql<Fournisseur[]>`
-    select f.id, f.nom, f.email, f.email_2
+    select f.id, f.nom, f.email, f.email_2, f.contact
       from article_fournisseurs af
       join fournisseurs f on f.id = af.fournisseur_id
      where af.produit_id = ${produitId} and f.actif
@@ -124,7 +149,7 @@ export async function demanderDevisProduit(produitId: string): Promise<ResultatD
       insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
       values ('devis', ${produitId}, ${destinataires},
               ${`Demande de devis — ${produit.designation}`},
-              ${corpsDevisProduit(produit.designation, quantite, produit.prix_min)})`;
+              ${corpsDevisProduit(f.contact, produit.code, produit.designation, quantite, produit.prix_min)})`;
     resultat.envoyes.push({ fournisseur: f.nom });
   }
 
@@ -132,17 +157,33 @@ export async function demanderDevisProduit(produitId: string): Promise<ResultatD
   return resultat;
 }
 
-function corpsDevisProduit(designation: string, quantite: number, prixMin: number | null): string {
+function corpsDevisProduit(
+  contact: string | null,
+  code: string,
+  designation: string,
+  quantite: number,
+  prixMin: number | null,
+): string {
   return [
-    "Bonjour,",
+    `Bonjour${contact ? ` ${contact}` : ""},`,
     "",
-    `Pourriez-vous nous indiquer votre délai et votre tarif pour une commande de ${designation} ` +
-      `— environ ${quantite} unités ?`,
+    `Nous prévoyons de commander prochainement ${quantite} unités de la référence ${code} ` +
+      `(${designation}).`,
+    "",
     ...(prixMin !== null
-      ? ["", `Le tarif le plus bas obtenu jusqu'ici pour cet article était de ${euros(prixMin)} l'unité.`]
-      : []),
+      ? [
+          `Nous avons précédemment acheté ce produit à ${euros(prixMin)} HT l'unité. Nous serions ` +
+            "heureux de vous confier cette commande : pourriez-vous nous confirmer si vous êtes en " +
+            "mesure de vous aligner sur ce tarif, ou nous faire votre meilleure proposition ?",
+        ]
+      : ["Pourriez-vous nous faire votre meilleure proposition de tarif pour cette quantité ?"]),
     "",
-    "Merci d'avance,",
+    "Merci de nous indiquer vos conditions de livraison (délai, frais de port) ainsi que la " +
+      "validité de votre offre.",
+    "",
+    "Je reste disponible pour tout complément d'information.",
+    "",
+    "Bien cordialement,",
     "L'Hôtel Parisianer",
   ].join("\n");
 }
