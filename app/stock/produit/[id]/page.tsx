@@ -16,6 +16,8 @@ import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
 import { CorrigerAchat } from "@/app/composants/corriger-achat";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { demanderDevisProduit } from "@/lib/devis";
 
 export const dynamic = "force-dynamic";
 
@@ -141,12 +143,17 @@ export default async function FicheProduit({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ neuf?: string; fait?: string }>;
+  searchParams: Promise<{
+    neuf?: string;
+    fait?: string;
+    devisEnvoyes?: string;
+    devisSansAdresse?: string;
+  }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   const { id } = await params;
-  const { neuf, fait } = await searchParams;
+  const { neuf, fait, devisEnvoyes, devisSansAdresse } = await searchParams;
 
   const [p] = await sql<Produit[]>`
     select id, code, designation, categorie, categorie_lieu, unite, prix_unitaire,
@@ -345,7 +352,12 @@ export default async function FicheProduit({
     const fournisseur = String(donnees.get("fournisseur") ?? "") || null;
     const reference = String(donnees.get("reference") ?? "").trim() || null;
     const fichier = donnees.get("facture");
-    const montant = prix !== null ? prix * Number(mvt.quantite) : null;
+    // La quantité reçue se corrige comme le reste : une erreur de saisie
+    // (12 au lieu de 21) ne se rattrape sinon que par un ajustement séparé,
+    // qui fausse « Ajustements » pour une simple faute de frappe à l'entrée.
+    const quantiteSaisie = Number(donnees.get("quantite") ?? mvt.quantite);
+    const quantite = quantiteSaisie > 0 ? quantiteSaisie : Number(mvt.quantite);
+    const montant = prix !== null ? prix * quantite : null;
     // La date de la LIVRAISON, corrigible après coup comme à la saisie
     // (règle 16ter) — une entrée reprise ou mal datée se corrige ici, sans
     // toucher à ce qu'elle a produit : contrairement à une commande, une
@@ -388,6 +400,7 @@ export default async function FicheProduit({
     await sql`
       update mouvements_stock
          set prix_unitaire = ${prix}, facture_id = ${facture_id}, commentaire = ${commentaire},
+             quantite = ${quantite},
              date_mouvement = coalesce(${quand}::timestamptz, date_mouvement)
        where id = ${mouvementId}`;
     revalidatePath(`/stock/produit/${id}`);
@@ -564,6 +577,19 @@ export default async function FicheProduit({
     revalidatePath(`/stock/produit/${id}`);
   }
 
+  // Une demande de devis, sur demande — pas seulement quand le seuil est
+  // franchi. Un mail par fournisseur lié à ce produit (règle 7 : comparer).
+  async function demanderDevis() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect(`/stock/produit/${id}` as Route);
+    const resultat = await demanderDevisProduit(id);
+    redirect(
+      `/stock/produit/${id}?devisEnvoyes=${resultat?.envoyes.length ?? 0}` +
+        `&devisSansAdresse=${resultat?.sansAdresse.length ?? 0}` as Route,
+    );
+  }
+
   async function reglages(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -700,10 +726,11 @@ export default async function FicheProduit({
           </p>
         </section>
 
-        {/* Entrer du stock */}
-        <section className="flex flex-col gap-2">
-          <h2 className="etiquette">Entrée de stock</h2>
-          <form action={entrer} className="carte px-3.5 py-3 flex flex-col gap-2.5">
+        {/* Entrer du stock — replié à l'arrivée : on consulte la fiche bien
+            plus souvent qu'on n'y réceptionne une livraison, et le formulaire
+            complet repoussait tout le reste de l'écran hors de vue. */}
+        <Depliant titre="Entrée de stock">
+          <form action={entrer} className="flex flex-col gap-2.5">
             <div className="flex gap-2">
               <label className="flex-1 min-w-0 flex flex-col gap-1">
                 <span className="etiquette">Quantité reçue</span>
@@ -788,7 +815,7 @@ export default async function FicheProduit({
               Enregistrer l’entrée
             </button>
           </form>
-        </section>
+        </Depliant>
 
         {/* Ajuster — rare (une casse, une erreur), replié pour ne pas
             concurrencer l'entrée de stock, le geste courant de cet écran. */}
@@ -942,11 +969,14 @@ export default async function FicheProduit({
 
             {/* Chez qui on commande, et à quelle adresse.
                 Replié dès qu'un fournisseur est en place : une fois réglé, on
-                n'a plus besoin de le voir en ouvrant la fiche. */}
+                n'a plus besoin de le voir en ouvrant la fiche. Rouvert quand
+                une demande de devis vient de partir, sinon la confirmation
+                atterrit dans une section repliée — invisible sans un appui
+                de plus, juste après le geste qui devait la produire. */}
             <Depliant
               titre="Fournisseurs"
               aide="Chez qui on commande, et où part la demande de devis"
-              ouvert={fournisseurs.length === 0}
+              ouvert={fournisseurs.length === 0 || devisEnvoyes !== undefined}
               indice={
                 fournisseurs.length === 0
                   ? "aucun"
@@ -1064,6 +1094,29 @@ export default async function FicheProduit({
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {fournisseurs.length > 0 && peutValider(profil.role) && (
+                <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
+                  {devisEnvoyes !== undefined && (
+                    <p
+                      className={`text-[12px] text-pretty leading-snug rounded-card px-3 py-2 ${
+                        Number(devisEnvoyes) > 0 ? "bg-green-soft text-green" : "bg-amber-soft text-amber"
+                      }`}
+                    >
+                      {Number(devisEnvoyes) > 0
+                        ? `Devis demandé à ${devisEnvoyes} fournisseur${Number(devisEnvoyes) > 1 ? "s" : ""}.`
+                        : "Aucun mail envoyé."}
+                      {Number(devisSansAdresse) > 0 &&
+                        ` ${devisSansAdresse} fournisseur${Number(devisSansAdresse) > 1 ? "s" : ""} sans adresse enregistrée.`}
+                    </p>
+                  )}
+                  <form action={demanderDevis}>
+                    <BoutonEnvoi className="w-full h-[42px] rounded-[11px] bg-surface border border-line text-[13px] text-ink-soft">
+                      Demander un devis
+                    </BoutonEnvoi>
+                  </form>
+                </div>
               )}
 
               {peutValider(profil.role) && (
@@ -1318,6 +1371,7 @@ export default async function FicheProduit({
                         mouvementId={m.id}
                         date={new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
                         dateISO={jourISO(m.date_mouvement)}
+                        quantiteActuelle={Number(m.quantite)}
                         prixActuel={m.prix_unitaire}
                         fournisseurs={tous}
                         fournisseurActuelId={m.fournisseur_id}
