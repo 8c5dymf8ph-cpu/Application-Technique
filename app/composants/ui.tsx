@@ -297,12 +297,18 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
     ton: "green",
     texte: "Facture retirée. Le prix de cette entrée reste enregistré.",
   },
-  "facture-non-jointe": {
+  "facture-sans-fournisseur": {
     ton: "red",
     texte:
-      "Le prix est enregistré, mais le fichier de la facture n’a pas pu être joint : " +
-      "vérifiez qu’un fournisseur est choisi, et que le fichier est un PDF, JPEG, PNG, " +
-      "WEBP ou HEIC de moins de 4 Mo.",
+      "Le prix est enregistré, mais le fichier n’a pas été joint : aucun fournisseur n’était " +
+      "choisi. Une facture a besoin d’un émetteur — choisissez-en un, ou ajoutez-le d’abord " +
+      "depuis « Fournisseurs ».",
+  },
+  "facture-fichier-refuse": {
+    ton: "red",
+    texte:
+      "Le prix est enregistré, mais le fichier de la facture a été refusé : vérifiez qu’il " +
+      "s’agit d’un PDF, JPEG, PNG, WEBP ou HEIC de moins de 4 Mo.",
   },
   "materiel-retire": {
     ton: "green",
