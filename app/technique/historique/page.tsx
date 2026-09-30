@@ -133,13 +133,16 @@ export default async function PassagesEtFactures({
         where date_reference >= date_trunc('year', current_date))                as ht_annee,
       (select count(*) from v_interventions_sans_facture)::int                   as sans_facture`;
 
+  // Pas de limite : un intervenant venu une seule fois (Technicien Telec,
+  // un renfort ponctuel) doit rester filtrable, pas seulement les plus
+  // fréquents — la même leçon que la coupe à 50 passages plus bas.
   const gens = factures_
     ? []
     : await sql<{ intervenant: string; nombre: number }[]>`
         select intervenant, count(*)::int as nombre
         from v_tournees
         where nb_interventions > 0 and intervenant is not null
-        group by 1 order by 2 desc, 1 limit 12`;
+        group by 1 order by 2 desc, 1`;
 
   // Une tournée se retrouve par l'intervenant, la chambre, ou un mot de
   // l'anomalie : on cherche rarement par référence.
