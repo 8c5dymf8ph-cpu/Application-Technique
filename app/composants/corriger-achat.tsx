@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { aujourdhuiISO } from "@/lib/domaine";
 import { BoutonEnvoi } from "./bouton-envoi";
 import { VoirDocument } from "./fenetre";
 
@@ -23,6 +24,7 @@ export function CorrigerAchat({
   retirerAction,
   mouvementId,
   date,
+  dateISO,
   prixActuel,
   fournisseurs,
   fournisseurActuelId,
@@ -34,6 +36,8 @@ export function CorrigerAchat({
   retirerAction: (donnees: FormData) => void | Promise<void>;
   mouvementId: string;
   date: string;
+  /** La même date, au format YYYY-MM-DD — pour le champ, qui n'affiche pas le français. */
+  dateISO: string;
   prixActuel: number | null;
   fournisseurs: { id: string; nom: string }[];
   fournisseurActuelId: string | null;
@@ -86,6 +90,17 @@ export function CorrigerAchat({
               </svg>
             </button>
           </div>
+
+          <label className="flex flex-col gap-1">
+            <span className="etiquette">Date de livraison</span>
+            <input
+              name="date"
+              type="date"
+              max={aujourdhuiISO()}
+              defaultValue={dateISO}
+              className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[16px]"
+            />
+          </label>
 
           <label className="flex flex-col gap-1">
             <span className="etiquette">Prix payé (unité)</span>
