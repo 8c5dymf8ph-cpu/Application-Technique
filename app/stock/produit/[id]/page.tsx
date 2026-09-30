@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
-import { aujourdhuiISO, euros, peutValider } from "@/lib/domaine";
+import { aujourdhuiISO, euros, jourISO, peutValider } from "@/lib/domaine";
 import { Entete , Confirmation } from "@/app/composants/ui";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
@@ -341,6 +341,12 @@ export default async function FicheProduit({
     const reference = String(donnees.get("reference") ?? "").trim() || null;
     const fichier = donnees.get("facture");
     const montant = prix !== null ? prix * Number(mvt.quantite) : null;
+    // La date de la LIVRAISON, corrigible après coup comme à la saisie
+    // (règle 16ter) — une entrée reprise ou mal datée se corrige ici, sans
+    // toucher à ce qu'elle a produit : contrairement à une commande, une
+    // entrée saisie directement n'a rien d'autre à redater.
+    const saisieDate = String(donnees.get("date") ?? "").trim();
+    const quand = saisieDate ? `${saisieDate} 12:00` : null;
 
     let facture_id = mvt.facture_id;
     const nouveauFichier = fichier instanceof File && fichier.size > 0;
@@ -374,7 +380,8 @@ export default async function FicheProduit({
 
     await sql`
       update mouvements_stock
-         set prix_unitaire = ${prix}, facture_id = ${facture_id}, commentaire = ${commentaire}
+         set prix_unitaire = ${prix}, facture_id = ${facture_id}, commentaire = ${commentaire},
+             date_mouvement = coalesce(${quand}::timestamptz, date_mouvement)
        where id = ${mouvementId}`;
     revalidatePath(`/stock/produit/${id}`);
     if (fichierPerdu) {
@@ -1255,6 +1262,7 @@ export default async function FicheProduit({
                         retirerAction={retirerFacture}
                         mouvementId={m.id}
                         date={new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
+                        dateISO={jourISO(m.date_mouvement)}
                         prixActuel={m.prix_unitaire}
                         fournisseurs={tous}
                         fournisseurActuelId={m.fournisseur_id}
