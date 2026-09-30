@@ -18,6 +18,7 @@ import type { Message } from "@/app/composants/fil";
 import { CorrigerAchat } from "@/app/composants/corriger-achat";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { demanderDevisProduit } from "@/lib/devis";
+import { avecValeurActuelle, categoriesExistantes, normaliserCategorie } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -208,6 +209,14 @@ export default async function FicheProduit({
     select prix_reference, dernier_prix, dernier_achat, dernier_fournisseur,
            variation_pct, ecart_reference_pct, nb_achats, prix_min, prix_max, prix_moyen
     from v_prix_produit where produit_id = ${id}`;
+
+  // La valeur ACTUELLE du produit doit rester choisissable même si elle n'est
+  // pas la graphie la plus fréquente (categoriesExistantes n'en garde qu'une
+  // par groupe) : sinon le select retombe sur « — », et enregistrer sans y
+  // toucher effacerait silencieusement une catégorie qui n'avait rien de
+  // faux, juste une casse minoritaire.
+  const metiersChoix = avecValeurActuelle(await categoriesExistantes("categorie"), p.categorie);
+  const lieuxChoix = avecValeurActuelle(await categoriesExistantes("categorie_lieu"), p.categorie_lieu);
 
   // Pas de limite : une entrée backdatée (une livraison rattrapée des mois
   // plus tard) doit rester dans « Le prix » même si le produit a déjà
@@ -594,9 +603,24 @@ export default async function FicheProduit({
     "use server";
     const profil_ = await profilActif();
     if (!profil_ || !peutValider(profil_.role)) redirect(`/stock/produit/${id}` as Route);
+    // Choisi dans la liste, ou saisi dans « …ou un nouveau » — même règle
+    // qu'à la création (lib/categories.ts) : la casse déjà en base est
+    // réutilisée plutôt que d'en créer une troisième graphie.
+    const categorieSaisie =
+      String(donnees.get("categorie_nouvelle") ?? "").trim() ||
+      String(donnees.get("categorie") ?? "").trim() ||
+      null;
+    const categorieLieuSaisie =
+      String(donnees.get("categorie_lieu_nouvelle") ?? "").trim() ||
+      String(donnees.get("categorie_lieu") ?? "").trim() ||
+      null;
+    const categorie = await normaliserCategorie("categorie", categorieSaisie);
+    const categorieLieu = await normaliserCategorie("categorie_lieu", categorieLieuSaisie);
     await sql`
       update produits
          set designation      = ${String(donnees.get("designation") ?? "").trim()},
+             categorie        = ${categorie},
+             categorie_lieu   = ${categorieLieu},
              prix_unitaire    = ${donnees.get("prix") ? Number(donnees.get("prix")) : null},
              seuil_alerte     = ${Number(donnees.get("seuil") ?? 0)},
              quantite_reappro = ${
@@ -1211,6 +1235,60 @@ export default async function FicheProduit({
                   className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
                 />
               </label>
+              {/* Un choix dans ce qui existe, pas un champ libre — deux
+                  graphies du même métier ne sont pas deux métiers. */}
+              <div className="flex gap-2">
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">Métier</span>
+                  <select
+                    name="categorie"
+                    defaultValue={p.categorie ?? ""}
+                    className="w-full h-[46px] px-2 rounded-[11px] border border-line bg-surface-muted text-[14px]"
+                  >
+                    <option value="">—</option>
+                    {metiersChoix.map((m) => (
+                      <option key={m.valeur} value={m.valeur}>
+                        {m.valeur}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">…ou un nouveau</span>
+                  <input
+                    name="categorie_nouvelle"
+                    autoComplete="off"
+                    placeholder="Électricité…"
+                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                  />
+                </label>
+              </div>
+              <div className="flex gap-2">
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">Où il sert</span>
+                  <select
+                    name="categorie_lieu"
+                    defaultValue={p.categorie_lieu ?? ""}
+                    className="w-full h-[46px] px-2 rounded-[11px] border border-line bg-surface-muted text-[14px]"
+                  >
+                    <option value="">—</option>
+                    {lieuxChoix.map((l) => (
+                      <option key={l.valeur} value={l.valeur}>
+                        {l.valeur}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">…ou un nouveau</span>
+                  <input
+                    name="categorie_lieu_nouvelle"
+                    autoComplete="off"
+                    placeholder="Chambre…"
+                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                  />
+                </label>
+              </div>
               <div className="flex gap-2">
                 <label className="flex-1 min-w-0 flex flex-col gap-1">
                   <span className="etiquette">Prix unitaire</span>

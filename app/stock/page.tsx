@@ -10,6 +10,7 @@ import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { MenuFiltre } from "@/app/composants/menu-filtre";
+import { categoriesExistantes, normaliserCategorie } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -129,9 +130,11 @@ export default async function Stock({
 
   // Les familles déjà employées, pour ne pas réinventer une catégorie à chaque
   // produit créé : le référentiel se construit par l'usage, pas par un écran.
-  const metiers = await sql<{ valeur: string }[]>`
-    select distinct categorie as valeur from produits
-    where categorie is not null order by 1`;
+  // Une par GRAPHIE la plus fréquente, pas une par ligne : un simple
+  // `distinct` offrait « Salle de Bain » ET « Salle de bain » comme deux
+  // choix séparés, et le champ libre laissait en écrire une troisième.
+  const metiersChoix = await categoriesExistantes("categorie");
+  const lieuxChoix = await categoriesExistantes("categorie_lieu");
 
   async function creer(donnees: FormData) {
     "use server";
@@ -162,12 +165,25 @@ export default async function Stock({
                     select count(*) + 1 from produits where code like ${base + "%"})
              end as code`;
 
+    // Choisi dans la liste, ou saisi dans « …ou un nouveau » : l'un ou
+    // l'autre, jamais les deux à retaper. Même si le champ libre est
+    // utilisé, la casse déjà en base est réutilisée plutôt que d'en créer
+    // une troisième graphie (lib/categories.ts).
+    const categorieSaisie =
+      String(donnees.get("categorie_nouvelle") ?? "").trim() ||
+      String(donnees.get("categorie") ?? "").trim() ||
+      null;
+    const categorieLieuSaisie =
+      String(donnees.get("categorie_lieu_nouvelle") ?? "").trim() ||
+      String(donnees.get("categorie_lieu") ?? "").trim() ||
+      null;
+    const categorie = await normaliserCategorie("categorie", categorieSaisie);
+    const categorieLieu = await normaliserCategorie("categorie_lieu", categorieLieuSaisie);
+
     const [cree] = await sql<{ id: string }[]>`
       insert into produits (code, designation, categorie, categorie_lieu, unite,
                             prix_unitaire, seuil_alerte, quantite_reappro)
-      values (${libre.code}, ${designation},
-              ${String(donnees.get("categorie") ?? "").trim() || null},
-              ${String(donnees.get("categorie_lieu") ?? "").trim() || null},
+      values (${libre.code}, ${designation}, ${categorie}, ${categorieLieu},
               ${String(donnees.get("unite") ?? "").trim() || "unité"},
               ${donnees.get("prix") ? Number(donnees.get("prix")) : null},
               ${Number(donnees.get("seuil") ?? 0)},
@@ -310,36 +326,58 @@ export default async function Stock({
                 />
               </label>
 
+              {/* Un choix dans ce qui existe déjà, pas un champ libre : deux
+                  graphies du même métier ne sont pas deux métiers. « …ou un
+                  nouveau » reste ouvert pour la fois où ça ne suffit pas —
+                  mais c'est un geste explicite, pas la saisie par défaut. */}
               <div className="flex gap-2">
                 <label className="flex-1 min-w-0 flex flex-col gap-1">
                   <span className="etiquette">Métier</span>
-                  <input
+                  <select
                     name="categorie"
-                    list="metiers"
-                    autoComplete="off"
-                    placeholder="Électricité…"
-                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px] placeholder:text-ink-faint"
-                  />
-                  <datalist id="metiers">
-                    {metiers.map((m) => (
-                      <option key={m.valeur} value={m.valeur} />
+                    className="w-full h-[46px] px-2 rounded-[11px] border border-line bg-surface-muted text-[14px]"
+                  >
+                    <option value="">—</option>
+                    {metiersChoix.map((m) => (
+                      <option key={m.valeur} value={m.valeur}>
+                        {m.valeur}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
                 </label>
                 <label className="flex-1 min-w-0 flex flex-col gap-1">
-                  <span className="etiquette">Où il sert</span>
+                  <span className="etiquette">…ou un nouveau</span>
                   <input
+                    name="categorie_nouvelle"
+                    autoComplete="off"
+                    placeholder="Électricité…"
+                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
+                  />
+                </label>
+              </div>
+              <div className="flex gap-2">
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">Où il sert</span>
+                  <select
                     name="categorie_lieu"
-                    list="lieux"
+                    className="w-full h-[46px] px-2 rounded-[11px] border border-line bg-surface-muted text-[14px]"
+                  >
+                    <option value="">—</option>
+                    {lieuxChoix.map((l) => (
+                      <option key={l.valeur} value={l.valeur}>
+                        {l.valeur}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="etiquette">…ou un nouveau</span>
+                  <input
+                    name="categorie_lieu_nouvelle"
                     autoComplete="off"
                     placeholder="Chambre…"
-                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px] placeholder:text-ink-faint"
+                    className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
                   />
-                  <datalist id="lieux">
-                    {familles.map((f) => (
-                      <option key={f.lieu} value={f.lieu} />
-                    ))}
-                  </datalist>
                 </label>
               </div>
 
