@@ -264,6 +264,25 @@ export default async function FicheProduit({
     filParAnomalie.set(f.anomalie_id, liste);
   }
 
+  // Une sortie SANS anomalie liée (intervention_id nul) retombe sur le
+  // commentaire posé sur le MOUVEMENT lui-même — mais `outils/importer_stock.py`
+  // reprend cette colonne d'un tableau distinct (MouvementsStock.xlsm), où le
+  // même motif est parfois recopié sur plusieurs lignes du même jour, pour le
+  // même intervenant, dans des lieux différents (mesuré : Alain, 10/07/2024,
+  // « bloc secour/batterie a changer » sur cinq emplacements). Ce n'est pas un
+  // mot écrit sur CETTE sortie-là : c'est le même 832 que le catalogue de mots
+  // n'attrape pas, faute d'un libellé d'anomalie à comparer ici.
+  const commentairesRepetes = new Set<string>();
+  {
+    const compte = new Map<string, number>();
+    for (const m of mouvements) {
+      if (m.type !== "sortie" || m.anomalie_id || !m.commentaire) continue;
+      const cle = `${m.qui ?? ""}|${jourISO(m.date_mouvement)}|${m.commentaire}`;
+      compte.set(cle, (compte.get(cle) ?? 0) + 1);
+    }
+    for (const [cle, n] of compte) if (n > 1) commentairesRepetes.add(cle);
+  }
+
   async function entrer(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -1280,14 +1299,21 @@ export default async function FicheProduit({
                         du catalogue (règle neDitRienDePlus) n'est pas un
                         vrai mot non plus. Une entrée ou un ajustement n'a pas
                         d'anomalie : son commentaire, à lui, est un vrai mot
-                        écrit à la saisie. */}
+                        écrit à la saisie — sauf une sortie SANS anomalie liée
+                        dont le commentaire est répété à l'identique sur
+                        plusieurs lieux le même jour pour le même intervenant
+                        (commentairesRepetes) : c'est un motif recopié par
+                        l'import, pas un mot écrit sur cette ligne-là. */}
                     <ApercuFil
                       messages={
                         m.anomalie_id
                           ? (filParAnomalie.get(m.anomalie_id) ?? []).filter(
                               (msg) => !neDitRienDePlus(msg.texte, m.anomalie, m.catalogue_libelle),
                             )
-                          : m.commentaire
+                          : m.commentaire &&
+                              !commentairesRepetes.has(
+                                `${m.qui ?? ""}|${jourISO(m.date_mouvement)}|${m.commentaire}`,
+                              )
                             ? [
                                 {
                                   commentaire_id: m.id,
