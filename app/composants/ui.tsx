@@ -310,6 +310,16 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "Le prix est enregistré, mais le fichier de la facture a été refusé : vérifiez qu’il " +
       "s’agit d’un PDF, JPEG, PNG, WEBP ou HEIC de moins de 4 Mo.",
   },
+  "livraison-supprimee": {
+    ton: "green",
+    texte: "Livraison supprimée. Le stock recalculé en tient compte.",
+  },
+  "livraison-liee-commande": {
+    ton: "red",
+    texte:
+      "Cette entrée vient d’une commande reçue : elle ne se supprime pas depuis ici, sinon la " +
+      "commande resterait marquée « reçue » sans plus rien pour le montrer.",
+  },
   "materiel-retire": {
     ton: "green",
     texte: "Matériel retiré : la pièce revient en réserve.",

@@ -22,6 +22,7 @@ import { VoirDocument } from "./fenetre";
 export function CorrigerAchat({
   action,
   retirerAction,
+  supprimerAction,
   mouvementId,
   date,
   dateISO,
@@ -34,6 +35,8 @@ export function CorrigerAchat({
 }: {
   action: (donnees: FormData) => void | Promise<void>;
   retirerAction: (donnees: FormData) => void | Promise<void>;
+  /** Supprimer la livraison entière — saisie deux fois, ou pour le mauvais produit. */
+  supprimerAction: (donnees: FormData) => void | Promise<void>;
   mouvementId: string;
   date: string;
   /** La même date, au format YYYY-MM-DD — pour le champ, qui n'affiche pas le français. */
@@ -48,6 +51,7 @@ export function CorrigerAchat({
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
   const [confirmerRetrait, setConfirmerRetrait] = useState(false);
+  const [confirmerSuppression, setConfirmerSuppression] = useState(false);
   const dejaJointe = !!factureFichier;
 
   return (
@@ -248,6 +252,47 @@ export function CorrigerAchat({
             )}
           </div>
         )}
+
+        {/* Supprimer la livraison entière — saisie deux fois, ou pour le
+            mauvais produit. En deux temps, comme toute suppression. */}
+        <div className="px-5 pb-5 -mt-1 border-t border-line pt-3.5">
+          {!confirmerSuppression ? (
+            <button
+              type="button"
+              onClick={() => setConfirmerSuppression(true)}
+              className="text-[12.5px] text-red underline underline-offset-4"
+            >
+              Supprimer cette livraison
+            </button>
+          ) : (
+            <form
+              action={supprimerAction}
+              className="rounded-card bg-red-soft px-3.5 py-3 flex flex-col gap-2.5"
+            >
+              <input type="hidden" name="mouvement_id" value={mouvementId} />
+              <p className="text-[12.5px] text-red text-pretty leading-snug">
+                Cette entrée du {date} disparaît, avec sa facture si elle n’en couvre pas
+                d’autre. Le stock recalculé baisse d’autant : à n’utiliser que pour une saisie en
+                trop, jamais pour corriger une quantité — le crayon fait ça.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmerSuppression(false)}
+                  className="flex-1 h-[38px] rounded-[10px] bg-surface border border-line text-[12.5px] text-ink-soft"
+                >
+                  Annuler
+                </button>
+                <BoutonEnvoi
+                  pendant="Suppression…"
+                  className="flex-1 h-[38px] rounded-[10px] bg-red text-white text-[12.5px] font-medium"
+                >
+                  Oui, supprimer
+                </BoutonEnvoi>
+              </div>
+            </form>
+          )}
+        </div>
       </dialog>
     </>
   );

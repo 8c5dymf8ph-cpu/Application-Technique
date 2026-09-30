@@ -264,41 +264,6 @@ export default async function FicheProduit({
     filParAnomalie.set(f.anomalie_id, liste);
   }
 
-  // Une sortie SANS anomalie liée (intervention_id nul) retombe sur le
-  // commentaire posé sur le MOUVEMENT lui-même. Deux origines connues :
-  // `outils/importer_stock.py`, qui reprend cette colonne d'un tableau
-  // distinct (MouvementsStock.xlsm) où le même motif est parfois recopié
-  // (Alain, 10/07/2024, « bloc secour/batterie a changer » sur cinq
-  // emplacements ET un sixième d'un autre intervenant, Farid) ; et une
-  // anomalie supprimée AVANT la migration 0022, qui détachait le mouvement
-  // (`intervention_id` à nul) au lieu de l'emporter — son texte synthétique
-  // « Intervention — <description> » peut alors se répéter sur PLUSIEURS
-  // PRODUITS le même jour, si l'intervention avait sorti plus d'un article.
-  // Un texte identique qui revient plus d'une fois n'est jamais un mot écrit
-  // sur CETTE ligne précise : on le vérifie sur toute la table, pas
-  // seulement sur les mouvements déjà chargés pour ce produit — sinon les
-  // doublons répartis sur d'autres produits, ou d'autres jours, passent au
-  // travers.
-  const textesCandidats = [
-    ...new Set(
-      mouvements
-        .filter(
-          (m): m is Mouvement & { commentaire: string } =>
-            m.type === "sortie" && !m.anomalie_id && !!m.commentaire,
-        )
-        .map((m) => m.commentaire),
-    ),
-  ];
-  const commentairesRepetes = new Set<string>();
-  if (textesCandidats.length > 0) {
-    const repetes = await sql<{ commentaire: string }[]>`
-      select commentaire from mouvements_stock
-       where type = 'sortie' and intervention_id is null
-         and commentaire = any(${textesCandidats}::text[])
-       group by commentaire
-      having count(*) > 1`;
-    for (const r of repetes) commentairesRepetes.add(r.commentaire);
-  }
 
   async function entrer(donnees: FormData) {
     "use server";
@@ -453,6 +418,43 @@ export default async function FicheProduit({
     await sql`delete from factures where id = ${mvt.facture_id}`;
     revalidatePath(`/stock/produit/${id}`);
     redirect(`/stock/produit/${id}?fait=facture-retiree` as Route);
+  }
+
+  /**
+   * Supprimer une livraison saisie par erreur — deux fois, ou pour le mauvais
+   * produit. `retirerFacture` ne défait que le rattachement ; ici c'est la
+   * ligne entière qui part, avec sa facture si elle ne sert plus qu'à elle
+   * (une facture d'achat n'est jamais partagée entre plusieurs entrées).
+   *
+   * Une entrée reçue via une commande (`commande_id`) n'est pas de celles-là :
+   * la supprimer laisserait la commande marquée « reçue » sans plus rien pour
+   * le montrer, un état que rien ne saurait corriger depuis cet écran. On le
+   * dit plutôt que de supprimer une ligne à moitié.
+   */
+  async function supprimerEntree(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/profil");
+    const mouvementId = String(donnees.get("mouvement_id") ?? "");
+    if (!mouvementId) return;
+
+    const [mvt] = await sql<{ facture_id: string | null; commande_id: string | null }[]>`
+      select facture_id, commande_id from mouvements_stock
+       where id = ${mouvementId} and produit_id = ${id} and type = 'entree'`;
+    if (!mvt) return;
+    if (mvt.commande_id) {
+      redirect(`/stock/produit/${id}?fait=livraison-liee-commande` as Route);
+    }
+
+    await sql`delete from mouvements_stock where id = ${mouvementId}`;
+    if (mvt.facture_id) {
+      await sql`
+        delete from factures
+         where id = ${mvt.facture_id}
+           and not exists (select 1 from mouvements_stock where facture_id = ${mvt.facture_id})`;
+    }
+    revalidatePath(`/stock/produit/${id}`);
+    redirect(`/stock/produit/${id}?fait=livraison-supprimee` as Route);
   }
 
   async function ajuster(donnees: FormData) {
@@ -1274,7 +1276,17 @@ export default async function FicheProduit({
                       </span>
                       <span className="block text-[11px] text-ink-faint">
                         {new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
-                        {m.anomalie && ` · ${m.anomalie}`}
+                        {/* Le libellé de l'anomalie se lit ici, jamais dans une
+                            bulle qui laisserait croire à un mot en plus. Une
+                            sortie SANS anomalie liée (intervention_id nul,
+                            souvent une reprise de MouvementsStock.xlsm ou une
+                            anomalie supprimée avant la migration 0022) porte le
+                            même genre d'information dans son commentaire — on
+                            la lit au même endroit, sinon la ligne dit juste
+                            « Sortie · lieu · qui » et plus rien sur le pourquoi. */}
+                        {m.anomalie
+                          ? ` · ${m.anomalie}`
+                          : m.type === "sortie" && m.commentaire && ` · ${m.commentaire}`}
                         {entree && m.prix_unitaire !== null && ` · ${euros(m.prix_unitaire)}`}
                       </span>
                     </span>
@@ -1302,6 +1314,7 @@ export default async function FicheProduit({
                       <CorrigerAchat
                         action={corrigerAchat}
                         retirerAction={retirerFacture}
+                        supprimerAction={supprimerEntree}
                         mouvementId={m.id}
                         date={new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
                         dateISO={jourISO(m.date_mouvement)}
@@ -1319,21 +1332,21 @@ export default async function FicheProduit({
                         <description> », qui ne fait que répéter ce qui est
                         déjà lu juste au-dessus via m.anomalie. Un message qui
                         ne dit rien de plus que ce libellé OU que le libellé
-                        du catalogue (règle neDitRienDePlus) n'est pas un
-                        vrai mot non plus. Une entrée ou un ajustement n'a pas
-                        d'anomalie : son commentaire, à lui, est un vrai mot
-                        écrit à la saisie — sauf une sortie SANS anomalie liée
-                        dont le texte est identique à celui d'une AUTRE sortie
-                        sans anomalie, n'importe où dans la table
-                        (commentairesRepetes) : c'est un motif recopié, pas un
-                        mot écrit sur cette ligne-là. */}
+                        du catalogue (règle neDitRienDePlus) n'est pas un vrai
+                        mot non plus. Une SORTIE sans anomalie liée montre son
+                        commentaire EN CLAIR juste au-dessus (comme m.anomalie)
+                        et n'a donc pas de bulle non plus : une bulle promet un
+                        mot en plus de ce qui est déjà lu, pas une redite. Une
+                        entrée ou un ajustement n'a pas d'anomalie et rien
+                        n'est montré en clair au-dessus : son commentaire, lui,
+                        est un vrai mot écrit à la saisie, et reste en bulle. */}
                     <ApercuFil
                       messages={
                         m.anomalie_id
                           ? (filParAnomalie.get(m.anomalie_id) ?? []).filter(
                               (msg) => !neDitRienDePlus(msg.texte, m.anomalie, m.catalogue_libelle),
                             )
-                          : m.commentaire && !commentairesRepetes.has(m.commentaire)
+                          : m.type !== "sortie" && m.commentaire
                             ? [
                                 {
                                   commentaire_id: m.id,
