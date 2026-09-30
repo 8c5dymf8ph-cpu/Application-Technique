@@ -28,12 +28,14 @@ export default async function Administration() {
   if (!profil) redirect("/profil");
   if (!peutValider(profil.role)) redirect("/");
 
-  const [c] = await sql<{ courriels: number; controle: number; alertes: number }[]>`
+  const [c] = await sql<{ courriels: number; controle: number; alertes: number; variations: number }[]>`
     select
       (select count(*) from emails_envoyes where envoye_le is null)::int as courriels,
       (select count(*) from v_controle_donnees)::int                     as controle,
       (select count(*) from alertes_destinataires
-        where actif and cardinality(destinataires) > 0)::int             as alertes`;
+        where actif and cardinality(destinataires) > 0)::int             as alertes,
+      (select count(*) from v_prix_produit
+        where variation_pct is not null and variation_pct <> 0)::int     as variations`;
 
   // Le journal n'existe qu'après la 0021 : nommer une table absente casse
   // l'écran entier, pas seulement la requête.
@@ -104,6 +106,13 @@ export default async function Administration() {
             detail="Les anomalies effacées, avec ce qu’elles emportaient"
             badge={j.n}
             ton="bg-surface"
+          />
+          <Tuile
+            href="/administration/prix"
+            titre="Variations de prix"
+            detail="Ce qui a changé au dernier achat, avec la date"
+            badge={c.variations}
+            ton="bg-blue-soft"
           />
           <Tuile
             href="/administration/export"
