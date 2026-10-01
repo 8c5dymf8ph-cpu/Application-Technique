@@ -10,6 +10,7 @@ import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Frise, Recherche, Stat } from "@/app/composants/suivi";
 import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
 import { MenuFiltre } from "@/app/composants/menu-filtre";
+import type { LigneBouteille } from "@/lib/courriel";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ type Dossier = {
   commentaire: string | null;
   /** `null` tant que la migration 0027 n'est pas jouée : la colonne n'existe pas encore. */
   redoter: boolean | null;
+  lignes: LigneBouteille[];
 };
 
 const LIBELLE: Record<string, string> = {
@@ -96,7 +98,7 @@ export default async function Dossiers({
                responsable::text, client_nom, constate_par, constate_le, statut::text,
                famille, jours_ouvert, urgent, montant, facturable_client,
                etape_constate, etape_transmis, etape_client_contacte, etape_resolue,
-               commentaire, redoter
+               commentaire, redoter, lignes
         from v_dossiers_bouteille
         where (${filtre} = 'tous'
             or (${filtre} = 'urgent' and urgent)
@@ -115,7 +117,7 @@ export default async function Dossiers({
                responsable::text, client_nom, constate_par, constate_le, statut::text,
                famille, jours_ouvert, urgent, montant, facturable_client,
                etape_constate, etape_transmis, etape_client_contacte, etape_resolue,
-               commentaire, null::boolean as redoter
+               commentaire, null::boolean as redoter, lignes
         from v_dossiers_bouteille
         where (${filtre} = 'tous'
             or (${filtre} = 'urgent' and urgent)
@@ -129,6 +131,16 @@ export default async function Dossiers({
               : sql`constate_le desc`
         }
         limit 60`;
+
+  // On reconnaît une bouteille à sa couleur en chambre, pas à son nom
+  // (rule 2quater) : un repère pour chaque ligne du dossier, dans la liste
+  // elle-même — sans lui, rien ne dit d'un coup d'œil laquelle manque.
+  const typesBouteille = new Map(
+    (
+      await sql<{ code: string; couleur: string | null }[]>`
+        select code, couleur from bouteille_types`
+    ).map((b) => [b.code, b.couleur]),
+  );
 
   async function avancer(donnees: FormData) {
     "use server";
@@ -275,7 +287,17 @@ export default async function Dossiers({
                             <span className="text-ink-faint italic">Client non nommé</span>
                           )}
                         </p>
-                        <p className="text-[11.5px] text-ink-faint">
+                        <p className="text-[11.5px] text-ink-faint flex items-center flex-wrap gap-x-1">
+                          <span className="inline-flex items-center gap-1">
+                            {d.lignes.map((l) => (
+                              <span
+                                key={l.code}
+                                aria-hidden
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ background: typesBouteille.get(l.code) ?? "#8E8AA3" }}
+                              />
+                            ))}
+                          </span>
                           {d.bouteille} · {d.nature === "casse" ? "cassée" : "emportée"} ·{" "}
                           {depuis(d.jours_ouvert, d.constate_le)}
                           {/* Le remplacement, invisible jusqu'ici : sans lui,
