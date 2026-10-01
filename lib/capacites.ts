@@ -142,6 +142,15 @@ const ATTENDUES: Attendue[] = [
       "remplacement compté deux fois sur la même chambre.",
     verifier: () => vueContient("v_incidents_bouteille", "i.redoter"),
   },
+  {
+    titre: "Fusionner les doublons du catalogue",
+    sans:
+      "« Le catalogue » reste grisé : deux libellés qui disent la même chose — « télérupteur " +
+      "spot et leds » et « télérupteur (spots/leds) » — ne peuvent pas être rapprochés, et le " +
+      "nombre affiché à côté d’un libellé (« vu N fois ») reste celui de l’import, jamais mis " +
+      "à jour par les déclarations faites depuis.",
+    verifier: () => regleContient("fn_fusionner_catalogue", "actif = false"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {
