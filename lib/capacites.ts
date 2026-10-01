@@ -151,6 +151,13 @@ const ATTENDUES: Attendue[] = [
       "à jour par les déclarations faites depuis.",
     verifier: () => regleContient("fn_fusionner_catalogue", "actif = false"),
   },
+  {
+    titre: "Vérifier et défaire une fusion du catalogue",
+    sans:
+      "Un libellé n’a pas de numéro à vérifier après une fusion, et une fusion ne peut pas " +
+      "être défaite : « Le catalogue » fonctionne, mais sans filet.",
+    verifier: () => tableExiste("fusions_catalogue"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {
