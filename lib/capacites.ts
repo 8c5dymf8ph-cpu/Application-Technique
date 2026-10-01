@@ -142,6 +142,22 @@ const ATTENDUES: Attendue[] = [
       "remplacement compté deux fois sur la même chambre.",
     verifier: () => vueContient("v_incidents_bouteille", "i.redoter"),
   },
+  {
+    titre: "Fusionner les doublons du catalogue",
+    sans:
+      "« Le catalogue » reste grisé : deux libellés qui disent la même chose — « télérupteur " +
+      "spot et leds » et « télérupteur (spots/leds) » — ne peuvent pas être rapprochés, et le " +
+      "nombre affiché à côté d’un libellé (« vu N fois ») reste celui de l’import, jamais mis " +
+      "à jour par les déclarations faites depuis.",
+    verifier: () => regleContient("fn_fusionner_catalogue", "actif = false"),
+  },
+  {
+    titre: "Vérifier et défaire une fusion du catalogue",
+    sans:
+      "Un libellé n’a pas de numéro à vérifier après une fusion, et une fusion ne peut pas " +
+      "être défaite : « Le catalogue » fonctionne, mais sans filet.",
+    verifier: () => tableExiste("fusions_catalogue"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

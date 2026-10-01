@@ -349,6 +349,24 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
   },
   intervenant: { ton: "green", texte: "Ajouté à la liste des intervenants." },
   retire: { ton: "green", texte: "Retiré de la liste. Son historique lui reste attaché." },
+  fusionne: {
+    ton: "green",
+    texte:
+      "Fusion effectuée. La rédaction est devenue identique, et le comptage des " +
+      "récurrences les compte désormais ensemble.",
+  },
+  "fusion-incomplete": {
+    ton: "red",
+    texte:
+      "Rien n’a été fusionné : cochez au moins un libellé à fusionner, et marquez " +
+      "lequel garder.",
+  },
+  "fusion-annulee": {
+    ton: "green",
+    texte:
+      "Fusion annulée. Chaque anomalie a repris exactement ce qu’elle portait avant, " +
+      "et les libellés retirés sont de retour dans le choix.",
+  },
   remis: { ton: "green", texte: "Remis dans la liste des intervenants." },
   "declare-sans-photo": {
     ton: "red",

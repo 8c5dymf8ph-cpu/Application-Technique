@@ -53,3 +53,16 @@ select a.sharepoint_id, a.description, t_ligne.code as type_ligne,
  where a.statut in ('a_faire', 'en_cours')
    and t_ligne.code is distinct from t_catalogue.code
  order by a.sharepoint_id;
+
+-- ---------------------------------------------------------------------------
+-- 4. La liste nominative des anomalies actives sans type (le compte de la
+--    requête 2, avec de quoi les retrouver et les corriger une par une
+--    depuis leur fiche — /anomalie/[id] porte désormais ce geste).
+-- ---------------------------------------------------------------------------
+select a.id, a.sharepoint_id, a.description, a.statut,
+       e.code as lieu, a.catalogue_id, c.libelle as libelle_catalogue
+  from anomalies a
+  left join emplacements e on e.id = a.emplacement_id
+  left join catalogue_anomalies c on c.id = a.catalogue_id
+ where a.statut in ('a_faire', 'en_cours') and a.type_id is null
+ order by a.sharepoint_id;

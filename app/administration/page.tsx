@@ -4,7 +4,7 @@ import { capacites } from "@/lib/capacites";
 import { version } from "@/lib/version";
 import { migrationsEnAttente } from "@/lib/migrations";
 import { profilActif } from "@/lib/profil";
-import { peutValider } from "@/lib/domaine";
+import { peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 import { tableExiste } from "@/lib/schema";
 
@@ -114,6 +114,14 @@ export default async function Administration() {
             badge={c.variations}
             ton="bg-blue-soft"
           />
+          {suitLesDossiers(profil.role) && (
+            <Tuile
+              href="/administration/catalogue"
+              titre="Le catalogue"
+              detail="Fusionner les libellés qui disent la même chose"
+              ton="bg-surface"
+            />
+          )}
           <Tuile
             href="/administration/export"
             titre="Exporter"
