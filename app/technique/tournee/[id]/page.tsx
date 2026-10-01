@@ -988,23 +988,32 @@ export default async function DetailTournee({
               Un renvoi reconstruit le message avec l’état d’aujourd’hui.
             </p>
             <form action={renvoyer} className="flex gap-2">
-              <button
+              <BoutonEnvoi
                 name="quoi"
                 value="technicien"
                 className="flex-1 h-[46px] rounded-[12px] bg-surface border border-line text-[13.5px]"
               >
                 Ce que l’intervenant a rendu
-              </button>
-              <button
+              </BoutonEnvoi>
+              <BoutonEnvoi
                 name="quoi"
                 value="complet"
                 className="flex-1 h-[46px] rounded-[12px] bg-plum text-white text-[13.5px] font-medium"
               >
                 Le récapitulatif complet
-              </button>
+              </BoutonEnvoi>
             </form>
           </section>
         )}
+
+        {/* Le passage, en PDF : de quoi le garder, l'imprimer, le joindre à
+            un échange, sans dépendre de l'application pour le relire. */}
+        <a
+          href={`/api/export/passage/${id}`}
+          className="h-[46px] rounded-[12px] bg-surface border border-line text-[13.5px] grid place-items-center"
+        >
+          Télécharger le PDF du passage
+        </a>
 
         <Link
           href={"/technique/historique" as Route}
