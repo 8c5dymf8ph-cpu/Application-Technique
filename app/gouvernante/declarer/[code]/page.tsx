@@ -8,6 +8,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import {
+  aujourdhuiISO,
   jours,
   LIBELLE_STATUT,
   peutValider,
@@ -323,7 +324,10 @@ export default async function Declarer({
                                  constate_par, saisie_par, declare_le, priorite)
           select ${emplacement_id}, c.id, c.type_id, c.libelle, ${profil_!.id},
                  ${profil_!.id},
-                 coalesce(${jourDuConstat ?? null}::date, current_date),
+                 -- L'heure de PARIS, jamais celle du serveur (lib/domaine.ts) :
+                 -- une déclaration entre minuit et 2h du matin heure française
+                 -- reculait d'un jour en se fiant à current_date côté base.
+                 ${jourDuConstat ?? aujourdhuiISO()}::date,
                  coalesce(${presseChoisie}::priorite_anomalie, 'normale')
           from catalogue_anomalies c where c.id = ${catalogue_id}
           returning id`;

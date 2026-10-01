@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { deposerRecap } from "./recap";
+import { aujourdhuiISO } from "./domaine";
 
 export type Intervenant = {
   utilisateur_id: string | null;
@@ -50,6 +51,12 @@ export async function tourneeEnCours(
    */
   jour?: string,
 ): Promise<Tournee> {
+  // Le jour du passage, en heure de PARIS — jamais `current_date` côté base :
+  // entre minuit et 1h ou 2h du matin heure française, un technicien qui
+  // passe reculait d'un jour sans que rien ne le signale (même raison que
+  // `jourISO`/`FUSEAU_HOTEL` dans lib/domaine.ts).
+  const aujourdhui = jour ?? aujourdhuiISO();
+
   // Ce qu'il a laissé ouvert un autre jour : on le rend pour lui, et le
   // récapitulatif de clôture part comme s'il avait appuyé sur « Fin
   // d'intervention ».
@@ -59,7 +66,7 @@ export async function tourneeEnCours(
     const oubliees = await sql<{ id: string }[]>`
       update tournees set cloturee_le = now()
        where cloturee_le is null
-         and date_tournee < current_date
+         and date_tournee < ${aujourdhui}::date
          and technicien_id  is not distinct from ${i.utilisateur_id}
          and prestataire_id is not distinct from ${i.prestataire_id}
       returning id`;
@@ -74,7 +81,7 @@ export async function tourneeEnCours(
   // et `fn_creer_tournee` retrouve celle du jour plutôt que d'en ouvrir une.
   const [creee] = await sql<{ id: string }[]>`
     select id from fn_creer_tournee(${i.utilisateur_id}, ${i.prestataire_id},
-                                    ${jour ?? null}::date)`;
+                                    ${aujourdhui}::date)`;
   const [t] = await sql<Tournee[]>`
     select t.id, t.reference, t.date_tournee, t.cloturee_le,
            (select count(*) from interventions x where x.tournee_id = t.id)::int

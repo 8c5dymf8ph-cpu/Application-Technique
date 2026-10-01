@@ -151,3 +151,19 @@ export function jourISO(v: string | Date | null | undefined): string {
 export function aujourdhuiISO(): string {
   return jourISO(new Date());
 }
+
+/**
+ * « vendredi 2 octobre », en heure de Paris.
+ *
+ * Un `new Date().toLocaleDateString("fr-FR", {...})` sans fuseau précisé lit
+ * l'horloge UTC du serveur : entre 22h et minuit UTC (minuit à 2h du matin
+ * heure française), l'accueil affichait encore la veille.
+ */
+export function aujourdhuiLong(): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: FUSEAU_HOTEL,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+}

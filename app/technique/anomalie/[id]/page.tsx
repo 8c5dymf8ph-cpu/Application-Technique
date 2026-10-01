@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { suitLesDossiers } from "@/lib/domaine";
+import { aujourdhuiISO, suitLesDossiers } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { Entete } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
@@ -212,9 +212,14 @@ export default async function TraiterAnomalie({
      * dans cette tournée.
      */
     const [intervention] = await sql<{ id: string }[]>`
-      insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id, saisie_par)
+      insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id,
+                                 saisie_par, date_intervention)
       select ${id}, ${tournee.id}, ${intervenant.utilisateur_id},
-             ${intervenant.prestataire_id}, ${profil_.id}
+             ${intervenant.prestataire_id}, ${profil_.id},
+             -- La date du PASSAGE, jamais celle que poserait le défaut de la
+             -- colonne (current_date côté base, en heure du serveur) : une
+             -- intervention ne porte pas une date différente de sa tournée.
+             ${tournee.date_tournee}::date
        where not exists (
          select 1 from interventions
           where anomalie_id = ${id} and tournee_id = ${tournee.id})

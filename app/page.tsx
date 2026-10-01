@@ -5,7 +5,7 @@ import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif, type Profil } from "@/lib/profil";
 import { saTournee } from "@/lib/acces";
-import { peutValider } from "@/lib/domaine";
+import { aujourdhuiLong, peutValider } from "@/lib/domaine";
 import { Compteur, Tuile } from "./composants/ui";
 
 export const dynamic = "force-dynamic";
@@ -93,13 +93,7 @@ export default async function Accueil() {
         <h1 className="font-display font-bold text-[32px] leading-tight tracking-tight">
           Hôtel Parisianer
         </h1>
-        <p className="text-[13px] text-ink-faint mt-1">
-          {new Date().toLocaleDateString("fr-FR", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          })}
-        </p>
+        <p className="text-[13px] text-ink-faint mt-1">{aujourdhuiLong()}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">
@@ -216,13 +210,7 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
         <h1 className="font-display font-bold text-[32px] leading-tight tracking-tight">
           Hôtel Parisianer
         </h1>
-        <p className="text-[14px] text-ink-faint mt-1">
-          {new Date().toLocaleDateString("fr-FR", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          })}
-        </p>
+        <p className="text-[14px] text-ink-faint mt-1">{aujourdhuiLong()}</p>
       </div>
 
       <nav className="flex flex-col gap-3.5">

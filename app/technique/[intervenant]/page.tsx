@@ -284,7 +284,15 @@ export default async function Tournee({
   // Le jour affiché en grand est celui du PASSAGE, pas celui de l'horloge.
   // Saisir un passage du 3 septembre en lisant « 23.mar » en haut de l'écran,
   // c'est se tromper de journée sans s'en apercevoir.
-  const aujourdhui = historique ? new Date(`${passe}T12:00:00`) : new Date();
+  //
+  // Ancré à midi, dans les deux cas : un `new Date()` brut, formaté sans
+  // préciser le fuseau, lit l'horloge UTC du serveur — entre 22h et minuit
+  // UTC (minuit à 2h du matin heure française), le jour affiché reculait
+  // d'un jour entier. `aujourdhuiISO()` calcule le bon jour en heure de
+  // Paris ; l'ancrer à midi, comme le fait déjà le cas historique, met le
+  // reste de l'écran (qui lit `aujourdhui` sans fuseau explicite) à l'abri
+  // du même piège.
+  const aujourdhui = new Date(`${historique ? passe : aujourdhuiISO()}T12:00:00`);
   const jourCourt = aujourdhui.toLocaleDateString("fr-FR", { weekday: "short" });
 
   /**
