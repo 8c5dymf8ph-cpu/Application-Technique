@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
@@ -7,6 +8,7 @@ import { colonneExiste, regleContient, tableExiste } from "@/lib/schema";
 import { Entete, Vide, Confirmation } from "@/app/composants/ui";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
+import { LigneDepliante } from "@/app/composants/depliant";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,20 @@ type Fusion = {
   annulee_le: string | Date | null;
   annulee_par: string | null;
   jours_depuis_annulation: number | null;
+};
+
+/**
+ * Une anomalie déplacée par une fusion, identifiée comme l'hôtel la connaît —
+ * par le numéro de SON tableau d'origine (`sharepoint_id`), pas par un numéro
+ * interne à l'application. « Reformulée », jamais supprimée : la ligne existe
+ * toujours, avec son fil, ses photos, ses interventions ; seuls son libellé
+ * et le libellé du catalogue auquel elle est rattachée ont changé.
+ */
+type AnomalieFusionnee = {
+  fusion_id: string;
+  anomalie_id: string;
+  sharepoint_id: number | null;
+  lieu: string | null;
 };
 
 /**
@@ -111,6 +127,19 @@ export default async function Catalogue({
          order by f.fusionne_le desc
          limit 15`
     : [];
+
+  const anomaliesFusionnees =
+    journalPret && fusions.length > 0
+      ? await sql<AnomalieFusionnee[]>`
+          select fca.fusion_id, fca.anomalie_id, a.sharepoint_id, e.code as lieu
+            from fusions_catalogue_anomalies fca
+            join anomalies a on a.id = fca.anomalie_id
+            left join emplacements e on e.id = a.emplacement_id
+           where fca.fusion_id = any(${fusions.map((f) => f.id)}::uuid[])
+           order by a.sharepoint_id nulls last`
+      : [];
+  const parFusion = (fusionId: string) =>
+    anomaliesFusionnees.filter((a) => a.fusion_id === fusionId);
 
   async function fusionner(donnees: FormData) {
     "use server";
@@ -276,34 +305,67 @@ export default async function Catalogue({
         {journalPret && fusions.length > 0 && (
           <section className="flex flex-col gap-2.5 pt-2 border-t border-line">
             <h2 className="etiquette">Fusions récentes</h2>
+            <p className="text-[12px] text-ink-faint text-pretty leading-snug">
+              Rien n’est supprimé : les anomalies listées sont reformulées — leur libellé et leur
+              rattachement au catalogue changent, le reste (fil, photos, interventions) reste
+              intact. Repérez-les par leur numéro d’origine, celui de votre tableau.
+            </p>
             <ul className="flex flex-col gap-2">
               {fusions.map((f) => (
-                <li key={f.id} className="carte px-4 py-3 flex flex-col gap-1.5">
-                  <p className="text-[13.5px] leading-snug text-pretty">
-                    <span className="tabular-nums text-ink-faint">#{f.survivant_reference}</span>{" "}
-                    « {f.survivant_libelle} » ←{" "}
-                    {f.autres_libelles
-                      .map((l, i) => `#${f.autres_references[i]} « ${l} »`)
-                      .join(", ")}
-                  </p>
-                  <p className="text-[11.5px] text-ink-faint">
-                    {f.nb_anomalies} anomalie{f.nb_anomalies === 1 ? "" : "s"} déplacée
-                    {f.nb_anomalies === 1 ? "" : "s"} · {f.fusionne_par ?? "quelqu’un"},{" "}
-                    {depuis(f.jours_depuis, f.fusionne_le)}
-                  </p>
-                  {f.annulee_le ? (
-                    <p className="text-[11.5px] text-green">
-                      Annulée · {f.annulee_par ?? "quelqu’un"},{" "}
-                      {depuis(f.jours_depuis_annulation ?? 0, f.annulee_le)}
+                <li key={f.id}>
+                  <LigneDepliante
+                    titre={
+                      <>
+                        <span className="tabular-nums text-ink-faint">
+                          #{f.survivant_reference}
+                        </span>{" "}
+                        « {f.survivant_libelle} »
+                      </>
+                    }
+                    detail={`${f.nb_anomalies} anomalie${f.nb_anomalies === 1 ? "" : "s"} déplacée${f.nb_anomalies === 1 ? "" : "s"} · ${f.fusionne_par ?? "quelqu’un"}, ${depuis(f.jours_depuis, f.fusionne_le)}`}
+                    marque={
+                      f.annulee_le ? (
+                        <span className="text-[11px] text-green">Annulée</span>
+                      ) : undefined
+                    }
+                  >
+                    <p className="text-[12.5px] text-ink-faint text-pretty leading-snug">
+                      Fusionné dans celui-ci :{" "}
+                      {f.autres_libelles
+                        .map((l, i) => `#${f.autres_references[i]} « ${l} »`)
+                        .join(", ")}
                     </p>
-                  ) : (
-                    <form action={annuler} className="self-start">
-                      <input type="hidden" name="fusion_id" value={f.id} />
-                      <BoutonEnvoi className="text-[12.5px] text-red underline underline-offset-4">
-                        Annuler cette fusion
-                      </BoutonEnvoi>
-                    </form>
-                  )}
+
+                    <ul className="flex flex-col gap-1">
+                      {parFusion(f.id).map((a) => (
+                        <li key={a.anomalie_id}>
+                          <Link
+                            href={`/anomalie/${a.anomalie_id}`}
+                            className="text-[12.5px] text-plum underline underline-offset-4"
+                          >
+                            {a.sharepoint_id !== null
+                              ? `#${a.sharepoint_id}`
+                              : "créée dans l’application"}
+                            {a.lieu ? ` — ${a.lieu}` : ""}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {f.annulee_le ? (
+                      <p className="text-[11.5px] text-green">
+                        Annulée · {f.annulee_par ?? "quelqu’un"},{" "}
+                        {depuis(f.jours_depuis_annulation ?? 0, f.annulee_le)}
+                      </p>
+                    ) : (
+                      <form action={annuler} className="self-start">
+                        <input type="hidden" name="fusion_id" value={f.id} />
+                        <BoutonEnvoi className="text-[12.5px] text-red underline underline-offset-4">
+                          Annuler cette fusion
+                        </BoutonEnvoi>
+                      </form>
+                    )}
+                  </LigneDepliante>
                 </li>
               ))}
             </ul>
