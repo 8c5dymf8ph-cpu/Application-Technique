@@ -33,6 +33,9 @@ type Anomalie = {
   jours_depuis: number;
   declare_le: string | Date;
   priorite: string;
+  type_id: string | null;
+  type_intervention: string | null;
+  catalogue_libelle: string | null;
 };
 
 type MaterielLigne = {
@@ -60,7 +63,11 @@ export default async function DetailAnomalie({
            (select x.priorite::text from anomalies x where x.id = v.anomalie_id) as priorite,
            (select et.nom from etages et join emplacements e on e.etage_id = et.id
              where e.id = v.emplacement_id) as etage,
-           constate_par, jours_depuis
+           constate_par, jours_depuis,
+           (select x.type_id from anomalies x where x.id = v.anomalie_id) as type_id,
+           type_intervention,
+           (select c.libelle from catalogue_anomalies c where c.id = v.catalogue_id)
+             as catalogue_libelle
     from v_anomalies_du_lieu v where anomalie_id = ${id}`;
   if (!anomalie) notFound();
 
@@ -138,6 +145,15 @@ export default async function DetailAnomalie({
          order by et.ordre, e.code`
     : [];
 
+  // Le métier décide si un intervenant SPÉCIALISÉ voit l'anomalie
+  // (fn_anomalies_pour_intervenant lit anomalies.type_id) — une ligne reprise
+  // sans type, ou avec le mauvais, est invisible pour tous les spécialistes
+  // sans qu'aucun écran ne le montre jusqu'ici.
+  const types = modifiable
+    ? await sql<{ id: string; nom: string }[]>`
+        select id, nom from types_intervention where actif order by nom`
+    : [];
+
   /**
    * Corriger une anomalie.
    *
@@ -160,6 +176,11 @@ export default async function DetailAnomalie({
     const priorite = String(donnees.get("priorite") ?? "normale");
     const jour = String(donnees.get("jour") ?? "").trim();
     const lieu = String(donnees.get("lieu") ?? "").trim();
+    // Vide = aucun type : visible seulement aux intervenants polyvalents.
+    // Un choix délibéré se fait en touchant le select — pas une case qu'on
+    // laisse par défaut, mais on ne force pas non plus une valeur qu'on ne
+    // connaît pas.
+    const typeId = String(donnees.get("type_id") ?? "").trim() || null;
     if (!description || !PRIORITES.includes(priorite as (typeof PRIORITES)[number])) return;
 
     // Une date vide ou mal formée ne doit pas effacer la date de déclaration :
@@ -174,6 +195,7 @@ export default async function DetailAnomalie({
                emplacement_id = coalesce(${lieu || null}::uuid, emplacement_id),
                declare_le     = coalesce(${dateValide}::date, declare_le::date)
                                   + declare_le::time,
+               type_id        = ${typeId}::uuid,
                maj_le         = now()
          where id = ${id}`;
     } catch (e) {
@@ -291,6 +313,20 @@ export default async function DetailAnomalie({
             >
               {LIBELLE_STATUT[anomalie.statut]}
             </span>
+            {/* Le métier décide qui la voit (les spécialistes ne voient que
+                le leur, règle 15) — jusqu'ici invisible sans ouvrir
+                « Corriger cette anomalie ». Une anomalie sans métier n'est
+                pas un cas neutre : elle disparaît pour tout intervenant
+                spécialisé, le dire en amber plutôt qu'en gris. */}
+            <span
+              className={
+                anomalie.type_intervention
+                  ? "px-2 py-0.5 rounded-md bg-surface-muted text-ink-soft"
+                  : "px-2 py-0.5 rounded-md bg-amber-soft text-amber"
+              }
+            >
+              {anomalie.type_intervention ?? "Aucun métier"}
+            </span>
             <span className="text-ink-faint">
               {anomalie.constate_par ? `${anomalie.constate_par}, ` : ""}
               {jours(anomalie.jours_depuis)}
@@ -375,6 +411,28 @@ export default async function DetailAnomalie({
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Métier</span>
+                <select
+                  name="type_id"
+                  defaultValue={anomalie.type_id ?? ""}
+                  className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
+                >
+                  <option value="">— Aucun (visible aux polyvalents seulement) —</option>
+                  {types.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nom}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[11px] text-ink-faint text-pretty">
+                  {anomalie.catalogue_libelle
+                    ? `Catalogue : « ${anomalie.catalogue_libelle} ». `
+                    : "Hors catalogue. "}
+                  C’est CE champ qui décide si un intervenant spécialisé voit l’anomalie — pas le
+                  catalogue seul, qui ne sert qu’aux anomalies créées depuis l’application.
+                </span>
               </label>
               <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
                 Corriger le lieu déplace l’anomalie dans l’historique de la chambre et dans le
