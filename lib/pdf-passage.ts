@@ -198,15 +198,23 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
 
   // Trois couleurs, une par moment — mêmes teintes que les vignettes de
   // l'application (text-blue / text-green / text-plum), pour reconnaître
-  // d'un coup d'œil laquelle est laquelle sans que chacune ait sa propre
-  // ligne de titre.
+  // d'un coup d'œil laquelle est laquelle. La couleur ne suffisait pas :
+  // il faut le mot à côté, pas seulement la teinte du cadre.
   const COULEUR_MOMENT: Record<string, ReturnType<typeof rgb>> = {
     constat: rgb(0.227, 0.388, 0.6),
     apres: rgb(0.122, 0.478, 0.302),
     validation: rgb(0.271, 0.227, 0.431),
   };
-  const TAILLE_VIGNETTE = 26;
-  const ESPACE_VIGNETTE = 4;
+  const LEGENDE_MOMENT: Record<string, string> = {
+    constat: "Constat",
+    apres: "Après",
+    validation: "Vérif.",
+  };
+  const TAILLE_VIGNETTE = 36;
+  const TAILLE_LEGENDE = 6.5;
+  const ESPACE_LEGENDE = 2;
+  const ESPACE_VIGNETTE = 6;
+  const HAUTEUR_BLOC_VIGNETTE = TAILLE_VIGNETTE + ESPACE_LEGENDE + TAILLE_LEGENDE + 2;
 
   for (const l of lignes) {
     const titre = `${l.emplacement} — ${l.description}`;
@@ -215,13 +223,19 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
      * Les vignettes se tiennent SUR LA LIGNE DU TITRE, pas les unes en
      * dessous des autres : une photo au constat, une après intervention et
      * une de vérification faisaient trois blocs de 110 points chacun — un
-     * passage de quinze anomalies avec photos tenait en dix pages. Elles
-     * sont minuscules (26 points) et toutes ensemble, bordées de la couleur
-     * de leur moment ; seule une photo illisible garde une ligne à elle,
-     * parce que rien ne doit disparaître en silence.
+     * passage de quinze anomalies avec photos tenait en dix pages. Chacune
+     * garde sa légende — le mot du moment, pas seulement sa couleur — sous
+     * une vignette qui reste petite ; seule une photo illisible garde une
+     * ligne à elle, parce que rien ne doit disparaître en silence.
      */
     const illisibles: string[] = [];
-    const vignettes: { image: Awaited<ReturnType<typeof doc.embedJpg>>; largeur: number; couleur: ReturnType<typeof rgb> }[] = [];
+    const vignettes: {
+      image: Awaited<ReturnType<typeof doc.embedJpg>>;
+      largeurImage: number;
+      largeur: number;
+      legende: string;
+      couleur: ReturnType<typeof rgb>;
+    }[] = [];
     for (const moment of ["constat", "apres", "validation"] as const) {
       for (const p of photos.filter((x) => x.anomalie_id === l.anomalie_id && x.moment === moment)) {
         if (typeMime(p.chemin) !== "image/jpeg") {
@@ -232,8 +246,16 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
         if (!octets) continue;
         try {
           const image = await doc.embedJpg(octets);
-          const largeur = (TAILLE_VIGNETTE * image.width) / image.height;
-          vignettes.push({ image, largeur, couleur: COULEUR_MOMENT[moment] });
+          const largeurImage = (TAILLE_VIGNETTE * image.width) / image.height;
+          const legende = LEGENDE_MOMENT[moment];
+          const largeurLegende = c.regular.widthOfTextAtSize(legende, TAILLE_LEGENDE);
+          vignettes.push({
+            image,
+            largeurImage,
+            largeur: Math.max(largeurImage, largeurLegende),
+            legende,
+            couleur: COULEUR_MOMENT[moment],
+          });
         } catch {
           // Un fichier corrompu ou illisible ne doit pas faire échouer tout
           // le PDF : on saute cette photo-là.
@@ -252,20 +274,34 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
       vignettes.length > 0 &&
       policeTitre.widthOfTextAtSize(titre, 12.5) + 14 + largeurVignettes <= LARGEUR_UTILE;
 
-    c.assurer(Math.max(12.5 * 1.35, TAILLE_VIGNETTE) + 4);
+    c.assurer(Math.max(12.5 * 1.35, HAUTEUR_BLOC_VIGNETTE) + 4);
 
     const dessinerVignettes = (xDepart: number, yHaut: number) => {
       let x = xDepart;
       for (const v of vignettes) {
+        const xImage = x + (v.largeur - v.largeurImage) / 2;
         c.page.drawRectangle({
-          x: x - 1,
+          x: xImage - 1,
           y: yHaut - TAILLE_VIGNETTE - 1,
-          width: v.largeur + 2,
+          width: v.largeurImage + 2,
           height: TAILLE_VIGNETTE + 2,
           borderColor: v.couleur,
           borderWidth: 1,
         });
-        c.page.drawImage(v.image, { x, y: yHaut - TAILLE_VIGNETTE, width: v.largeur, height: TAILLE_VIGNETTE });
+        c.page.drawImage(v.image, {
+          x: xImage,
+          y: yHaut - TAILLE_VIGNETTE,
+          width: v.largeurImage,
+          height: TAILLE_VIGNETTE,
+        });
+        const largeurLegende = c.regular.widthOfTextAtSize(v.legende, TAILLE_LEGENDE);
+        c.page.drawText(v.legende, {
+          x: x + (v.largeur - largeurLegende) / 2,
+          y: yHaut - TAILLE_VIGNETTE - ESPACE_LEGENDE - TAILLE_LEGENDE,
+          size: TAILLE_LEGENDE,
+          font: c.regular,
+          color: v.couleur,
+        });
         x += v.largeur + ESPACE_VIGNETTE;
       }
     };
@@ -276,13 +312,13 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
       c.page.drawText(titre, { x: MARGE, y: c.y - 12.5, size: 12.5, font: policeTitre, color: rgb(0.1, 0.09, 0.15) });
       if (reserveVignettesSurLaLigne) {
         dessinerVignettes(LARGEUR - MARGE - largeurVignettes, c.y);
-        c.y -= Math.max(12.5 * 1.35, TAILLE_VIGNETTE + 4);
+        c.y -= Math.max(12.5 * 1.35, HAUTEUR_BLOC_VIGNETTE + 4);
       } else {
         c.y -= 12.5 * 1.35;
         if (vignettes.length > 0) {
-          c.assurer(TAILLE_VIGNETTE + 4);
+          c.assurer(HAUTEUR_BLOC_VIGNETTE + 4);
           dessinerVignettes(MARGE, c.y);
-          c.y -= TAILLE_VIGNETTE + 4;
+          c.y -= HAUTEUR_BLOC_VIGNETTE + 4;
         }
       }
     } else {
@@ -291,9 +327,9 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
       // jamais un bloc par moment.
       c.texte(titre, { taille: 12.5, gras: true });
       if (vignettes.length > 0) {
-        c.assurer(TAILLE_VIGNETTE + 4);
+        c.assurer(HAUTEUR_BLOC_VIGNETTE + 4);
         dessinerVignettes(MARGE, c.y);
-        c.y -= TAILLE_VIGNETTE + 4;
+        c.y -= HAUTEUR_BLOC_VIGNETTE + 4;
       }
     }
     for (const chemin of illisibles) {
