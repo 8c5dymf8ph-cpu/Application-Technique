@@ -3,6 +3,7 @@ import {
   tableExiste,
   inventaireDeRepriseRetire,
   regleContient,
+  valeurEnumExiste,
   vueContient,
   vueExiste,
 } from "./schema";
@@ -157,6 +158,13 @@ const ATTENDUES: Attendue[] = [
       "Un libellé n’a pas de numéro à vérifier après une fusion, et une fusion ne peut pas " +
       "être défaite : « Le catalogue » fonctionne, mais sans filet.",
     verifier: () => tableExiste("fusions_catalogue"),
+  },
+  {
+    titre: "Photo de validation",
+    sans:
+      "La gouvernante ne peut pas joindre de photo à sa décision : le bouton reste là, " +
+      "mais l’enregistrer échoue dès qu’une photo est prise.",
+    verifier: () => valeurEnumExiste("moment_photo", "validation"),
   },
 ];
 

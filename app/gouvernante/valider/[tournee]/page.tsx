@@ -12,6 +12,7 @@ import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
 import { deposerRecapSiComplet } from "@/lib/recap";
 import { enregistrerPhoto } from "@/lib/stockage";
+import { valeurEnumExiste } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -223,14 +224,22 @@ export default async function ValiderLot({
      * et c'est corrigé ici. La photo reste consultable dans tous les cas —
      * y compris un refus : si l'anomalie revient en 'a_faire', c'est au
      * technicien de voir ce qu'elle a vu.
+     *
+     * Le code part en ligne avant la migration 0032 : tant que `moment_photo`
+     * ne porte pas encore `'validation'`, l'insertion échoue — et comme elle
+     * vient APRÈS l'écriture de la décision, c'est la décision elle-même qui
+     * semblait échouer. On ne tente l'insertion que si la base sait déjà
+     * recevoir ce moment ; la décision, elle, s'enregistre dans tous les cas.
      */
-    for (const fichier of donnees.getAll("photos")) {
-      if (!(fichier instanceof File) || fichier.size === 0) continue;
-      const chemin = await enregistrerPhoto(fichier);
-      if (!chemin) continue;
-      await sql`
-        insert into photos_anomalie (anomalie_id, intervention_id, chemin, moment, prise_par)
-        values (${anomalie}, ${intervention}, ${chemin}, 'validation', ${profil_.id})`;
+    if (await valeurEnumExiste("moment_photo", "validation")) {
+      for (const fichier of donnees.getAll("photos")) {
+        if (!(fichier instanceof File) || fichier.size === 0) continue;
+        const chemin = await enregistrerPhoto(fichier);
+        if (!chemin) continue;
+        await sql`
+          insert into photos_anomalie (anomalie_id, intervention_id, chemin, moment, prise_par)
+          values (${anomalie}, ${intervention}, ${chemin}, 'validation', ${profil_.id})`;
+      }
     }
 
     // Dès que plus rien n'attend son avis, le récapitulatif complet est rédigé
