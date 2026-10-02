@@ -1056,16 +1056,37 @@ export default async function Dossier({
                       </p>
                     )}
 
-                    {piecesDe(a.id).map((p) => (
-                      <VoirDocument
-                        key={p.id}
-                        chemin={p.chemin}
-                        titre={p.nom ?? p.nature_piece}
-                        className="mt-1 text-[12.5px] text-plum underline underline-offset-4 self-start block"
-                      >
-                        {p.nature_piece} — {p.nom ?? "voir la pièce"}
-                      </VoirDocument>
-                    ))}
+                    {piecesDe(a.id).length > 0 && (
+                      // Un <div>, pas un <p> : VoirDocument pose un <dialog>
+                      // à côté du bouton pour les pièces qui ne sont pas des
+                      // PDF, et <dialog> n'est pas un contenu que <p> peut
+                      // recevoir — le navigateur referme alors le <p> plus
+                      // tôt que React ne l'attend, et l'hydratation échoue
+                      // (erreur #418, attrapée dans un vrai navigateur).
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {piecesDe(a.id).map((p) => (
+                          <VoirDocument
+                            key={p.id}
+                            chemin={p.chemin}
+                            titre={p.nom ?? p.nature_piece}
+                            ariaLabel={`${p.nature_piece} — ${p.nom ?? "voir la pièce"}`}
+                            className="inline-flex items-center gap-1 h-[22px] pl-1.5 pr-2 rounded-md bg-green-soft text-green text-[11.5px] font-medium"
+                          >
+                            {/* Vert, comme la pastille de facture de l'historique
+                                technique : d'un coup d'œil, la pièce est là —
+                                le nom entier n'apprend rien qu'un appui ne
+                                donne pas. */}
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
+                                 strokeLinejoin="round" aria-hidden>
+                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 3v5h5" />
+                            </svg>
+                            {p.nature_piece}
+                          </VoirDocument>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Corriger, sur place : on ne quitte pas la chronologie
                         pour changer une date. */}
