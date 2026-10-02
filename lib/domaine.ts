@@ -167,3 +167,22 @@ export function aujourdhuiLong(): string {
     month: "long",
   }).format(new Date());
 }
+
+/**
+ * « 22:26 », en heure de Paris.
+ *
+ * Même défaut que `aujourdhuiLong` mais sur l'heure : un `toLocaleTimeString`
+ * sans fuseau précisé lit l'horloge UTC du serveur. « Passage rendu à 22:26 »
+ * affiché juste après minuit heure de Paris montrait l'heure UTC telle
+ * quelle — un passage clôturé à 00:26 (quatre minutes plus tôt) semblait
+ * dater de la veille au soir, et « Reprendre le passage », pourtant juste,
+ * passait pour une erreur.
+ */
+export function heureISO(v: string | Date): string {
+  const d = v instanceof Date ? v : new Date(v);
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: FUSEAU_HOTEL,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}

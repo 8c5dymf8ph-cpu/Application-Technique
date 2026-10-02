@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { aujourdhuiISO, peutSupprimer, peutValider, suitLesDossiers } from "@/lib/domaine";
+import { aujourdhuiISO, heureISO, peutSupprimer, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { annulerRecapNonParti, deposerRecap } from "@/lib/recap";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
@@ -757,12 +757,8 @@ export default async function Tournee({
       {tournee.cloturee_le ? (
         <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground flex flex-col gap-2">
           <p className="text-[13px] text-ink-faint text-pretty">
-            Passage rendu à{" "}
-            {new Date(tournee.cloturee_le).toLocaleTimeString("fr-FR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-            . Si tu reviens aujourd’hui, reprends-le : c’est la même journée,
+            Passage rendu à {heureISO(tournee.cloturee_le)}. Si tu reviens
+            aujourd’hui, reprends-le : c’est la même journée,
             donc le même passage.
           </p>
           <form action={reprendre}>
