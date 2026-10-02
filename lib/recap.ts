@@ -20,13 +20,24 @@ import {
 export async function deposerRecap(tournee: string, complet: boolean, renvoi = false) {
   const categorie = complet ? "recap_intervention" : "recap_technicien";
 
-  // Un même message n'est jamais déposé deux fois — sauf demande explicite :
-  // « renvoyer » est une décision, elle se distingue d'un doublon accidentel.
+  /**
+   * Un même message n'est jamais déposé deux fois — sauf demande explicite :
+   * « renvoyer » est une décision, elle se distingue d'un doublon accidentel.
+   *
+   * Le doublon se juge sur la tournée, pas sur `emails_envoyes` : cette table
+   * garde TOUT, y compris un message réellement parti pour un cycle déjà
+   * clos — « ce qui est parti reste parti » (règle 10septies). Compter ses
+   * lignes empêchait alors, pour toujours, le complément que la reprise
+   * promet explicitement (« un complément suivra ») : `mail_recap_envoye_le`
+   * / `mail_technicien_envoye_le` est la seule colonne que
+   * `annulerRecap(Complet)NonParti` remet à nul quand un fait nouveau rouvre
+   * le cycle, donc la seule à interroger ici.
+   */
   if (!renvoi) {
-    const [deja] = await sql<{ n: number }[]>`
-      select count(*)::int as n from emails_envoyes
-      where reference_id = ${tournee} and categorie = ${categorie}`;
-    if (deja.n > 0) return;
+    const [t0] = await sql<{ deja: string | null; deja_technicien: string | null }[]>`
+      select mail_recap_envoye_le as deja, mail_technicien_envoye_le as deja_technicien
+      from tournees where id = ${tournee}`;
+    if (complet ? t0?.deja : t0?.deja_technicien) return;
   }
 
   // Les adresses se règlent depuis /administration, comme celles de l'alerte
@@ -147,15 +158,17 @@ export async function annulerRecapNonParti(tournee: string): Promise<boolean> {
        and envoye_le is null
     returning id`;
 
-  // L'horodatage ne se retire QUE si plus aucun message n'est parti pour ce
-  // lot : sinon on effacerait la trace d'un envoi réel.
-  const [reste] = await sql<{ n: number }[]>`
+  // Un message réellement parti n'est jamais effacé — sa ligne reste, pour
+  // de bon. Mais que quelque chose soit déjà parti ou non pour ce cycle, ce
+  // cycle est rouvert : l'horodatage de la TOURNÉE, lui, se remet à nul dans
+  // tous les cas, sinon `deposerRecap` refuserait pour toujours le
+  // complément qu'elle promet (« à la fin de la journée, un complément
+  // suivra »).
+  const [parti] = await sql<{ n: number }[]>`
     select count(*)::int as n from emails_envoyes
-     where reference_id = ${tournee} and categorie = 'recap_technicien'`;
-  if (reste.n === 0) {
-    await sql`update tournees set mail_technicien_envoye_le = null where id = ${tournee}`;
-  }
-  return effaces.length > 0 && reste.n === 0;
+     where reference_id = ${tournee} and categorie = 'recap_technicien' and envoye_le is not null`;
+  await sql`update tournees set mail_technicien_envoye_le = null where id = ${tournee}`;
+  return effaces.length > 0 && parti.n === 0;
 }
 
 /**
@@ -178,11 +191,12 @@ export async function annulerRecapCompletNonParti(tournee: string): Promise<bool
        and envoye_le is null
     returning id`;
 
-  const [reste] = await sql<{ n: number }[]>`
+  // Même geste que `annulerRecapNonParti` : l'historique d'un envoi réel ne
+  // bouge pas, mais l'horodatage de la tournée se remet à nul dans tous les
+  // cas, pour que le complément promis par la reprise reste possible.
+  const [parti] = await sql<{ n: number }[]>`
     select count(*)::int as n from emails_envoyes
-     where reference_id = ${tournee} and categorie = 'recap_intervention'`;
-  if (reste.n === 0) {
-    await sql`update tournees set mail_recap_envoye_le = null where id = ${tournee}`;
-  }
-  return effaces.length > 0 && reste.n === 0;
+     where reference_id = ${tournee} and categorie = 'recap_intervention' and envoye_le is not null`;
+  await sql`update tournees set mail_recap_envoye_le = null where id = ${tournee}`;
+  return effaces.length > 0 && parti.n === 0;
 }

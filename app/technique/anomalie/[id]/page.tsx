@@ -235,9 +235,9 @@ export default async function TraiterAnomalie({
 
     /**
      * Une anomalie ne se déclare qu'une fois par passage — SAUF si la
-     * gouvernante l'a renvoyée à refaire : c'est alors le même passage qui
-     * reprend la main sur un travail qu'il a déjà commencé, pas un troisième
-     * appui sur le même geste.
+     * gouvernante a rendu la main au technicien : c'est alors le même
+     * passage qui reprend sur un travail qu'il a déjà commencé, pas un
+     * troisième appui sur le même geste.
      *
      * Rien ne change à l'écran le temps que l'action réponde : on réappuie.
      * Trois appuis ont créé trois déclarations pour la même anomalie, et la
@@ -250,11 +250,20 @@ export default async function TraiterAnomalie({
      * JAMAIS — ni nouvel avis, ni nouvelle photo, ni mail, ni passage visible
      * dans l'historique, en silence.
      *
-     * On distingue donc : une intervention déjà là pour cette anomalie et
-     * cette tournée, dont l'anomalie est toujours `a_faire`, EST une reprise
-     * après refus — on s'y rattache. Dans tout autre état (encore en cours
-     * côté technicien, déjà en attente ou déjà validée), c'est le double
-     * envoi que la règle visait à l'origine.
+     * Un refus (`a_refaire`) renvoie l'anomalie à `a_faire` ; mais la
+     * gouvernante a TROIS issues (règle 11), et « en cours » renvoie
+     * exactement au même statut que porte, mi-passage, une anomalie que le
+     * technicien vient de cocher — `fn_anomalies_pour_intervenant` les
+     * remontre toutes les deux. Ne reconnaître que `a_faire` laissait « en
+     * cours » invisible à ce garde-fou : il tombait dans la branche du
+     * double envoi, `intervention` restait indéfinie, et l'appui ne
+     * produisait RIEN — ni avis, ni mail — alors que l'écran venait de le
+     * remontrer dans la liste à faire. La différence entre les deux
+     * `en_cours` tient à la tournée : encore ouverte, c'est le technicien qui
+     * vient de cocher (`tg_cloture_tournee` l'aurait basculée en
+     * `attente_validation` sinon) ; déjà close, un `en_cours` ne peut venir
+     * QUE d'une décision de la gouvernante — la sienne exige une tournée
+     * rendue (`t.cloturee_le is not null` dans `decider()`).
      */
     const [existante] = await sql<{ id: string; statut_anomalie: string }[]>`
       select i.id, a.statut::text as statut_anomalie
@@ -274,25 +283,34 @@ export default async function TraiterAnomalie({
                -- intervention ne porte pas une date différente de sa tournée.
                ${tournee.date_tournee}::date)
         returning id`;
-    } else if (existante.statut_anomalie === "a_faire") {
-      // Reprise après refus : même intervention, nouvel avis.
+    } else if (
+      existante.statut_anomalie === "a_faire" ||
+      (existante.statut_anomalie === "en_cours" && tournee.cloturee_le !== null)
+    ) {
+      // Reprise après un avis de la gouvernante (refus, ou « en cours » sur
+      // un passage déjà rendu) : même intervention, nouvel avis.
       intervention = { id: existante.id };
-      /**
-       * Le passage a déjà pu envoyer son récapitulatif complet — l'anomalie
-       * refusée y figurait, « à refaire » en clair (règle 10). Mais sa
-       * reprise aujourd'hui est un fait nouveau, que ce premier message ne
-       * pouvait pas connaître. Même geste que `reprendre()` pour un passage
-       * rendu trop tôt : ce qui n'est pas parti s'efface, ce qui EST parti
-       * reste parti — pour que la tournée puisse à nouveau mériter un
-       * récapitulatif, un complément, une fois cette reprise décidée.
-       */
-      await annulerRecapCompletNonParti(tournee.id);
     }
     // Déjà déclarée pendant ce passage, sans refus depuis : on ne double ni
     // la sortie de stock, ni les photos, ni l'avis.
     if (!intervention) {
       redirect(`${versLaTournee(nom, jourDuPassage, { fait: id })}#a-${id}` as Route);
     }
+
+    /**
+     * Le passage a déjà pu envoyer son récapitulatif complet — à la clôture,
+     * ou après une précédente reprise. Mais CETTE déclaration, qu'elle soit
+     * une anomalie toute neuve ou la reprise d'un refus, est un fait nouveau
+     * que ce premier message ne pouvait pas connaître. Même geste que
+     * `reprendre()` pour un passage rendu trop tôt : ce qui n'est pas parti
+     * s'efface, ce qui EST parti reste parti — pour que la tournée puisse à
+     * nouveau mériter un récapitulatif, un complément, une fois cette
+     * déclaration décidée. Appelée pour TOUTE déclaration qui aboutit, pas
+     * seulement la reprise : une anomalie neuve ajoutée à une tournée déjà
+     * récapitulée en a tout autant besoin, et la fonction ne fait rien
+     * quand il n'y a rien à annuler.
+     */
+    await annulerRecapCompletNonParti(tournee.id);
 
     // L'écran grise les articles épuisés, mais un lien recopié ou une réserve
     // vidée entre-temps passerait à travers : on revérifie ici.
