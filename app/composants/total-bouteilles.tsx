@@ -58,9 +58,18 @@ function Bouteille({ couleur, choisie }: { couleur: string; choisie: boolean }) 
 export function TotalBouteilles({
   types,
   libelle,
+  /**
+   * Les types déjà déclarés manquants dans cette chambre, en attente de
+   * remplacement : une casse ou une perte ne se déclare pas une seconde
+   * fois sur une bouteille qui est déjà partie — la chambre n'en a qu'UNE,
+   * elle ne peut pas en manquer deux. Ignoré en mode remplacement, où c'est
+   * justement ce qu'on vient re-doter.
+   */
+  desactivees = [],
 }: {
   types: TypeBouteille[];
   libelle: string;
+  desactivees?: string[];
 }) {
   const [quantites, setQuantites] = useState<Record<string, number>>({});
   const total = types.reduce((s, t) => s + (quantites[t.id] ?? 0) * t.prix, 0);
@@ -74,6 +83,7 @@ export function TotalBouteilles({
       <div className="flex gap-2.5">
         {types.map((t) => {
           const n = quantites[t.id] ?? 0;
+          const indisponible = desactivees.includes(t.id);
           return (
             <div
               key={t.id}
@@ -81,14 +91,20 @@ export function TotalBouteilles({
               style={{
                 borderColor: n > 0 ? t.couleur : "#E7E4EF",
                 background: n > 0 ? `${t.couleur}0F` : undefined,
+                opacity: indisponible ? 0.55 : 1,
               }}
             >
               <button
                 type="button"
-                onClick={() => poser(t.id, n > 0 ? 0 : 1)}
+                onClick={() => !indisponible && poser(t.id, n > 0 ? 0 : 1)}
+                disabled={indisponible}
                 aria-pressed={n > 0}
-                aria-label={`${t.libelle} — ${n > 0 ? "retirer" : "ajouter"}`}
-                className="flex flex-col items-center gap-1.5 w-full"
+                aria-label={
+                  indisponible
+                    ? `${t.libelle} — déjà déclarée manquante`
+                    : `${t.libelle} — ${n > 0 ? "retirer" : "ajouter"}`
+                }
+                className="flex flex-col items-center gap-1.5 w-full disabled:cursor-not-allowed"
               >
                 {t.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -114,10 +130,18 @@ export function TotalBouteilles({
                     {t.libelle}
                   </span>
                 </span>
-                <span className="font-display font-semibold text-[16px] tabular-nums">
-                  {t.prix.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
-                </span>
-                <span className="text-[11px] text-ink-faint">{t.detail}</span>
+                {indisponible ? (
+                  <span className="text-[11px] text-ink-faint text-center leading-snug text-pretty">
+                    Déjà déclarée manquante — en attente de remplacement
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-display font-semibold text-[16px] tabular-nums">
+                      {t.prix.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+                    </span>
+                    <span className="text-[11px] text-ink-faint">{t.detail}</span>
+                  </>
+                )}
               </button>
 
               {/* Pas de quantité à régler : une chambre est dotée d'UNE
@@ -125,7 +149,7 @@ export function TotalBouteilles({
                   question qui n'a jamais de réponse autre que « une », et
                   laissaient croire qu'il fallait y répondre. Choisie ou pas,
                   c'est tout. */}
-              {n > 0 && (
+              {n > 0 && !indisponible && (
                 <span
                   className="flex items-center gap-1.5 mt-0.5 text-[12.5px] font-medium"
                   style={{ color: t.couleur }}
@@ -138,7 +162,7 @@ export function TotalBouteilles({
                   manquante
                 </span>
               )}
-              <input type="hidden" name={`qte-${t.id}`} value={n} />
+              <input type="hidden" name={`qte-${t.id}`} value={indisponible ? 0 : n} />
             </div>
           );
         })}

@@ -78,6 +78,23 @@ export default async function Signaler({
 
   const chambre = chambres.find((c) => c.code === lieu);
 
+  /**
+   * Quels types manquent, chambre par chambre.
+   *
+   * `en_place < dotation` dit qu'il manque QUELQUE CHOSE, sans dire quoi —
+   * une chambre peut perdre la filtrée, la gazeuse, ou les deux. La ligne
+   * encore en attente de remplacement (`redoter = false`) le dit précisément,
+   * et c'est la même donnée qui empêche de déclarer deux fois la même perte :
+   * un dossier qui attend sa re-dotation EST la bouteille manquante.
+   */
+  const manquantes = await sql<{ emplacement_id: string; bouteille_type_id: string }[]>`
+    select distinct i.emplacement_id, li.bouteille_type_id
+    from incident_lignes_bouteille li
+    join incidents_bouteille i on i.id = li.incident_id
+    where i.redoter = false`;
+  const manquantesDeLaChambre = (id: string) =>
+    manquantes.filter((m) => m.emplacement_id === id).map((m) => m.bouteille_type_id);
+
   async function enregistrer(donnees: FormData) {
     "use server";
     const profil_ = await profilActif();
@@ -87,10 +104,29 @@ export default async function Signaler({
     const estRemplacement = donnees.get("mode") === "remplacement";
 
     // Combien de chaque type — zéro veut dire « pas celle-là ».
-    const choisies = types
+    let choisies = types
       .map((t) => ({ id: t.id, quantite: Number(donnees.get(`qte-${t.id}`) ?? 0) }))
       .filter((l) => l.quantite > 0);
     if (choisies.length === 0) return;
+
+    /**
+     * Une casse ou une perte ne se déclare pas sur une bouteille déjà
+     * manquante : la chambre n'en a qu'une, elle ne peut pas en manquer
+     * deux. L'écran grise ces types, mais un lien recopié ou un dossier
+     * ouvert entre-temps passerait à travers — on revérifie ici, contre la
+     * base au moment de l'écriture, pas contre l'instantané pris au
+     * chargement de l'écran.
+     */
+    if (!estRemplacement) {
+      const dejaManquantes = await sql<{ bouteille_type_id: string }[]>`
+        select distinct li.bouteille_type_id
+        from incident_lignes_bouteille li
+        join incidents_bouteille i on i.id = li.incident_id
+        where i.emplacement_id = ${emplacement} and i.redoter = false`;
+      const exclues = new Set(dejaManquantes.map((m) => m.bouteille_type_id));
+      choisies = choisies.filter((l) => !exclues.has(l.id));
+      if (choisies.length === 0) return;
+    }
 
     // Une date passée est permise : tout n'a pas été déclaré depuis l'application,
     // et les reprises à la main doivent porter leur vraie date.
@@ -279,34 +315,56 @@ export default async function Signaler({
                     </span>
                   </summary>
                   <div className="flex flex-wrap gap-2 px-4 pb-4 pt-1">
-                    {dedans.map((c) => (
-                      <Link
-                        key={c.code}
-                        href={lien({ lieu: c.code })}
-                        replace
-                        scroll={false}
-                        data-cible
-                        className={`px-3.5 flex items-center justify-center min-w-[54px] rounded-pill border text-[15px] ${
-                          c.essai
-                            ? "border-dashed border-plum bg-plum-soft text-plum"
-                            : c.en_place < c.dotation
-                              ? "border-amber/40 bg-amber-soft text-amber"
-                              : "border-line bg-surface-muted"
-                        }`}
-                      >
-                        {c.code}
-                        {/* Un lieu d'essai se voit : on y fait ce qu'on veut,
-                            rien de ce qu'on y fait ne sort du parc. */}
-                        {c.essai && <span className="ml-1.5 text-[11px]">essai</span>}
-                      </Link>
-                    ))}
+                    {dedans.map((c) => {
+                      const manque = manquantesDeLaChambre(c.id);
+                      return (
+                        <Link
+                          key={c.code}
+                          href={lien({ lieu: c.code })}
+                          replace
+                          scroll={false}
+                          data-cible
+                          className={`px-3.5 flex items-center gap-1.5 justify-center min-w-[54px] rounded-pill border text-[15px] ${
+                            c.essai
+                              ? "border-dashed border-plum bg-plum-soft text-plum"
+                              : c.en_place < c.dotation
+                                ? "border-amber/40 bg-amber-soft text-amber"
+                                : "border-line bg-surface-muted"
+                          }`}
+                        >
+                          {c.code}
+                          {/* La couleur dit LAQUELLE manque — bleue pour la
+                              filtrée, rouge pour la gazeuse — sans quoi
+                              l'ambre dit seulement qu'il manque « quelque
+                              chose ». */}
+                          {manque.length > 0 && (
+                            <span className="flex items-center gap-[3px]">
+                              {manque.map((id) => (
+                                <span
+                                  key={id}
+                                  aria-hidden
+                                  className="w-[7px] h-[7px] rounded-full shrink-0"
+                                  style={{
+                                    background:
+                                      types.find((t) => t.id === id)?.couleur ?? "#453A6E",
+                                  }}
+                                />
+                              ))}
+                            </span>
+                          )}
+                          {/* Un lieu d'essai se voit : on y fait ce qu'on veut,
+                              rien de ce qu'on y fait ne sort du parc. */}
+                          {c.essai && <span className="text-[11px]">essai</span>}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </details>
               );
             })}
             <p className="text-[11.5px] text-ink-faint text-pretty px-1">
-              En ambre : une chambre dont la dotation n’est pas complète — il y manque une
-              bouteille, elle attend son remplacement.
+              En ambre : une chambre dont la dotation n’est pas complète. Le point de couleur dit
+              laquelle manque — bleu pour la filtrée, rouge pour la gazeuse.
             </p>
           </div>
         ) : (
@@ -327,6 +385,10 @@ export default async function Signaler({
                   Changer de chambre
                 </Link>
               </div>
+              {/* Une casse ou une perte ne se déclare pas sur une bouteille
+                  déjà manquante : la chambre n'en a qu'une, elle ne peut pas
+                  en manquer deux. Le remplacement, lui, vise justement ces
+                  types-là — rien n'y est désactivé. */}
               <TotalBouteilles
                 libelle={
                   remplacement
@@ -343,6 +405,7 @@ export default async function Signaler({
                   couleur: t.couleur ?? "#453A6E",
                   photo: t.photo,
                 }))}
+                desactivees={remplacement ? [] : manquantesDeLaChambre(chambre.id)}
               />
               <p className="text-[11.5px] text-ink-faint text-pretty">
                 {remplacement
