@@ -14,6 +14,7 @@ import { MarquerValide, QuitterSiRevenu } from "@/app/composants/quitter-si-reve
 import { ChampPhotos } from "@/app/composants/photos";
 import { VoirDocument } from "@/app/composants/fenetre";
 import { ChoixLieux, type LieuChoix } from "@/app/composants/choix-lieux";
+import { Depliant } from "@/app/composants/depliant";
 import {
   ChoixConsequences,
   type ConsequencePosee,
@@ -1150,14 +1151,17 @@ export default async function Dossier({
         </details>
 
         {/* ---------------------------------------------- l'état par lieu */}
+        {/* Replié par défaut : sur un dossier déjà entièrement réglé en un
+            seul acte, ce calcul ne fait que répéter les mêmes pastilles que
+            l'acte juste au-dessus — « je ne sais pas pourquoi il est là ».
+            Il reste à un appui pour un dossier plus touffu, où il sert
+            vraiment : voir d'un coup d'œil ce qui reste à contrôler. */}
         {!suivi.permanent && etats.length > 0 && (
-          <section className="flex flex-col gap-2">
-            <h2 className="titre text-[15.5px]">Où on en est, lieu par lieu</h2>
-            <p className="text-[12.5px] text-ink-soft text-pretty leading-snug">
-              Les {etats.length} lieux que ce dossier couvre, et ce que la chronologie en dit
-              aujourd’hui. Rien n’est saisi ici : c’est un calcul.
-            </p>
-
+          <Depliant
+            titre="Où on en est, lieu par lieu"
+            aide="Rien n’est saisi ici : c’est un calcul."
+            indice={`${etats.length} lieu${etats.length > 1 ? "x" : ""}`}
+          >
             {[
               {
                 cle: "a_controler",
@@ -1244,7 +1248,7 @@ export default async function Dossier({
                 ))}
               </ul>
             </details>
-          </section>
+          </Depliant>
         )}
 
         {/* ---------------------------------------------- clore */}
