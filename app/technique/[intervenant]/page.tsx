@@ -24,6 +24,13 @@ type Ligne = {
   statut: string;
   priorite: string;
   traitee: boolean;
+  /**
+   * La gouvernante l'a remise « en cours » sur un passage déjà rendu
+   * (migration 0034) : `traitee` seul ne le distingue plus d'une anomalie
+   * vraiment terminée — c'est ce champ qui porte la différence, posé en JS
+   * une fois `tournee` connu (voir le calcul de `uniques`).
+   */
+  aReprendre: boolean;
   materiel: string | null;
   photos: number;
   commentaires: number;
@@ -174,10 +181,30 @@ export default async function Tournee({
     join etages et      on et.id = e.etage_id
     join accompagnement ac on ac.id = a.id
     where i.tournee_id = ${tournee.id}
-      and a.statut not in ('a_faire','en_cours')
+      -- Une anomalie VALIDÉE n'a plus rien à faire ici : la gouvernante a
+      -- tranché, pour de bon (règle 11 — « validée » ne revient jamais en
+      -- arrière, contrairement à « en cours »/« à refaire »). La garder
+      -- cochée-barrée dans « Ce qu'il y a à traiter » aux côtés des
+      -- anomalies du jour laissait croire qu'elle avait encore un rapport
+      -- avec le travail en cours. Elle reste lisible ailleurs — fiche,
+      -- historique — juste plus sur cet écran de travail.
+      and a.statut not in ('a_faire','en_cours','validee')
     order by 2, 1`;
 
-  const uniques = [...new Map(lignes.map((l) => [l.anomalie_id, l])).values()];
+  /**
+   * `traitee` seul ne distingue plus deux cas très différents depuis la
+   * 0034 : une anomalie vraiment terminée (plus rien à faire), et une que
+   * la gouvernante vient de remettre « en cours » sur un passage déjà
+   * rendu — qui doit au contraire redevenir actionnable, comme si elle
+   * n'avait jamais été cochée, avec juste un mot sur pourquoi elle revient.
+   * On le calcule une fois ici, `tournee` connu, et tout le reste de
+   * l'écran (tri, regroupement, affichage) suit `traitee` sans plus s'en
+   * soucier.
+   */
+  const uniques = [...new Map(lignes.map((l) => [l.anomalie_id, l])).values()].map((l) => {
+    const aReprendre = l.statut === "en_cours" && tournee.cloturee_le !== null;
+    return { ...l, aReprendre, traitee: l.traitee && !aReprendre };
+  });
 
   // Le fil de chaque anomalie de la tournée : la bulle s'ouvre sur place.
   const fils = uniques.length
@@ -623,8 +650,28 @@ export default async function Tournee({
                     }`}
                   >
                     {/* La case coche ET décoche : tant que la tournée n'est pas
-                        rendue, on peut revenir sur ce qu'on a déclaré. */}
-                    {l.traitee ? (
+                        rendue, on peut revenir sur ce qu'on a déclaré. Une fois
+                        rendue, ce n'est plus vrai — la croix ne ferait plus rien
+                        (`deselectionner` exige une tournée ouverte) — et une
+                        anomalie en attente_validation n'est de toute façon pas
+                        « finie » comme le reste : montrer le même coché-plum que
+                        ce qui est réellement terminé laissait croire qu'il n'y
+                        avait plus rien à attendre, alors que c'est l'avis de la
+                        gouvernante qui manque encore. */}
+                    {l.statut === "attente_validation" ? (
+                      <span
+                        aria-label="En attente de l'avis de la gouvernante"
+                        title="En attente de l'avis de la gouvernante"
+                        className="w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] bg-amber-soft grid place-items-center"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             className="text-amber" stroke="currentColor" strokeWidth="2.4"
+                             strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M12 7v5l3 3" />
+                        </svg>
+                      </span>
+                    ) : l.traitee ? (
                       <form action={deselectionner} className="shrink-0 mt-[1px]">
                         <input type="hidden" name="anomalie" value={l.anomalie_id} />
                         <button
@@ -677,6 +724,16 @@ export default async function Tournee({
                         {l.traitee && (
                           <span className="text-[12.5px] text-ink-faint">
                             · {l.materiel ?? "aucun matériel"}
+                          </span>
+                        )}
+                        {l.statut === "attente_validation" && (
+                          <span className="text-[12.5px] text-amber font-medium">
+                            · en attente de l’avis de la gouvernante
+                          </span>
+                        )}
+                        {l.aReprendre && (
+                          <span className="text-[12.5px] text-blue font-medium">
+                            · remise en cours par la gouvernante
                           </span>
                         )}
                       </span>
