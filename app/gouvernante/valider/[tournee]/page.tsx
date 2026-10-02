@@ -206,15 +206,32 @@ export default async function ValiderLot({
         join tournees t on t.id = i.tournee_id
        where i.id = ${intervention} and t.cloturee_le is not null
          -- Un double appui ne fait pas deux avis : le commentaire
-         -- apparaissait alors en double dans le fil du technicien. Deux
-         -- décisions différentes, ou deux mots différents, restent deux
-         -- lignes — c'est de l'histoire, et rien ne l'écrase.
+         -- apparaissait alors en double dans le fil du technicien.
          and not exists (
            select 1 from validations v
             where v.intervention_id = ${intervention}
               and v.acteur = 'gouvernante'
               and v.decision = ${decision}::decision_validation
-              and coalesce(v.commentaire, '') = coalesce(${mot}, ''))`;
+              and coalesce(v.commentaire, '') = coalesce(${mot}, ''))
+         /**
+          * Un écran resté affiché peut encore proposer les trois boutons
+          * sur une anomalie déjà tranchée — c'est tout l'écran du passage
+          * du 2 octobre qui l'a montré : une « validée » redevenait « en
+          * cours » d'un appui sur une page qui n'avait jamais vu la
+          * décision passer. Aucun écran ne propose aujourd'hui de revenir
+          * sur un avis déjà donné — « corriger » n'existe pas — donc un
+          * second avis DIFFÉRENT ne peut venir que de là. On ne l'accepte
+          * que si un nouveau « fait » du technicien l'a suivi : c'est
+          * exactement ce qui distingue une vraie reprise après refus
+          * (migration 0033) d'une resoumission accidentelle.
+          */
+         and not exists (
+           select 1 from validations vg
+            where vg.intervention_id = ${intervention} and vg.acteur = 'gouvernante'
+              and vg.decide_le >= coalesce(
+                (select max(vt.decide_le) from validations vt
+                  where vt.intervention_id = ${intervention} and vt.acteur = 'technicien'),
+                vg.decide_le))`;
 
     /**
      * La photo qui confirme — ou qui ne confirme pas.
