@@ -1,0 +1,18 @@
+-- =============================================================================
+-- Migration 0032 : une photo pour confirmer — ou pas — ce que dit le technicien
+-- =============================================================================
+-- « Le fait que la gouvernante ne puisse pas prendre de photo pour confirmer
+-- ou non une anomalie n'a jamais été implanté ? » — vérifié : jamais. L'écran
+-- de validation ne portait qu'un mot, jamais une photo.
+--
+-- `photos_anomalie.moment` ne connaissait que 'constat' (la gouvernante, en
+-- déclarant) et 'apres' (le technicien, en intervenant) : rien pour elle à
+-- la validation. Une troisième valeur, 'validation', couvre ce moment-là —
+-- sans ligne nouvelle à ajouter au schéma : la colonne `intervention_id`,
+-- déjà là, rattache la photo à CE passage précis.
+--
+-- Elle reste consultable dans tous les cas, comme les deux autres moments :
+-- une anomalie refusée retourne en 'a_faire' (migrations 0002/0004,
+-- `tg_cloture_tournee`) et le technicien doit pouvoir voir pourquoi quand
+-- elle revient dans sa liste — pas seulement quand elle est validée.
+alter type moment_photo add value if not exists 'validation';

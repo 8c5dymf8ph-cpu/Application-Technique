@@ -104,6 +104,15 @@ export default async function TraiterAnomalie({
       where anomalie_id = ${id} and moment = 'constat' order by prise_le`
   ).map((p) => p.chemin);
 
+  // Si ça revient dans la liste, c'est que la gouvernante a refusé — et elle
+  // a pu y joindre une photo pour dire pourquoi. Le technicien doit la voir
+  // avant de remonter, comme il voit déjà le constat.
+  const verifie = (
+    await sql<{ chemin: string }[]>`
+      select chemin from photos_anomalie
+      where anomalie_id = ${id} and moment = 'validation' order by prise_le`
+  ).map((p) => p.chemin);
+
   /**
    * Ce qu'il a coché, avec les quantités.
    *
@@ -295,14 +304,18 @@ export default async function TraiterAnomalie({
   };
 
   return (
-    <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+    <main className="h-dvh overflow-hidden flex flex-col max-w-md mx-auto">
       <Entete
         titre={anomalie.emplacement}
         sous_titre={anomalie.etage}
         retour={par ? (versLaTournee(par, jourDuPassage) as Route) : "/technique"}
       />
 
-      <div className="px-5 py-5 flex flex-col gap-6 grow">
+      {/* L'anomalie reste à l'œil pendant qu'on fait défiler les produits —
+          sinon, sur une longue galerie, on perd de vue ce qu'on est venu
+          traiter, et l'écran entier défilait EN PLUS de la galerie : deux
+          défilements pour un seul geste. */}
+      <div className="shrink-0 px-5 pt-5 pb-3 flex flex-col gap-3">
         <p className="font-display font-semibold text-[19px] leading-snug text-pretty">
           {anomalie.description}
         </p>
@@ -318,13 +331,24 @@ export default async function TraiterAnomalie({
             du stock et ce passage ne comptera pas dans les chiffres de l’hôtel.
           </p>
         )}
+      </div>
 
+      <div className="grow min-h-0 overflow-y-auto px-5 pb-5 flex flex-col gap-6">
         {/* Le technicien regarde le constat avant de monter : c'est le sujet de
             l'écran, pas une note de bas de page. */}
         <Vignettes
           chemins={constat}
           titre="Photographié au constat"
           ton="text-blue"
+          taille={104}
+        />
+
+        {/* Si ça revient ici, c'est que la gouvernante a refusé — et sa photo
+            dit pourquoi, aussi clairement que le constat. */}
+        <Vignettes
+          chemins={verifie}
+          titre="Vérifié par la gouvernante"
+          ton="text-plum"
           taille={104}
         />
 

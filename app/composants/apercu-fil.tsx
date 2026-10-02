@@ -13,9 +13,10 @@ export type Contexte = {
   statut?: { libelle: string; fond: string; texte: string } | null;
   depuis?: string | null;
   constate_par?: string | null;
-  /** Les photos, par moment : au constat et après intervention. */
+  /** Les photos, par moment : au constat, après intervention, à la vérification. */
   constat?: string[];
   apres?: string[];
+  verif?: string[];
   /** Qui est venu, quand, avec quoi, et ce que la gouvernante en a dit. */
   passages?: string[];
 };
@@ -80,7 +81,8 @@ export function ApercuFil({
   const aQuelqueChose =
     messages.length > 0 ||
     (contexte?.constat?.length ?? 0) > 0 ||
-    (contexte?.apres?.length ?? 0) > 0;
+    (contexte?.apres?.length ?? 0) > 0 ||
+    (contexte?.verif?.length ?? 0) > 0;
   // Sans libellé, le bouton ne s'affiche que s'il y a quelque chose à voir :
   // des mots OU des photos. Une icône qui annonce du contenu là où il n'y en
   // a pas fait ouvrir pour rien.
@@ -189,6 +191,13 @@ export function ApercuFil({
                   chemins={contexte.apres!}
                   titre="Après intervention"
                   ton="text-green"
+                />
+              )}
+              {(contexte.verif?.length ?? 0) > 0 && (
+                <Vignettes
+                  chemins={contexte.verif!}
+                  titre="Vérifié par la gouvernante"
+                  ton="text-plum"
                 />
               )}
 

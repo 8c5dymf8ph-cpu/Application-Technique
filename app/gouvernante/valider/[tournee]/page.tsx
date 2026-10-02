@@ -7,10 +7,11 @@ import { profilActif } from "@/lib/profil";
 import { euros, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
-import { Vignettes } from "@/app/composants/photos";
+import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
 import { deposerRecapSiComplet } from "@/lib/recap";
+import { enregistrerPhoto } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
@@ -162,6 +163,7 @@ export default async function ValiderLot({
     if (!peutValider(profil_.role)) redirect("/");
 
     const intervention = String(donnees.get("intervention"));
+    const anomalie = String(donnees.get("anomalie"));
     const decision = String(donnees.get("decision"));
     if (!["validee", "en_cours", "a_refaire"].includes(decision)) return;
 
@@ -213,6 +215,24 @@ export default async function ValiderLot({
               and v.decision = ${decision}::decision_validation
               and coalesce(v.commentaire, '') = coalesce(${mot}, ''))`;
 
+    /**
+     * La photo qui confirme — ou qui ne confirme pas.
+     *
+     * « Le fait que la gouvernante ne puisse pas prendre de photo pour
+     * confirmer ou non une anomalie n'a jamais été implanté » : c'est vrai,
+     * et c'est corrigé ici. La photo reste consultable dans tous les cas —
+     * y compris un refus : si l'anomalie revient en 'a_faire', c'est au
+     * technicien de voir ce qu'elle a vu.
+     */
+    for (const fichier of donnees.getAll("photos")) {
+      if (!(fichier instanceof File) || fichier.size === 0) continue;
+      const chemin = await enregistrerPhoto(fichier);
+      if (!chemin) continue;
+      await sql`
+        insert into photos_anomalie (anomalie_id, intervention_id, chemin, moment, prise_par)
+        values (${anomalie}, ${intervention}, ${chemin}, 'validation', ${profil_.id})`;
+    }
+
     // Dès que plus rien n'attend son avis, le récapitulatif complet est rédigé
     // et déposé — avec ce qu'elle n'a pas validé, dit en clair.
     await deposerRecapSiComplet(tournee);
@@ -247,6 +267,7 @@ export default async function ValiderLot({
           const decidee = l.decision_gouvernante ? DEJA[l.decision_gouvernante] : null;
           const constat = serie(l.anomalie_id, "constat");
           const apres = serie(l.anomalie_id, "apres");
+          const verif = serie(l.anomalie_id, "validation");
           return (
             <section
               key={l.intervention_id}
@@ -263,7 +284,7 @@ export default async function ValiderLot({
                   <p className="text-[14.5px] leading-snug text-pretty">{l.description}</p>
                 </div>
                 <span className="mt-[2px] flex items-center gap-1.5 shrink-0">
-                  <Indices photos={constat.length + apres.length} />
+                  <Indices photos={constat.length + apres.length + verif.length} />
                   {/* La bulle s'ouvre : les mots se lisent sans quitter l'écran. */}
                   <ApercuFil messages={fil(l.anomalie_id)} />
                 </span>
@@ -300,6 +321,10 @@ export default async function ValiderLot({
 
               <Vignettes chemins={constat} titre="Au constat" ton="text-ink-faint" />
               <Vignettes chemins={apres} titre="Après intervention" ton="text-green" />
+              {/* Consultable dans tous les cas — y compris un refus : si
+                  l'anomalie revient en « à faire », c'est au technicien de
+                  voir ce que la gouvernante a vu. */}
+              <Vignettes chemins={verif} titre="Vérification de la gouvernante" ton="text-plum" />
 
               {decidee ? (
                 <div className={`rounded-card ${decidee.fond} px-3.5 py-3 flex flex-col gap-1.5`}>
@@ -322,6 +347,7 @@ export default async function ValiderLot({
               ) : (
                 <form action={decider} className="flex flex-col gap-2.5">
                   <input type="hidden" name="intervention" value={l.intervention_id} />
+                  <input type="hidden" name="anomalie" value={l.anomalie_id} />
                   <details className="group">
                     <summary className="text-[12.5px] text-plum underline underline-offset-4 cursor-pointer list-none">
                       Ajouter un mot
@@ -333,6 +359,10 @@ export default async function ValiderLot({
                       className="mt-2 w-full rounded-card border border-line bg-surface px-3.5 py-2.5 text-[15px] leading-snug resize-none placeholder:text-ink-faint"
                     />
                   </details>
+                  {/* Prendre une photo pour confirmer — ou pour dire pourquoi
+                      ce n'est pas réglé. Elle reste consultable quelle que
+                      soit l'issue. */}
+                  <ChampPhotos libelle="Photographier pour confirmer (facultatif)" compact />
                   {/* Au nom de qui. Un passage de juin a été vérifié par
                       Victoria, pas par celui qui le saisit aujourd'hui : sans
                       ce choix, le récapitulatif dirait « validé par Miguel »

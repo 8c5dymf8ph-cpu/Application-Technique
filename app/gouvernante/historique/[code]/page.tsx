@@ -50,7 +50,7 @@ type Passage = {
   facture: string | null;
   facture_id: string | null;
 };
-type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" };
+type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" | "validation" };
 
 export default async function HistoriqueDuLieu({
   params,
@@ -213,6 +213,7 @@ export default async function HistoriqueDuLieu({
                         constate_par: l.constate_par,
                         constat: parAnomalie(l.anomalie_id, "constat"),
                         apres: parAnomalie(l.anomalie_id, "apres"),
+                        verif: parAnomalie(l.anomalie_id, "validation"),
                         passages: parPassage(l.anomalie_id).map((p) =>
                           [
                             `${p.intervenant ?? "intervenant inconnu"} le ${new Date(
@@ -306,6 +307,8 @@ export default async function HistoriqueDuLieu({
                              titre="Au constat" ton="text-blue" />
                   <Vignettes chemins={parAnomalie(l.anomalie_id, "apres")}
                              titre="Après intervention" ton="text-green" />
+                  <Vignettes chemins={parAnomalie(l.anomalie_id, "validation")}
+                             titre="Vérifié par la gouvernante" ton="text-plum" />
                 </li>
               ))}
             </ul>

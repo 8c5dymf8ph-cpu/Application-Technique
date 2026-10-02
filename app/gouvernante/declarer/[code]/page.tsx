@@ -46,7 +46,7 @@ type Passage = {
   decision_gouvernante: string | null;
   materiel: string | null;
 };
-type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" };
+type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" | "validation" };
 
 /** Un autre lieu où le même problème peut être déclaré du même geste. */
 type AutreLieu = {
@@ -486,6 +486,7 @@ export default async function Declarer({
                       constate_par: e.constate_par,
                       constat: parAnomalie(e.anomalie_id, "constat"),
                       apres: parAnomalie(e.anomalie_id, "apres"),
+                      verif: parAnomalie(e.anomalie_id, "validation"),
                       passages: parPassage(e.anomalie_id).map((x) =>
                         [
                           `${x.intervenant ?? "intervenant inconnu"} le ${new Date(

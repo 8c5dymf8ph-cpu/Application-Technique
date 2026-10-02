@@ -945,6 +945,7 @@ export default async function DetailTournee({
                           emplacement: l.emplacement,
                           constat: clichés(l.anomalie_id, "constat"),
                           apres: clichés(l.anomalie_id, "apres"),
+                          verif: clichés(l.anomalie_id, "validation"),
                           passages: [
                             [
                               lot.intervenant ?? "intervenant inconnu",

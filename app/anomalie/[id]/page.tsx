@@ -344,6 +344,11 @@ export default async function DetailAnomalie({
           titre="Après intervention"
           ton="text-green"
         />
+        <Vignettes
+          chemins={photos.filter((p) => p.moment === "validation").map((p) => p.chemin)}
+          titre="Vérifié par la gouvernante"
+          ton="text-plum"
+        />
 
         <section className="flex flex-col gap-2.5">
           <h2 className="etiquette">Le fil · {messages.length}</h2>

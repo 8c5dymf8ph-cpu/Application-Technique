@@ -228,14 +228,18 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
     // `ChampPhotos` écrit toujours). Les autres sont nommées plutôt que
     // tues : un fichier qu'on ne peut pas montrer ne doit pas disparaître
     // en silence (même esprit que la règle sur un échec d'enregistrement).
-    for (const moment of ["constat", "apres"] as const) {
+    const LIBELLE_MOMENT: Record<string, string> = {
+      constat: "Photos au constat :",
+      apres: "Photos après intervention :",
+      // La gouvernante confirme — ou pas — avec une photo : le mini
+      // historique du passage n'est complet que si elle y figure aussi.
+      validation: "Photos de la gouvernante :",
+    };
+    for (const moment of ["constat", "apres", "validation"] as const) {
       const cliches = photos.filter((p) => p.anomalie_id === l.anomalie_id && p.moment === moment);
       if (cliches.length === 0) continue;
       c.espace(4);
-      c.texte(moment === "constat" ? "Photos au constat :" : "Photos après intervention :", {
-        taille: 9.5,
-        gras: true,
-      });
+      c.texte(LIBELLE_MOMENT[moment], { taille: 9.5, gras: true });
 
       const HAUTEUR_VIGNETTE = 110;
       let x = MARGE;
