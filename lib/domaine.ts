@@ -186,3 +186,21 @@ export function heureISO(v: string | Date): string {
     minute: "2-digit",
   }).format(d);
 }
+
+/**
+ * « 2 octobre », en heure de Paris.
+ *
+ * Même défaut encore, cette fois sur un moment précis (un avis, une
+ * déclaration) plutôt que sur « aujourd'hui » ou une heure : « A déclaré
+ * fait · 2 octobre » affiché sans fuseau montrait la date UTC d'un instant
+ * tombé juste après minuit heure de Paris — une déclaration faite il y a
+ * quatre minutes semblait dater de la veille.
+ */
+export function jourLong(v: string | Date): string {
+  const d = v instanceof Date ? v : new Date(v);
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: FUSEAU_HOTEL,
+    day: "numeric",
+    month: "long",
+  }).format(d);
+}

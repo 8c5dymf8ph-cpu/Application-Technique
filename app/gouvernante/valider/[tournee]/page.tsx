@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { euros, peutValider, suitLesDossiers } from "@/lib/domaine";
+import { euros, jourLong, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
@@ -69,7 +69,7 @@ const DEJA: Record<string, { libelle: string; fond: string; texte: string }> = {
 
 function quand(d: string | null): string {
   if (!d) return "";
-  return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  return jourLong(d);
 }
 
 export default async function ValiderLot({
