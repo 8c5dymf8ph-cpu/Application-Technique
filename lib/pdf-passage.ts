@@ -196,9 +196,109 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
   c.trait();
   c.espace(6);
 
+  // Trois couleurs, une par moment — mêmes teintes que les vignettes de
+  // l'application (text-blue / text-green / text-plum), pour reconnaître
+  // d'un coup d'œil laquelle est laquelle sans que chacune ait sa propre
+  // ligne de titre.
+  const COULEUR_MOMENT: Record<string, ReturnType<typeof rgb>> = {
+    constat: rgb(0.227, 0.388, 0.6),
+    apres: rgb(0.122, 0.478, 0.302),
+    validation: rgb(0.271, 0.227, 0.431),
+  };
+  const TAILLE_VIGNETTE = 26;
+  const ESPACE_VIGNETTE = 4;
+
   for (const l of lignes) {
-    c.assurer(60);
-    c.texte(`${l.emplacement} — ${l.description}`, { taille: 12.5, gras: true });
+    const titre = `${l.emplacement} — ${l.description}`;
+
+    /**
+     * Les vignettes se tiennent SUR LA LIGNE DU TITRE, pas les unes en
+     * dessous des autres : une photo au constat, une après intervention et
+     * une de vérification faisaient trois blocs de 110 points chacun — un
+     * passage de quinze anomalies avec photos tenait en dix pages. Elles
+     * sont minuscules (26 points) et toutes ensemble, bordées de la couleur
+     * de leur moment ; seule une photo illisible garde une ligne à elle,
+     * parce que rien ne doit disparaître en silence.
+     */
+    const illisibles: string[] = [];
+    const vignettes: { image: Awaited<ReturnType<typeof doc.embedJpg>>; largeur: number; couleur: ReturnType<typeof rgb> }[] = [];
+    for (const moment of ["constat", "apres", "validation"] as const) {
+      for (const p of photos.filter((x) => x.anomalie_id === l.anomalie_id && x.moment === moment)) {
+        if (typeMime(p.chemin) !== "image/jpeg") {
+          illisibles.push(p.chemin);
+          continue;
+        }
+        const octets = await lireFichier(p.chemin);
+        if (!octets) continue;
+        try {
+          const image = await doc.embedJpg(octets);
+          const largeur = (TAILLE_VIGNETTE * image.width) / image.height;
+          vignettes.push({ image, largeur, couleur: COULEUR_MOMENT[moment] });
+        } catch {
+          // Un fichier corrompu ou illisible ne doit pas faire échouer tout
+          // le PDF : on saute cette photo-là.
+          continue;
+        }
+      }
+    }
+    const largeurVignettes =
+      vignettes.reduce((s, v) => s + v.largeur, 0) +
+      Math.max(0, vignettes.length - 1) * ESPACE_VIGNETTE;
+
+    const policeTitre = c.bold;
+    const titreTientSurUneLigne = policeTitre.widthOfTextAtSize(titre, 12.5) <= LARGEUR_UTILE;
+    const reserveVignettesSurLaLigne =
+      titreTientSurUneLigne &&
+      vignettes.length > 0 &&
+      policeTitre.widthOfTextAtSize(titre, 12.5) + 14 + largeurVignettes <= LARGEUR_UTILE;
+
+    c.assurer(Math.max(12.5 * 1.35, TAILLE_VIGNETTE) + 4);
+
+    const dessinerVignettes = (xDepart: number, yHaut: number) => {
+      let x = xDepart;
+      for (const v of vignettes) {
+        c.page.drawRectangle({
+          x: x - 1,
+          y: yHaut - TAILLE_VIGNETTE - 1,
+          width: v.largeur + 2,
+          height: TAILLE_VIGNETTE + 2,
+          borderColor: v.couleur,
+          borderWidth: 1,
+        });
+        c.page.drawImage(v.image, { x, y: yHaut - TAILLE_VIGNETTE, width: v.largeur, height: TAILLE_VIGNETTE });
+        x += v.largeur + ESPACE_VIGNETTE;
+      }
+    };
+
+    if (titreTientSurUneLigne) {
+      // Le titre tient sur une ligne : les vignettes (s'il y en a assez de
+      // place) viennent flush à droite, sur cette même ligne.
+      c.page.drawText(titre, { x: MARGE, y: c.y - 12.5, size: 12.5, font: policeTitre, color: rgb(0.1, 0.09, 0.15) });
+      if (reserveVignettesSurLaLigne) {
+        dessinerVignettes(LARGEUR - MARGE - largeurVignettes, c.y);
+        c.y -= Math.max(12.5 * 1.35, TAILLE_VIGNETTE + 4);
+      } else {
+        c.y -= 12.5 * 1.35;
+        if (vignettes.length > 0) {
+          c.assurer(TAILLE_VIGNETTE + 4);
+          dessinerVignettes(MARGE, c.y);
+          c.y -= TAILLE_VIGNETTE + 4;
+        }
+      }
+    } else {
+      // Une description longue a déjà besoin de plusieurs lignes : les
+      // vignettes suivent sur une ligne à elles, mais toujours compacte —
+      // jamais un bloc par moment.
+      c.texte(titre, { taille: 12.5, gras: true });
+      if (vignettes.length > 0) {
+        c.assurer(TAILLE_VIGNETTE + 4);
+        dessinerVignettes(MARGE, c.y);
+        c.y -= TAILLE_VIGNETTE + 4;
+      }
+    }
+    for (const chemin of illisibles) {
+      c.texte(`(photo non affichable — ${chemin})`, { taille: 8.5, couleur: rgb(0.6, 0.3, 0.1) });
+    }
 
     if (l.decision_technicien) {
       c.texte(
@@ -222,53 +322,6 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
         taille: 9.5,
         couleur: rgb(0.45, 0.43, 0.5),
       });
-    }
-
-    // Les photos des deux moments, si le format s'y prête (JPEG — ce que
-    // `ChampPhotos` écrit toujours). Les autres sont nommées plutôt que
-    // tues : un fichier qu'on ne peut pas montrer ne doit pas disparaître
-    // en silence (même esprit que la règle sur un échec d'enregistrement).
-    const LIBELLE_MOMENT: Record<string, string> = {
-      constat: "Photos au constat :",
-      apres: "Photos après intervention :",
-      // La gouvernante confirme — ou pas — avec une photo : le mini
-      // historique du passage n'est complet que si elle y figure aussi.
-      validation: "Photos de la gouvernante :",
-    };
-    for (const moment of ["constat", "apres", "validation"] as const) {
-      const cliches = photos.filter((p) => p.anomalie_id === l.anomalie_id && p.moment === moment);
-      if (cliches.length === 0) continue;
-      c.espace(4);
-      c.texte(LIBELLE_MOMENT[moment], { taille: 9.5, gras: true });
-
-      const HAUTEUR_VIGNETTE = 110;
-      let x = MARGE;
-      c.assurer(HAUTEUR_VIGNETTE + 6);
-      const yLigne = c.y - HAUTEUR_VIGNETTE;
-      for (const p of cliches) {
-        if (typeMime(p.chemin) !== "image/jpeg") {
-          c.texte(`(photo non affichable — ${p.chemin})`, { taille: 8.5, couleur: rgb(0.6, 0.3, 0.1) });
-          continue;
-        }
-        const octets = await lireFichier(p.chemin);
-        if (!octets) continue;
-        try {
-          const image = await doc.embedJpg(octets);
-          const largeur = (HAUTEUR_VIGNETTE * image.width) / image.height;
-          if (x + largeur > LARGEUR - MARGE) {
-            x = MARGE;
-            c.y -= HAUTEUR_VIGNETTE + 6;
-            c.assurer(HAUTEUR_VIGNETTE + 6);
-          }
-          c.page.drawImage(image, { x, y: c.y - HAUTEUR_VIGNETTE, width: largeur, height: HAUTEUR_VIGNETTE });
-          x += largeur + 8;
-        } catch {
-          // Un fichier corrompu ou illisible ne doit pas faire échouer tout
-          // le PDF : on saute cette photo-là.
-          continue;
-        }
-      }
-      c.y = yLigne - 6;
     }
 
     c.espace(8);

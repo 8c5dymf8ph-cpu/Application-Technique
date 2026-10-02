@@ -30,10 +30,20 @@ import { usePathname, useRouter } from "next/navigation";
  * autre jour et on y a retrouvé le passage de la veille, « rendu à 23:42 »,
  * proposé à la reprise comme s'il datait d'aujourd'hui : rien n'avait tourné
  * depuis la veille, pas même cet effet, puisque la page gelée ne se remonte
- * pas. Le navigateur prévient pourtant de ce dégel précis — `pageshow` avec
- * `persisted` à vrai — et c'est le seul moment qui le dit : ni un focus, ni
- * un changement de visibilité ne distinguent un dégel d'un simple retour au
- * premier plan.
+ * pas. Le navigateur prévient de ce dégel précis — `pageshow` avec
+ * `persisted` à vrai.
+ *
+ * Ça ne suffisait pas. « J'ai toujours la même erreur » — un téléphone
+ * verrouillé puis rouvert, un passage à une autre application puis un
+ * retour : ni bfcache ni navigation, le système suspend l'onglet sans le
+ * décharger, et aucun `pageshow` ne prévient de ce réveil-là. C'est la
+ * gouvernante qui validait un lot et retrouvait, en y revenant,
+ * l'anomalie qu'elle venait de trancher — le formulaire d'une minute plus
+ * tôt, figé. Le seul signal qui couvre CE cas est la visibilité de la page
+ * (`visibilitychange`) : on redemande la page chaque fois qu'elle redevient
+ * visible, pas seulement au dégel d'un bfcache. Un aller-retour de plus sur
+ * le wifi de l'hôtel ne coûte rien ; une décision qu'on croit prise et qui
+ * ne l'était pas, si.
  */
 export function RelireEnRevenant() {
   const chemin = usePathname();
@@ -60,6 +70,14 @@ export function RelireEnRevenant() {
     };
     window.addEventListener("pageshow", auReveil);
     return () => window.removeEventListener("pageshow", auReveil);
+  }, [routeur]);
+
+  useEffect(() => {
+    const auRetourVisible = () => {
+      if (document.visibilityState === "visible") routeur.refresh();
+    };
+    document.addEventListener("visibilitychange", auRetourVisible);
+    return () => document.removeEventListener("visibilitychange", auRetourVisible);
   }, [routeur]);
 
   return null;
