@@ -125,6 +125,31 @@ export async function inventaireDeRepriseRetire(): Promise<boolean> {
 }
 
 /**
+ * Cet enum porte-t-il déjà cette valeur ?
+ *
+ * La 0032 ajoute `'validation'` à `moment_photo`, sans poser de colonne ni de
+ * vue : `colonneExiste` et `vueExiste` ne peuvent rien en dire. Et ici
+ * l'absence ne se contourne pas avec deux requêtes au choix — une comparaison
+ * `moment = 'validation'` directement dans le SQL fait échouer la requête
+ * ENTIÈRE dès que l'étiquette n'existe pas encore, qu'elle ait ou non une
+ * ligne qui y correspond : Postgres refuse la valeur au moment de l'analyser,
+ * avant même de chercher une correspondance. C'est arrivé sur la fiche d'une
+ * anomalie, qui ne s'ouvrait plus du tout. Même prudence que les autres
+ * probes : on ne retient que les réponses positives.
+ */
+export async function valeurEnumExiste(type: string, valeur: string): Promise<boolean> {
+  const cle = `enum:${type}:${valeur}`;
+  if (presentes.has(cle)) return true;
+
+  const [r] = await sql<{ presente: boolean }[]>`
+    select count(*) > 0 as presente
+      from pg_enum e join pg_type t on t.oid = e.enumtypid
+     where t.typname = ${type} and e.enumlabel = ${valeur}`;
+  if (r.presente) presentes.add(cle);
+  return r.presente;
+}
+
+/**
  * Cette table est-elle déjà là ?
  *
  * La 0021 pose `anomalies_supprimees`. Le code part en ligne avant la

@@ -23,6 +23,17 @@ import { usePathname, useRouter } from "next/navigation";
  * page : `router.refresh()` garde la position de défilement et ne recharge que
  * ce qui a changé. Sur le wifi de l'hôtel, c'est un aller-retour, et ce qui
  * s'affiche est vrai.
+ *
+ * **Un technicien qui rouvre l'application le lendemain n'y « revient » pas,
+ * au sens de React : rien ne se démonte.** Un téléphone ne ferme pas une
+ * page quittée, il la gèle — le `bfcache` du navigateur. On l'a rouverte un
+ * autre jour et on y a retrouvé le passage de la veille, « rendu à 23:42 »,
+ * proposé à la reprise comme s'il datait d'aujourd'hui : rien n'avait tourné
+ * depuis la veille, pas même cet effet, puisque la page gelée ne se remonte
+ * pas. Le navigateur prévient pourtant de ce dégel précis — `pageshow` avec
+ * `persisted` à vrai — et c'est le seul moment qui le dit : ni un focus, ni
+ * un changement de visibilité ne distinguent un dégel d'un simple retour au
+ * premier plan.
  */
 export function RelireEnRevenant() {
   const chemin = usePathname();
@@ -42,6 +53,14 @@ export function RelireEnRevenant() {
       // reste utilisable. Rien ne dépend de cette marque.
     }
   }, [chemin, routeur]);
+
+  useEffect(() => {
+    const auReveil = (e: PageTransitionEvent) => {
+      if (e.persisted) routeur.refresh();
+    };
+    window.addEventListener("pageshow", auReveil);
+    return () => window.removeEventListener("pageshow", auReveil);
+  }, [routeur]);
 
   return null;
 }

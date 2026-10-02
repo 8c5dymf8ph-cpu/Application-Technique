@@ -12,7 +12,7 @@ import { PhotoProduit } from "@/app/composants/photo-produit";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
 import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
 import { enregistrerPhoto } from "@/lib/stockage";
-import { colonneExiste } from "@/lib/schema";
+import { colonneExiste, valeurEnumExiste } from "@/lib/schema";
 import { alerterSiSousSeuil } from "@/lib/seuil";
 
 export const dynamic = "force-dynamic";
@@ -107,11 +107,17 @@ export default async function TraiterAnomalie({
   // Si ça revient dans la liste, c'est que la gouvernante a refusé — et elle
   // a pu y joindre une photo pour dire pourquoi. Le technicien doit la voir
   // avant de remonter, comme il voit déjà le constat.
-  const verifie = (
-    await sql<{ chemin: string }[]>`
-      select chemin from photos_anomalie
-      where anomalie_id = ${id} and moment = 'validation' order by prise_le`
-  ).map((p) => p.chemin);
+  //
+  // Le code part en ligne avant la migration 0032 : tant que `moment_photo`
+  // ne porte pas encore `'validation'`, comparer directement dedans le SQL
+  // fait échouer la requête entière — pas une liste vide, l'écran qui casse.
+  const verifie = (await valeurEnumExiste("moment_photo", "validation"))
+    ? (
+        await sql<{ chemin: string }[]>`
+          select chemin from photos_anomalie
+          where anomalie_id = ${id} and moment = 'validation' order by prise_le`
+      ).map((p) => p.chemin)
+    : [];
 
   /**
    * Ce qu'il a coché, avec les quantités.
