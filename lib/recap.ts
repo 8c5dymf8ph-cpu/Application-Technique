@@ -157,3 +157,32 @@ export async function annulerRecapNonParti(tournee: string): Promise<boolean> {
   }
   return effaces.length > 0 && reste.n === 0;
 }
+
+/**
+ * Le même geste, pour le récapitulatif complet — celui de la gouvernante.
+ *
+ * Une reprise après refus (migration 0033) rouvre une anomalie déjà
+ * récapitulée : « à refaire » y figurait, mais ce que la gouvernante en
+ * décide maintenant est un fait nouveau. `deposerRecap` refuse pourtant un
+ * second dépôt pour la même tournée — c'est voulu, contre un double envoi
+ * accidentel — et poser `mail_recap_envoye_le` à nul sans toucher à
+ * `emails_envoyes` ne suffit donc pas : le message déjà déposé (part cette
+ * fois ou non) bloque toujours le suivant. Mêmes règles qu'au-dessus : ce
+ * qui n'est pas parti s'efface, ce qui EST parti reste parti.
+ */
+export async function annulerRecapCompletNonParti(tournee: string): Promise<boolean> {
+  const effaces = await sql<{ id: string }[]>`
+    delete from emails_envoyes
+     where reference_id = ${tournee}
+       and categorie = 'recap_intervention'
+       and envoye_le is null
+    returning id`;
+
+  const [reste] = await sql<{ n: number }[]>`
+    select count(*)::int as n from emails_envoyes
+     where reference_id = ${tournee} and categorie = 'recap_intervention'`;
+  if (reste.n === 0) {
+    await sql`update tournees set mail_recap_envoye_le = null where id = ${tournee}`;
+  }
+  return effaces.length > 0 && reste.n === 0;
+}

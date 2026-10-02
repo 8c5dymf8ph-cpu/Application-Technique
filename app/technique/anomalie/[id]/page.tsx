@@ -14,6 +14,7 @@ import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
 import { enregistrerPhoto } from "@/lib/stockage";
 import { colonneExiste, valeurEnumExiste } from "@/lib/schema";
 import { alerterSiSousSeuil } from "@/lib/seuil";
+import { annulerRecapCompletNonParti } from "@/lib/recap";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,22 @@ export default async function TraiterAnomalie({
     await sql<{ chemin: string }[]>`
       select chemin from photos_anomalie
       where anomalie_id = ${id} and moment = 'constat' order by prise_le`
+  ).map((p) => p.chemin);
+
+  /**
+   * Ce qu'un passage précédent a déjà photographié.
+   *
+   * « La photo du technicien est perdue » quand une anomalie refusée revient
+   * ici : elle n'était pas perdue en base — `photos_anomalie` ne s'efface
+   * jamais — mais cet écran ne l'avait jamais interrogée. Si ça revient dans
+   * la liste après un refus, c'est justement pour reprendre CE qui a été
+   * fait : la photo du premier passage doit rester là, sous les yeux, pas
+   * seulement visible depuis la fiche une fois le travail revalidé.
+   */
+  const apres = (
+    await sql<{ chemin: string }[]>`
+      select chemin from photos_anomalie
+      where anomalie_id = ${id} and moment = 'apres' order by prise_le`
   ).map((p) => p.chemin);
 
   // Si ça revient dans la liste, c'est que la gouvernante a refusé — et elle
@@ -217,30 +234,62 @@ export default async function TraiterAnomalie({
     const tournee = await tourneeEnCours(intervenant, jourDuPassage);
 
     /**
-     * Une anomalie ne se déclare qu'une fois par passage.
+     * Une anomalie ne se déclare qu'une fois par passage — SAUF si la
+     * gouvernante l'a renvoyée à refaire : c'est alors le même passage qui
+     * reprend la main sur un travail qu'il a déjà commencé, pas un troisième
+     * appui sur le même geste.
      *
      * Rien ne change à l'écran le temps que l'action réponde : on réappuie.
      * Trois appuis ont créé trois déclarations pour la même anomalie, et la
      * gouvernante a eu trois fois la même chose à vérifier. Le bouton se
      * désactive maintenant, mais un second envoi peut encore venir d'un écran
-     * resté ouvert : l'insertion ne passe donc que s'il n'y en a pas déjà une
-     * dans cette tournée.
+     * resté ouvert — c'est le cas que ce garde-fou visait. Il bloquait
+     * pourtant aussi la REPRISE légitime : un refus le même jour (même
+     * tournée) retrouvait l'intervention déjà posée par le premier passage,
+     * l'insertion n'avait jamais lieu, et la déclaration ne se produisait
+     * JAMAIS — ni nouvel avis, ni nouvelle photo, ni mail, ni passage visible
+     * dans l'historique, en silence.
+     *
+     * On distingue donc : une intervention déjà là pour cette anomalie et
+     * cette tournée, dont l'anomalie est toujours `a_faire`, EST une reprise
+     * après refus — on s'y rattache. Dans tout autre état (encore en cours
+     * côté technicien, déjà en attente ou déjà validée), c'est le double
+     * envoi que la règle visait à l'origine.
      */
-    const [intervention] = await sql<{ id: string }[]>`
-      insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id,
-                                 saisie_par, date_intervention)
-      select ${id}, ${tournee.id}, ${intervenant.utilisateur_id},
-             ${intervenant.prestataire_id}, ${profil_.id},
-             -- La date du PASSAGE, jamais celle que poserait le défaut de la
-             -- colonne (current_date côté base, en heure du serveur) : une
-             -- intervention ne porte pas une date différente de sa tournée.
-             ${tournee.date_tournee}::date
-       where not exists (
-         select 1 from interventions
-          where anomalie_id = ${id} and tournee_id = ${tournee.id})
-      returning id`;
-    // Déjà déclarée pendant ce passage : on ne double ni la sortie de stock,
-    // ni les photos, ni l'avis.
+    const [existante] = await sql<{ id: string; statut_anomalie: string }[]>`
+      select i.id, a.statut::text as statut_anomalie
+      from interventions i
+      join anomalies a on a.id = i.anomalie_id
+      where i.anomalie_id = ${id} and i.tournee_id = ${tournee.id}`;
+
+    let intervention: { id: string } | undefined;
+    if (!existante) {
+      [intervention] = await sql<{ id: string }[]>`
+        insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id,
+                                   saisie_par, date_intervention)
+        values (${id}, ${tournee.id}, ${intervenant.utilisateur_id},
+               ${intervenant.prestataire_id}, ${profil_.id},
+               -- La date du PASSAGE, jamais celle que poserait le défaut de la
+               -- colonne (current_date côté base, en heure du serveur) : une
+               -- intervention ne porte pas une date différente de sa tournée.
+               ${tournee.date_tournee}::date)
+        returning id`;
+    } else if (existante.statut_anomalie === "a_faire") {
+      // Reprise après refus : même intervention, nouvel avis.
+      intervention = { id: existante.id };
+      /**
+       * Le passage a déjà pu envoyer son récapitulatif complet — l'anomalie
+       * refusée y figurait, « à refaire » en clair (règle 10). Mais sa
+       * reprise aujourd'hui est un fait nouveau, que ce premier message ne
+       * pouvait pas connaître. Même geste que `reprendre()` pour un passage
+       * rendu trop tôt : ce qui n'est pas parti s'efface, ce qui EST parti
+       * reste parti — pour que la tournée puisse à nouveau mériter un
+       * récapitulatif, un complément, une fois cette reprise décidée.
+       */
+      await annulerRecapCompletNonParti(tournee.id);
+    }
+    // Déjà déclarée pendant ce passage, sans refus depuis : on ne double ni
+    // la sortie de stock, ni les photos, ni l'avis.
     if (!intervention) {
       redirect(`${versLaTournee(nom, jourDuPassage, { fait: id })}#a-${id}` as Route);
     }
@@ -346,6 +395,16 @@ export default async function TraiterAnomalie({
           chemins={constat}
           titre="Photographié au constat"
           ton="text-blue"
+          taille={104}
+        />
+
+        {/* Ce qu'un passage précédent a déjà fait : elle ne disparaît pas
+            parce que la gouvernante a refusé, elle reste la trace de ce qui
+            a été tenté. */}
+        <Vignettes
+          chemins={apres}
+          titre="Après le dernier passage"
+          ton="text-green"
           taille={104}
         />
 

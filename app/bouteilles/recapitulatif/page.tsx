@@ -8,6 +8,7 @@ import { euros, jourISO } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Cadre, Chiffre, Repartition, SERIES, Tableau } from "@/app/composants/graphiques";
 import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
+import { Depliant } from "@/app/composants/depliant";
 
 export const dynamic = "force-dynamic";
 
@@ -502,11 +503,15 @@ export default async function Recapitulatif({
 
         {/* Les régularisations : un écart tracé, jamais lié à un dossier —
             elles n'apparaissaient donc nulle part ailleurs dans ce
-            récapitulatif que noyées dans le tableau des mouvements. */}
+            récapitulatif que noyées dans le tableau des mouvements. Repliée
+            par défaut : la reprise de l'ancienne application à elle seule
+            peut en poser plusieurs, qui n'intéressent qu'en passant — ce
+            n'est pas ce qu'on vient lire ici. */}
         {regularisations.length > 0 && (
-          <Cadre
+          <Depliant
             titre="Régularisations"
-            detail="Un écart posé sans dossier — inventaire, reprise de l’ancienne application, ou ajustement ponctuel."
+            aide="Un écart posé sans dossier — inventaire, reprise de l’ancienne application, ou ajustement ponctuel."
+            indice={`${regularisations.length} écart${regularisations.length > 1 ? "s" : ""}`}
           >
             <ul className="flex flex-col divide-y divide-line">
               {regularisations.map((r, i) => (
@@ -535,7 +540,7 @@ export default async function Recapitulatif({
                 </li>
               ))}
             </ul>
-          </Cadre>
+          </Depliant>
         )}
 
         {/* Ce que les chiffres ne disent pas : chaque dossier, par date, avec

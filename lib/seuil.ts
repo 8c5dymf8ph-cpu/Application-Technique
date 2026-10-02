@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { viderLaFileEnFond } from "./envoi";
+import { euros } from "./domaine";
 
 /**
  * L'alerte « produit sous le seuil ».
@@ -23,9 +24,16 @@ type SousSeuil = {
   stock: number;
   seuil: number;
   unite: string;
-  fournisseur: string | null;
-  email_fournisseur: string | null;
   quantite_suggeree: number | null;
+  /** Le plus bas jamais payé (`v_prix_produit`, règle 15bis) — pas pour l'exiger,
+   *  mais pour que qui transmet sache d'emblée à quoi se comparer. */
+  prix_min: number | null;
+};
+
+type FournisseurArticle = {
+  nom: string;
+  email: string | null;
+  prefere: boolean;
 };
 
 /**
@@ -46,12 +54,13 @@ export async function alerterSiSousSeuil(produits: string[]): Promise<void> {
   // est le message lui-même : `reference_id` porte le produit.
   const franchis = await sql<SousSeuil[]>`
     select s.id, s.designation, s.code, s.stock::numeric as stock,
-           s.seuil_alerte::numeric as seuil, s.unite, s.fournisseur, s.email_fournisseur,
+           s.seuil_alerte::numeric as seuil, s.unite, pr.prix_min,
            coalesce(p.quantite_reappro,
                     greatest(p.seuil_alerte * 2 - s.stock, 1))::numeric
              as quantite_suggeree
       from v_stock_produits s
       join produits p on p.id = s.id
+      left join v_prix_produit pr on pr.produit_id = s.id
      where s.id = any(${produits})
        and s.actif
        and s.stock <= s.seuil_alerte
@@ -69,10 +78,18 @@ export async function alerterSiSousSeuil(produits: string[]): Promise<void> {
   if (franchis.length === 0) return;
 
   for (const f of franchis) {
+    // Un article peut avoir plusieurs fournisseurs (règle 7) : chacun son
+    // bloc, pour comparer avant de transmettre — le préféré en tête.
+    const fournisseurs = await sql<FournisseurArticle[]>`
+      select f.nom, f.email, af.prefere
+        from article_fournisseurs af
+        join fournisseurs f on f.id = af.fournisseur_id
+       where af.produit_id = ${f.id} and f.actif
+       order by af.prefere desc, f.nom`;
     await sql`
       insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
       values ('seuil_stock', ${f.id}, ${alerte.destinataires},
-              ${objetSeuil(f)}, ${corpsSeuil(f)})`;
+              ${objetSeuil(f)}, ${corpsSeuil(f, fournisseurs)})`;
   }
   // Comme l'alerte bouteille : le message part dans la foulée du dépôt, sans
   // faire attendre l'écran du technicien.
@@ -83,58 +100,78 @@ export function objetSeuil(f: SousSeuil): string {
   return `[STOCK] ${f.designation} — ${f.stock} ${f.unite} en réserve`;
 }
 
-export function corpsSeuil(f: SousSeuil): string {
+export function corpsSeuil(f: SousSeuil, fournisseurs: FournisseurArticle[]): string {
   const entete = [
     `${f.designation} (${f.code}) est passé sous son seuil.`,
     "",
     `En réserve : ${f.stock} ${f.unite}`,
     `Seuil d'alerte : ${f.seuil} ${f.unite}`,
     f.quantite_suggeree ? `À recommander : environ ${f.quantite_suggeree} ${f.unite}` : "",
-    f.fournisseur ? `Fournisseur habituel : ${f.fournisseur}` : "Aucun fournisseur enregistré.",
+    f.prix_min !== null ? `Prix HT le plus bas déjà payé : ${euros(f.prix_min)} l'unité` : "",
+    fournisseurs.length > 0
+      ? `Fournisseur${fournisseurs.length > 1 ? "s" : ""} enregistré${fournisseurs.length > 1 ? "s" : ""} : ` +
+        fournisseurs.map((fo) => fo.nom).join(", ")
+      : "Aucun fournisseur enregistré.",
     "",
     "Ce message est envoyé une fois par passage sous le seuil.",
     "Il repartira si l'article remonte puis redescend.",
   ].filter(Boolean);
 
-  return [...entete, "", ...blocFournisseur(f)].join("\n");
+  return [...entete, "", ...blocFournisseur(f, fournisseurs)].join("\n");
 }
 
 /**
- * Le bloc à transmettre au fournisseur.
+ * Le bloc à transmettre au fournisseur — un par fournisseur enregistré.
  *
  * L'application n'écrit jamais directement au fournisseur — c'est Miguel qui
  * décide s'il commande et à qui. Mais rédiger le mail à chaque alerte est le
  * geste qu'on saute quand on est pressé, et le réapprovisionnement prend du
  * retard. Le bloc est donc déjà écrit, adressé, prêt à transférer tel quel —
  * il ne manque que le geste de transmettre.
+ *
+ * Un article peut avoir plusieurs fournisseurs (règle 7) : la consultation
+ * part alors vers chacun, pour comparer — un seul bloc, avec un seul
+ * destinataire, ne disait jamais qu'il y en avait d'autres. La référence et
+ * le prix le plus bas déjà payé donnent de quoi négocier sans l'exiger —
+ * même trame que la demande de devis (`lib/devis.ts`).
  */
-function blocFournisseur(f: SousSeuil): string[] {
-  if (!f.fournisseur) {
+function blocFournisseur(f: SousSeuil, fournisseurs: FournisseurArticle[]): string[] {
+  if (fournisseurs.length === 0) {
     return [
       "— Aucun mail à transmettre —",
       "Aucun fournisseur n'est enregistré pour cet article : ajoutez-en un depuis sa " +
         "fiche (/stock) pour qu'un mail prêt à transmettre apparaisse ici la prochaine fois.",
     ];
   }
-  return [
-    "————————— À transmettre au fournisseur —————————",
-    f.email_fournisseur ? `À : ${f.fournisseur} <${f.email_fournisseur}>` : `À : ${f.fournisseur}`,
+
+  const quantiteDemandee = f.quantite_suggeree
+    ? ` pour environ ${f.quantite_suggeree} ${f.unite}`
+    : "";
+  const basePrix =
+    f.prix_min !== null
+      ? ` Nous avons précédemment acheté cet article à ${euros(f.prix_min)} HT l'unité : pourriez-vous ` +
+        "nous confirmer si vous êtes en mesure de vous aligner sur ce tarif, ou nous faire votre " +
+        "meilleure proposition ?"
+      : " Pourriez-vous nous faire votre meilleure proposition de tarif ?";
+
+  return fournisseurs.flatMap((fo, i) => [
+    i > 0 ? "" : null,
+    `————————— À transmettre${fo.prefere ? " (fournisseur préféré)" : ""} —————————`,
+    fo.email ? `À : ${fo.nom} <${fo.email}>` : `À : ${fo.nom}`,
     `Objet : Réapprovisionnement — ${f.designation}`,
     "",
     "Bonjour,",
     "",
     `Notre stock de ${f.designation} (réf. ${f.code}) est descendu sous notre seuil habituel.` +
-      (f.quantite_suggeree
-        ? ` Pourriez-vous nous indiquer votre délai et votre tarif pour environ ` +
-          `${f.quantite_suggeree} ${f.unite} ?`
-        : " Pourriez-vous nous indiquer votre délai et votre tarif de réapprovisionnement ?"),
+      ` Pourriez-vous nous indiquer votre délai de livraison${quantiteDemandee} ?` +
+      basePrix,
     "",
     "Merci d'avance,",
     "L'Hôtel Parisianer",
     "—————————————————————————————————————————————————",
-    !f.email_fournisseur
+    !fo.email
       ? "(Aucune adresse enregistrée pour ce fournisseur : ajoutez-la sur sa fiche pour " +
         "ne plus avoir à la chercher.)"
       : null,
-  ].filter((l): l is string => l !== null);
+  ].filter((l): l is string => l !== null));
 }
