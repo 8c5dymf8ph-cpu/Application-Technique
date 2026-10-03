@@ -377,18 +377,14 @@ export default async function TraiterAnomalie({
   };
 
   return (
-    <main className="h-dvh overflow-hidden flex flex-col max-w-md mx-auto">
+    <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
         titre={anomalie.emplacement}
         sous_titre={anomalie.etage}
         retour={par ? (versLaTournee(par, jourDuPassage) as Route) : "/technique"}
       />
 
-      {/* L'anomalie reste à l'œil pendant qu'on fait défiler les produits —
-          sinon, sur une longue galerie, on perd de vue ce qu'on est venu
-          traiter, et l'écran entier défilait EN PLUS de la galerie : deux
-          défilements pour un seul geste. */}
-      <div className="shrink-0 px-5 pt-5 pb-3 flex flex-col gap-3">
+      <div className="px-5 pt-5 pb-3 flex flex-col gap-3">
         <p className="font-display font-semibold text-[19px] leading-snug text-pretty">
           {anomalie.description}
         </p>
@@ -405,7 +401,7 @@ export default async function TraiterAnomalie({
         )}
       </div>
 
-      <div className="grow min-h-0 overflow-y-auto px-5 pb-5 flex flex-col gap-6">
+      <div className="px-5 pb-5 flex flex-col gap-6">
         {/* Le technicien regarde le constat avant de monter : c'est le sujet de
             l'écran, pas une note de bas de page. */}
         <Vignettes
@@ -565,15 +561,18 @@ export default async function TraiterAnomalie({
           </details>
           </div>
 
-          {/* La galerie défile dans SA propre hauteur, entre la recherche et
-              la barre du bas (commentaire, photo, bouton) — jamais toute la
-              page : avec une quarantaine d'articles, il fallait sinon tout
-              faire défiler pour atteindre « C'est fait ». 46vh laissait un
-              vide sous la galerie — le reste de l'écran ne grandissait pas
-              pour le reprendre — et ne montrait qu'un demi-article à la
-              fois en défilant : relevé trop bas pour le peu qu'il y avait
-              en dessous. */}
-          <ul className="flex flex-col gap-1.5 overflow-y-auto max-h-[64vh] -mx-1 px-1">
+          {/* La galerie avait sa propre hauteur bornée (`max-h-[46vh]`, puis
+              `64vh`), pour atteindre « C'est fait » sans défiler toute une
+              quarantaine d'articles — mais sur un vrai téléphone, `dvh` ne
+              tenait pas sa promesse : le reste de l'écran (h-dvh sur <main>)
+              ne grandissait pas pour reprendre l'espace laissé libre, qui
+              restait vide sous le bouton, tout en bas. Deux défilements
+              imbriqués pour un seul geste, en plus d'être avare de place.
+              La page défile maintenant comme UNE SEULE liste, galerie
+              comprise : plus de vide, plus de second défilement — et
+              atteindre le bouton ne coûte qu'un défilement de plus qu'avant,
+              pas une liste à part entière à traverser. */}
+          <ul className="flex flex-col gap-1.5 -mx-1 px-1">
             {produits
               .filter((p) => !choisis.includes(p.id))
               .map((p) => {
@@ -627,7 +626,13 @@ export default async function TraiterAnomalie({
         </section>
       </div>
 
-      <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
+      {/* Ce bloc suivait la galerie dans le même flux, mais restait « sticky
+          bottom-0 » — un reste du temps où l'écran entier était un cadre
+          fixe (h-dvh) avec la galerie défilant à part en dedans. Collé au
+          bas d'un parent qui ne défile plus lui-même, `sticky` ne faisait
+          plus rien d'utile ; en flux normal, il suit directement la galerie
+          désormais plus grande, sans l'espace mort qui restait en dessous. */}
+      <div className="px-5 pb-6 pt-2 bg-ground">
         <form action={enregistrer} className="flex flex-col gap-3">
           <input type="hidden" name="intervenant" value={par ?? profil.nom} />
           <input type="hidden" name="pris" value={pris} />
