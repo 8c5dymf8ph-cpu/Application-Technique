@@ -568,8 +568,12 @@ export default async function TraiterAnomalie({
           {/* La galerie défile dans SA propre hauteur, entre la recherche et
               la barre du bas (commentaire, photo, bouton) — jamais toute la
               page : avec une quarantaine d'articles, il fallait sinon tout
-              faire défiler pour atteindre « C'est fait ». */}
-          <ul className="flex flex-col gap-1.5 overflow-y-auto max-h-[46vh] -mx-1 px-1">
+              faire défiler pour atteindre « C'est fait ». 46vh laissait un
+              vide sous la galerie — le reste de l'écran ne grandissait pas
+              pour le reprendre — et ne montrait qu'un demi-article à la
+              fois en défilant : relevé trop bas pour le peu qu'il y avait
+              en dessous. */}
+          <ul className="flex flex-col gap-1.5 overflow-y-auto max-h-[64vh] -mx-1 px-1">
             {produits
               .filter((p) => !choisis.includes(p.id))
               .map((p) => {
@@ -579,10 +583,10 @@ export default async function TraiterAnomalie({
                 const epuise = p.stock <= 0;
                 const nom_ = (
                   <span className="flex flex-col grow min-w-0">
-                    <span className="text-[17px] font-display font-semibold leading-snug text-pretty">
+                    <span className="text-[15.5px] font-display font-semibold leading-snug text-pretty">
                       {p.designation}
                     </span>
-                    <span className={`text-[14px] ${epuise ? "text-red" : "text-ink-faint"}`}>
+                    <span className={`text-[13px] ${epuise ? "text-red" : "text-ink-faint"}`}>
                       {epuise ? "épuisé — rien en réserve" : `reste ${p.stock} en réserve`}
                     </span>
                   </span>
@@ -590,15 +594,17 @@ export default async function TraiterAnomalie({
                 return (
                   <li
                     key={p.id}
-                    className={`px-3 py-3 rounded-card bg-surface-muted border border-line flex items-center gap-3.5 ${
+                    className={`px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 ${
                       epuise ? "opacity-55" : ""
                     }`}
                   >
                     {/* La photo est À CÔTÉ du lien, pas dedans : arrêter la
                         propagation d'un clic ne suffisait pas — on l'ouvrait
                         en grand ET l'article s'ajoutait. Hors du lien, il n'y
-                        a plus rien à arrêter. */}
-                    <PhotoProduit photos={p.photos} designation={p.designation} taille={92} />
+                        a plus rien à arrêter. Taille réduite de 92 à 76 px —
+                        très peu — pour qu'un peu plus d'un article tienne
+                        dans la galerie sans la faire défiler en miettes. */}
+                    <PhotoProduit photos={p.photos} designation={p.designation} taille={76} />
                     {epuise ? (
                       nom_
                     ) : (

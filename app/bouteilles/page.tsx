@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
-import { euros, peutValider } from "@/lib/domaine";
+import { euros } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
@@ -203,15 +203,6 @@ export default async function Bouteilles({
               />
           </>
         </div>
-
-        {peutValider(profil.role) && (
-          <Link
-            href={"/administration/equipe" as Route}
-            className="text-[12.5px] text-plum underline underline-offset-4 self-start"
-          >
-            Gérer les prénoms — l’étage et la réception
-          </Link>
-        )}
 
         {c.urgents > 0 && (
           <Link

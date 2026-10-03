@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif } from "@/lib/profil";
-import { aujourdhuiISO, euros, jourISO, peutValider } from "@/lib/domaine";
+import { aujourdhuiISO, euros, jourISO, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete , Confirmation } from "@/app/composants/ui";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
@@ -90,6 +90,7 @@ type Mouvement = {
   essai: boolean;
   anomalie: string | null;
   anomalie_id: string | null;
+  tournee_id: string | null;
   catalogue_libelle: string | null;
   commentaire: string | null;
   prix_unitaire: number | null;
@@ -241,6 +242,7 @@ export default async function FicheProduit({
            ${marqueEssai ? sql`coalesce(e.essai, false)` : sql`false`} as essai,
            a.description                     as anomalie,
            a.id                               as anomalie_id,
+           i.tournee_id,
            ca.libelle                         as catalogue_libelle,
            m.commentaire,
            m.prix_unitaire,
@@ -1415,9 +1417,30 @@ export default async function FicheProduit({
                             même genre d'information dans son commentaire — on
                             la lit au même endroit, sinon la ligne dit juste
                             « Sortie · lieu · qui » et plus rien sur le pourquoi. */}
-                        {m.anomalie
-                          ? ` · ${m.anomalie}`
-                          : m.type === "sortie" && m.commentaire && ` · ${m.commentaire}`}
+                        {m.anomalie ? (
+                          <>
+                            {" · "}
+                            {/* Le passage auquel appartient cette sortie —
+                                un chemin direct vers `/technique/tournee/[id]`,
+                                là où corriger ou supprimer un passage se fait.
+                                Sans lui, retrouver CE passage précis dans
+                                l'historique, pour une sortie ancienne ou en
+                                chambre d'essai, pouvait demander de fouiller
+                                une longue liste ; ici c'est à un appui. */}
+                            {m.tournee_id && profil && suitLesDossiers(profil.role) ? (
+                              <Link
+                                href={`/technique/tournee/${m.tournee_id}` as Route}
+                                className="underline underline-offset-2"
+                              >
+                                {m.anomalie}
+                              </Link>
+                            ) : (
+                              m.anomalie
+                            )}
+                          </>
+                        ) : (
+                          m.type === "sortie" && m.commentaire && ` · ${m.commentaire}`
+                        )}
                         {entree && m.prix_unitaire !== null && ` · ${euros(m.prix_unitaire)}`}
                       </span>
                     </span>
