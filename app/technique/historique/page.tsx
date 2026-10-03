@@ -184,7 +184,17 @@ export default async function PassagesEtFactures({
                     -- disparu.
                     or exists (select 1 from anomalies a
                                 where a.id = r.anomalie_id
-                                  and a.sharepoint_id::text = ${terme}))))
+                                  and a.sharepoint_id::text = ${terme})
+                    -- Et par ce qui a servi : on vient du produit (« où est
+                    -- passé ce passage qui a sorti des piles ? ») et le mot
+                    -- cherché est un nom de matériel, pas une description
+                    -- d'anomalie. Sans ce bout, la recherche répondait
+                    -- « aucun passage » pour un passage qui existe bel et bien.
+                    or exists (select 1 from mouvements_stock m
+                                join produits p on p.id = m.produit_id
+                                where m.intervention_id = r.intervention_id
+                                  and m.type = 'sortie'
+                                  and lower(p.designation) like ${"%" + terme + "%"}))))
         order by t.date_tournee desc, t.cloturee_le desc nulls last
         -- Plus de coupe à 50 : sur la base de l'hôtel, 46 passages sur 96 —
         -- 304 anomalies — n'existaient tout simplement pas à l'écran, et rien

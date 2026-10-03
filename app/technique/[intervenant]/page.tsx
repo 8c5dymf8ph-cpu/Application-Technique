@@ -72,25 +72,18 @@ function versLaListe(
 function phraseValidees(n: number): string {
   const pluriel = n > 1;
   return (
-    `${n} anomalie${pluriel ? "s" : ""} de ce passage ${pluriel ? "ont" : "a"} déjà été ` +
-    `validée${pluriel ? "s" : ""} par la gouvernante : sa décision ne se corrige pas en ` +
-    `reprenant le passage, ${pluriel ? "elles ne reviennent" : "elle ne revient"} donc pas ` +
-    `dans cette liste.`
+    `${n} anomalie${pluriel ? "s" : ""} déjà validée${pluriel ? "s" : ""} par la gouvernante — ` +
+    `décision définitive, ${pluriel ? "elles ne reviennent" : "elle ne revient"} pas ici.`
   );
 }
 
 function phraseAReprendre(n: number): string {
   const pluriel = n > 1;
   return (
-    `${n} anomalie${pluriel ? "s" : ""} revi${pluriel ? "ennent" : "ent"} décochée${
-      pluriel ? "s" : ""
-    } : la gouvernante ${pluriel ? "les a" : "l'a"} renvoyée${pluriel ? "s" : ""} (« à refaire » ` +
-    `ou « remise en cours »). Si tu n'y touches pas, ${
-      pluriel ? "elles restent" : "elle reste"
-    } à faire ${pluriel ? "telles quelles" : "telle quelle"} — aujourd'hui et les jours ` +
-    `suivants, rien n'est perdu. Si tu recoches « C'est fait », un nouvel avis s'ajoute sans ` +
-    `effacer celui de la gouvernante, et ${pluriel ? "elles repartent" : "elle repart"} à sa ` +
-    `validation.`
+    `${n} anomalie${pluriel ? "s" : ""} renvoyée${pluriel ? "s" : ""} par la gouvernante (à ` +
+    `refaire / en cours) : décochée${pluriel ? "s" : ""} pour être retraitée${pluriel ? "s" : ""}. ` +
+    `Sans action, ${pluriel ? "elles restent" : "elle reste"} simplement à faire. Recoche ` +
+    `« C'est fait » pour ajouter un nouvel avis, sans effacer le sien.`
   );
 }
 

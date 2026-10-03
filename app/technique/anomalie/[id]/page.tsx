@@ -393,15 +393,14 @@ export default async function TraiterAnomalie({
           {anomalie.description}
         </p>
 
-        {/* Une répétition se dit. Cocher du matériel ici ne sortira rien de la
-            réserve — personne n'ira chercher la pièce sur l'étagère — mais
-            rien à l'écran ne le laissait deviner, et le stock baissait pour de
-            bon. Tout le reste fonctionne comme dans une vraie chambre. */}
+        {/* Une répétition se dit — mais en une ligne : la version en
+            paragraphe prenait trop de place sur un écran déjà serré, pour un
+            rappel qui n'a besoin d'être lu qu'une fois. Cocher du matériel
+            ici ne sort rien de la réserve ; tout le reste fonctionne comme
+            dans une vraie chambre. */}
         {anomalie.essai && (
-          <p className="rounded-xl border border-dashed border-ink-faint/50 bg-surface-muted px-3.5 py-3 text-[14px] leading-snug text-ink-faint text-pretty">
-            <span className="font-semibold text-ink">Chambre d’essai.</span> Tout
-            se passe comme d’habitude, mais le matériel coché ne sera pas déduit
-            du stock et ce passage ne comptera pas dans les chiffres de l’hôtel.
+          <p className="text-[11.5px] text-ink-faint">
+            Chambre d’essai · matériel non déduit du stock
           </p>
         )}
       </div>
@@ -532,11 +531,6 @@ export default async function TraiterAnomalie({
               </svg>
               {choisis.length === 0 ? "Choisir le matériel utilisé" : "Ajouter un autre article"}
             </summary>
-
-            <p className="text-[13.5px] text-ink-faint text-pretty pt-2">
-              Ce qui a déjà servi pour ce problème vient en premier. Appuyez sur un article
-              pour l’ajouter.
-            </p>
 
           {/* La recherche reste À L'ŒIL pendant qu'on parcourt la galerie :
               épinglée en haut, elle ne défile pas avec les articles. Sans
