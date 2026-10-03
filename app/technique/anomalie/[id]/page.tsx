@@ -376,6 +376,60 @@ export default async function TraiterAnomalie({
     return `/technique/anomalie/${id}?${p}` as Route;
   };
 
+  // Un petit nombre d'abord — « ce qui a déjà servi pour ce problème vient
+  // en premier » (le tri de la requête), donc le bon article est souvent
+  // déjà dedans — le reste se déplie sur demande (voir plus bas) plutôt que
+  // de tout défiler pour atteindre « C'est fait ».
+  const GALERIE_VISIBLE = 6;
+  const disponibles = produits.filter((p) => !choisis.includes(p.id));
+
+  function ligneArticle(p: Produit) {
+    // Un article qu'on n'a plus ne se prend pas dans la réserve. Il reste
+    // visible — sinon on le cherche sans comprendre — mais il ne s'ajoute
+    // pas, et il dit pourquoi.
+    const epuise = p.stock <= 0;
+    const nom_ = (
+      <span className="flex flex-col grow min-w-0">
+        <span className="text-[15.5px] font-display font-semibold leading-snug text-pretty">
+          {p.designation}
+        </span>
+        <span className={`text-[13px] ${epuise ? "text-red" : "text-ink-faint"}`}>
+          {epuise ? "épuisé — rien en réserve" : `reste ${p.stock} en réserve`}
+        </span>
+      </span>
+    );
+    return (
+      <li
+        key={p.id}
+        className={`px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 ${
+          epuise ? "opacity-55" : ""
+        }`}
+      >
+        {/* La photo est À CÔTÉ du lien, pas dedans : arrêter la propagation
+            d'un clic ne suffisait pas — on l'ouvrait en grand ET l'article
+            s'ajoutait. Hors du lien, il n'y a plus rien à arrêter. Taille
+            réduite de 92 à 76 px — très peu — pour qu'un peu plus d'un
+            article tienne dans la galerie sans la faire défiler en
+            miettes. */}
+        <PhotoProduit photos={p.photos} designation={p.designation} taille={76} />
+        {epuise ? (
+          nom_
+        ) : (
+          <Link
+            href={lien({ pris: ecrire([...lu, { id: p.id, qte: 1 }]) })}
+            className="grow min-w-0 flex items-center gap-3.5 active:opacity-70"
+          >
+            {nom_}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
+                 strokeWidth="2.2" strokeLinecap="round" className="shrink-0">
+              <path d="M6 12h12" /><path d="M12 6v12" />
+            </svg>
+          </Link>
+        )}
+      </li>
+    );
+  }
+
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
@@ -561,67 +615,38 @@ export default async function TraiterAnomalie({
           </details>
           </div>
 
-          {/* La galerie avait sa propre hauteur bornée (`max-h-[46vh]`, puis
-              `64vh`), pour atteindre « C'est fait » sans défiler toute une
-              quarantaine d'articles — mais sur un vrai téléphone, `dvh` ne
-              tenait pas sa promesse : le reste de l'écran (h-dvh sur <main>)
-              ne grandissait pas pour reprendre l'espace laissé libre, qui
-              restait vide sous le bouton, tout en bas. Deux défilements
-              imbriqués pour un seul geste, en plus d'être avare de place.
-              La page défile maintenant comme UNE SEULE liste, galerie
-              comprise : plus de vide, plus de second défilement — et
-              atteindre le bouton ne coûte qu'un défilement de plus qu'avant,
-              pas une liste à part entière à traverser. */}
+          {/* La galerie avait sa propre hauteur bornée (`max-h`), pour
+              atteindre « C'est fait » sans défiler toute une quarantaine
+              d'articles — mais sur un vrai téléphone, `dvh` sur <main> ne
+              tenait pas sa promesse : l'espace que le reste de l'écran
+              devait reprendre restait vide, en bas, sous le bouton (voir
+              a437c6a, qui a fait défiler toute la page comme une seule
+              liste). Supprimer le `max-h` a réglé le vide, mais a ouvert
+              l'autre défaut qu'il évitait : tout défiler, même quarante
+              articles, pour atteindre le bouton.
+              Le compromis n'est ni l'un ni l'autre : seuls les six premiers
+              articles s'affichent d'abord — « ce qui a déjà servi pour ce
+              problème vient en premier » (le tri existant), donc le bon
+              article est souvent déjà dedans — et le reste se déplie sur
+              demande, dans le MÊME flux de page (`<details>`, pas une
+              seconde zone de défilement imbriquée). */}
           <ul className="flex flex-col gap-1.5 -mx-1 px-1">
-            {produits
-              .filter((p) => !choisis.includes(p.id))
-              .map((p) => {
-                // Un article qu'on n'a plus ne se prend pas dans la réserve.
-                // Il reste visible — sinon on le cherche sans comprendre — mais
-                // il ne s'ajoute pas, et il dit pourquoi.
-                const epuise = p.stock <= 0;
-                const nom_ = (
-                  <span className="flex flex-col grow min-w-0">
-                    <span className="text-[15.5px] font-display font-semibold leading-snug text-pretty">
-                      {p.designation}
-                    </span>
-                    <span className={`text-[13px] ${epuise ? "text-red" : "text-ink-faint"}`}>
-                      {epuise ? "épuisé — rien en réserve" : `reste ${p.stock} en réserve`}
-                    </span>
-                  </span>
-                );
-                return (
-                  <li
-                    key={p.id}
-                    className={`px-3 py-2.5 rounded-card bg-surface-muted border border-line flex items-center gap-3 ${
-                      epuise ? "opacity-55" : ""
-                    }`}
-                  >
-                    {/* La photo est À CÔTÉ du lien, pas dedans : arrêter la
-                        propagation d'un clic ne suffisait pas — on l'ouvrait
-                        en grand ET l'article s'ajoutait. Hors du lien, il n'y
-                        a plus rien à arrêter. Taille réduite de 92 à 76 px —
-                        très peu — pour qu'un peu plus d'un article tienne
-                        dans la galerie sans la faire défiler en miettes. */}
-                    <PhotoProduit photos={p.photos} designation={p.designation} taille={76} />
-                    {epuise ? (
-                      nom_
-                    ) : (
-                      <Link
-                        href={lien({ pris: ecrire([...lu, { id: p.id, qte: 1 }]) })}
-                        className="grow min-w-0 flex items-center gap-3.5 active:opacity-70"
-                      >
-                        {nom_}
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
-                             strokeWidth="2.2" strokeLinecap="round" className="shrink-0">
-                          <path d="M6 12h12" /><path d="M12 6v12" />
-                        </svg>
-                      </Link>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            {disponibles.slice(0, GALERIE_VISIBLE).map(ligneArticle)}
+          </ul>
+          {disponibles.length > GALERIE_VISIBLE && (
+            <details className="group/plus mt-1.5">
+              <summary className="list-none mx-1 carte px-4 py-2.5 text-[13.5px] text-plum flex items-center justify-center gap-2 cursor-pointer">
+                <span className="group-open/plus:hidden">
+                  Voir {disponibles.length - GALERIE_VISIBLE} article
+                  {disponibles.length - GALERIE_VISIBLE > 1 ? "s" : ""} de plus
+                </span>
+                <span className="hidden group-open/plus:inline">Replier</span>
+              </summary>
+              <ul className="flex flex-col gap-1.5 -mx-1 px-1 pt-1.5">
+                {disponibles.slice(GALERIE_VISIBLE).map(ligneArticle)}
+              </ul>
+            </details>
+          )}
           </details>
         </section>
       </div>
