@@ -6,6 +6,7 @@ import { exigerEncadrement } from "@/lib/acces";
 import { vueExiste } from "@/lib/schema";
 import { euros } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
+import { RafraichitPeriodiquement } from "@/app/composants/rafraichit-periodiquement";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,9 @@ export default async function HubTechnique() {
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {/* Laissé ouvert pour surveiller — un passage rendu ailleurs doit
+          apparaître sans qu'on ait à quitter cet écran pour le revoir. */}
+      <RafraichitPeriodiquement />
       <Entete
         titre="Technique"
         sous_titre={`${c.a_faire + c.en_cours} anomalies ouvertes · ${euros(c.cout_mois)} ce mois-ci`}
