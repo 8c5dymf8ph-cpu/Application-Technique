@@ -84,12 +84,31 @@ export async function deposerRecap(tournee: string, complet: boolean, renvoi = f
       date_tournee: string;
       cout_total: number;
       cout_incomplet: boolean;
+      nb_validees: number;
+      nb_en_cours: number;
+      nb_a_refaire: number;
     }[]
   >`
     select reference, intervenant, date_tournee, cout_total,
-           coalesce(cout_incomplet, false) as cout_incomplet
+           coalesce(cout_incomplet, false) as cout_incomplet,
+           nb_validees, nb_en_cours, nb_a_refaire
     from v_tournees where id = ${tournee}`;
   if (!t) return;
+
+  // Qui a tranché en dernier, pour l'afficher sur le récapitulatif complet —
+  // « Validé par » dans l'encadré d'en-tête. Sans intérêt pour le message
+  // « lot rendu », qui part avant tout avis.
+  const [valideur] = complet
+    ? await sql<{ nom: string; quand: string }[]>`
+        select u.nom, max(v.decide_le) as quand
+          from validations v
+          join interventions i on i.id = v.intervention_id
+          join utilisateurs u  on u.id = v.utilisateur_id
+         where i.tournee_id = ${tournee} and v.acteur = 'gouvernante'
+         group by u.nom
+         order by max(v.decide_le) desc
+         limit 1`
+    : [];
 
   const lignes = await sql<LigneRecap[]>`
     select r.emplacement, r.description,
@@ -107,7 +126,12 @@ export async function deposerRecap(tournee: string, complet: boolean, renvoi = f
     order by r.emplacement`;
   if (lignes.length === 0) return;
 
-  const recap: Recap = { ...t, lignes };
+  const recap: Recap = {
+    ...t,
+    lignes,
+    valide_par: valideur?.nom ?? null,
+    valide_le: valideur?.quand ?? null,
+  };
   // Le code part en ligne avant la migration 0035 : tant que la colonne
   // n'existe pas encore, on écrit sans elle plutôt que de casser le dépôt.
   if (await colonneExiste("emails_envoyes", "corps_html")) {

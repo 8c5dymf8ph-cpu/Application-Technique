@@ -214,6 +214,20 @@ export default async function Tournee({
     return { ...l, aReprendre, traitee: l.traitee && !aReprendre };
   });
 
+  /**
+   * Combien d'anomalies de CE passage sont validées — donc absentes des deux
+   * requêtes ci-dessus (règle 11 : « validée » ne revient jamais en arrière).
+   * Reprendre le passage ne les ramène jamais : sa décision est un fait. Sans
+   * ce chiffre, elles disparaissaient de l'écran sans un mot — on avait
+   * déclaré quatre choses le matin, on n'en revoyait que trois en reprenant,
+   * et rien ne disait où était passée la quatrième.
+   */
+  const [{ n: nbValidees }] = await sql<{ n: number }[]>`
+    select count(*)::int as n
+      from interventions i
+      join anomalies a on a.id = i.anomalie_id
+     where i.tournee_id = ${tournee.id} and a.statut = 'validee'`;
+
   // Le fil de chaque anomalie de la tournée : la bulle s'ouvre sur place.
   const fils = uniques.length
     ? await sql<(Message & { anomalie_id: string })[]>`
@@ -624,6 +638,19 @@ export default async function Tournee({
               style={{ width: `${Math.round((faitesEnTout.length / uniques.length) * 100)}%` }}
             />
           </div>
+        )}
+
+        {/* Reprendre le passage ne ramène jamais ce que la gouvernante a déjà
+            validé — sa décision est un fait. Sans ce mot, une anomalie
+            validée disparaissait simplement de l'écran : on avait déclaré
+            quatre choses, on n'en revoyait que trois, sans savoir pourquoi. */}
+        {tournee.cloturee_le === null && nbValidees > 0 && (
+          <p className="text-[12.5px] text-ink-faint text-pretty leading-snug">
+            {nbValidees} anomalie{nbValidees > 1 ? "s" : ""} de ce passage{" "}
+            {nbValidees > 1 ? "ont" : "a"} déjà été validée{nbValidees > 1 ? "s" : ""} par la
+            gouvernante : sa décision ne se corrige pas en reprenant le passage, elle{" "}
+            {nbValidees > 1 ? "ne reviennent" : "ne revient"} donc pas dans cette liste.
+          </p>
         )}
 
         {uniques.length === 0 ? (
