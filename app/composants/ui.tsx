@@ -248,6 +248,12 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
     ton: "green",
     texte: "Commande supprimée. Si elle était reçue, ses entrées de stock sont parties avec elle.",
   },
+  "passage-supprime": {
+    ton: "green",
+    texte:
+      "Passage supprimé. Ses anomalies restent dans l’hôtel, remises « à faire » — " +
+      "c’est ce passage-ci qui a disparu, avec ses avis et ses sorties de stock.",
+  },
   "passage-repris": {
     ton: "green",
     texte:

@@ -173,6 +173,14 @@ const ATTENDUES: Attendue[] = [
       "passages se suivent, rien ne distingue leur date au premier coup d’œil.",
     verifier: () => colonneExiste("emails_envoyes", "corps_html"),
   },
+  {
+    titre: "Supprimer un passage",
+    sans:
+      "Un passage saisi de travers (mauvais intervenant, doublon d’historique) ne peut pas " +
+      "être défait : ses anomalies restent coincées derrière un passage qui n’aurait jamais " +
+      "dû exister.",
+    verifier: () => tableExiste("tournees_supprimees"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

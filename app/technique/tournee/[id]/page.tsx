@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
-import { colonneExiste, regleContient } from "@/lib/schema";
+import { colonneExiste, regleContient, tableExiste } from "@/lib/schema";
 import { enregistrerFichier } from "@/lib/stockage";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
@@ -101,11 +101,11 @@ export default async function DetailTournee({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ fait?: string }>;
+  searchParams: Promise<{ fait?: string; supprimer?: string }>;
 }) {
   const profil = await exigerEncadrement();
   const { id } = await params;
-  const { fait } = await searchParams;
+  const { fait, supprimer: confirmeSuppression } = await searchParams;
 
   const [lot] = await sql<Lot[]>`
     select id, reference, intervenant, date_tournee, cloturee_le,
@@ -132,6 +132,14 @@ export default async function DetailTournee({
     left join factures f               on f.id = fi.facture_id
     where r.tournee = ${lot.reference}
     order by r.date_intervention desc, r.emplacement`;
+
+  // Supprimer le passage : réservé à Sarah P et Miguel (0036), le code part
+  // en ligne avant la migration.
+  const suppressionPassagePrete = await tableExiste("tournees_supprimees");
+  const [emporteParPassage] = await sql<{ sorties: number; pieces: number }[]>`
+    select count(*)::int as sorties, coalesce(sum(abs(m.quantite)), 0)::numeric as pieces
+      from mouvements_stock m join interventions i on i.id = m.intervention_id
+     where i.tournee_id = ${id}`;
 
   // Le fil de chaque anomalie du passage : la bulle s'ouvre SUR l'écran.
   // « Le fil » était un lien vers un écran de plus, et on perdait sa place
@@ -463,6 +471,27 @@ export default async function DetailTournee({
     // d'aujourd'hui, pas avec celui du jour où il était parti.
     await deposerRecap(id, donnees.get("quoi") === "complet", true);
     revalidatePath(`/technique/tournee/${id}`);
+  }
+
+  /**
+   * Supprimer le passage entier.
+   *
+   * Différent de supprimer une anomalie : ici c'est le PASSAGE qui disparaît,
+   * pas ce qu'il concernait. Les anomalies restent, remises à `a_faire` par
+   * le déclencheur (migration 0036) — seul ce que CE passage a produit (avis,
+   * sorties de stock, rattachement de facture) est défait. Réservé à Sarah P
+   * et Miguel : une correction d'encadrement sur de l'historique, le même
+   * cercle que corriger une date de passage ou supprimer une facture.
+   */
+  async function supprimerPassage() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !suitLesDossiers(profil_.role)) {
+      redirect(`/technique/tournee/${id}` as Route);
+    }
+    await sql`delete from tournees where id = ${id}`;
+    revalidatePath("/technique/historique");
+    redirect("/technique/historique?fait=passage-supprime" as Route);
   }
 
   const materielTotal = lignes.reduce((n, l) => n + Number(l.cout_materiel ?? 0), 0);
@@ -1022,6 +1051,62 @@ export default async function DetailTournee({
         >
           Tous les passages
         </Link>
+
+        {/* Supprimer se confirme, en deux temps, comme pour une anomalie :
+            un dépliant n'est pas une confirmation, le bouton rouge ne doit
+            pas être sous le pouce au premier appui. */}
+        {suitLesDossiers(profil.role) && suppressionPassagePrete && (
+          <div className="border-t border-line pt-5">
+            {!confirmeSuppression ? (
+              <Link
+                href={`/technique/tournee/${id}?supprimer=1` as Route}
+                replace
+                className="text-[13px] text-ink-faint underline underline-offset-4"
+              >
+                Supprimer ce passage
+              </Link>
+            ) : (
+              <div className="mt-3 rounded-card bg-red-soft px-4 py-3.5 flex flex-col gap-3">
+                <p className="font-display font-semibold text-[15.5px] text-red">
+                  Supprimer le passage de {lot.intervenant ?? "cet intervenant"} du{" "}
+                  {new Date(lot.date_tournee).toLocaleDateString("fr-FR")} ?
+                </p>
+                <p className="text-[13px] text-red text-pretty leading-snug">
+                  {lignes.length} anomalie{lignes.length > 1 ? "s" : ""} redevien
+                  {lignes.length > 1 ? "nent" : "t"} « à faire » — elles restent dans
+                  l’hôtel, c’est ce passage-ci qui disparaît, avec les avis qu’il porte
+                  et le rattachement de facture éventuel.
+                </p>
+                {emporteParPassage.sorties > 0 && (
+                  <p className="text-[12px] text-red/80 text-pretty leading-snug">
+                    {emporteParPassage.sorties} sortie{emporteParPassage.sorties > 1 ? "s" : ""} de
+                    stock repart{emporteParPassage.sorties > 1 ? "ent" : ""} avec lui :{" "}
+                    {Number(emporteParPassage.pieces)} pièce
+                    {Number(emporteParPassage.pieces) > 1 ? "s reviennent" : " revient"} en
+                    réserve.
+                  </p>
+                )}
+                <div className="flex gap-2.5">
+                  <Link
+                    href={`/technique/tournee/${id}` as Route}
+                    replace
+                    className="flex-1 h-[46px] rounded-[12px] bg-surface border border-line text-ink-soft font-display font-semibold text-[14.5px] grid place-items-center"
+                  >
+                    Annuler
+                  </Link>
+                  <form action={supprimerPassage} className="flex-1">
+                    <BoutonEnvoi
+                      pendant="Suppression…"
+                      className="h-[46px] w-full rounded-[12px] bg-red text-white font-display font-semibold text-[14.5px]"
+                    >
+                      Oui, supprimer
+                    </BoutonEnvoi>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

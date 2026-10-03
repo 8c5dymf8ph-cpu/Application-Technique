@@ -21,6 +21,18 @@ type Supprimee = {
   par: string | null;
 };
 
+type PassageSupprime = {
+  id: string;
+  reference: string | null;
+  date_tournee: string | Date | null;
+  intervenant: string | null;
+  nb_interventions: number;
+  nb_mouvements: number;
+  anomalies: { id: string; reference: number; description: string }[];
+  supprimee_le: string | Date;
+  par: string | null;
+};
+
 /**
  * Ce qui a été supprimé.
  *
@@ -45,6 +57,19 @@ export default async function CeQuiAEteSupprime() {
                (select u.nom from utilisateurs u where u.id = s.supprimee_par) as par
           from anomalies_supprimees s
          order by s.supprimee_le desc limit 30`
+    : [];
+
+  // Les passages supprimés (0036) : un journal séparé, parce que ce n'est
+  // pas la même chose qui disparaît — ici le passage, pas les anomalies
+  // qu'il touchait, qui restent dans l'hôtel.
+  const journalPassagesPret = await tableExiste("tournees_supprimees");
+  const passagesSupprimes = journalPassagesPret
+    ? await sql<PassageSupprime[]>`
+        select t.id, t.reference, t.date_tournee, t.intervenant,
+               t.nb_interventions, t.nb_mouvements, t.anomalies, t.supprimee_le,
+               (select u.nom from utilisateurs u where u.id = t.supprimee_par) as par
+          from tournees_supprimees t
+         order by t.supprimee_le desc limit 30`
     : [];
 
   return (
@@ -121,6 +146,48 @@ export default async function CeQuiAEteSupprime() {
               </ul>
             )}
           </>
+        )}
+
+        {/* Les passages supprimés : un autre journal, pour un autre geste.
+            Ici ce sont les anomalies qui restent — remises « à faire » — et
+            seul le passage a disparu, avec ses avis et ses sorties de stock. */}
+        {journalPassagesPret && passagesSupprimes.length > 0 && (
+          <div className="flex flex-col gap-2 pt-2 border-t border-line">
+            <p className="etiquette">Passages supprimés</p>
+            <ul className="flex flex-col gap-2">
+              {passagesSupprimes.map((p) => (
+                <li key={p.id} className="carte px-4 py-3 flex flex-col gap-1.5">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="grow min-w-0 text-[14px] leading-snug text-pretty font-medium">
+                      {p.intervenant ?? "Intervenant inconnu"}
+                      {p.date_tournee &&
+                        ` · ${new Date(p.date_tournee).toLocaleDateString("fr-FR")}`}
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-ink-faint text-pretty">
+                    Supprimé le{" "}
+                    {new Date(p.supprimee_le).toLocaleDateString("fr-FR", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                    {p.par ? ` par ${p.par}` : ""}
+                  </p>
+                  {p.anomalies.length > 0 && (
+                    <p className="text-[11.5px] text-amber text-pretty leading-snug">
+                      Ses anomalies restent « à faire » dans l’hôtel :{" "}
+                      {p.anomalies
+                        .map((a) => `#${a.reference} ${a.description}`)
+                        .join(", ")}
+                      {p.nb_mouvements > 0 &&
+                        ` · ${p.nb_mouvements} sortie${p.nb_mouvements > 1 ? "s" : ""} de stock sont revenues en réserve`}
+                      .
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {/* Ce que le journal ne voit pas. Il ne retient que ce qui passe
