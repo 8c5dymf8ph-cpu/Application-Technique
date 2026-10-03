@@ -8,6 +8,7 @@ import { aujourdhuiISO, heureISO, peutSupprimer, peutValider, suitLesDossiers } 
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { annulerRecapNonParti, deposerRecap } from "@/lib/recap";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
+import { ConfirmationCentree } from "@/app/composants/confirmation-centree";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import { RechercheVive } from "@/app/composants/recherche-vive";
@@ -296,14 +297,14 @@ export default async function Tournee({
    * barrée, sur fond vert, au milieu de ce qui reste — c'est exactement ce
    * qu'on veut voir. Au chargement suivant elle rejoint les autres.
    */
-  const ordonnees =
-    fait && uniques.some((l) => l.anomalie_id === fait)
-      ? [...vues].sort(
-          (a, b) =>
-            Number(a.traitee && a.anomalie_id !== fait) -
-              Number(b.traitee && b.anomalie_id !== fait) || parLieu(a, b),
-        )
-      : [...restantes.sort(parLieu), ...faites.sort(parLieu)];
+  const vientDeDeclarer = Boolean(fait && uniques.some((l) => l.anomalie_id === fait));
+  const ordonnees = vientDeDeclarer
+    ? [...vues].sort(
+        (a, b) =>
+          Number(a.traitee && a.anomalie_id !== fait) -
+            Number(b.traitee && b.anomalie_id !== fait) || parLieu(a, b),
+      )
+    : [...restantes.sort(parLieu), ...faites.sort(parLieu)];
 
   const encadre = peutValider(profil.role);
   const supprimable = peutSupprimer(profil.role);
@@ -406,6 +407,12 @@ export default async function Tournee({
        restent, seule la liste bouge. C'est la seule façon pour les bandes de
        tenir tout le bord de l'écran, du haut jusqu'en bas. */
     <main className="h-dvh overflow-hidden flex flex-col max-w-md mx-auto">
+      {/* Un geste qu'on enchaîne vite — déclarer, passer au suivant — n'attire
+          pas l'œil sur un bandeau dans le fil de la page : impossible à
+          manquer, au milieu de l'écran, à fermer pour continuer. */}
+      {vientDeDeclarer && (
+        <ConfirmationCentree texte="Anomalie déclarée." cle={`declare-${fait}`} />
+      )}
       <Entete
         titre={nom}
         sous_titre="Ce qu’il y a à traiter"

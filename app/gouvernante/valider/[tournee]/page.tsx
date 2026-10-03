@@ -1,11 +1,11 @@
 import { notFound, redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, jourLong, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Indices, Vide } from "@/app/composants/ui";
+import { ConfirmationCentree } from "@/app/composants/confirmation-centree";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { ApercuFil } from "@/app/composants/apercu-fil";
@@ -67,6 +67,13 @@ const DEJA: Record<string, { libelle: string; fond: string; texte: string }> = {
   a_refaire: { libelle: "À refaire", fond: "bg-red-soft", texte: "text-red" },
 };
 
+/** Même trois issues, dites en phrase pour la confirmation au centre de l'écran. */
+const CONFIRME_DECISION: Record<string, { texte: string; ton: "green" | "blue" | "red" }> = {
+  validee: { texte: "Anomalie validée.", ton: "green" },
+  en_cours: { texte: "Remise en cours.", ton: "blue" },
+  a_refaire: { texte: "À refaire : elle revient au technicien.", ton: "red" },
+};
+
 function quand(d: string | null): string {
   if (!d) return "";
   return jourLong(d);
@@ -74,9 +81,12 @@ function quand(d: string | null): string {
 
 export default async function ValiderLot({
   params,
+  searchParams,
 }: {
   params: Promise<{ tournee: string }>;
+  searchParams: Promise<{ decide?: string }>;
 }) {
+  const { decide } = await searchParams;
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   if (!peutValider(profil.role)) redirect("/");
@@ -270,13 +280,29 @@ export default async function ValiderLot({
       select nb_en_attente::int as n from v_tournees where id = ${tournee}`;
     if (reste && reste.n === 0) redirect("/gouvernante?fait=lot");
 
-    revalidatePath(`/gouvernante/valider/${tournee}`);
+    // Un avis de plus, sans confirmation visible : la ligne disparaissait du
+    // bandeau « sans votre avis » et c'était tout. Le même geste en centre
+    // d'écran qu'une déclaration technicien (ConfirmationCentree) — un appui
+    // vite enchaîné mérite d'être vu.
+    redirect(`/gouvernante/valider/${tournee}?decide=${decision}` as Route);
   }
 
   const restantes = lignes.filter((l) => l.decision_gouvernante === null).length;
 
+  const confirmation = decide ? CONFIRME_DECISION[decide] : undefined;
+
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+      {/* Un avis de plus enchaîné vite sur le suivant : rien dans le fil de
+          la page ne le dit assez fort. Au milieu de l'écran, à fermer pour
+          continuer — même geste que la déclaration technicien. */}
+      {confirmation && (
+        <ConfirmationCentree
+          texte={confirmation.texte}
+          ton={confirmation.ton}
+          cle={`decide-${decide}-${lot.id}`}
+        />
+      )}
       {/* Revenir ici après avoir tout décidé reproposait de décider. */}
       <Entete
         titre={lot.intervenant ?? "Lot"}
