@@ -207,8 +207,13 @@ Référence : ${r.reference}`;
  * brut. Plutôt que de réécrire la mise en page, on échappe le texte déjà
  * composé et on entoure la première occurrence de la date de `<strong>` :
  * le contenu reste rigoureusement identique, un seul mot change de forme.
- * `white-space: pre-wrap` préserve la mise en page (listes, lignes vides)
- * sans avoir à remplacer chaque saut de ligne par un `<br>`.
+ *
+ * `white-space: pre-wrap` était le premier essai : Outlook (le client de
+ * la réception) l'ignore et retombe sur le comportement HTML normal — toute
+ * suite d'espaces et de sauts de ligne réduite à un seul espace. Le mail
+ * arrivait alors en un seul bloc compact, les lignes et les paragraphes
+ * fondus ensemble. Chaque saut de ligne devient donc un `<br>` explicite :
+ * la seule mise en forme que tout client mail respecte, Outlook compris.
  */
 export function corpsRecapTourneeHtml(r: Recap, complet: boolean): string {
   const texte = corpsRecapTournee(r, complet);
@@ -218,5 +223,9 @@ export function corpsRecapTourneeHtml(r: Recap, complet: boolean): string {
     .replace(/>/g, "&gt;");
   const date = jour(r.date_tournee);
   const avecGras = echappe.replace(date, `<strong>${date}</strong>`);
-  return `<div style="font-family: sans-serif; white-space: pre-wrap;">${avecGras}</div>`;
+  const avecSauts = avecGras.replace(/\n/g, "<br>");
+  return (
+    `<div style="font-family: Arial, sans-serif; font-size: 14px; ` +
+    `line-height: 1.6; color: #1a1a1a;">${avecSauts}</div>`
+  );
 }

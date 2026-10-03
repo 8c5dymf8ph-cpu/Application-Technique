@@ -8,7 +8,6 @@ import { aujourdhuiISO, heureISO, peutSupprimer, peutValider, suitLesDossiers } 
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { annulerRecapNonParti, deposerRecap } from "@/lib/recap";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
-import { ConfirmationCentree } from "@/app/composants/confirmation-centree";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import { RechercheVive } from "@/app/composants/recherche-vive";
@@ -407,12 +406,6 @@ export default async function Tournee({
        restent, seule la liste bouge. C'est la seule façon pour les bandes de
        tenir tout le bord de l'écran, du haut jusqu'en bas. */
     <main className="h-dvh overflow-hidden flex flex-col max-w-md mx-auto">
-      {/* Un geste qu'on enchaîne vite — déclarer, passer au suivant — n'attire
-          pas l'œil sur un bandeau dans le fil de la page : impossible à
-          manquer, au milieu de l'écran, à fermer pour continuer. */}
-      {vientDeDeclarer && (
-        <ConfirmationCentree texte="Anomalie déclarée." cle={`declare-${fait}`} />
-      )}
       <Entete
         titre={nom}
         sous_titre="Ce qu’il y a à traiter"
@@ -835,10 +828,14 @@ export default async function Tournee({
           </form>
         </div>
       ) : faitesEnTout.length > 0 ? (
-        <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
-          {rendre ? (
-            <div className="flex flex-col gap-3">
-              <div className="rounded-card bg-surface-muted px-4 py-3.5 flex flex-col gap-2">
+        rendre ? (
+          /* Un appui de trop envoie un message irréversible pour qui le
+             reçoit : rien ne doit permettre de glisser dessus sans le voir.
+             Au milieu de l'écran, par-dessus tout, impossible à manquer ni
+             à confondre avec un autre bouton de la page. */
+          <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-5">
+            <div className="w-full max-w-md flex flex-col gap-3">
+              <div className="rounded-card bg-surface px-4 py-3.5 flex flex-col gap-2">
                 <p className="font-display font-semibold text-[16px]">
                   Tu as fini pour aujourd’hui ?
                 </p>
@@ -849,7 +846,7 @@ export default async function Tournee({
                 <ul className="max-h-[34dvh] overflow-y-auto flex flex-col gap-1 -mx-1 px-1">
                   {faitesEnTout.map((l) => (
                     <li key={l.anomalie_id} className="flex items-baseline gap-2">
-                      <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-white text-ink-soft text-[11px]">
+                      <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-muted text-ink-soft text-[11px]">
                         {l.emplacement}
                       </span>
                       <span className="grow min-w-0 text-[12.5px] leading-snug text-pretty">
@@ -877,7 +874,7 @@ export default async function Tournee({
                   ? `?${new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) })}`
                   : ""
               }` as Route}
-                  className="flex-1 h-[52px] rounded-[15px] border-[1.5px] border-line text-ink-faint font-display font-semibold text-[16px] grid place-items-center active:opacity-70"
+                  className="flex-1 h-[52px] rounded-[15px] border-[1.5px] border-line bg-surface text-ink-faint font-display font-semibold text-[16px] grid place-items-center active:opacity-70"
                 >
                   Pas encore
                 </Link>
@@ -891,7 +888,9 @@ export default async function Tournee({
                 </form>
               </div>
             </div>
-          ) : (
+          </div>
+        ) : (
+          <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
             <Link
               replace
               href={
@@ -906,8 +905,8 @@ export default async function Tournee({
               Fin d’intervention — {faitesEnTout.length} anomalie
               {faitesEnTout.length > 1 ? "s" : ""}
             </Link>
-          )}
-        </div>
+          </div>
+        )
       ) : null}
     </main>
   );
