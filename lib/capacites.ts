@@ -166,6 +166,13 @@ const ATTENDUES: Attendue[] = [
       "mais l’enregistrer échoue dès qu’une photo est prise.",
     verifier: () => valeurEnumExiste("moment_photo", "validation"),
   },
+  {
+    titre: "Date du passage en gras dans le récapitulatif",
+    sans:
+      "Le récapitulatif part en texte brut, sans aucune mise en forme : quand plusieurs " +
+      "passages se suivent, rien ne distingue leur date au premier coup d’œil.",
+    verifier: () => colonneExiste("emails_envoyes", "corps_html"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

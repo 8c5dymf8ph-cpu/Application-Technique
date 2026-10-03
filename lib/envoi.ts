@@ -20,6 +20,7 @@ type Courriel = {
   destinataires: string[];
   sujet: string;
   corps: string | null;
+  corps_html: string | null;
 };
 
 export type Resultat = {
@@ -54,6 +55,11 @@ async function poster(c: Courriel, cle: string, expediteur: string): Promise<str
       to: c.destinataires,
       subject: c.sujet,
       text: c.corps ?? "",
+      // Les deux ensemble, comme Resend l'attend : le texte sert de repli aux
+      // clients qui n'affichent pas l'HTML, qui seul peut mettre la date en
+      // gras (migration 0035). Absent pour tout ce qui n'est pas un
+      // récapitulatif de tournée.
+      ...(c.corps_html ? { html: c.corps_html } : {}),
     }),
   });
   if (reponse.ok) return null;
@@ -71,9 +77,19 @@ export async function envoyerCourrielsEnAttente(limite = 25): Promise<Resultat> 
   const { cle, expediteur } = reglages();
   const resultat: Resultat = { tentes: 0, envoyes: 0, echoues: 0, ignores: 0, erreurs: [] };
 
-  const attente = await sql<Courriel[]>`
-    select id, categorie, destinataires, sujet, corps
-    from v_courriels_en_attente limit ${limite}`;
+  // La vue ne porte `corps_html` qu'une fois la migration 0035 jouée : deux
+  // requêtes, comme pour `dernier_essai_le` plus bas, jamais une condition
+  // dans le SQL.
+  const html = await colonneExiste("emails_envoyes", "corps_html");
+  const attente = html
+    ? await sql<Courriel[]>`
+        select id, categorie, destinataires, sujet, corps, corps_html
+        from v_courriels_en_attente limit ${limite}`
+    : (
+        await sql<Omit<Courriel, "corps_html">[]>`
+          select id, categorie, destinataires, sujet, corps
+          from v_courriels_en_attente limit ${limite}`
+      ).map((c) => ({ ...c, corps_html: null }));
   resultat.tentes = attente.length;
   if (attente.length === 0) return resultat;
 

@@ -199,3 +199,24 @@ Coût du lot : ${eur(r.cout_total)}${
 
 Référence : ${r.reference}`;
 }
+
+/**
+ * Le même message, en HTML, avec la date du passage en gras.
+ *
+ * Resend n'accepte le gras qu'en HTML — le corps ci-dessus part en texte
+ * brut. Plutôt que de réécrire la mise en page, on échappe le texte déjà
+ * composé et on entoure la première occurrence de la date de `<strong>` :
+ * le contenu reste rigoureusement identique, un seul mot change de forme.
+ * `white-space: pre-wrap` préserve la mise en page (listes, lignes vides)
+ * sans avoir à remplacer chaque saut de ligne par un `<br>`.
+ */
+export function corpsRecapTourneeHtml(r: Recap, complet: boolean): string {
+  const texte = corpsRecapTournee(r, complet);
+  const echappe = texte
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const date = jour(r.date_tournee);
+  const avecGras = echappe.replace(date, `<strong>${date}</strong>`);
+  return `<div style="font-family: sans-serif; white-space: pre-wrap;">${avecGras}</div>`;
+}

@@ -1,7 +1,9 @@
 import { sql } from "./db";
 import { viderLaFileEnFond } from "./envoi";
+import { colonneExiste } from "./schema";
 import {
   corpsRecapTournee,
+  corpsRecapTourneeHtml,
   objetRecapTournee,
   type LigneRecap,
   type Recap,
@@ -106,10 +108,20 @@ export async function deposerRecap(tournee: string, complet: boolean, renvoi = f
   if (lignes.length === 0) return;
 
   const recap: Recap = { ...t, lignes };
-  await sql`
-    insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
-    values (${categorie}, ${tournee}, ${destinataires.liste},
-            ${objetRecapTournee(recap, complet)}, ${corpsRecapTournee(recap, complet)})`;
+  // Le code part en ligne avant la migration 0035 : tant que la colonne
+  // n'existe pas encore, on écrit sans elle plutôt que de casser le dépôt.
+  if (await colonneExiste("emails_envoyes", "corps_html")) {
+    await sql`
+      insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps, corps_html)
+      values (${categorie}, ${tournee}, ${destinataires.liste},
+              ${objetRecapTournee(recap, complet)}, ${corpsRecapTournee(recap, complet)},
+              ${corpsRecapTourneeHtml(recap, complet)})`;
+  } else {
+    await sql`
+      insert into emails_envoyes (categorie, reference_id, destinataires, sujet, corps)
+      values (${categorie}, ${tournee}, ${destinataires.liste},
+              ${objetRecapTournee(recap, complet)}, ${corpsRecapTournee(recap, complet)})`;
+  }
 
   // Deux messages, deux moments : ils partent quand l'événement a lieu, pas
   // au prochain passage planifié.
