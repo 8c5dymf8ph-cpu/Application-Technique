@@ -194,15 +194,23 @@ export default async function Tournee({
   /**
    * `traitee` seul ne distingue plus deux cas très différents depuis la
    * 0034 : une anomalie vraiment terminée (plus rien à faire), et une que
-   * la gouvernante vient de remettre « en cours » sur un passage déjà
-   * rendu — qui doit au contraire redevenir actionnable, comme si elle
-   * n'avait jamais été cochée, avec juste un mot sur pourquoi elle revient.
+   * la gouvernante vient de renvoyer sur un passage déjà rendu — qui doit
+   * au contraire redevenir actionnable, comme si elle n'avait jamais été
+   * cochée, avec juste un mot sur pourquoi elle revient.
+   *
+   * Deux décisions renvoient ainsi le travail, pas une seule : « remise en
+   * cours » (statut `en_cours`) ET « à refaire » (statut `a_faire` — c'est
+   * le même renvoi que pour une anomalie jamais traitée, règle 3). Ne
+   * tester que `en_cours` laissait une anomalie « à refaire » cochée-barrée
+   * dans la liste, comme si de rien n'était : le technicien la croyait
+   * encore faite alors que la gouvernante venait de la renvoyer.
    * On le calcule une fois ici, `tournee` connu, et tout le reste de
    * l'écran (tri, regroupement, affichage) suit `traitee` sans plus s'en
    * soucier.
    */
   const uniques = [...new Map(lignes.map((l) => [l.anomalie_id, l])).values()].map((l) => {
-    const aReprendre = l.statut === "en_cours" && tournee.cloturee_le !== null;
+    const aReprendre =
+      (l.statut === "en_cours" || l.statut === "a_faire") && tournee.cloturee_le !== null;
     return { ...l, aReprendre, traitee: l.traitee && !aReprendre };
   });
 
@@ -733,7 +741,10 @@ export default async function Tournee({
                         )}
                         {l.aReprendre && (
                           <span className="text-[12.5px] text-blue font-medium">
-                            · remise en cours par la gouvernante
+                            ·{" "}
+                            {l.statut === "a_faire"
+                              ? "à refaire, d’après la gouvernante"
+                              : "remise en cours par la gouvernante"}
                           </span>
                         )}
                       </span>
