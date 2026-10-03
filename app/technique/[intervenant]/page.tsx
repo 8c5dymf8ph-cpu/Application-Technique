@@ -11,6 +11,7 @@ import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import { RechercheVive } from "@/app/composants/recherche-vive";
+import { AvisReprise, type Compteur } from "@/app/composants/avis-reprise";
 import type { Message } from "@/app/composants/fil";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,42 @@ function versLaListe(
 ) {
   const p = new URLSearchParams({ ...(jour ? { jour } : {}), ...extra });
   return `/technique/${encodeURIComponent(nom)}${p.size ? `?${p}` : ""}`;
+}
+
+/**
+ * Les deux phrases de `AvisReprise`, composées en UNE chaîne chacune.
+ *
+ * Un premier essai les écrivait en JSX, mot à mot, avec des accords au
+ * milieu (`{n > 1 ? "s" : ""}`) : chaque fragment devient son propre nœud
+ * texte dans le DOM, et un copier-coller (constaté sur téléphone) insère un
+ * espace entre deux nœuds voisins que rien ne sépare dans le texte voulu —
+ * « validée s », « ont   déjà ». Composer la phrase ENTIÈRE côté serveur,
+ * comme une seule chaîne, règle ça à la racine : un seul nœud texte, aucune
+ * frontière où un espace pourrait s'inviter.
+ */
+function phraseValidees(n: number): string {
+  const pluriel = n > 1;
+  return (
+    `${n} anomalie${pluriel ? "s" : ""} de ce passage ${pluriel ? "ont" : "a"} déjà été ` +
+    `validée${pluriel ? "s" : ""} par la gouvernante : sa décision ne se corrige pas en ` +
+    `reprenant le passage, ${pluriel ? "elles ne reviennent" : "elle ne revient"} donc pas ` +
+    `dans cette liste.`
+  );
+}
+
+function phraseAReprendre(n: number): string {
+  const pluriel = n > 1;
+  return (
+    `${n} anomalie${pluriel ? "s" : ""} revi${pluriel ? "ennent" : "ent"} décochée${
+      pluriel ? "s" : ""
+    } : la gouvernante ${pluriel ? "les a" : "l'a"} renvoyée${pluriel ? "s" : ""} (« à refaire » ` +
+    `ou « remise en cours »). Si tu n'y touches pas, ${
+      pluriel ? "elles restent" : "elle reste"
+    } à faire ${pluriel ? "telles quelles" : "telle quelle"} — aujourd'hui et les jours ` +
+    `suivants, rien n'est perdu. Si tu recoches « C'est fait », un nouvel avis s'ajoute sans ` +
+    `effacer celui de la gouvernante, et ${pluriel ? "elles repartent" : "elle repart"} à sa ` +
+    `validation.`
+  );
 }
 
 /**
@@ -228,6 +265,10 @@ export default async function Tournee({
     return { ...l, aReprendre, traitee: l.traitee && !aReprendre };
   });
   const nbAReprendre = uniques.filter((l) => l.aReprendre).length;
+  const nbARefaire = uniques.filter((l) => l.aReprendre && l.statut === "a_faire").length;
+  const nbEnCoursGouvernante = uniques.filter(
+    (l) => l.aReprendre && l.statut === "en_cours",
+  ).length;
 
   /**
    * Combien d'anomalies de CE passage sont validées — donc absentes des deux
@@ -242,6 +283,19 @@ export default async function Tournee({
       from interventions i
       join anomalies a on a.id = i.anomalie_id
      where i.tournee_id = ${tournee.id} and a.statut = 'validee'`;
+
+  // Le petit récapitulatif de la fenêtre d'avis : ce que la gouvernante a
+  // décidé sur ce passage, compté une fois ici — la fenêtre n'a plus qu'à
+  // l'afficher.
+  const compteursAvis: Compteur[] = [
+    { label: "VALIDÉES", valeur: nbValidees, couleur: "green" as const },
+    { label: "EN COURS", valeur: nbEnCoursGouvernante, couleur: "amber" as const },
+    { label: "À REFAIRE", valeur: nbARefaire, couleur: "red" as const },
+  ].filter((c) => c.valeur > 0);
+  const messagesAvis = [
+    nbValidees > 0 ? phraseValidees(nbValidees) : null,
+    nbAReprendre > 0 ? phraseAReprendre(nbAReprendre) : null,
+  ].filter((m): m is string => m !== null);
 
   // Le fil de chaque anomalie de la tournée : la bulle s'ouvre sur place.
   const fils = uniques.length
@@ -655,36 +709,18 @@ export default async function Tournee({
           </div>
         )}
 
-        {/* Reprendre le passage ne ramène jamais ce que la gouvernante a déjà
-            validé — sa décision est un fait. Sans ce mot, une anomalie
-            validée disparaissait simplement de l'écran : on avait déclaré
-            quatre choses, on n'en revoyait que trois, sans savoir pourquoi. */}
-        {tournee.cloturee_le === null && nbValidees > 0 && (
-          <p className="text-[12.5px] text-ink-faint text-pretty leading-snug">
-            {nbValidees} anomalie{nbValidees > 1 ? "s" : ""} de ce passage{" "}
-            {nbValidees > 1 ? "ont" : "a"} déjà été validée{nbValidees > 1 ? "s" : ""} par la
-            gouvernante : sa décision ne se corrige pas en reprenant le passage, elle{" "}
-            {nbValidees > 1 ? "ne reviennent" : "ne revient"} donc pas dans cette liste.
-          </p>
-        )}
-
-        {/* Ce que « à refaire » et « remise en cours » signifient
-            concrètement : sans ce mot, on voit l'anomalie redevenue
-            décochée et on ne sait pas ce qui se passe si on n'y touche pas,
-            ni ce que recocher change réellement à l'avis déjà posé. Toujours
-            visible dès que ça concerne ce passage — fermé, tout juste repris
-            ou non — jamais quelque chose à aller chercher. */}
-        {nbAReprendre > 0 && (
-          <p className="text-[12.5px] text-blue text-pretty leading-snug">
-            {nbAReprendre} anomalie{nbAReprendre > 1 ? "s" : ""} revi{nbAReprendre > 1 ? "ennent" : "ent"} décochée
-            {nbAReprendre > 1 ? "s" : ""} : la gouvernante {nbAReprendre > 1 ? "les a" : "l'a"} renvoyée
-            {nbAReprendre > 1 ? "s" : ""} (« à refaire » ou « remise en cours »). Si tu n'y touches
-            pas, {nbAReprendre > 1 ? "elles restent" : "elle reste"} à faire{" "}
-            {nbAReprendre > 1 ? "telles quelles" : "telle quelle"} —
-            aujourd'hui et les jours suivants, rien n'est perdu. Si tu recoches « C'est fait »,
-            un nouvel avis s'ajoute SANS effacer celui de la gouvernante, et{" "}
-            {nbAReprendre > 1 ? "elles repartent" : "elle repart"} à sa validation.
-          </p>
+        {/* Ce que la gouvernante a décidé pendant qu'on avait le dos tourné
+            ne se glisse plus dans le fil de la page, à lire ou pas selon
+            qu'on fait défiler : une fenêtre s'ouvre d'elle-même, à fermer
+            sur « Compris ». `key` force une nouvelle instance — donc une
+            nouvelle ouverture — à chaque arrivée sur l'écran tant qu'il y a
+            quelque chose à dire ; sans décompte à montrer, pas de fenêtre. */}
+        {messagesAvis.length > 0 && (
+          <AvisReprise
+            key={`avis-${tournee.id}-${nbValidees}-${nbAReprendre}`}
+            compteurs={compteursAvis}
+            messages={messagesAvis}
+          />
         )}
 
         {uniques.length === 0 ? (
