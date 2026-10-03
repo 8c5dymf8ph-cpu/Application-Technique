@@ -25,12 +25,14 @@ type Ligne = {
   priorite: string;
   traitee: boolean;
   /**
-   * La gouvernante l'a remise « en cours » sur un passage déjà rendu
-   * (migration 0034) : `traitee` seul ne le distingue plus d'une anomalie
-   * vraiment terminée — c'est ce champ qui porte la différence, posé en JS
-   * une fois `tournee` connu (voir le calcul de `uniques`).
+   * La gouvernante l'a remise « en cours » ou « à refaire » sur un passage
+   * déjà rendu (migration 0034) : `traitee` seul ne le distingue plus d'une
+   * anomalie vraiment terminée — c'est ce champ qui porte la différence, posé
+   * en JS une fois `tournee` connu (voir le calcul de `uniques`).
    */
   aReprendre: boolean;
+  /** Le dernier avis posé sur l'intervention liée — voir `aReprendre`. */
+  dernier_acteur: string | null;
   materiel: string | null;
   photos: number;
   commentaires: number;
@@ -160,6 +162,8 @@ export default async function Tournee({
     select a.id as anomalie_id, e.code as emplacement, et.nom as etage, et.ordre,
            a.description, a.statut::text, a.priorite::text,
            (i.id is not null) as traitee,
+           (select v.acteur::text from validations v
+             where v.intervention_id = i.id order by v.decide_le desc limit 1) as dernier_acteur,
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
              where m.intervention_id = i.id and m.type = 'sortie') as materiel,
@@ -171,6 +175,8 @@ export default async function Tournee({
     left join interventions i on i.anomalie_id = a.id and i.tournee_id = ${tournee.id}
     union all
     select a.id, e.code, et.nom, et.ordre, a.description, a.statut::text, a.priorite::text, true,
+           (select v.acteur::text from validations v
+             where v.intervention_id = i.id order by v.decide_le desc limit 1),
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
               from mouvements_stock m join produits p on p.id = m.produit_id
              where m.intervention_id = i.id and m.type = 'sortie'),
@@ -194,25 +200,34 @@ export default async function Tournee({
   /**
    * `traitee` seul ne distingue plus deux cas très différents depuis la
    * 0034 : une anomalie vraiment terminée (plus rien à faire), et une que
-   * la gouvernante vient de renvoyer sur un passage déjà rendu — qui doit
-   * au contraire redevenir actionnable, comme si elle n'avait jamais été
-   * cochée, avec juste un mot sur pourquoi elle revient.
+   * la gouvernante vient de renvoyer — qui doit au contraire redevenir
+   * actionnable, comme si elle n'avait jamais été cochée, avec juste un mot
+   * sur pourquoi elle revient.
    *
    * Deux décisions renvoient ainsi le travail, pas une seule : « remise en
    * cours » (statut `en_cours`) ET « à refaire » (statut `a_faire` — c'est
-   * le même renvoi que pour une anomalie jamais traitée, règle 3). Ne
-   * tester que `en_cours` laissait une anomalie « à refaire » cochée-barrée
-   * dans la liste, comme si de rien n'était : le technicien la croyait
-   * encore faite alors que la gouvernante venait de la renvoyer.
+   * le même renvoi que pour une anomalie jamais traitée, règle 3).
+   *
+   * Le signal n'est PAS `tournee.cloturee_le` : un premier essai testait
+   * « passage encore fermé », et ça se défaisait au pire moment — dès que
+   * « Reprendre le passage » est réellement pressé (`cloturee_le` repasse à
+   * null), le signal disparaissait et l'anomalie revenait cochée-barrée,
+   * EXACTEMENT le bug qu'il corrigeait, un cran plus loin dans le parcours.
+   * Le bon signal est « qui a parlé en dernier sur cette intervention » :
+   * tant que le dernier avis vient de la gouvernante, il reste à traiter —
+   * que le passage soit encore fermé, tout juste repris, ou refermé sans
+   * qu'on y ait touché. Dès que le technicien redéclare, son avis devient
+   * le dernier, et l'anomalie redevient cochée normalement.
    * On le calcule une fois ici, `tournee` connu, et tout le reste de
    * l'écran (tri, regroupement, affichage) suit `traitee` sans plus s'en
    * soucier.
    */
   const uniques = [...new Map(lignes.map((l) => [l.anomalie_id, l])).values()].map((l) => {
     const aReprendre =
-      (l.statut === "en_cours" || l.statut === "a_faire") && tournee.cloturee_le !== null;
+      (l.statut === "en_cours" || l.statut === "a_faire") && l.dernier_acteur === "gouvernante";
     return { ...l, aReprendre, traitee: l.traitee && !aReprendre };
   });
+  const nbAReprendre = uniques.filter((l) => l.aReprendre).length;
 
   /**
    * Combien d'anomalies de CE passage sont validées — donc absentes des deux
@@ -650,6 +665,25 @@ export default async function Tournee({
             {nbValidees > 1 ? "ont" : "a"} déjà été validée{nbValidees > 1 ? "s" : ""} par la
             gouvernante : sa décision ne se corrige pas en reprenant le passage, elle{" "}
             {nbValidees > 1 ? "ne reviennent" : "ne revient"} donc pas dans cette liste.
+          </p>
+        )}
+
+        {/* Ce que « à refaire » et « remise en cours » signifient
+            concrètement : sans ce mot, on voit l'anomalie redevenue
+            décochée et on ne sait pas ce qui se passe si on n'y touche pas,
+            ni ce que recocher change réellement à l'avis déjà posé. Toujours
+            visible dès que ça concerne ce passage — fermé, tout juste repris
+            ou non — jamais quelque chose à aller chercher. */}
+        {nbAReprendre > 0 && (
+          <p className="text-[12.5px] text-blue text-pretty leading-snug">
+            {nbAReprendre} anomalie{nbAReprendre > 1 ? "s" : ""} revi{nbAReprendre > 1 ? "ennent" : "ent"} décochée
+            {nbAReprendre > 1 ? "s" : ""} : la gouvernante {nbAReprendre > 1 ? "les a" : "l'a"} renvoyée
+            {nbAReprendre > 1 ? "s" : ""} (« à refaire » ou « remise en cours »). Si tu n'y touches
+            pas, {nbAReprendre > 1 ? "elles restent" : "elle reste"} à faire{" "}
+            {nbAReprendre > 1 ? "telles quelles" : "telle quelle"} —
+            aujourd'hui et les jours suivants, rien n'est perdu. Si tu recoches « C'est fait »,
+            un nouvel avis s'ajoute SANS effacer celui de la gouvernante, et{" "}
+            {nbAReprendre > 1 ? "elles repartent" : "elle repart"} à sa validation.
           </p>
         )}
 
