@@ -7,9 +7,12 @@ import { profilActif } from "@/lib/profil";
 import { aujourdhuiISO, jourISO, peutValider } from "@/lib/domaine";
 import { colonneExiste } from "@/lib/schema";
 import { Entete, Vide } from "@/app/composants/ui";
+import { ChampPhotos } from "@/app/composants/photos";
+import { VoirDocument } from "@/app/composants/fenetre";
 import { Depliant } from "@/app/composants/depliant";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
+import { enregistrerFichier } from "@/lib/stockage";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,8 @@ type Inventaire = {
   compte_le: string;
   valide_par: string | null;
   valide_le: string | null;
+  commentaire: string | null;
+  piece_jointe_url: string | null;
 };
 
 type Ligne = {
@@ -45,14 +50,17 @@ export default async function DetailInventaire({
   const { id } = await params;
   const { neuf } = await searchParams;
 
-  // La colonne part en ligne avant la migration qui l'ajoute (0039) : deux
-  // requêtes, choisies ici, jamais une condition booléenne dans le SQL.
+  // Les colonnes partent en ligne avant les migrations qui les ajoutent
+  // (0039, 0040) : deux requêtes, choisies ici, jamais une condition
+  // booléenne dans le SQL.
   const comptePretes = await colonneExiste("inventaires", "compte_le");
+  const piecePretes = await colonneExiste("inventaires", "piece_jointe_url");
 
   const [inv] = await sql<Inventaire[]>`
     select i.id, i.libelle, i.statut::text, uo.nom as ouvert_par, i.ouvert_le,
            ${comptePretes ? sql`i.compte_le` : sql`i.ouvert_le::date`} as compte_le,
-           uv.nom as valide_par, i.valide_le
+           uv.nom as valide_par, i.valide_le, i.commentaire,
+           ${piecePretes ? sql`i.piece_jointe_url` : sql`null::text`} as piece_jointe_url
     from inventaires i
     left join utilisateurs uo on uo.id = i.ouvert_par
     left join utilisateurs uv on uv.id = i.valide_par
@@ -102,6 +110,24 @@ export default async function DetailInventaire({
     await sql`
       update inventaires set compte_le = ${date}::date
        where id = ${id} and statut = 'brouillon'`;
+    revalidatePath(`/bouteilles/inventaire/${id}`);
+  }
+
+  // Un commentaire ou un justificatif s'ajoutent à tout moment — brouillon ou
+  // comptage validé il y a des mois (règle 12) — sans toucher aux chiffres
+  // comptés ni aux régularisations déjà écrites.
+  async function completer(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_) redirect("/profil");
+    const mot = String(donnees.get("commentaire") ?? "").trim() || null;
+    const fichier = donnees.get("piece");
+    const chemin =
+      fichier instanceof File && fichier.size > 0 ? await enregistrerFichier(fichier) : null;
+    await sql`
+      update inventaires
+         set commentaire = ${mot}${chemin ? sql`, piece_jointe_url = ${chemin}` : sql``}
+       where id = ${id}`;
     revalidatePath(`/bouteilles/inventaire/${id}`);
   }
 
@@ -159,6 +185,46 @@ export default async function DetailInventaire({
               Corriger
             </BoutonEnvoi>
           </form>
+        )}
+
+        {/* Un commentaire ou une pièce se voient ensuite dans le
+            récapitulatif, sur chaque régularisation que ce comptage a
+            posée — c'est pour ça qu'on les documente ici, pas ailleurs. */}
+        {piecePretes && (
+          <Depliant
+            titre="Commentaire et pièce jointe"
+            aide="Se voient dans le récapitulatif"
+            ouvert={!!(inv.commentaire || inv.piece_jointe_url)}
+          >
+            {inv.piece_jointe_url && (
+              <VoirDocument
+                chemin={inv.piece_jointe_url}
+                titre="Pièce jointe du comptage"
+                className="self-start text-[12.5px] text-plum underline underline-offset-4"
+              >
+                Voir la pièce jointe actuelle
+              </VoirDocument>
+            )}
+            <form action={completer} className="flex flex-col gap-2">
+              <textarea
+                name="commentaire"
+                defaultValue={inv.commentaire ?? ""}
+                placeholder="Pourquoi cet écart, ce qu'il faut en retenir…"
+                rows={2}
+                className="w-full px-3 py-2.5 rounded-[11px] border border-line bg-surface text-[14px] placeholder:text-ink-faint resize-none"
+              />
+              <ChampPhotos
+                nom="piece"
+                libelle={inv.piece_jointe_url ? "Remplacer la pièce jointe" : "Joindre une pièce (optionnel)"}
+                multiple={false}
+                documents
+                compact
+              />
+              <BoutonEnvoi className="self-start h-[40px] px-4 rounded-[10px] bg-surface-muted border border-line text-[12.5px] font-medium">
+                Enregistrer
+              </BoutonEnvoi>
+            </form>
+          </Depliant>
         )}
 
         <div className="flex gap-2">

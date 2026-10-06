@@ -195,6 +195,13 @@ const ATTENDUES: Attendue[] = [
       "validation : le récapitulatif montre le jour du clic, pas celui du comptage.",
     verifier: () => colonneExiste("inventaires", "compte_le"),
   },
+  {
+    titre: "Pièce jointe d’un comptage",
+    sans:
+      "Un inventaire déjà validé ne peut pas recevoir de justificatif après coup, et le " +
+      "récapitulatif ne montre ni la pièce ni le commentaire d’un comptage.",
+    verifier: () => colonneExiste("inventaires", "piece_jointe_url"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

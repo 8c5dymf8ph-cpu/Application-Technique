@@ -3,12 +3,13 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { vueContient } from "@/lib/schema";
+import { colonneExiste, vueContient } from "@/lib/schema";
 import { euros, jourISO } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Cadre, Chiffre, Repartition, SERIES, Tableau } from "@/app/composants/graphiques";
 import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
 import { Depliant } from "@/app/composants/depliant";
+import { VoirDocument } from "@/app/composants/fenetre";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,10 @@ type Livraison = {
   quantite: number;
   commande: number | null;
   commentaire: string | null;
+  montant_ht: number | null;
+  montant_ttc: number | null;
+  facture_fichier: string | null;
+  facture_reference: string | null;
 };
 
 type Regularisation = {
@@ -49,6 +54,8 @@ type Regularisation = {
   de_lieu: string;
   commentaire: string | null;
   utilisateur: string | null;
+  piece_jointe_url: string | null;
+  inventaire_commentaire: string | null;
 };
 
 type Stock = {
@@ -126,6 +133,12 @@ export default async function Recapitulatif({
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
+
+  // Les colonnes partent en ligne avant les migrations qui les ajoutent
+  // (0038, 0040) : deux requêtes, choisies ici, jamais une condition
+  // booléenne dans le SQL.
+  const regulPiecePretes = await colonneExiste("mouvements_bouteilles", "piece_jointe_url");
+  const inventairePiecePretes = await colonneExiste("inventaires", "piece_jointe_url");
 
   const defaut = moisCourant();
   const p = await searchParams;
@@ -206,10 +219,13 @@ export default async function Recapitulatif({
 
   const livraisons = await sql<Livraison[]>`
     select m.date_mouvement, bt.libelle as bouteille, bt.couleur,
-           m.quantite, c.reference as commande, m.commentaire
+           m.quantite, c.reference as commande, m.commentaire,
+           c.montant_ht, c.montant_ttc,
+           fa.fichier_url as facture_fichier, fa.reference as facture_reference
       from mouvements_bouteilles m
       join bouteille_types bt on bt.id = m.bouteille_type_id
       left join commandes c on c.id = m.commande_id
+      left join factures fa on fa.id = c.facture_id
      where m.type = 'entree'
        and m.date_mouvement >= ${debut}::date
        and m.date_mouvement < (${fin}::date + 1)
@@ -220,12 +236,21 @@ export default async function Recapitulatif({
   // rien n'est écarté ici — une régularisation posée par un inventaire ou par
   // la reprise de l'ancienne application a quand même changé le parc pendant
   // la période, et c'est justement ce que ce récapitulatif raconte.
+  // Une régularisation manuelle porte sa propre pièce (0038) ; une
+  // régularisation d'inventaire n'a que celle du comptage qui l'a posée
+  // (0040), rattachée par inventaire_id — jamais les deux à la fois.
   const regularisations = await sql<Regularisation[]>`
     select m.date_mouvement, bt.libelle as bouteille, bt.couleur,
-           m.quantite, m.de_lieu::text, m.commentaire, u.nom as utilisateur
+           m.quantite, m.de_lieu::text, m.commentaire, u.nom as utilisateur,
+           coalesce(
+             ${regulPiecePretes ? sql`m.piece_jointe_url` : sql`null::text`},
+             ${inventairePiecePretes ? sql`i.piece_jointe_url` : sql`null::text`}
+           ) as piece_jointe_url,
+           ${inventairePiecePretes ? sql`i.commentaire` : sql`null::text`} as inventaire_commentaire
       from mouvements_bouteilles m
       join bouteille_types bt on bt.id = m.bouteille_type_id
       left join utilisateurs u on u.id = m.utilisateur_id
+      left join inventaires i on i.id = m.inventaire_id
      where m.type = 'regularisation'
        and m.date_mouvement >= ${debut}::date
        and m.date_mouvement < (${fin}::date + 1)
@@ -486,12 +511,31 @@ export default async function Recapitulatif({
                   />
                   <span className="grow min-w-0 flex flex-col gap-0.5">
                     <span className="text-[14px]">{l.bouteille}</span>
-                    <span className="text-[11.5px] text-ink-faint">
+                    <span className="text-[11.5px] text-ink-faint text-pretty">
                       {new Date(l.date_mouvement).toLocaleDateString("fr-FR")}
                       {l.commande ? ` · commande n° ${l.commande}` : ""}
                       {l.commentaire ? ` · ${l.commentaire}` : ""}
+                      {l.montant_ttc != null
+                        ? ` · ${euros(l.montant_ttc)} TTC`
+                        : l.montant_ht != null
+                          ? ` · ${euros(l.montant_ht)} HT`
+                          : ""}
                     </span>
                   </span>
+                  {l.facture_fichier && (
+                    <VoirDocument
+                      chemin={l.facture_fichier}
+                      titre={l.facture_reference ? `Facture ${l.facture_reference}` : "Facture"}
+                      ariaLabel="Voir la facture"
+                      className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
+                           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+                        <path d="M14 3v4h4" />
+                      </svg>
+                    </VoirDocument>
+                  )}
                   <span className="shrink-0 font-display font-semibold text-[17px] tabular-nums">
                     +{l.quantite}
                   </span>
@@ -526,9 +570,27 @@ export default async function Recapitulatif({
                     <span className="text-[11.5px] text-ink-faint text-pretty">
                       {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
                       {r.commentaire ? ` · ${r.commentaire}` : ""}
+                      {/* Le commentaire propre au comptage (0040) s'ajoute à
+                          celui, automatique, de la régularisation — rien ne
+                          l'écrase (règle 12). */}
+                      {r.inventaire_commentaire ? ` · ${r.inventaire_commentaire}` : ""}
                       {r.utilisateur ? ` · ${r.utilisateur}` : ""}
                     </span>
                   </span>
+                  {r.piece_jointe_url && (
+                    <VoirDocument
+                      chemin={r.piece_jointe_url}
+                      titre="Justificatif"
+                      ariaLabel="Voir le justificatif"
+                      className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
+                           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+                        <path d="M14 3v4h4" />
+                      </svg>
+                    </VoirDocument>
+                  )}
                   <span
                     className={`shrink-0 font-display font-semibold text-[17px] tabular-nums ${
                       r.de_lieu === "reserve" ? "text-red" : "text-green"
