@@ -30,13 +30,11 @@
 -- 1. Vérifier — doit rendre exactement 3 lignes : chambres 35, 46, 52,
 --    chacune à sa date.
 -- ---------------------------------------------------------------------------
-select m.id, m.date_mouvement, e.code as chambre, m.commentaire,
-       coalesce(u.nom, pt.nom) as par
+select m.id, m.date_mouvement, e.code as chambre, m.commentaire, u.nom as par
   from mouvements_bouteilles m
   join bouteille_types bt on bt.id = m.bouteille_type_id
   join emplacements e on e.id = m.vers_emplacement_id
   left join utilisateurs u on u.id = m.utilisateur_id
-  left join prestataires pt on pt.id = m.prestataire_id
  where m.type = 'dotation'
    and bt.code = 'petillante'
    and m.de_lieu = 'reserve'
