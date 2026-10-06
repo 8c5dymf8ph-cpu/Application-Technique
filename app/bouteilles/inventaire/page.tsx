@@ -3,6 +3,8 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { aujourdhuiISO } from "@/lib/domaine";
+import { colonneExiste } from "@/lib/schema";
 import { Entete } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Comptage, type LigneComptage } from "@/app/composants/comptage";
@@ -17,6 +19,7 @@ type Precedent = {
   id: string;
   libelle: string | null;
   valide_le: string;
+  compte_le: string;
   valide_par: string | null;
   ecarts: number;
 };
@@ -24,6 +27,10 @@ type Precedent = {
 export default async function Inventaire() {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
+
+  // La colonne part en ligne avant la migration qui l'ajoute (0039) : deux
+  // requêtes, choisies ici, jamais une condition booléenne dans le SQL.
+  const comptePretes = await colonneExiste("inventaires", "compte_le");
 
   const reserve = await sql<Reserve[]>`
     select bouteille_type_id as id, libelle, en_reserve::int
@@ -47,7 +54,9 @@ export default async function Inventaire() {
     from v_bouteilles_par_emplacement`;
 
   const precedents = await sql<Precedent[]>`
-    select i.id, i.libelle, i.valide_le, u.nom as valide_par,
+    select i.id, i.libelle, i.valide_le,
+           ${comptePretes ? sql`i.compte_le` : sql`i.ouvert_le::date`} as compte_le,
+           u.nom as valide_par,
            (select count(*) from inventaire_lignes_bouteille l
              where l.inventaire_id = i.id and l.ecart <> 0)::int as ecarts
     from inventaires i
@@ -92,11 +101,14 @@ export default async function Inventaire() {
     }
     if (comptees.length === 0) return;
 
+    const compteLe = String(donnees.get("compte_le") ?? "").trim() || null;
+
     const [inv] = await sql<{ id: string }[]>`
-      insert into inventaires (type, libelle, ouvert_par)
+      insert into inventaires (type, libelle, ouvert_par${comptePretes ? sql`, compte_le` : sql``})
       values ('bouteilles',
               ${String(donnees.get("libelle") ?? "").trim() || null},
-              ${profil_.id})
+              ${profil_.id}
+              ${comptePretes ? sql`, coalesce(${compteLe}::date, current_date)` : sql``})
       returning id`;
 
     // Le théorique est relu au moment de l'écriture : c'est lui qui fait l'écart,
@@ -167,6 +179,21 @@ export default async function Inventaire() {
           />
         </label>
 
+        <label className="flex items-center gap-2">
+          <span className="etiquette shrink-0">Compté le</span>
+          <input
+            name="compte_le"
+            type="date"
+            max={aujourdhuiISO()}
+            defaultValue={aujourdhuiISO()}
+            className="flex-1 min-w-0 h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px]"
+          />
+        </label>
+        <p className="text-[11.5px] text-ink-faint text-pretty -mt-3">
+          Le jour où le comptage a vraiment eu lieu — pas celui où tu le saisis. C'est cette
+          date qui part dans le récapitulatif.
+        </p>
+
         <BoutonEnvoi
                 pendant="Ouverture…"
                 className="h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
@@ -190,7 +217,7 @@ export default async function Inventaire() {
                     <span className="grow min-w-0">
                       <span className="block text-[13.5px]">
                         {p.libelle ?? "Comptage"} ·{" "}
-                        {new Date(p.valide_le).toLocaleDateString("fr-FR")}
+                        {new Date(p.compte_le).toLocaleDateString("fr-FR")}
                       </span>
                       <span className="block text-[11.5px] text-ink-faint">
                         {p.valide_par ?? "—"} ·{" "}

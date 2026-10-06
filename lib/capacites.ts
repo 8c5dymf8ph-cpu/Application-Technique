@@ -188,6 +188,13 @@ const ATTENDUES: Attendue[] = [
       "régularisation — seul le commentaire en garde la trace.",
     verifier: () => colonneExiste("mouvements_bouteilles", "piece_jointe_url"),
   },
+  {
+    titre: "La date du comptage",
+    sans:
+      "Un inventaire compté un jour et validé un autre régularise à la date de la " +
+      "validation : le récapitulatif montre le jour du clic, pas celui du comptage.",
+    verifier: () => colonneExiste("inventaires", "compte_le"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

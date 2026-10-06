@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
-import { peutValider } from "@/lib/domaine";
+import { aujourdhuiISO, jourISO, peutValider } from "@/lib/domaine";
+import { colonneExiste } from "@/lib/schema";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Depliant } from "@/app/composants/depliant";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
@@ -18,6 +19,7 @@ type Inventaire = {
   statut: string;
   ouvert_par: string | null;
   ouvert_le: string;
+  compte_le: string;
   valide_par: string | null;
   valide_le: string | null;
 };
@@ -43,8 +45,13 @@ export default async function DetailInventaire({
   const { id } = await params;
   const { neuf } = await searchParams;
 
+  // La colonne part en ligne avant la migration qui l'ajoute (0039) : deux
+  // requêtes, choisies ici, jamais une condition booléenne dans le SQL.
+  const comptePretes = await colonneExiste("inventaires", "compte_le");
+
   const [inv] = await sql<Inventaire[]>`
     select i.id, i.libelle, i.statut::text, uo.nom as ouvert_par, i.ouvert_le,
+           ${comptePretes ? sql`i.compte_le` : sql`i.ouvert_le::date`} as compte_le,
            uv.nom as valide_par, i.valide_le
     from inventaires i
     left join utilisateurs uo on uo.id = i.ouvert_par
@@ -82,6 +89,22 @@ export default async function DetailInventaire({
     redirect("/bouteilles/inventaire" as Route);
   }
 
+  // La date saisie en base (ouvert_le) n'est pas forcément celle du vrai
+  // comptage — un brouillon repris plus tard, un comptage retapé après une
+  // correction. Réglable tant que rien n'est validé : c'est cette date qui
+  // part sur les régularisations à la validation (migration 0039).
+  async function corrigerDate(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_) redirect("/profil");
+    const date = String(donnees.get("compte_le") ?? "").trim();
+    if (!date) return;
+    await sql`
+      update inventaires set compte_le = ${date}::date
+       where id = ${id} and statut = 'brouillon'`;
+    revalidatePath(`/bouteilles/inventaire/${id}`);
+  }
+
   /**
    * Défaire un comptage déjà validé.
    *
@@ -115,13 +138,29 @@ export default async function DetailInventaire({
         titre={inv.libelle ?? "Comptage"}
         sous_titre={
           brouillon
-            ? `Brouillon · ${inv.ouvert_par ?? "—"}`
-            : `Validé le ${new Date(inv.valide_le!).toLocaleDateString("fr-FR")} par ${inv.valide_par ?? "—"}`
+            ? `Brouillon · ${inv.ouvert_par ?? "—"} · compté le ${new Date(inv.compte_le).toLocaleDateString("fr-FR")}`
+            : `Compté le ${new Date(inv.compte_le).toLocaleDateString("fr-FR")} · validé le ${new Date(inv.valide_le!).toLocaleDateString("fr-FR")} par ${inv.valide_par ?? "—"}`
         }
         retour="/bouteilles/inventaire"
       />
 
       <div className="px-5 py-4 flex flex-col gap-4">
+        {brouillon && comptePretes && (
+          <form action={corrigerDate} className="carte px-4 py-3 flex items-center gap-2.5">
+            <span className="etiquette shrink-0">Compté le</span>
+            <input
+              name="compte_le"
+              type="date"
+              max={aujourdhuiISO()}
+              defaultValue={jourISO(inv.compte_le)}
+              className="flex-1 min-w-0 h-[40px] px-3 rounded-[11px] border border-line bg-surface text-[14px]"
+            />
+            <BoutonEnvoi className="shrink-0 h-[40px] px-3.5 rounded-[10px] bg-surface-muted border border-line text-[12.5px] font-medium">
+              Corriger
+            </BoutonEnvoi>
+          </form>
+        )}
+
         <div className="flex gap-2">
           <div className="flex-1 carte px-3 py-2.5 text-center">
             <div className="font-display font-semibold text-[21px] leading-none tabular-nums">
