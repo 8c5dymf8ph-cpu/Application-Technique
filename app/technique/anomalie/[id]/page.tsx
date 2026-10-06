@@ -445,15 +445,15 @@ export default async function TraiterAnomalie({
   function blocGalerie(items: Produit[]): React.ReactNode {
     const page = items.slice(0, GALERIE_VISIBLE);
     const reste = items.slice(GALERIE_VISIBLE);
+    const nVoir = Math.min(GALERIE_VISIBLE, reste.length);
+    const phraseVoirPlus = `Voir ${nVoir} article${nVoir > 1 ? "s" : ""} de plus`;
     return (
       <>
         <ul className="flex flex-col gap-1.5 -mx-1 px-1">{page.map(ligneArticle)}</ul>
         {reste.length > 0 && (
           <details className="mt-1.5">
             <summary className="list-none mx-1 carte px-4 py-2.5 text-[13.5px] text-plum flex items-center justify-center gap-2 cursor-pointer">
-              Voir {Math.min(GALERIE_VISIBLE, reste.length)} article
-              {Math.min(GALERIE_VISIBLE, reste.length) > 1 ? "s" : ""} de plus
-              {reste.length > GALERIE_VISIBLE ? ` (${reste.length} au total)` : ""}
+              {phraseVoirPlus}
             </summary>
             <div className="pt-1.5">{blocGalerie(reste)}</div>
           </details>
