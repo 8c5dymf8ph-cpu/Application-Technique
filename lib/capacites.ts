@@ -181,6 +181,13 @@ const ATTENDUES: Attendue[] = [
       "dû exister.",
     verifier: () => tableExiste("tournees_supprimees"),
   },
+  {
+    titre: "Pièce jointe d’une régularisation",
+    sans:
+      "Le mail ou la photo qui justifie un écart de parc ne peut pas être joint à sa " +
+      "régularisation — seul le commentaire en garde la trace.",
+    verifier: () => colonneExiste("mouvements_bouteilles", "piece_jointe_url"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

@@ -5,8 +5,10 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { aujourdhuiISO, euros, jourISO, peutValider } from "@/lib/domaine";
+import { colonneExiste } from "@/lib/schema";
 import { Entete } from "@/app/composants/ui";
 import { ChampPhotos } from "@/app/composants/photos";
+import { VoirDocument } from "@/app/composants/fenetre";
 import { Depliant } from "@/app/composants/depliant";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { enregistrerFichier } from "@/lib/stockage";
@@ -35,6 +37,7 @@ type Regularisation = {
   date_mouvement: string | Date;
   commentaire: string | null;
   utilisateur: string | null;
+  piece_jointe_url: string | null;
 };
 
 export default async function ReglagesBouteilles({
@@ -46,6 +49,10 @@ export default async function ReglagesBouteilles({
   if (!profil) redirect("/profil");
   if (!peutValider(profil.role)) redirect("/bouteilles");
   const { supprimer, devisType, devisEnvoyes, devisSansAdresse } = await searchParams;
+
+  // La colonne part en ligne avant la migration qui l'ajoute (0038) : deux
+  // requêtes, choisies ici, jamais une condition booléenne dans le SQL.
+  const piecesPretes = await colonneExiste("mouvements_bouteilles", "piece_jointe_url");
 
   const types = await sql<Type[]>`
     select bt.id, bt.code, bt.libelle, bt.couleur, bt.photo,
@@ -64,7 +71,8 @@ export default async function ReglagesBouteilles({
   // lignes identiques sans aucun contexte.
   const regularisations = await sql<Regularisation[]>`
     select m.id, m.bouteille_type_id, m.quantite, m.de_lieu::text,
-           m.date_mouvement, m.commentaire, u.nom as utilisateur
+           m.date_mouvement, m.commentaire, u.nom as utilisateur,
+           ${piecesPretes ? sql`m.piece_jointe_url` : sql`null::text`} as piece_jointe_url
       from mouvements_bouteilles m
       left join utilisateurs u on u.id = m.utilisateur_id
      where m.type = 'regularisation'
@@ -86,6 +94,13 @@ export default async function ReglagesBouteilles({
     // où on l'a constatée, pas au jour où on finit par l'enregistrer.
     const quand = String(donnees.get("date") ?? "").trim() || null;
 
+    const piecesPretes_ = await colonneExiste("mouvements_bouteilles", "piece_jointe_url");
+    const piece = donnees.get("piece");
+    const chemin =
+      piecesPretes_ && piece instanceof File && piece.size > 0
+        ? await enregistrerFichier(piece)
+        : null;
+
     // Aucune chambre connue : on ne peut pas dire quelle chambre a perdu la
     // bouteille (règle 2 — un dossier porte une chambre), donc ça ne passe
     // pas par un dossier. C'est exactement ce à quoi sert la régularisation
@@ -94,17 +109,35 @@ export default async function ReglagesBouteilles({
       await sql`
         insert into mouvements_bouteilles
           (type, bouteille_type_id, quantite, de_lieu, vers_lieu, date_mouvement,
-           utilisateur_id, commentaire)
+           utilisateur_id, commentaire${piecesPretes_ ? sql`, piece_jointe_url` : sql``})
         values ('regularisation', ${type}, ${Math.abs(ecart)}, 'reserve', 'hors_parc',
-                coalesce(${quand}::timestamptz, now()), ${profil_.id}, ${mot})`;
+                coalesce(${quand}::timestamptz, now()), ${profil_.id}, ${mot}
+                ${piecesPretes_ ? sql`, ${chemin}` : sql``})`;
     } else {
       await sql`
         insert into mouvements_bouteilles
           (type, bouteille_type_id, quantite, de_lieu, vers_lieu, date_mouvement,
-           utilisateur_id, commentaire)
+           utilisateur_id, commentaire${piecesPretes_ ? sql`, piece_jointe_url` : sql``})
         values ('regularisation', ${type}, ${ecart}, 'hors_parc', 'reserve',
-                coalesce(${quand}::timestamptz, now()), ${profil_.id}, ${mot})`;
+                coalesce(${quand}::timestamptz, now()), ${profil_.id}, ${mot}
+                ${piecesPretes_ ? sql`, ${chemin}` : sql``})`;
     }
+    revalidatePath("/administration/bouteilles");
+  }
+
+  // Une pièce jointe après coup — pour une régularisation déjà en base, comme
+  // celle de mai, posée avant que cet écran sache en recevoir une.
+  async function joindrePiece(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/bouteilles");
+    const fichier = donnees.get("piece");
+    if (!(fichier instanceof File) || fichier.size === 0) return;
+    const chemin = await enregistrerFichier(fichier);
+    await sql`
+      update mouvements_bouteilles
+         set piece_jointe_url = ${chemin}
+       where id = ${String(donnees.get("mouvement"))} and type = 'regularisation'`;
     revalidatePath("/administration/bouteilles");
   }
 
@@ -437,6 +470,15 @@ export default async function ReglagesBouteilles({
                     className="flex-1 min-w-0 h-[40px] px-3 rounded-[11px] border border-line bg-surface text-[14px]"
                   />
                 </label>
+                {piecesPretes && (
+                  <ChampPhotos
+                    nom="piece"
+                    libelle="Joindre le mail ou un justificatif (optionnel)"
+                    multiple={false}
+                    documents
+                    compact
+                  />
+                )}
               </form>
 
               {parMois(regularisations.filter((r) => r.bouteille_type_id === t.id)).map(
@@ -449,34 +491,74 @@ export default async function ReglagesBouteilles({
                   >
                     <ul className="flex flex-col divide-y divide-line">
                       {groupe.items.map((r) => (
-                        <li key={r.id} className="py-2 flex items-center gap-2.5">
-                          <span
-                            className={`shrink-0 font-display font-semibold text-[14px] tabular-nums ${
-                              r.de_lieu === "reserve" ? "text-red" : "text-green"
-                            }`}
-                          >
-                            {r.de_lieu === "reserve" ? "−" : "+"}
-                            {r.quantite}
-                          </span>
-                          <span className="grow min-w-0 flex flex-col">
-                            <span className="text-[12.5px] text-ink-soft text-pretty leading-snug">
-                              {r.commentaire ?? "Sans motif noté"}
+                        <li key={r.id} className="py-2 flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={`shrink-0 font-display font-semibold text-[14px] tabular-nums ${
+                                r.de_lieu === "reserve" ? "text-red" : "text-green"
+                              }`}
+                            >
+                              {r.de_lieu === "reserve" ? "−" : "+"}
+                              {r.quantite}
                             </span>
-                            <span className="text-[11px] text-ink-faint">
-                              {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
-                              {r.utilisateur ? ` · ${r.utilisateur}` : ""}
+                            <span className="grow min-w-0 flex flex-col">
+                              <span className="text-[12.5px] text-ink-soft text-pretty leading-snug">
+                                {r.commentaire ?? "Sans motif noté"}
+                              </span>
+                              <span className="text-[11px] text-ink-faint">
+                                {new Date(r.date_mouvement).toLocaleDateString("fr-FR")}
+                                {r.utilisateur ? ` · ${r.utilisateur}` : ""}
+                              </span>
                             </span>
-                          </span>
-                          <Link
-                            href={`/administration/bouteilles?supprimer=${r.id}` as Route}
-                            aria-label="Supprimer"
-                            className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
-                                 strokeWidth="2.2" strokeLinecap="round">
-                              <path d="M6 12h12" />
-                            </svg>
-                          </Link>
+                            {r.piece_jointe_url && (
+                              <VoirDocument
+                                chemin={r.piece_jointe_url}
+                                titre="Justificatif"
+                                ariaLabel="Voir le justificatif"
+                                className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
+                                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+                                  <path d="M14 3v4h4" />
+                                </svg>
+                              </VoirDocument>
+                            )}
+                            <Link
+                              href={`/administration/bouteilles?supprimer=${r.id}` as Route}
+                              aria-label="Supprimer"
+                              className="shrink-0 w-9 h-9 rounded-[10px] bg-surface-muted grid place-items-center"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
+                                   strokeWidth="2.2" strokeLinecap="round">
+                                <path d="M6 12h12" />
+                              </svg>
+                            </Link>
+                          </div>
+
+                          {piecesPretes && !r.piece_jointe_url && (
+                            <details>
+                              <summary className="list-none ml-[34px] w-fit text-[11.5px] text-plum underline underline-offset-4 cursor-pointer">
+                                Joindre un justificatif
+                              </summary>
+                              <form
+                                action={joindrePiece}
+                                className="ml-[34px] mt-1.5 flex flex-col gap-2"
+                              >
+                                <input type="hidden" name="mouvement" value={r.id} />
+                                <ChampPhotos
+                                  nom="piece"
+                                  libelle="Le mail, en photo ou en PDF"
+                                  multiple={false}
+                                  documents
+                                  compact
+                                />
+                                <BoutonEnvoi className="self-start h-[38px] px-4 rounded-[10px] bg-surface-muted border border-line text-[12.5px] font-medium">
+                                  Joindre
+                                </BoutonEnvoi>
+                              </form>
+                            </details>
+                          )}
                         </li>
                       ))}
                     </ul>
