@@ -62,16 +62,29 @@ export function TotalBouteilles({
    * Les types déjà déclarés manquants dans cette chambre, en attente de
    * remplacement : une casse ou une perte ne se déclare pas une seconde
    * fois sur une bouteille qui est déjà partie — la chambre n'en a qu'UNE,
-   * elle ne peut pas en manquer deux. Ignoré en mode remplacement, où c'est
-   * justement ce qu'on vient re-doter.
+   * elle ne peut pas en manquer deux. En mode remplacement, c'est l'inverse
+   * qui est passé ici : les types qui n'ont RIEN à remplacer — on ne
+   * redote pas une bouteille qui n'a jamais quitté la chambre.
    */
   desactivees = [],
+  /** Le mot sous une bouteille désactivée — la raison change selon le sens. */
+  raisonIndisponible = "Déjà déclarée manquante — en attente de remplacement",
+  /**
+   * Les types à cocher d'office — en remplacement, c'est justement la
+   * bouteille manquante : il n'y a qu'une réponse possible, pas la peine de
+   * la demander.
+   */
+  preselectionnees = [],
 }: {
   types: TypeBouteille[];
   libelle: string;
   desactivees?: string[];
+  raisonIndisponible?: string;
+  preselectionnees?: string[];
 }) {
-  const [quantites, setQuantites] = useState<Record<string, number>>({});
+  const [quantites, setQuantites] = useState<Record<string, number>>(() =>
+    Object.fromEntries(preselectionnees.map((id) => [id, 1])),
+  );
   const total = types.reduce((s, t) => s + (quantites[t.id] ?? 0) * t.prix, 0);
   // Zéro ou une : il n'y a jamais deux bouteilles du même type dans une
   // chambre.
@@ -101,7 +114,7 @@ export function TotalBouteilles({
                 aria-pressed={n > 0}
                 aria-label={
                   indisponible
-                    ? `${t.libelle} — déjà déclarée manquante`
+                    ? `${t.libelle} — ${raisonIndisponible}`
                     : `${t.libelle} — ${n > 0 ? "retirer" : "ajouter"}`
                 }
                 className="flex flex-col items-center gap-1.5 w-full disabled:cursor-not-allowed"
@@ -132,7 +145,7 @@ export function TotalBouteilles({
                 </span>
                 {indisponible ? (
                   <span className="text-[11px] text-ink-faint text-center leading-snug text-pretty">
-                    Déjà déclarée manquante — en attente de remplacement
+                    {raisonIndisponible}
                   </span>
                 ) : (
                   <>

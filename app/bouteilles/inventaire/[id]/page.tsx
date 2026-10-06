@@ -4,7 +4,9 @@ import Link from "next/link";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
+import { peutValider } from "@/lib/domaine";
 import { Entete, Vide } from "@/app/composants/ui";
+import { Depliant } from "@/app/composants/depliant";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { MarquerValide } from "@/app/composants/quitter-si-revenu";
 
@@ -78,6 +80,30 @@ export default async function DetailInventaire({
     "use server";
     await sql`delete from inventaires where id = ${id} and statut = 'brouillon'`;
     redirect("/bouteilles/inventaire" as Route);
+  }
+
+  /**
+   * Défaire un comptage déjà validé.
+   *
+   * Un ajustement saisi à la main se corrige ou se supprime depuis
+   * /administration/bouteilles — mais un comptage, une fois validé, n'avait
+   * AUCUN chemin : pas de ligne à corriger, pas de suppression, rien. Une
+   * erreur de comptage restait pour toujours, ou obligeait à poser un
+   * ajustement À CÔTÉ pour la compenser — sans lien visible avec le
+   * comptage fautif.
+   *
+   * Supprimer l'inventaire plutôt qu'une ligne : règle 4bis, « un comptage
+   * reste vrai quand le théorique change » — on ne retouche pas un chiffre
+   * compté, on défait le comptage entier s'il était faux, et on en refait
+   * un. `on delete cascade` (migration 0001) emporte les régularisations
+   * qu'il avait posées : le parc redevient ce qu'il était avant.
+   */
+  async function supprimerValide() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/bouteilles");
+    await sql`delete from inventaires where id = ${id} and statut = 'valide'`;
+    redirect("/bouteilles/inventaire?fait=comptage-supprime" as Route);
   }
 
   const brouillon = inv.statut === "brouillon";
@@ -178,11 +204,42 @@ export default async function DetailInventaire({
             </form>
           </div>
         ) : (
-          <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
-            {ecarts.length === 0
-              ? "Validé sans écart : rien n’a été régularisé."
-              : `Validé : ${ecarts.length} régularisation${ecarts.length > 1 ? "s" : ""} écrite${ecarts.length > 1 ? "s" : ""}, visible${ecarts.length > 1 ? "s" : ""} dans l’historique des mouvements.`}
-          </p>
+          <>
+            <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty">
+              {ecarts.length === 0
+                ? "Validé sans écart : rien n’a été régularisé."
+                : `Validé : ${ecarts.length} régularisation${ecarts.length > 1 ? "s" : ""} écrite${ecarts.length > 1 ? "s" : ""}, visible${ecarts.length > 1 ? "s" : ""} dans l’historique des mouvements.`}
+            </p>
+
+            {/* Un ajustement saisi à la main se corrige depuis
+                /administration/bouteilles ; un comptage validé n'avait
+                aucun chemin — ni ligne à corriger, ni suppression. */}
+            {peutValider(profil.role) && (
+              <Depliant
+                titre="Supprimer ce comptage"
+                aide="Pour un comptage faux, validé par erreur"
+              >
+                <p className="text-[13px] text-ink-soft text-pretty leading-snug">
+                  {ecarts.length > 0
+                    ? `Les ${ecarts.length} régularisation${ecarts.length > 1 ? "s" : ""} que ce comptage a posée${ecarts.length > 1 ? "s" : ""} ${ecarts.length > 1 ? "disparaissent" : "disparaît"} avec lui : le parc redevient ce qu’il était avant ce comptage.`
+                    : "Ce comptage n’avait posé aucune régularisation ; le supprimer ne change rien au parc."}
+                </p>
+                <p className="text-[13px] text-ink-soft text-pretty leading-snug">
+                  Un chiffre compté ne se corrige pas ligne à ligne (règle : un comptage reste
+                  vrai quand le théorique change) — on défait le comptage entier, et on en
+                  refait un bon.
+                </p>
+                <form action={supprimerValide}>
+                  <BoutonEnvoi
+                    pendant="Suppression…"
+                    className="w-full h-[48px] rounded-[12px] bg-red-soft text-red font-medium text-[14.5px]"
+                  >
+                    Supprimer ce comptage
+                  </BoutonEnvoi>
+                </form>
+              </Depliant>
+            )}
+          </>
         )}
 
         <Link

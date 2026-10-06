@@ -146,11 +146,21 @@ export default async function DetailDossier({
                transmis_le = coalesce(transmis_le, now())
          where id = ${id} and statut in ('signale', 'transmis')`;
     } else if (["restitue", "facture", "non_facture"].includes(etape)) {
+      // Clore reste ouvert à tous, comme avant. Mais une fois clos, on se
+      // trompait de bouton — « Perte sèche » au lieu de « Facturée » — et
+      // rien ne permettait de le reprendre : il fallait supprimer le dossier
+      // entier pour corriger une seule case. Rebasculer d'une issue à une
+      // autre est une CORRECTION d'historique, donc réservée à peutValider,
+      // comme les autres (`corriger`, `supprimer`) — jamais un geste de
+      // terrain.
+      const correctionIssue = peutValider(profil_.role);
       await sql`
         update incidents_bouteille
            set statut = ${etape}::statut_incident_bouteille,
                resolu_le = now(), resolu_par = ${profil_.id}
-         where id = ${id} and statut in ('signale', 'transmis', 'client_contacte')`;
+         where id = ${id}
+           and (statut in ('signale', 'transmis', 'client_contacte')
+                or (${correctionIssue} and statut in ('restitue', 'facture', 'non_facture')))`;
     }
     revalidatePath(`/bouteilles/dossier/${id}`);
   }
@@ -425,6 +435,54 @@ export default async function DetailDossier({
                   </BoutonEnvoi>
                 </div>
               </div>
+            </form>
+          </section>
+        )}
+
+        {/* Un dossier clos ne se rouvrait jamais : se tromper de bouton —
+            « Perte sèche » au lieu de « Facturée » — n'avait qu'un recours,
+            supprimer le dossier entier pour une seule case mal cochée.
+            Rebasculer d'une issue à une autre EST une correction
+            d'historique, donc réservée à peutValider, séparée du geste de
+            clôture ouvert à tous. */}
+        {!d.dossier_ouvert && peutValider(profil.role) && (
+          <section className="flex flex-col gap-2">
+            <h2 className="etiquette">Corriger l’issue</h2>
+            <p className="text-[11.5px] text-ink-faint text-pretty leading-snug">
+              Le dossier est clos sur « {LIBELLE[d.statut]} ». Si ce n’est pas la bonne
+              issue, choisis la bonne ci-dessous — rien d’autre ne change.
+            </p>
+            <form action={avancer} className="flex flex-wrap gap-2">
+              {d.nature === "emport" && d.statut !== "restitue" && (
+                <BoutonEnvoi
+                  name="etape"
+                  value="restitue"
+                  pendant="…"
+                  className="grow h-[44px] px-3 rounded-[12px] bg-green-soft text-green text-[13.5px] font-medium"
+                >
+                  Restituée
+                </BoutonEnvoi>
+              )}
+              {d.facturable_client && d.statut !== "facture" && (
+                <BoutonEnvoi
+                  name="etape"
+                  value="facture"
+                  pendant="…"
+                  className="grow h-[44px] px-3 rounded-[12px] bg-surface border border-line text-ink-soft text-[13.5px] font-medium"
+                >
+                  Facturée au client
+                </BoutonEnvoi>
+              )}
+              {d.statut !== "non_facture" && (
+                <BoutonEnvoi
+                  name="etape"
+                  value="non_facture"
+                  pendant="…"
+                  className="grow h-[44px] px-3 rounded-[12px] bg-red-soft text-red text-[13.5px] font-medium"
+                >
+                  Perte sèche
+                </BoutonEnvoi>
+              )}
             </form>
           </section>
         )}

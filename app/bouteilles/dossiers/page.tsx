@@ -68,7 +68,10 @@ export default async function Dossiers({
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { q = "", filtre = "ouvert", fait, tri = "date" } = await searchParams;
+  // Par défaut sur « Tous », pas « En cours » : arriver sur l'écran en ne
+  // voyant qu'un sous-ensemble, sans l'avoir choisi, laissait croire que
+  // c'était la liste complète des dossiers.
+  const { q = "", filtre = "tous", fait, tri = "date" } = await searchParams;
 
   const [c] = await sql<
     { ouverts: number; urgents: number; du_mois: number; resolus: number; perdus: number;

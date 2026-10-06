@@ -430,6 +430,38 @@ export default async function TraiterAnomalie({
     );
   }
 
+  /**
+   * La galerie, par pages de `GALERIE_VISIBLE`.
+   *
+   * Un `<details>` par page, chacun ne dépliant que la page SUIVANTE — pas
+   * le reste entier — via un appel récursif sur ce qu'il y a après. Les
+   * noms de classe Tailwind doivent être des chaînes LITTÉRALES pour que
+   * l'outil les génère (un `group/plus${n}` construit à l'exécution ne
+   * produirait aucune règle CSS) : chaque page garde donc le même texte
+   * « Voir N de plus », sans bascule visuelle vers « Replier » — inutile
+   * de toute façon pour un défilement qui s'empile plutôt qu'il ne se
+   * referme.
+   */
+  function blocGalerie(items: Produit[]): React.ReactNode {
+    const page = items.slice(0, GALERIE_VISIBLE);
+    const reste = items.slice(GALERIE_VISIBLE);
+    return (
+      <>
+        <ul className="flex flex-col gap-1.5 -mx-1 px-1">{page.map(ligneArticle)}</ul>
+        {reste.length > 0 && (
+          <details className="mt-1.5">
+            <summary className="list-none mx-1 carte px-4 py-2.5 text-[13.5px] text-plum flex items-center justify-center gap-2 cursor-pointer">
+              Voir {Math.min(GALERIE_VISIBLE, reste.length)} article
+              {Math.min(GALERIE_VISIBLE, reste.length) > 1 ? "s" : ""} de plus
+              {reste.length > GALERIE_VISIBLE ? ` (${reste.length} au total)` : ""}
+            </summary>
+            <div className="pt-1.5">{blocGalerie(reste)}</div>
+          </details>
+        )}
+      </>
+    );
+  }
+
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
@@ -623,30 +655,16 @@ export default async function TraiterAnomalie({
               a437c6a, qui a fait défiler toute la page comme une seule
               liste). Supprimer le `max-h` a réglé le vide, mais a ouvert
               l'autre défaut qu'il évitait : tout défiler, même quarante
-              articles, pour atteindre le bouton.
-              Le compromis n'est ni l'un ni l'autre : seuls les six premiers
-              articles s'affichent d'abord — « ce qui a déjà servi pour ce
-              problème vient en premier » (le tri existant), donc le bon
-              article est souvent déjà dedans — et le reste se déplie sur
-              demande, dans le MÊME flux de page (`<details>`, pas une
-              seconde zone de défilement imbriquée). */}
-          <ul className="flex flex-col gap-1.5 -mx-1 px-1">
-            {disponibles.slice(0, GALERIE_VISIBLE).map(ligneArticle)}
-          </ul>
-          {disponibles.length > GALERIE_VISIBLE && (
-            <details className="group/plus mt-1.5">
-              <summary className="list-none mx-1 carte px-4 py-2.5 text-[13.5px] text-plum flex items-center justify-center gap-2 cursor-pointer">
-                <span className="group-open/plus:hidden">
-                  Voir {disponibles.length - GALERIE_VISIBLE} article
-                  {disponibles.length - GALERIE_VISIBLE > 1 ? "s" : ""} de plus
-                </span>
-                <span className="hidden group-open/plus:inline">Replier</span>
-              </summary>
-              <ul className="flex flex-col gap-1.5 -mx-1 px-1 pt-1.5">
-                {disponibles.slice(GALERIE_VISIBLE).map(ligneArticle)}
-              </ul>
-            </details>
-          )}
+              articles, pour atteindre le bouton. Un premier correctif
+              montrait six articles puis TOUT le reste d'un coup au premier
+              « voir plus » — sur une vraie galerie de quarante, un seul
+              appui ramenait le même défilement qu'avant.
+              Le compromis est donc un défilement PAR PAGES de six, chacune
+              dépliée par son propre « voir plus » (`blocGalerie`,
+              récursive) — jamais plus de six articles de plus d'un coup,
+              et toujours dans le MÊME flux de page (`<details>` imbriqués,
+              pas une zone de défilement à part). */}
+          {blocGalerie(disponibles)}
           </details>
         </section>
       </div>

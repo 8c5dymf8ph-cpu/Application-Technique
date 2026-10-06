@@ -94,6 +94,7 @@ export default async function Signaler({
     where i.redoter = false`;
   const manquantesDeLaChambre = (id: string) =>
     manquantes.filter((m) => m.emplacement_id === id).map((m) => m.bouteille_type_id);
+  const manquantesIci = chambre ? manquantesDeLaChambre(chambre.id) : [];
 
   async function enregistrer(donnees: FormData) {
     "use server";
@@ -387,8 +388,12 @@ export default async function Signaler({
               </div>
               {/* Une casse ou une perte ne se déclare pas sur une bouteille
                   déjà manquante : la chambre n'en a qu'une, elle ne peut pas
-                  en manquer deux. Le remplacement, lui, vise justement ces
-                  types-là — rien n'y est désactivé. */}
+                  en manquer deux. Le remplacement, lui, ne vise QUE ces
+                  types-là — l'inverse était vrai jusqu'ici (rien n'y était
+                  désactivé) et laissait re-doter une bouteille qui n'avait
+                  jamais quitté la chambre. Puisqu'il n'y a jamais qu'une
+                  réponse possible, elle est cochée d'office : pas la peine
+                  de la redemander. */}
               <TotalBouteilles
                 libelle={
                   remplacement
@@ -405,11 +410,21 @@ export default async function Signaler({
                   couleur: t.couleur ?? "#453A6E",
                   photo: t.photo,
                 }))}
-                desactivees={remplacement ? [] : manquantesDeLaChambre(chambre.id)}
+                desactivees={
+                  remplacement
+                    ? types.map((t) => t.id).filter((id) => !manquantesIci.includes(id))
+                    : manquantesIci
+                }
+                raisonIndisponible={
+                  remplacement ? "Pas perdue dans cette chambre — rien à remplacer" : undefined
+                }
+                preselectionnees={remplacement ? manquantesIci : []}
               />
               <p className="text-[11.5px] text-ink-faint text-pretty">
                 {remplacement
-                  ? "Appuyez sur la bouteille à remettre en chambre. Les deux peuvent l’être."
+                  ? manquantesIci.length > 0
+                    ? "La bouteille manquante est déjà cochée — il n’y a rien d’autre à remplacer ici."
+                    : "Rien n’a été déclaré manquant dans cette chambre : il n’y a rien à remplacer."
                   : "Appuyez sur la bouteille concernée. Les deux peuvent l’être dans la même déclaration : c’est un seul dossier, un seul montant."}
               </p>
             </section>
