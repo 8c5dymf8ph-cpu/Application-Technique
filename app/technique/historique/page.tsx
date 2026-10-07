@@ -311,6 +311,9 @@ export default async function PassagesEtFactures({
     .filter((l) => ouverts.has(cleDuMois(l.date_tournee)))
     .map((l) => l.reference);
 
+  // L'ordre est celui du bâtiment (règle 14octies), pas l'alphabet : trier
+  // `r.emplacement` comme du texte mettait la chambre « 11 » avant la « 2 »,
+  // et « 4eme étage » — un lieu comme un autre — n'importe où selon son nom.
   const details = referencesOuvertes.length
     ? await sql<Detail[]>`
         select r.tournee, a.sharepoint_id, r.emplacement, r.description,
@@ -322,8 +325,10 @@ export default async function PassagesEtFactures({
                a.declare_le
           from v_recap_interventions r
           join anomalies a on a.id = r.anomalie_id
+          join emplacements e on e.id = a.emplacement_id
+          join etages et      on et.id = e.etage_id
          where r.tournee = any(${referencesOuvertes})
-         order by a.declare_le desc, r.emplacement`
+         order by a.declare_le desc, et.ordre, e.ordre`
     : [];
   const detailDe = (reference: string) => details.filter((d) => d.tournee === reference);
 
