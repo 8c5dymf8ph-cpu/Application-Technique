@@ -437,23 +437,32 @@ export default async function TraiterAnomalie({
    * le reste entier — via un appel récursif sur ce qu'il y a après. Les
    * noms de classe Tailwind doivent être des chaînes LITTÉRALES pour que
    * l'outil les génère (un `group/plus${n}` construit à l'exécution ne
-   * produirait aucune règle CSS) : chaque page garde donc le même texte
-   * « Voir N de plus », sans bascule visuelle vers « Replier » — inutile
-   * de toute façon pour un défilement qui s'empile plutôt qu'il ne se
-   * referme.
+   * produirait aucune règle CSS) : chaque page garde donc la même flèche,
+   * sans bouton intermédiaire pour la replier — inutile de toute façon pour
+   * un défilement qui s'empile plutôt qu'il ne se referme. Une simple
+   * flèche suffit : « une » page de plus n'a pas besoin d'être précisée,
+   * et elle réapparaît d'elle-même au bas des six articles qu'elle vient
+   * de révéler, pour la page suivante.
    */
   function blocGalerie(items: Produit[]): React.ReactNode {
     const page = items.slice(0, GALERIE_VISIBLE);
     const reste = items.slice(GALERIE_VISIBLE);
     const nVoir = Math.min(GALERIE_VISIBLE, reste.length);
-    const phraseVoirPlus = `Voir ${nVoir} article${nVoir > 1 ? "s" : ""} de plus`;
     return (
       <>
         <ul className="flex flex-col gap-1.5 -mx-1 px-1">{page.map(ligneArticle)}</ul>
         {reste.length > 0 && (
           <details className="mt-1.5">
-            <summary className="list-none mx-1 carte px-4 py-2.5 text-[13.5px] text-plum flex items-center justify-center gap-2 cursor-pointer">
-              {phraseVoirPlus}
+            <summary
+              aria-label={`Voir ${nVoir} article${nVoir > 1 ? "s" : ""} de plus`}
+              className="list-none flex items-center justify-center py-1 cursor-pointer"
+            >
+              <span className="w-9 h-9 rounded-full bg-plum-soft grid place-items-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
+                     strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </span>
             </summary>
             <div className="pt-1.5">{blocGalerie(reste)}</div>
           </details>
