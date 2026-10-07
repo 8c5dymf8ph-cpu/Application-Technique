@@ -252,6 +252,7 @@ export default async function ReglagesBouteilles({
                 <img
                   src={`/photo/${t.photo}`}
                   alt={t.libelle}
+                  loading="lazy"
                   className="w-[104px] h-[132px] object-contain rounded-[11px] border border-line bg-surface-muted shrink-0"
                 />
               ) : (

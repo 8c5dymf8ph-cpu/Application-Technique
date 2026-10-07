@@ -12,6 +12,7 @@ export function VignetteProduit({
       <img
         src={`/photo/${photo}`}
         alt=""
+        loading="lazy"
         style={{ width: taille, height: taille }}
         className="shrink-0 rounded-[11px] object-cover border border-line bg-surface-muted"
       />

@@ -88,6 +88,7 @@ export function ComptageProduits({ lignes }: { lignes: LigneProduit[] }) {
                       <img
                         src={`/photo/${l.photo}`}
                         alt=""
+                        loading="lazy"
                         className="w-[38px] h-[38px] shrink-0 rounded-[9px] object-cover border border-line"
                       />
                     ) : (

@@ -70,7 +70,7 @@ export function PhotoProduit({
         style={{ width: taille, height: taille }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/photo/${photos[0]}`} alt="" className="w-full h-full object-cover" />
+        <img src={`/photo/${photos[0]}`} alt="" loading="lazy" className="w-full h-full object-cover" />
         {photos.length > 1 && (
           <span className="absolute bottom-1 right-1 min-w-[20px] h-[20px] px-1 rounded-full bg-ink/75 text-white text-[11px] grid place-items-center tabular-nums">
             {photos.length}

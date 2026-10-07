@@ -174,6 +174,7 @@ export default async function PhotosProduit({
                     <img
                       src={`/photo/${ph.chemin}`}
                       alt=""
+                      loading="lazy"
                       className={`w-[104px] h-[104px] object-cover rounded-[11px] border-2 ${
                         ph.principale ? "border-plum" : "border-line"
                       }`}

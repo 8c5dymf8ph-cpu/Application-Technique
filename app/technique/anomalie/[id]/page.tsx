@@ -80,9 +80,43 @@ export default async function TraiterAnomalie({
       ? jour
       : undefined;
 
-  // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'en est
-  // un. Une condition booléenne dans le SQL casserait l'écran entier.
-  const marque = await colonneExiste("emplacements", "essai");
+  // Aucune de ces lectures ne dépend d'une autre — seule la requête de
+  // `anomalie` a besoin de savoir si `essai` existe avant de s'écrire. Les
+  // lancer ensemble plutôt qu'à la file évite d'attendre cinq allers-retours
+  // à la base l'un après l'autre pour ouvrir un seul écran.
+  const [marque, messages, constatRows, apresRows, momentValidationExiste] = await Promise.all([
+    // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'en
+    // est un. Une condition booléenne dans le SQL casserait l'écran entier.
+    colonneExiste("emplacements", "essai"),
+    // Ce que la gouvernante a écrit et photographié en signalant : le
+    // technicien voit à quoi il vient.
+    sql<Message[]>`
+      select commentaire_id, source, auteur, texte, date_commentaire, decision::text
+      from v_fil_commentaires where anomalie_id = ${id} order by date_commentaire`,
+    sql<{ chemin: string }[]>`
+      select chemin from photos_anomalie
+      where anomalie_id = ${id} and moment = 'constat' order by prise_le`,
+    /**
+     * Ce qu'un passage précédent a déjà photographié.
+     *
+     * « La photo du technicien est perdue » quand une anomalie refusée revient
+     * ici : elle n'était pas perdue en base — `photos_anomalie` ne s'efface
+     * jamais — mais cet écran ne l'avait jamais interrogée. Si ça revient dans
+     * la liste après un refus, c'est justement pour reprendre CE qui a été
+     * fait : la photo du premier passage doit rester là, sous les yeux, pas
+     * seulement visible depuis la fiche une fois le travail revalidé.
+     */
+    sql<{ chemin: string }[]>`
+      select chemin from photos_anomalie
+      where anomalie_id = ${id} and moment = 'apres' order by prise_le`,
+    // Le code part en ligne avant la migration 0032 : tant que `moment_photo`
+    // ne porte pas encore `'validation'`, comparer directement dedans le SQL
+    // fait échouer la requête entière — pas une liste vide, l'écran qui casse.
+    valeurEnumExiste("moment_photo", "validation"),
+  ]);
+  const constat = constatRows.map((p) => p.chemin);
+  const apres = apresRows.map((p) => p.chemin);
+
   const [anomalie] = await sql<Anomalie[]>`
     select a.id, a.description, a.catalogue_id, e.code as emplacement,
            et.nom as etage, ${marque ? sql`e.essai` : sql`false`} as essai,
@@ -93,42 +127,10 @@ export default async function TraiterAnomalie({
     where a.id = ${id}`;
   if (!anomalie) notFound();
 
-  // Ce que la gouvernante a écrit et photographié en signalant : le technicien
-  // voit à quoi il vient.
-  const messages = await sql<Message[]>`
-    select commentaire_id, source, auteur, texte, date_commentaire, decision::text
-    from v_fil_commentaires where anomalie_id = ${id} order by date_commentaire`;
-
-  const constat = (
-    await sql<{ chemin: string }[]>`
-      select chemin from photos_anomalie
-      where anomalie_id = ${id} and moment = 'constat' order by prise_le`
-  ).map((p) => p.chemin);
-
-  /**
-   * Ce qu'un passage précédent a déjà photographié.
-   *
-   * « La photo du technicien est perdue » quand une anomalie refusée revient
-   * ici : elle n'était pas perdue en base — `photos_anomalie` ne s'efface
-   * jamais — mais cet écran ne l'avait jamais interrogée. Si ça revient dans
-   * la liste après un refus, c'est justement pour reprendre CE qui a été
-   * fait : la photo du premier passage doit rester là, sous les yeux, pas
-   * seulement visible depuis la fiche une fois le travail revalidé.
-   */
-  const apres = (
-    await sql<{ chemin: string }[]>`
-      select chemin from photos_anomalie
-      where anomalie_id = ${id} and moment = 'apres' order by prise_le`
-  ).map((p) => p.chemin);
-
   // Si ça revient dans la liste, c'est que la gouvernante a refusé — et elle
   // a pu y joindre une photo pour dire pourquoi. Le technicien doit la voir
   // avant de remonter, comme il voit déjà le constat.
-  //
-  // Le code part en ligne avant la migration 0032 : tant que `moment_photo`
-  // ne porte pas encore `'validation'`, comparer directement dedans le SQL
-  // fait échouer la requête entière — pas une liste vide, l'écran qui casse.
-  const verifie = (await valeurEnumExiste("moment_photo", "validation"))
+  const verifie = momentValidationExiste
     ? (
         await sql<{ chemin: string }[]>`
           select chemin from photos_anomalie

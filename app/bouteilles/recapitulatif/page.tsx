@@ -134,12 +134,6 @@ export default async function Recapitulatif({
   const profil = await profilActif();
   if (!profil) redirect("/profil");
 
-  // Les colonnes partent en ligne avant les migrations qui les ajoutent
-  // (0038, 0040) : deux requêtes, choisies ici, jamais une condition
-  // booléenne dans le SQL.
-  const regulPiecePretes = await colonneExiste("mouvements_bouteilles", "piece_jointe_url");
-  const inventairePiecePretes = await colonneExiste("inventaires", "piece_jointe_url");
-
   const defaut = moisCourant();
   const p = await searchParams;
   const debut = valide(p.debut, defaut.debut);
@@ -160,76 +154,104 @@ export default async function Recapitulatif({
    * de la période, et les chambres d'essai écartées comme `v_bouteilles_positions`
    * le fait déjà.
    */
-  const stock = await sql<Stock[]>`
-    with mvt as (
-      select m.*
-        from mouvements_bouteilles m
-        left join emplacements e_de   on e_de.id = m.de_emplacement_id
-        left join emplacements e_vers on e_vers.id = m.vers_emplacement_id
-       where not coalesce(e_de.essai, false)
-         and not coalesce(e_vers.essai, false)
-         and m.date_mouvement < (${fin}::date + 1)
-    ),
-    pos as (
-      select m.bouteille_type_id, f.lieu, f.qte
-        from mvt m
-        cross join lateral (values
-          (m.vers_lieu, m.quantite),
-          (m.de_lieu,  -m.quantite)
-        ) as f (lieu, qte)
-       where f.lieu <> 'hors_parc'
-    )
-    select bt.code, bt.libelle, bt.couleur,
-           coalesce(sum(p.qte) filter (where p.lieu = 'reserve'), 0)::int    as en_reserve,
-           coalesce(sum(p.qte) filter (where p.lieu = 'emplacement'), 0)::int as en_chambre,
-           coalesce(sum(p.qte) filter (where p.lieu in ('reserve', 'emplacement')), 0)::int as parc_detenu
-      from bouteille_types bt
-      left join pos p on p.bouteille_type_id = bt.id
-     group by bt.id, bt.code, bt.libelle, bt.couleur
-     order by bt.libelle`;
+  // Rien ici ne dépend d'autre chose que la période et les deux dates : les
+  // lancer à la file coûtait six allers-retours à la base, l'un après
+  // l'autre, pour un seul écran. Les deux sondes de capacité (0038, 0040 —
+  // le code part en ligne avant la migration qui ajoute la colonne, jamais
+  // une condition booléenne dans le SQL) rejoignent le même lot, puisque
+  // `regularisations` et `dossiers` n'en ont besoin qu'une fois résolues.
+  const [stock, bilan, livraisons, regulPiecePretes, inventairePiecePretes, remplacementVisible] =
+    await Promise.all([
+      /**
+       * Le parc détenu à la CLÔTURE de la période — pas celui d'aujourd'hui,
+       * même quand la période finit aujourd'hui. C'est le solde de fin de
+       * relevé, au même sens qu'un solde bancaire : il complète les
+       * mouvements de la période, il ne redit pas « où on en est
+       * maintenant » (c'est la question du tableau de bord,
+       * `/bouteilles/tableau`, pas de cet écran). Reconstitué ligne à ligne
+       * plutôt que lu dans `v_stock_bouteilles`, qui ne connaît que
+       * l'instant présent : même logique que cette vue (réserve, chambre,
+       * parc détenu = les deux réunis), mais bornée aux mouvements
+       * antérieurs à la fin de la période, et les chambres d'essai écartées
+       * comme `v_bouteilles_positions` le fait déjà.
+       */
+      sql<Stock[]>`
+        with mvt as (
+          select m.*
+            from mouvements_bouteilles m
+            left join emplacements e_de   on e_de.id = m.de_emplacement_id
+            left join emplacements e_vers on e_vers.id = m.vers_emplacement_id
+           where not coalesce(e_de.essai, false)
+             and not coalesce(e_vers.essai, false)
+             and m.date_mouvement < (${fin}::date + 1)
+        ),
+        pos as (
+          select m.bouteille_type_id, f.lieu, f.qte
+            from mvt m
+            cross join lateral (values
+              (m.vers_lieu, m.quantite),
+              (m.de_lieu,  -m.quantite)
+            ) as f (lieu, qte)
+           where f.lieu <> 'hors_parc'
+        )
+        select bt.code, bt.libelle, bt.couleur,
+               coalesce(sum(p.qte) filter (where p.lieu = 'reserve'), 0)::int    as en_reserve,
+               coalesce(sum(p.qte) filter (where p.lieu = 'emplacement'), 0)::int as en_chambre,
+               coalesce(sum(p.qte) filter (where p.lieu in ('reserve', 'emplacement')), 0)::int as parc_detenu
+          from bouteille_types bt
+          left join pos p on p.bouteille_type_id = bt.id
+         group by bt.id, bt.code, bt.libelle, bt.couleur
+         order by bt.libelle`,
 
-  /**
-   * Ce qui est entré et sorti, par type de mouvement et par bouteille.
-   *
-   * Les récupérations en font partie : une bouteille restituée revient dans la
-   * réserve, et c'est exactement ce qu'on veut lire en fin de mois — combien
-   * sont parties, combien sont revenues.
-   *
-   * La dotation n'est PAS un mouvement de parc : c'est un déplacement de la
-   * réserve vers la chambre (règle 2bis). Elle est comptée à part.
-   */
-  // Une régularisation n'a pas de sens fixe (elle peut aller dans les deux
-  // sens, migration 0001 — `flux_coherent_avec_type` ne lui impose rien) :
-  // sommer sa quantité brute mélangerait un « +1 » et un « −1 » du mois en un
-  // seul « 2 » sans direction. On la signe donc ici, sur le même critère que
-  // le parc détenu (réserve + chambre) — un mouvement qui l'alimente compte
-  // en plus, un mouvement qui l'appauvrit compte en moins.
-  const bilan = await sql<Bilan[]>`
-    select m.type::text, bt.libelle as bouteille, bt.couleur,
-           sum(case when m.type = 'regularisation'
-                    then (case when m.vers_lieu in ('reserve', 'emplacement') then m.quantite else 0 end)
-                       - (case when m.de_lieu   in ('reserve', 'emplacement') then m.quantite else 0 end)
-                    else m.quantite end)::int as quantite
-      from mouvements_bouteilles m
-      join bouteille_types bt on bt.id = m.bouteille_type_id
-     where m.date_mouvement >= ${debut}::date
-       and m.date_mouvement < (${fin}::date + 1)
-     group by 1, 2, 3
-     order by 2, 1`;
+      /**
+       * Ce qui est entré et sorti, par type de mouvement et par bouteille.
+       *
+       * Les récupérations en font partie : une bouteille restituée revient
+       * dans la réserve, et c'est exactement ce qu'on veut lire en fin de
+       * mois — combien sont parties, combien sont revenues.
+       *
+       * La dotation n'est PAS un mouvement de parc : c'est un déplacement de
+       * la réserve vers la chambre (règle 2bis). Elle est comptée à part.
+       * Une régularisation n'a pas de sens fixe (elle peut aller dans les
+       * deux sens, migration 0001 — `flux_coherent_avec_type` ne lui impose
+       * rien) : sommer sa quantité brute mélangerait un « +1 » et un « −1 »
+       * du mois en un seul « 2 » sans direction. On la signe donc ici, sur
+       * le même critère que le parc détenu (réserve + chambre) — un
+       * mouvement qui l'alimente compte en plus, un qui l'appauvrit compte
+       * en moins.
+       */
+      sql<Bilan[]>`
+        select m.type::text, bt.libelle as bouteille, bt.couleur,
+               sum(case when m.type = 'regularisation'
+                        then (case when m.vers_lieu in ('reserve', 'emplacement') then m.quantite else 0 end)
+                           - (case when m.de_lieu   in ('reserve', 'emplacement') then m.quantite else 0 end)
+                        else m.quantite end)::int as quantite
+          from mouvements_bouteilles m
+          join bouteille_types bt on bt.id = m.bouteille_type_id
+         where m.date_mouvement >= ${debut}::date
+           and m.date_mouvement < (${fin}::date + 1)
+         group by 1, 2, 3
+         order by 2, 1`,
 
-  const livraisons = await sql<Livraison[]>`
-    select m.date_mouvement, bt.libelle as bouteille, bt.couleur,
-           m.quantite, c.reference as commande, m.commentaire,
-           c.montant_ht, c.montant_ttc,
-           fa.fichier_url as facture_fichier, fa.reference as facture_reference
-      from mouvements_bouteilles m
-      join bouteille_types bt on bt.id = m.bouteille_type_id
-      left join commandes c on c.id = m.commande_id
-      left join factures fa on fa.id = c.facture_id
-     where m.type = 'entree'
-       and m.date_mouvement >= ${debut}::date
-       and m.date_mouvement < (${fin}::date + 1)
-     order by m.date_mouvement desc`;
+      sql<Livraison[]>`
+        select m.date_mouvement, bt.libelle as bouteille, bt.couleur,
+               m.quantite, c.reference as commande, m.commentaire,
+               c.montant_ht, c.montant_ttc,
+               fa.fichier_url as facture_fichier, fa.reference as facture_reference
+          from mouvements_bouteilles m
+          join bouteille_types bt on bt.id = m.bouteille_type_id
+          left join commandes c on c.id = m.commande_id
+          left join factures fa on fa.id = c.facture_id
+         where m.type = 'entree'
+           and m.date_mouvement >= ${debut}::date
+           and m.date_mouvement < (${fin}::date + 1)
+         order by m.date_mouvement desc`,
+
+      colonneExiste("mouvements_bouteilles", "piece_jointe_url"),
+      colonneExiste("inventaires", "piece_jointe_url"),
+      // La colonne n'existe dans la vue que depuis la migration 0027.
+      vueContient("v_incidents_bouteille", "i.redoter"),
+    ]);
 
   // Ce que les chiffres du tableau ne disent pas : LAQUELLE, pourquoi, par
   // qui. Contrairement à la liste de saisie de /administration/bouteilles,
@@ -239,43 +261,42 @@ export default async function Recapitulatif({
   // Une régularisation manuelle porte sa propre pièce (0038) ; une
   // régularisation d'inventaire n'a que celle du comptage qui l'a posée
   // (0040), rattachée par inventaire_id — jamais les deux à la fois.
-  const regularisations = await sql<Regularisation[]>`
-    select m.date_mouvement, bt.libelle as bouteille, bt.couleur,
-           m.quantite, m.de_lieu::text, m.commentaire, u.nom as utilisateur,
-           coalesce(
-             ${regulPiecePretes ? sql`m.piece_jointe_url` : sql`null::text`},
-             ${inventairePiecePretes ? sql`i.piece_jointe_url` : sql`null::text`}
-           ) as piece_jointe_url,
-           ${inventairePiecePretes ? sql`i.commentaire` : sql`null::text`} as inventaire_commentaire
-      from mouvements_bouteilles m
-      join bouteille_types bt on bt.id = m.bouteille_type_id
-      left join utilisateurs u on u.id = m.utilisateur_id
-      left join inventaires i on i.id = m.inventaire_id
-     where m.type = 'regularisation'
-       and m.date_mouvement >= ${debut}::date
-       and m.date_mouvement < (${fin}::date + 1)
-     order by m.date_mouvement desc`;
+  const [regularisations, dossiers] = await Promise.all([
+    sql<Regularisation[]>`
+      select m.date_mouvement, bt.libelle as bouteille, bt.couleur,
+             m.quantite, m.de_lieu::text, m.commentaire, u.nom as utilisateur,
+             coalesce(
+               ${regulPiecePretes ? sql`m.piece_jointe_url` : sql`null::text`},
+               ${inventairePiecePretes ? sql`i.piece_jointe_url` : sql`null::text`}
+             ) as piece_jointe_url,
+             ${inventairePiecePretes ? sql`i.commentaire` : sql`null::text`} as inventaire_commentaire
+        from mouvements_bouteilles m
+        join bouteille_types bt on bt.id = m.bouteille_type_id
+        left join utilisateurs u on u.id = m.utilisateur_id
+        left join inventaires i on i.id = m.inventaire_id
+       where m.type = 'regularisation'
+         and m.date_mouvement >= ${debut}::date
+         and m.date_mouvement < (${fin}::date + 1)
+       order by m.date_mouvement desc`,
 
-  // La colonne n'existe dans la vue que depuis la migration 0027 : deux
-  // requêtes, jamais une condition booléenne dans le SQL.
-  const remplacementVisible = await vueContient("v_incidents_bouteille", "i.redoter");
-  const dossiers = remplacementVisible
-    ? await sql<Dossier[]>`
-        select id, reference, emplacement, bouteille, quantite, nature::text,
-               statut::text, responsable::text, client_nom, constate_par, transmis_a,
-               constate_le, resolu_le, montant, commentaire, redoter
-          from v_dossiers_bouteille
-         where constate_le >= ${debut}::date
-           and constate_le < (${fin}::date + 1)
-         order by constate_le desc, reference desc`
-    : await sql<Dossier[]>`
-        select id, reference, emplacement, bouteille, quantite, nature::text,
-               statut::text, responsable::text, client_nom, constate_par, transmis_a,
-               constate_le, resolu_le, montant, commentaire, null::boolean as redoter
-          from v_dossiers_bouteille
-         where constate_le >= ${debut}::date
-           and constate_le < (${fin}::date + 1)
-         order by constate_le desc, reference desc`;
+    remplacementVisible
+      ? sql<Dossier[]>`
+          select id, reference, emplacement, bouteille, quantite, nature::text,
+                 statut::text, responsable::text, client_nom, constate_par, transmis_a,
+                 constate_le, resolu_le, montant, commentaire, redoter
+            from v_dossiers_bouteille
+           where constate_le >= ${debut}::date
+             and constate_le < (${fin}::date + 1)
+           order by constate_le desc, reference desc`
+      : sql<Dossier[]>`
+          select id, reference, emplacement, bouteille, quantite, nature::text,
+                 statut::text, responsable::text, client_nom, constate_par, transmis_a,
+                 constate_le, resolu_le, montant, commentaire, null::boolean as redoter
+            from v_dossiers_bouteille
+           where constate_le >= ${debut}::date
+             and constate_le < (${fin}::date + 1)
+           order by constate_le desc, reference desc`,
+  ]);
 
   const somme = (t: string) =>
     bilan.filter((b) => b.type === t).reduce((n, b) => n + b.quantite, 0);

@@ -240,6 +240,7 @@ export default async function DetailDossier({
                     src={`/photo/${photo}`}
                     alt=""
                     aria-hidden
+                    loading="lazy"
                     className="w-[20px] h-[30px] shrink-0 rounded-[6px] object-contain"
                   />
                 ) : (

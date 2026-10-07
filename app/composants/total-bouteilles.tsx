@@ -124,6 +124,7 @@ export function TotalBouteilles({
                   <img
                     src={`/photo/${t.photo}`}
                     alt=""
+                    loading="lazy"
                     className="h-[150px] w-auto max-w-full object-contain"
                     style={{ opacity: n > 0 ? 1 : 0.55 }}
                   />
