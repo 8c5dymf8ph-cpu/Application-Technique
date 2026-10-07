@@ -374,6 +374,7 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "et les libellés retirés sont de retour dans le choix.",
   },
   remis: { ton: "green", texte: "Remis dans la liste des intervenants." },
+  facture: { ton: "green", texte: "Réglage de facturation enregistré." },
   "declare-sans-photo": {
     ton: "red",
     texte:

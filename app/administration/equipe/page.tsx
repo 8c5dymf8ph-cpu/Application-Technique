@@ -28,6 +28,7 @@ type Intervenant = {
   courriel: string | null;
   interventions: number;
   actif: boolean;
+  emet_des_factures: boolean;
 };
 
 /**
@@ -106,6 +107,9 @@ export default async function Equipe({
    */
   const reglable = await colonneExiste("utilisateurs", "peut_se_connecter");
   const courriels = await colonneExiste("prestataires", "email");
+  // En ligne depuis la 0007, bien avant cette session — mais le code part en
+  // ligne avant la migration, jamais une condition booléenne dans le SQL.
+  const facturePretes = await colonneExiste("utilisateurs", "emet_des_factures");
 
   const intervenants = reglable
     ? await sql<Intervenant[]>`
@@ -113,6 +117,8 @@ export default async function Equipe({
                coalesce(u.peut_se_connecter, false) as compte,
                coalesce(u.email, p.email)           as courriel,
                v.actif,
+               ${facturePretes ? sql`coalesce(u.emet_des_factures, false)` : sql`false`}
+                 as emet_des_factures,
                (select count(*) from interventions i
                  where i.technicien_id is not distinct from v.utilisateur_id
                    and i.prestataire_id is not distinct from v.prestataire_id)::int
@@ -127,6 +133,8 @@ export default async function Equipe({
                  false                      as compte,
                  coalesce(u.email, p.email) as courriel,
                  v.actif,
+                 ${facturePretes ? sql`coalesce(u.emet_des_factures, false)` : sql`false`}
+                   as emet_des_factures,
                  (select count(*) from interventions i
                    where i.technicien_id is not distinct from v.utilisateur_id
                      and i.prestataire_id is not distinct from v.prestataire_id)::int
@@ -140,6 +148,8 @@ export default async function Equipe({
                  false      as compte,
                  u.email    as courriel,
                  v.actif,
+                 ${facturePretes ? sql`coalesce(u.emet_des_factures, false)` : sql`false`}
+                   as emet_des_factures,
                  (select count(*) from interventions i
                    where i.technicien_id is not distinct from v.utilisateur_id
                      and i.prestataire_id is not distinct from v.prestataire_id)::int
@@ -165,7 +175,7 @@ export default async function Equipe({
                false as compte, u.email as courriel,
                (select count(*) from interventions i
                  where i.technicien_id = u.id)::int as interventions,
-               false as actif
+               false as actif, false as emet_des_factures
           from utilisateurs u
          where not u.intervient_technique and u.prestataire_id is null
            and (u.role = 'technicien'
@@ -174,7 +184,7 @@ export default async function Equipe({
         select p.nom, p.id, null::uuid, false, p.email,
                (select count(*) from interventions i
                  where i.prestataire_id = p.id)::int,
-               false
+               false, false
           from prestataires p where not p.actif
          order by 1`
     : await sql<Intervenant[]>`
@@ -182,7 +192,7 @@ export default async function Equipe({
                false as compte, u.email as courriel,
                (select count(*) from interventions i
                  where i.technicien_id = u.id)::int as interventions,
-               false as actif
+               false as actif, false as emet_des_factures
           from utilisateurs u
          where not u.intervient_technique
            and (u.role = 'technicien'
@@ -191,7 +201,7 @@ export default async function Equipe({
         select p.nom, p.id, null::uuid, false, null,
                (select count(*) from interventions i
                  where i.prestataire_id = p.id)::int,
-               false
+               false, false
           from prestataires p where not p.actif
          order by 1`;
 
@@ -262,18 +272,56 @@ export default async function Equipe({
     if (!profil_ || !peutValider(profil_.role)) redirect("/");
     const nom = String(donnees.get("nom") ?? "").trim();
     if (!nom) return;
-    // Un renfort ponctuel : il existe, il intervient, et il se retire d'un
-    // appui quand il repart. Rien de ce qu'il a fait ne disparaît avec lui.
-    // Un prénom déjà connu est réactivé, jamais dupliqué : son historique lui
-    // revient.
-    await sql`
-      insert into utilisateurs (nom, role, intervient_technique, actif)
-      values (${nom}, 'technicien', true, true)
-      on conflict (nom) do update set intervient_technique = true, actif = true`;
+    // L'écran ne proposait pas le choix, et insérait toujours comme salarié —
+    // alors que les renforts ajoutés ici sont le plus souvent des entreprises
+    // extérieures, qui facturent. Sans ce choix, corriger après coup voulait
+    // dire supprimer et refaire.
+    const exterieur = String(donnees.get("origine") ?? "exterieur") === "exterieur";
+
+    if (exterieur) {
+      // Une entreprise extérieure facture toujours (règle 10quinquies) : pas
+      // besoin d'`emet_des_factures`, qui ne vaut que pour une personne
+      // inscrite dans `utilisateurs`.
+      await sql`
+        insert into prestataires (nom, actif)
+        values (${nom}, true)
+        on conflict (nom) do update set actif = true`;
+    } else {
+      // Un renfort ponctuel : il existe, il intervient, et il se retire d'un
+      // appui quand il repart. Rien de ce qu'il a fait ne disparaît avec lui.
+      // Un prénom déjà connu est réactivé, jamais dupliqué : son historique
+      // lui revient.
+      await sql`
+        insert into utilisateurs (nom, role, intervient_technique, actif)
+        values (${nom}, 'technicien', true, true)
+        on conflict (nom) do update set intervient_technique = true, actif = true`;
+    }
     revalidatePath("/administration/equipe");
     // L'ajout ne se voyait pas : la section se refermait en se rechargeant, et
     // le nouveau nom se rangeait au milieu de quinze autres.
     redirect(`/administration/equipe?fait=intervenant&qui=${encodeURIComponent(nom)}` as Route);
+  }
+
+  /**
+   * Qui, inscrit dans l'équipe, facture son passage.
+   *
+   * Une entreprise extérieure facture toujours — pas de réglage pour elle.
+   * Une personne inscrite comme Farid ou Rachid, elle, n'est pas salariée :
+   * elle facture quand même, et c'est `emet_des_factures` qui le dit. Sans ce
+   * réglage visible ici, la seule façon de le poser était une ligne SQL
+   * écrite à la main (`donnees/installation/5-equipe.sql`).
+   */
+  async function basculerFacture(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/");
+    const utilisateur = String(donnees.get("utilisateur") ?? "").trim();
+    if (!utilisateur) return;
+    await sql`
+      update utilisateurs set emet_des_factures = not emet_des_factures
+       where id = ${utilisateur}`;
+    revalidatePath("/administration/equipe");
+    redirect("/administration/equipe?fait=facture" as Route);
   }
 
   /**
@@ -451,7 +499,9 @@ export default async function Equipe({
         <Depliant
           titre="Intervenants techniques"
           enCarte={false}
-          ouvert={["profil", "adresse", "intervenant", "retire", "remis"].includes(fait ?? "")}
+          ouvert={["profil", "adresse", "intervenant", "retire", "remis", "facture"].includes(
+            fait ?? "",
+          )}
           indice={
             reglable
               ? `${actifs.filter((i) => i.compte).length}/${actifs.length} avec profil`
@@ -549,6 +599,31 @@ export default async function Equipe({
                       </BoutonEnvoi>
                     </form>
 
+                    {/* Une entreprise extérieure facture toujours — ce
+                        réglage ne vaut que pour une personne inscrite,
+                        comme Farid ou Rachid, qui facture sans être
+                        salariée (règle 10quinquies). */}
+                    {!i.prestataire_id && facturePretes && (
+                      <form action={basculerFacture} className="flex items-center gap-3">
+                        <input type="hidden" name="utilisateur" value={i.utilisateur_id ?? ""} />
+                        <span className="grow text-[13px] text-ink-soft text-pretty leading-snug">
+                          {i.emet_des_factures
+                            ? "Facture ses passages."
+                            : "Ne facture pas — passage compté au matériel seul."}
+                        </span>
+                        <BoutonEnvoi
+                          pendant="…"
+                          className={`h-[38px] px-3 rounded-[10px] text-[12.5px] shrink-0 ${
+                            i.emet_des_factures
+                              ? "bg-surface-muted border border-line text-ink-soft"
+                              : "bg-plum text-white"
+                          }`}
+                        >
+                          {i.emet_des_factures ? "Retirer la facturation" : "Facture ses passages"}
+                        </BoutonEnvoi>
+                      </form>
+                    )}
+
                     {/* On ne supprime jamais quelqu'un : on le retire des
                         listes de saisie. Ce qu'il a fait lui reste attaché. */}
                     <form action={basculerIntervenant} className="self-start">
@@ -572,16 +647,35 @@ export default async function Equipe({
             )}
           </ul>
 
-          <form action={ajouterIntervenant} className="flex gap-2">
+          <form action={ajouterIntervenant} className="flex flex-col gap-2">
             <input
               name="nom"
               autoComplete="off"
               placeholder="Renfort ponctuel à ajouter…"
               className="carte grow min-w-0 px-4 h-[46px] text-[16px] placeholder:text-ink-faint"
             />
+            {/* Sans ce choix, un ajout tombait toujours dans « membre de
+                l'équipe » — alors qu'un renfort ajouté ici est le plus
+                souvent une entreprise extérieure, qui facture. */}
+            <div className="flex gap-2">
+              <label className="flex-1 rounded-card border border-line bg-surface h-[42px] grid place-items-center text-[13px] cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
+                <input
+                  type="radio"
+                  name="origine"
+                  value="exterieur"
+                  defaultChecked
+                  className="sr-only"
+                />
+                Entreprise extérieure
+              </label>
+              <label className="flex-1 rounded-card border border-line bg-surface h-[42px] grid place-items-center text-[13px] cursor-pointer has-[:checked]:border-plum has-[:checked]:bg-plum-soft">
+                <input type="radio" name="origine" value="interne" className="sr-only" />
+                Membre de l’équipe
+              </label>
+            </div>
             <BoutonEnvoi
               pendant="…"
-              className="px-4 rounded-card bg-plum text-white text-[14.5px]"
+              className="h-[46px] rounded-card bg-plum text-white text-[14.5px]"
             >
               Ajouter
             </BoutonEnvoi>
