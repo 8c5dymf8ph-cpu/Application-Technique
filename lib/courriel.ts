@@ -35,7 +35,7 @@ function nomCourt(l: LigneBouteille): string {
 }
 
 export function objetAlerteBouteille(d: DossierBouteille): string {
-  return `[A ENVOYER CLIENT] Bouteille(s) Purezza manquante(s) — Chambre ${d.emplacement}`;
+  return `[A ENVOYER CLIENT] Bouteille(s) Purezza manquante(s) — Chambre ${d.emplacement} — Dossier n° ${d.reference}`;
 }
 
 /**
@@ -62,33 +62,41 @@ export function corpsAlerteBouteille(d: DossierBouteille): string {
       ? `In accordance with our policy, any missing bottle is charged at €${Number(prix[0]).toFixed(2)} per unit.`
       : `In accordance with our policy, any missing bottle is charged according to our rates.`;
 
-  return `📧 Mail prêt à envoyer au client — Chambre ${d.emplacement}
+  // Le prénom n'est pas toujours connu — un « Bonjour » générique reste la
+  // bonne réponse pour un dossier où la gouvernante n'a pas pu le relever.
+  const civiliteFr = d.client_nom ? `Bonjour ${d.client_nom},` : "Bonjour,";
+  const civiliteEn = d.client_nom ? `Dear ${d.client_nom},` : "Dear Guest,";
+
+  return `📧 Mail prêt à envoyer au client — Chambre ${d.emplacement} — Dossier n° ${d.reference}
 
 Constaté par : ${d.constate_par ?? "—"} · Transmis à : ${d.transmis_a ?? "—"} · Date : ${jour(d.constate_le)}
 
-Bonjour,
+${civiliteFr}
 
 Suite à votre séjour au Parisianer, notre équipe a constaté qu'une ou plusieurs bouteilles Purezza étaient manquantes dans votre chambre.
 
 Détail :
+Dossier n° ${d.reference}
 Chambre : ${d.emplacement}
 ${detail}
 Montant total : ${eur(d.montant)}
 
-${phrasePrix} Un lien de paiement sécurisé vous sera transmis prochainement.
+${phrasePrix} Un lien de paiement sécurisé vous sera transmis prochainement. Merci de nous indiquer le numéro de dossier ci-dessus dans votre réponse, afin que nous puissions le retrouver rapidement.
 
 Nous restons à votre disposition pour toute question.
 
 Bien cordialement,
 L'équipe du Parisianer
 
-Dear Guest,
+${civiliteEn}
 
 Following your recent stay at Le Parisianer, our housekeeping team has noticed that one or more Purezza bottles were missing from your room.
 
+Reference: ${d.reference}
+
 ${phrasePrixEn} The total amount regarding your stay is €${Number(d.montant).toFixed(2)}.
 
-A secure payment link will be sent to you shortly to settle this balance.
+A secure payment link will be sent to you shortly to settle this balance. Please mention the reference number above in any reply, so we can locate your file quickly.
 
 Kind regards,
 The Parisianer Team`;
