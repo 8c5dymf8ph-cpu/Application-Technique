@@ -12,6 +12,11 @@ export type NomIntervenant = { cle: string; nom: string };
  * « En cours » mènent au travail d'UN intervenant, sur SA tournée
  * (`/technique/<nom>`) : il faut d'abord savoir lequel, et c'est tout ce
  * que cette fenêtre demande.
+ *
+ * Même habillage que la confirmation de « Fin d'intervention » — l'autre
+ * fenêtre qui s'ouvre par-dessus tout dans l'app — plutôt que le cadre à
+ * en-tête et pied séparés d'AvisReprise : un seul encadré, la liste dedans,
+ * les boutons dessous, à l'air libre.
  */
 export function CompteurChoixIntervenant({
   valeur,
@@ -44,36 +49,38 @@ export function CompteurChoixIntervenant({
         onClick={(e) => {
           if (e.target === fenetre.current) fenetre.current?.close();
         }}
-        className="backdrop:bg-black/60 bg-transparent p-0 m-auto max-w-[92vw] w-[92vw] max-h-[85dvh]"
+        className="backdrop:bg-black/60 bg-transparent p-0 m-auto w-full max-w-md"
       >
-        <div className="bg-surface rounded-card overflow-hidden flex flex-col max-h-[85dvh] w-full max-w-md mx-auto">
-          <div className="px-4 pt-4 pb-3 border-b border-line">
-            <p className="font-display font-semibold text-[15.5px]">Qui intervient ?</p>
-            <p className="text-[12px] text-ink-faint mt-0.5">
-              { libelle } — {valeur}. Choisis un nom pour ouvrir sa tournée.
+        <div className="w-full max-w-md flex flex-col gap-3 p-5">
+          <div className="rounded-card bg-surface px-4 py-3.5 flex flex-col gap-2">
+            <p className="font-display font-semibold text-[16px]">Qui intervient ?</p>
+            <p className="text-[13.5px] text-ink-faint text-pretty">
+              {valeur} anomalie{valeur > 1 ? "s" : ""} {libelle.toLowerCase()}. Choisis un nom
+              pour ouvrir sa tournée.
             </p>
+            <ul className="max-h-[34dvh] overflow-y-auto flex flex-col gap-1.5 -mx-1 px-1">
+              {intervenants.map((i) => (
+                <li key={i.cle}>
+                  <Link
+                    href={`/technique/${encodeURIComponent(i.nom)}` as Route}
+                    className="flex items-center gap-2.5 py-1.5 active:opacity-70"
+                  >
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-plum-soft grid place-items-center font-display font-semibold text-[12.5px] text-plum">
+                      {i.nom.slice(0, 2).toUpperCase()}
+                    </span>
+                    <span className="grow min-w-0 text-[14.5px]">{i.nom}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="px-3 py-2.5 flex flex-col gap-1.5 overflow-y-auto">
-            {intervenants.map((i) => (
-              <li key={i.cle}>
-                <Link
-                  href={`/technique/${encodeURIComponent(i.nom)}` as Route}
-                  className="carte px-4 py-3 flex items-center text-[14.5px] active:bg-surface-muted"
-                >
-                  {i.nom}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <div className="px-4 py-3.5 border-t border-line">
-            <button
-              type="button"
-              onClick={() => fenetre.current?.close()}
-              className="w-full h-[46px] rounded-[13px] bg-surface-muted border border-line text-[14.5px] active:opacity-80"
-            >
-              Annuler
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => fenetre.current?.close()}
+            className="w-full h-[52px] rounded-[15px] border-[1.5px] border-line bg-surface text-ink-faint font-display font-semibold text-[16px] active:opacity-70"
+          >
+            Annuler
+          </button>
         </div>
       </dialog>
     </>
