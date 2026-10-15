@@ -97,9 +97,19 @@ export default async function Accueil() {
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">
-        <Compteur valeur={c.a_faire} libelle="À faire" ton="text-amber" />
-        <Compteur valeur={c.en_cours} libelle="En cours" ton="text-blue" />
-        <Compteur valeur={c.attente} libelle="À valider" ton="text-plum" />
+        <Compteur
+          valeur={c.a_faire}
+          libelle="À faire"
+          ton="text-amber"
+          href="/gouvernante/declarer"
+        />
+        <Compteur
+          valeur={c.en_cours}
+          libelle="En cours"
+          ton="text-blue"
+          href="/gouvernante/declarer"
+        />
+        <Compteur valeur={c.attente} libelle="À valider" ton="text-plum" href="/gouvernante/valider" />
       </div>
 
       <nav className="flex flex-col gap-3.5">

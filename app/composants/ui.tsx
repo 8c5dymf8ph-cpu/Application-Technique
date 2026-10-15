@@ -62,18 +62,32 @@ export function Compteur({
   valeur,
   libelle,
   ton = "text-ink",
+  href,
 }: {
   valeur: number | string;
   libelle: string;
   ton?: string;
+  /** Mène à l'écran dédié — un chiffre qu'on ne peut pas ouvrir n'est qu'une
+      affiche. Omis, le compteur reste un simple repère (dans une fenêtre,
+      par exemple, où il n'y a rien à ouvrir de plus). */
+  href?: Adresse;
 }) {
-  return (
-    <div className="rounded-[18px] bg-surface px-2 py-5 flex flex-col items-center gap-1 shadow-[0_2px_4px_rgba(27,25,48,0.04),0_10px_22px_-10px_rgba(27,25,48,0.18)]">
+  const contenu = (
+    <>
       <span className={`font-display font-semibold text-[30px] leading-none tabular-nums ${ton}`}>
         {valeur}
       </span>
       <span className="etiquette">{libelle}</span>
-    </div>
+    </>
+  );
+  const classe =
+    "rounded-[18px] bg-surface px-2 py-5 flex flex-col items-center gap-1 shadow-[0_2px_4px_rgba(27,25,48,0.04),0_10px_22px_-10px_rgba(27,25,48,0.18)]";
+  return href ? (
+    <Link href={href as Route} className={`${classe} active:bg-surface-muted`}>
+      {contenu}
+    </Link>
+  ) : (
+    <div className={classe}>{contenu}</div>
   );
 }
 

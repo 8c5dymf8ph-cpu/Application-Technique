@@ -108,7 +108,6 @@ export default async function ChoixIntervenant() {
             titre="Les autres intervenants"
             aide="Sans profil pour ouvrir l’application à leur nom — mais ils interviennent pareil."
             indice={`${sansProfil.length}`}
-            ouvert
             enCarte={false}
           >
             <div className="flex flex-col gap-2">{sansProfil.map(ligne)}</div>
