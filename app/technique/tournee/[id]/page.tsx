@@ -182,11 +182,19 @@ export default async function DetailTournee({
    * salariés. Taibi, Victoria et Miguel sont de l'hôtel — leur passage ne
    * coûte que le matériel sorti.
    */
+  // `coalesce(u.emet_des_factures, t.prestataire_id is not null)` se taisait
+  // pour Alain et Serafino : une entreprise extérieure DONT le compte s'est
+  // connecté porte les DEUX id à la fois sur sa tournée (v_intervenants
+  // résout le compte lié, et fn_creer_tournee écrit les deux). `technicien_id`
+  // n'étant alors plus nul, `u.emet_des_factures` (faux par défaut, puisque
+  // ce réglage ne les concerne pas) l'emportait dans le coalesce, et
+  // `prestataire_id is not null` n'était jamais regardé. Une entreprise
+  // extérieure facture toujours — en premier, pas en repli.
   const dit = await colonneExiste("utilisateurs", "emet_des_factures");
   const [qui] = dit
     ? await sql<Emetteur[]>`
         select t.prestataire_id, t.technicien_id, p.nom as prestataire,
-               coalesce(u.emet_des_factures, t.prestataire_id is not null) as facture
+               (t.prestataire_id is not null or coalesce(u.emet_des_factures, false)) as facture
           from tournees t
           left join prestataires p on p.id = t.prestataire_id
           left join utilisateurs u on u.id = t.technicien_id
