@@ -12,6 +12,7 @@ import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
 import Link from "next/link";
 import type { Route } from "next";
 import { Vignettes } from "@/app/composants/photos";
+import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
 import { profilActif } from "@/lib/profil";
@@ -50,6 +51,7 @@ type Passage = {
   /** La facture qui couvre ce passage, s'il y en a une. */
   facture: string | null;
   facture_id: string | null;
+  facture_fichier: string | null;
 };
 type Photo = { anomalie_id: string; chemin: string; moment: "constat" | "apres" | "validation" };
 
@@ -111,7 +113,7 @@ export default async function HistoriqueDuLieu({
               from mouvements_stock m join produits p on p.id = m.produit_id
              where m.intervention_id = r.intervention_id and m.type = 'sortie')
              as materiel,
-           f.reference as facture, f.id as facture_id
+           f.reference as facture, f.id as facture_id, f.fichier_url as facture_fichier
       from v_recap_interventions r
       join anomalies a on a.id = r.anomalie_id
       left join facture_interventions fi on fi.intervention_id = r.intervention_id
@@ -305,15 +307,31 @@ export default async function HistoriqueDuLieu({
                             <br />
                             {/* Rapprochée d'une facture, ou pas : sans ce signe, on
                                 ne peut pas distinguer ce qui est déjà couvert de ce
-                                qui attend encore sa pièce. */}
+                                qui attend encore sa pièce. La pièce s'ouvre SUR
+                                PLACE, comme un document (règle « un document se
+                                regarde comme une photo ») — un lien vers
+                                /technique/facture/[id] mène au passage entier
+                                (règle 16duodecies : c'est lui qui règle la
+                                facture), ce qui n'a rien à faire ici, où on veut
+                                juste la relire. */}
                             {p.facture_id && (
                               <>
-                                <Link
-                                  href={`/technique/facture/${p.facture_id}` as Route}
-                                  className="text-blue underline underline-offset-2"
-                                >
-                                  facture {p.facture ?? "sans numéro"}
-                                </Link>
+                                {p.facture_fichier ? (
+                                  <VoirDocument
+                                    chemin={p.facture_fichier}
+                                    titre={`Facture ${p.facture ?? "sans numéro"}`}
+                                    className="text-blue underline underline-offset-2"
+                                  >
+                                    facture {p.facture ?? "sans numéro"}
+                                  </VoirDocument>
+                                ) : (
+                                  <Link
+                                    href={`/technique/facture/${p.facture_id}` as Route}
+                                    className="text-blue underline underline-offset-2"
+                                  >
+                                    facture {p.facture ?? "sans numéro"} — sans pièce
+                                  </Link>
+                                )}
                                 {" · "}
                               </>
                             )}
