@@ -154,10 +154,17 @@ export default async function DetailDossier({
       // comme les autres (`corriger`, `supprimer`) — jamais un geste de
       // terrain.
       const correctionIssue = peutValider(profil_.role);
+      // Changer d'issue remet le montant au barème : sans ça, un montant tapé
+      // pour l'ancienne issue restait collé à la nouvelle — « Facturée » à
+      // 17,50 restait affiché à 17,50 après bascule vers « Perte sèche », au
+      // lieu des 6 € du prix d'achat. Offrir ou facturer moins reste
+      // possible, mais c'est alors un geste SÉPARÉ et délibéré, depuis
+      // « Corriger » — jamais une valeur qui traîne d'une issue à l'autre.
       await sql`
         update incidents_bouteille
            set statut = ${etape}::statut_incident_bouteille,
-               resolu_le = now(), resolu_par = ${profil_.id}
+               resolu_le = now(), resolu_par = ${profil_.id},
+               montant = null
          where id = ${id}
            and (statut in ('signale', 'transmis', 'client_contacte')
                 or (${correctionIssue} and statut in ('restitue', 'facture', 'non_facture')))`;
