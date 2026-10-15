@@ -65,9 +65,15 @@ const LISTES: {
 export default async function Equipe({
   searchParams,
 }: {
-  searchParams: Promise<{ deja?: string; role?: string; fait?: string; qui?: string }>;
+  searchParams: Promise<{
+    deja?: string;
+    role?: string;
+    fait?: string;
+    qui?: string;
+    doublon?: string;
+  }>;
 }) {
-  const { deja, role: roleDeja, fait, qui } = await searchParams;
+  const { deja, role: roleDeja, fait, qui, doublon } = await searchParams;
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   // La composition de l'étage change souvent : la gouvernante doit pouvoir la
@@ -278,7 +284,17 @@ export default async function Equipe({
     // dire supprimer et refaire.
     const exterieur = String(donnees.get("origine") ?? "exterieur") === "exterieur";
 
+    // Alain et Serafino existaient dans LES DEUX tables à la fois — rien ne
+    // l'empêchait, et le même nom s'est mis à dire deux choses contraires
+    // (facture / ne facture pas) selon celle que l'écran regardait. On
+    // vérifie donc l'AUTRE table avant d'écrire : la même personne ne
+    // devrait jamais exister des deux côtés.
     if (exterieur) {
+      const [dejaInterne] = await sql<{ id: string }[]>`
+        select id from utilisateurs where nom = ${nom} and intervient_technique`;
+      if (dejaInterne) {
+        redirect(`/administration/equipe?doublon=${encodeURIComponent(nom)}` as Route);
+      }
       // Une entreprise extérieure facture toujours (règle 10quinquies) : pas
       // besoin d'`emet_des_factures`, qui ne vaut que pour une personne
       // inscrite dans `utilisateurs`.
@@ -287,6 +303,11 @@ export default async function Equipe({
         values (${nom}, true)
         on conflict (nom) do update set actif = true`;
     } else {
+      const [dejaExterne] = await sql<{ id: string }[]>`
+        select id from prestataires where nom = ${nom} and actif`;
+      if (dejaExterne) {
+        redirect(`/administration/equipe?doublon=${encodeURIComponent(nom)}` as Route);
+      }
       // Un renfort ponctuel : il existe, il intervient, et il se retire d'un
       // appui quand il repart. Rien de ce qu'il a fait ne disparaît avec lui.
       // Un prénom déjà connu est réactivé, jamais dupliqué : son historique
@@ -412,6 +433,13 @@ export default async function Equipe({
             {LIBELLE_ROLE[(roleDeja ?? "admin") as RoleUtilisateur].toLowerCase()} : son prénom
             figure déjà dans les listes, plus bas. Son rôle n’a pas été changé — il perdrait ses
             écrans.
+          </p>
+        )}
+        {doublon && (
+          <p className="rounded-card bg-amber-soft px-4 py-3 text-[13.5px] text-amber text-pretty leading-snug">
+            <strong>{doublon}</strong> existe déjà, sous l’autre origine — rien n’a été ajouté.
+            Retrouve sa fiche plus bas et règle « Facture ses passages » ou « Retirer de la
+            liste » dessus, plutôt que d’avoir le même nom des deux côtés.
           </p>
         )}
 

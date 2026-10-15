@@ -5,8 +5,10 @@ import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif, type Profil } from "@/lib/profil";
 import { saTournee } from "@/lib/acces";
+import { intervenants } from "@/lib/tournee";
 import { aujourdhuiLong, peutValider } from "@/lib/domaine";
 import { Compteur, Tuile } from "./composants/ui";
+import { CompteurChoixIntervenant } from "./composants/choix-intervenant";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,14 @@ export default async function Accueil() {
   if (!peutValider(profil.role)) return <AccueilIntervenant profil={profil} />;
 
   const c = await chiffres(await lieuxDEssai());
+  // « À faire » et « En cours » ne sont l'écran de personne : c'est le
+  // travail d'UN intervenant, sur sa tournée. La fenêtre demande lequel
+  // avant d'y mener, plutôt qu'une liste hotel-wide qui ne ressemble à
+  // aucun écran existant.
+  const nomsIntervenants = (await intervenants()).map((i) => ({
+    cle: i.utilisateur_id ?? i.prestataire_id ?? i.nom,
+    nom: i.nom,
+  }));
 
   const gouvernante = peutValider(profil.role);
   const admin = profil.role === "admin" || profil.role === "operations";
@@ -97,17 +107,17 @@ export default async function Accueil() {
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">
-        <Compteur
+        <CompteurChoixIntervenant
           valeur={c.a_faire}
           libelle="À faire"
           ton="text-amber"
-          href="/anomalies?statut=a_faire"
+          intervenants={nomsIntervenants}
         />
-        <Compteur
+        <CompteurChoixIntervenant
           valeur={c.en_cours}
           libelle="En cours"
           ton="text-blue"
-          href="/anomalies?statut=en_cours"
+          intervenants={nomsIntervenants}
         />
         <Compteur valeur={c.attente} libelle="À valider" ton="text-plum" href="/gouvernante/valider" />
       </div>
