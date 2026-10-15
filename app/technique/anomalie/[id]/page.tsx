@@ -10,7 +10,7 @@ import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { PhotoProduit } from "@/app/composants/photo-produit";
 import { ChampCommentaire, Fil, type Message } from "@/app/composants/fil";
-import { FormulaireEnPlace } from "@/app/composants/formulaire-en-place";
+import { RechercheVive } from "@/app/composants/recherche-vive";
 import { enregistrerPhoto } from "@/lib/stockage";
 import { colonneExiste, valeurEnumExiste } from "@/lib/schema";
 import { alerterSiSousSeuil } from "@/lib/seuil";
@@ -632,7 +632,7 @@ export default async function TraiterAnomalie({
           <div className="sticky top-0 z-10 bg-ground pb-1.5 -mx-5 px-5">
           {/* La recherche raccourcit la liste ; elle ne sert pas à la faire
               apparaître. Un technicien debout ne tape pas « joint torique ». */}
-          <details className="group/chercher">
+          <details className="group/chercher" open={q !== ""}>
             <summary className="list-none carte px-4 py-3 text-[15px] text-ink-soft flex items-center gap-2.5 cursor-pointer">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B"
                    strokeWidth="1.9" strokeLinecap="round">
@@ -640,21 +640,18 @@ export default async function TraiterAnomalie({
               </svg>
               {q ? `Recherche : « ${q} »` : "Chercher un article"}
             </summary>
-            <FormulaireEnPlace className="flex gap-2 pt-2">
-              {par && <input type="hidden" name="par" value={par} />}
-              <input type="hidden" name="pris" value={pris} />
-              <input
-                id="produit"
-                name="q"
-                defaultValue={q}
-                autoComplete="off"
+            <div className="pt-2">
+              <RechercheVive
+                valeur={q}
+                base={`/technique/anomalie/${id}`}
+                garde={{
+                  ...(par ? { par } : {}),
+                  pris,
+                  ...(jourDuPassage ? { jour: jourDuPassage } : {}),
+                }}
                 placeholder="Nom ou code…"
-                className="carte grow px-4 h-[48px] text-[16px] placeholder:text-ink-faint"
               />
-              <button className="px-4 rounded-card bg-surface border border-line text-[15px]">
-                Chercher
-              </button>
-            </FormulaireEnPlace>
+            </div>
           </details>
           </div>
 

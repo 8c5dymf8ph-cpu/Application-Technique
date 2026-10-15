@@ -621,6 +621,7 @@ export default async function FicheProduit({
     await sql`
       update produits
          set designation      = ${String(donnees.get("designation") ?? "").trim()},
+             code             = ${String(donnees.get("code") ?? "").trim() || p.code},
              categorie        = ${categorie},
              categorie_lieu   = ${categorieLieu},
              prix_unitaire    = ${donnees.get("prix") ? Number(donnees.get("prix")) : null},
@@ -1227,13 +1228,28 @@ export default async function FicheProduit({
         {/* Les réglages — changés rarement, repliés pour ne pas concurrencer
             les gestes du quotidien (entrer du stock, corriger un prix). */}
         {peutValider(profil.role) && (
-          <Depliant titre="Réglages" aide="Désignation, prix de référence, seuils">
+          <Depliant titre="Réglages" aide="Désignation, référence, prix, seuils">
             <form action={reglages} className="carte px-3.5 py-3 flex flex-col gap-2.5">
               <label className="flex flex-col gap-1">
                 <span className="etiquette">Désignation</span>
                 <input
                   name="designation"
                   defaultValue={p.designation}
+                  className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
+                />
+              </label>
+              {/* Le nom de l'hôtel (« Batteries Telec ») et la référence du
+                  fournisseur (« NI-Cd 2,4V 1,5AH (URA) ») sont deux choses :
+                  la désignation se choisit dans la galerie, la référence sert
+                  à commander la bonne pièce. Elle existait déjà en base
+                  (`produits.code`, affichée en sous-titre de la fiche) mais
+                  aucun écran ne permettait de la saisir ni de la corriger. */}
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Référence (fournisseur, catalogue…)</span>
+                <input
+                  name="code"
+                  defaultValue={p.code}
+                  autoComplete="off"
                   className="w-full h-[46px] px-3 rounded-[11px] border border-line bg-surface text-[16px]"
                 />
               </label>
