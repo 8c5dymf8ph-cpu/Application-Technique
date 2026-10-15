@@ -101,13 +101,13 @@ export default async function Accueil() {
           valeur={c.a_faire}
           libelle="À faire"
           ton="text-amber"
-          href="/gouvernante/declarer"
+          href="/anomalies?statut=a_faire"
         />
         <Compteur
           valeur={c.en_cours}
           libelle="En cours"
           ton="text-blue"
-          href="/gouvernante/declarer"
+          href="/anomalies?statut=en_cours"
         />
         <Compteur valeur={c.attente} libelle="À valider" ton="text-plum" href="/gouvernante/valider" />
       </div>

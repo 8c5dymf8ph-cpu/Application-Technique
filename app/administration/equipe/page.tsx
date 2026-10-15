@@ -528,7 +528,12 @@ export default async function Equipe({
 
           <ul className="flex flex-col gap-1.5">
             {actifs.map((i) => (
-              <li key={i.nom}>
+              // Alain et Serafino existent dans les deux tables à la fois
+              // (utilisateurs ET prestataires, même nom) : une clé sur le seul
+              // nom faisait disparaître l'une des deux cartes — React ne peut
+              // pas distinguer deux lignes avec la même clé, et celle qui
+              // portait « Facture ses passages » ne s'affichait jamais.
+              <li key={i.utilisateur_id ?? i.prestataire_id ?? i.nom}>
                 <LigneDepliante
                   titre={i.nom}
                   detail={
@@ -689,7 +694,7 @@ export default async function Equipe({
             >
               <ul className="flex flex-col gap-2">
                 {retires.map((i) => (
-                  <li key={i.nom} className="flex items-center gap-3">
+                  <li key={i.utilisateur_id ?? i.prestataire_id ?? i.nom} className="flex items-center gap-3">
                     <span className="grow min-w-0">
                       <span className="block text-[14.5px] text-ink-faint">{i.nom}</span>
                       <span className="block text-[11.5px] text-ink-faint">
