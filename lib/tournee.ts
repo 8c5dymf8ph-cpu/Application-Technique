@@ -1,6 +1,7 @@
 import { sql } from "./db";
 import { deposerRecap } from "./recap";
 import { aujourdhuiISO } from "./domaine";
+import { colonneExiste } from "./schema";
 
 export type Intervenant = {
   utilisateur_id: string | null;
@@ -8,6 +9,9 @@ export type Intervenant = {
   nom: string;
   origine: "interne" | "externe";
   specialites: string[];
+  /** A un profil pour ouvrir l'application à son nom — pas une catégorie
+      « interne/externe » : une entreprise extérieure peut en avoir un aussi. */
+  compte: boolean;
 };
 
 export type Tournee = {
@@ -20,11 +24,22 @@ export type Tournee = {
 };
 
 export async function intervenants(): Promise<Intervenant[]> {
-  return sql<Intervenant[]>`
-    select utilisateur_id, prestataire_id, nom, origine, specialites
-    -- Un seul ordre : le nom. Trier par origine d'abord laissait croire
-    -- à deux catégories, alors qu'ils interviennent tous pareil.
-    from v_intervenants where actif order by nom`;
+  // La colonne part en ligne avant la migration qui l'ajoute (0010) : deux
+  // requêtes, choisies ici, jamais une condition booléenne dans le SQL.
+  const reglable = await colonneExiste("utilisateurs", "peut_se_connecter");
+  return reglable
+    ? sql<Intervenant[]>`
+        select v.utilisateur_id, v.prestataire_id, v.nom, v.origine, v.specialites,
+               coalesce(u.peut_se_connecter, false) as compte
+          from v_intervenants v
+          left join utilisateurs u on u.id = v.utilisateur_id
+         where v.actif
+         -- Un seul ordre : le nom. Trier par origine d'abord laissait croire
+         -- à deux catégories, alors qu'ils interviennent tous pareil.
+         order by v.nom`
+    : sql<Intervenant[]>`
+        select utilisateur_id, prestataire_id, nom, origine, specialites, false as compte
+        from v_intervenants where actif order by nom`;
 }
 
 /**

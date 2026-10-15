@@ -54,49 +54,66 @@ export default async function ChoixIntervenant() {
     where i.actif group by i.nom`;
   const charge = new Map(charges.map((c) => [c.nom, c]));
 
+  // Ceux qui ont un profil sont ceux qu'on choisit le plus souvent — c'est
+  // leur propre nom qu'ils viennent compléter. Les autres restent à un
+  // appui, dans un dépliant ouvert par défaut : ils n'ont pas disparu, ils
+  // ne sont simplement plus ce qu'on cherche en premier.
+  const avecProfil = liste.filter((i) => i.compte);
+  const sansProfil = liste.filter((i) => !i.compte);
+
+  const ligne = (i: (typeof liste)[number]) => {
+    const c = charge.get(i.nom);
+    const cle = i.utilisateur_id ?? i.prestataire_id ?? "";
+    return (
+      <Link
+        key={cle}
+        href={`/technique/${encodeURIComponent(i.nom)}`}
+        className="carte px-4 py-3.5 flex items-center gap-3.5 active:bg-surface-muted"
+      >
+        <span className="w-10 h-10 shrink-0 rounded-full bg-plum-soft grid place-items-center font-display font-semibold text-[14px] text-plum">
+          {i.nom.slice(0, 2).toUpperCase()}
+        </span>
+        <span className="flex flex-col grow min-w-0 gap-0.5">
+          <span className="font-display font-semibold text-[16.5px] truncate">{i.nom}</span>
+          <span className="text-[12.5px] text-ink-faint">
+            {i.specialites.length > 0
+              ? `${i.specialites.join(", ").toLowerCase()} uniquement`
+              : "toutes les anomalies"}
+          </span>
+        </span>
+        {c && c.a_traiter + c.en_cours > 0 && (
+          <span className="shrink-0 min-w-[30px] h-[30px] px-2 rounded-lg bg-amber-soft text-amber text-[14px] grid place-items-center tabular-nums">
+            {c.a_traiter + c.en_cours}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="Technique" sous_titre="Qui intervient ?" retour="/technique" />
       <div className="px-5 py-5 place-pour-le-calendrier flex flex-col gap-2">
-        {/* Une seule liste, dépliée. Le pli séparait « l'équipe » des
-            « intervenants extérieurs » et refermait les dix derniers : on
-            croyait qu'il n'y avait que cinq noms. Et la distinction était
-            fausse — Farid et Rachid ne sont pas plus de la maison que les
-            autres, ils interviennent, comme tout le monde ici. */}
+        {/* « Ouvrir sa tournée » ne disait pas à quoi ça sert : choisir un
+            prénom ici, c'est compléter les anomalies DE CE PASSAGE sous son
+            nom — c'est de ça qu'on se sert pour savoir qui a fait quoi. */}
         <p className="text-[13.5px] text-ink-faint text-pretty">
-          {liste.length} intervenants. Appuyez sur un nom pour ouvrir sa tournée.
+          Choisissez qui intervient : les anomalies cochées ensuite seront complétées à son nom.
         </p>
 
-        {liste.map((i) => {
-          const c = charge.get(i.nom);
-          const cle = i.utilisateur_id ?? i.prestataire_id ?? "";
-          return (
-            <Link
-              key={cle}
-              href={`/technique/${encodeURIComponent(i.nom)}`}
-              className="carte px-4 py-3.5 flex items-center gap-3.5 active:bg-surface-muted"
-            >
-              <span className="w-10 h-10 shrink-0 rounded-full bg-plum-soft grid place-items-center font-display font-semibold text-[14px] text-plum">
-                {i.nom.slice(0, 2).toUpperCase()}
-              </span>
-              <span className="flex flex-col grow min-w-0 gap-0.5">
-                <span className="font-display font-semibold text-[16.5px] truncate">
-                  {i.nom}
-                </span>
-                <span className="text-[12.5px] text-ink-faint">
-                  {i.specialites.length > 0
-                    ? `${i.specialites.join(", ").toLowerCase()} uniquement`
-                    : "toutes les anomalies"}
-                </span>
-              </span>
-              {c && c.a_traiter + c.en_cours > 0 && (
-                <span className="shrink-0 min-w-[30px] h-[30px] px-2 rounded-lg bg-amber-soft text-amber text-[14px] grid place-items-center tabular-nums">
-                  {c.a_traiter + c.en_cours}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+        {avecProfil.map(ligne)}
+
+        {sansProfil.length > 0 && (
+          <Depliant
+            titre="Les autres intervenants"
+            aide="Sans profil pour ouvrir l’application à leur nom — mais ils interviennent pareil."
+            indice={`${sansProfil.length}`}
+            ouvert
+            enCarte={false}
+          >
+            <div className="flex flex-col gap-2">{sansProfil.map(ligne)}</div>
+          </Depliant>
+        )}
 
         {/* Saisir un passage d'un autre jour. Replié : c'est un geste de
             reprise, pas le geste du jour — mais il doit se voir comme un
