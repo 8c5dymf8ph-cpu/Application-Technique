@@ -115,8 +115,11 @@ export default async function DetailTournee({
     from v_tournees where id = ${id}`;
   if (!lot) notFound();
 
-  // L'ordre est celui du bâtiment (règle 14octies), pas l'alphabet : trier
-  // `r.emplacement` comme du texte mettait la chambre « 11 » avant la « 2 ».
+  // L'ordre est celui du bâtiment (règle 14octies), pas l'alphabet ni la
+  // date : la date seule départage à la seconde près, donc la garder en tête
+  // du tri l'emportait presque toujours sur étage/lieu, et la liste restait
+  // dans l'ordre de déclaration. Le bâtiment est la clé principale ; la date
+  // ne reste qu'à égalité de lieu.
   const lignes = await sql<Ligne[]>`
     select r.intervention_id, r.anomalie_id, r.emplacement, r.description,
            r.decision_technicien::text, r.commentaire_technicien,
@@ -136,7 +139,7 @@ export default async function DetailTournee({
     left join facture_interventions fi on fi.intervention_id = r.intervention_id
     left join factures f               on f.id = fi.facture_id
     where r.tournee = ${lot.reference}
-    order by r.date_intervention desc, et.ordre, e.ordre`;
+    order by et.ordre, e.ordre, r.date_intervention desc`;
 
   // Supprimer le passage : réservé à Sarah P et Miguel (0036), le code part
   // en ligne avant la migration.

@@ -311,9 +311,13 @@ export default async function PassagesEtFactures({
     .filter((l) => ouverts.has(cleDuMois(l.date_tournee)))
     .map((l) => l.reference);
 
-  // L'ordre est celui du bâtiment (règle 14octies), pas l'alphabet : trier
-  // `r.emplacement` comme du texte mettait la chambre « 11 » avant la « 2 »,
-  // et « 4eme étage » — un lieu comme un autre — n'importe où selon son nom.
+  // L'ordre est celui du bâtiment (règle 14octies), pas l'alphabet ni la date.
+  // Un premier essai gardait la date en tête du tri : elle départage à la
+  // seconde près, donc elle l'emportait presque toujours sur étage/lieu, et
+  // la liste restait dans l'ordre de déclaration — ce que Miguel lisait
+  // comme « toujours pas rangé ». Le bâtiment est maintenant la clé
+  // principale ; la date ne reste qu'à égalité de lieu (deux anomalies dans
+  // la même chambre).
   const details = referencesOuvertes.length
     ? await sql<Detail[]>`
         select r.tournee, a.sharepoint_id, r.emplacement, r.description,
@@ -328,7 +332,7 @@ export default async function PassagesEtFactures({
           join emplacements e on e.id = a.emplacement_id
           join etages et      on et.id = e.etage_id
          where r.tournee = any(${referencesOuvertes})
-         order by a.declare_le desc, et.ordre, e.ordre`
+         order by et.ordre, e.ordre, a.declare_le desc`
     : [];
   const detailDe = (reference: string) => details.filter((d) => d.tournee === reference);
 
