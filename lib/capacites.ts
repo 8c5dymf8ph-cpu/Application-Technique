@@ -189,13 +189,6 @@ const ATTENDUES: Attendue[] = [
     verifier: () => colonneExiste("mouvements_bouteilles", "piece_jointe_url"),
   },
   {
-    titre: "Matériel offert",
-    sans:
-      "Un produit fourni sans frais par un fournisseur compte au prix de référence " +
-      "dans le coût du passage, comme s’il avait été payé.",
-    verifier: () => colonneExiste("mouvements_stock", "gratuit"),
-  },
-  {
     titre: "La date du comptage",
     sans:
       "Un inventaire compté un jour et validé un autre régularise à la date de la " +

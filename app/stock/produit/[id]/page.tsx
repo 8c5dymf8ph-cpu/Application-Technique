@@ -97,7 +97,6 @@ type Mouvement = {
   facture: string | null;
   facture_fichier: string | null;
   fournisseur_id: string | null;
-  gratuit: boolean;
 };
 
 const MOTIFS = [
@@ -236,9 +235,6 @@ export default async function FicheProduit({
   // l'historique ne tombe plus juste : on additionne et on ne retrouve pas le
   // total. `essai` n'existe qu'après la migration 0008.
   const marqueEssai = await colonneExiste("emplacements", "essai");
-  // La colonne part en ligne avant la migration qui l'ajoute (0041) : deux
-  // requêtes, choisies ici, jamais une condition booléenne dans le SQL.
-  const gratuitPret = await colonneExiste("mouvements_stock", "gratuit");
   const mouvements = await sql<Mouvement[]>`
     select m.id, m.type::text, m.motif::text, m.quantite, m.date_mouvement,
            coalesce(u.nom, pr.nom)          as qui,
@@ -252,8 +248,7 @@ export default async function FicheProduit({
            m.prix_unitaire,
            fa.reference                      as facture,
            fa.fichier_url                    as facture_fichier,
-           fa.fournisseur_id                 as fournisseur_id,
-           ${gratuitPret ? sql`m.gratuit` : sql`false`} as gratuit
+           fa.fournisseur_id                 as fournisseur_id
     from mouvements_stock m
     left join utilisateurs u   on u.id = m.utilisateur_id
     left join prestataires pr  on pr.id = m.prestataire_id
@@ -484,24 +479,6 @@ export default async function FicheProduit({
     }
     revalidatePath(`/stock/produit/${id}`);
     redirect(`/stock/produit/${id}?fait=livraison-supprimee` as Route);
-  }
-
-  /**
-   * Une sortie offerte par un fournisseur : elle a bien quitté la réserve,
-   * mais ne coûte rien. `gratuit` l'exclut du coût matériel (migration 0041)
-   * sans la retirer du stock ni de l'historique — ce qui s'est passé reste
-   * écrit, seul le calcul du coût change.
-   */
-  async function basculerGratuit(donnees: FormData) {
-    "use server";
-    const profil_ = await profilActif();
-    if (!profil_ || !peutValider(profil_.role)) redirect("/profil");
-    const mouvementId = String(donnees.get("mouvement_id") ?? "");
-    if (!mouvementId) return;
-    await sql`
-      update mouvements_stock set gratuit = not gratuit
-       where id = ${mouvementId} and produit_id = ${id} and type = 'sortie'`;
-    revalidatePath(`/stock/produit/${id}`);
   }
 
   async function ajuster(donnees: FormData) {
@@ -1429,11 +1406,6 @@ export default async function FicheProduit({
                             essai · non déduit
                           </span>
                         )}
-                        {m.gratuit && (
-                          <span className="ml-1.5 rounded-md bg-green-soft px-1.5 py-0.5 text-[11px] text-green align-middle">
-                            offert · non compté
-                          </span>
-                        )}
                       </span>
                       <span className="block text-[11px] text-ink-faint">
                         {new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
@@ -1508,26 +1480,6 @@ export default async function FicheProduit({
                         commentaireActuel={m.commentaire}
                         factureFichier={m.facture_fichier}
                       />
-                    )}
-                    {/* Une pièce offerte par un fournisseur sort bien du
-                        stock, mais ne coûte rien : le réglage s'applique
-                        après coup, sur n'importe quelle sortie — pas
-                        seulement celle du jour. */}
-                    {m.type === "sortie" && gratuitPret && peutValider(profil.role) && (
-                      <form action={basculerGratuit}>
-                        <input type="hidden" name="mouvement_id" value={m.id} />
-                        <BoutonEnvoi
-                          pendant="…"
-                          aria-label={m.gratuit ? "Retirer « offert »" : "Marquer « offert »"}
-                          className={`shrink-0 h-8 px-2.5 rounded-full text-[11px] font-medium ${
-                            m.gratuit
-                              ? "bg-green-soft text-green"
-                              : "bg-surface-muted text-ink-faint"
-                          }`}
-                        >
-                          {m.gratuit ? "Offert ✓" : "Offert ?"}
-                        </BoutonEnvoi>
-                      </form>
                     )}
                     {/* Sur une sortie liée à une intervention, le vrai fil
                         est celui de l'ANOMALIE (v_fil_commentaires) : les mots
