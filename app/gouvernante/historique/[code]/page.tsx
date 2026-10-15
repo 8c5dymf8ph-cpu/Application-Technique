@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
 import {
-  jours,
+  depuis,
   LIBELLE_STATUT,
   type StatutAnomalie,
   suitLesDossiers,
@@ -26,6 +26,7 @@ type Ligne = {
   jours_depuis: number;
   constate_par: string | null;
   declare_le: string;
+  catalogue_id: string | null;
 };
 
 type Frequence = { libelle: string; nb_fois: number; derniere_fois: string };
@@ -75,10 +76,28 @@ export default async function HistoriqueDuLieu({
     order by nb_fois desc, derniere_fois desc`;
 
   const lignes = await sql<Ligne[]>`
-    select anomalie_id, description, statut, jours_depuis, constate_par, declare_le
+    select anomalie_id, description, statut, jours_depuis, constate_par, declare_le,
+           catalogue_id
     from v_anomalies_du_lieu
     where emplacement_id = ${emplacement.id} and statut <> 'annulee'
     order by declare_le desc`;
+
+  // Regroupées par PROBLÈME, pas à la file : « changer le flexible » doit se
+  // voir d'un bloc, avec chacune de ses fois, pour que la récurrence sente
+  // d'un coup d'œil plutôt que de se deviner en comptant des lignes
+  // dispersées dans tout l'historique de la chambre. Le catalogue est fermé
+  // (règle 8/9) : deux anomalies qui partagent un catalogue_id sont bien le
+  // même problème. Les anomalies reprises sans catalogue_id (texte libre de
+  // l'ancienne application) restent seules, faute d'un identifiant fiable.
+  // L'ordre entre groupes suit celui des lignes — la fois la plus récente de
+  // chaque problème — puisque `lignes` est déjà trié par date décroissante.
+  const groupes: { cle: string; libelle: string; lignes: Ligne[] }[] = [];
+  for (const l of lignes) {
+    const cle = l.catalogue_id ?? `seule-${l.anomalie_id}`;
+    const g = groupes.find((g) => g.cle === cle);
+    if (g) g.lignes.push(l);
+    else groupes.push({ cle, libelle: l.description, lignes: [l] });
+  }
 
   // Qui est venu, quand, avec quoi, et ce que la gouvernante en a dit. Une
   // anomalie reprise plusieurs fois porte plusieurs passages : on les garde
@@ -172,146 +191,165 @@ export default async function HistoriqueDuLieu({
           {lignes.length === 0 ? (
             <Vide>Rien n’a jamais été déclaré ici.</Vide>
           ) : (
-            <ul className="flex flex-col gap-1.5">
-              {lignes.map((l) => (
-                <li key={l.anomalie_id} className="carte px-4 py-3 flex flex-col gap-2">
-                  <div className="flex items-start gap-3">
-                    <Link
-                      href={`/anomalie/${l.anomalie_id}`}
-                      className="flex flex-col gap-1 grow min-w-0"
-                    >
-                      <p className="text-[14px] leading-snug text-pretty">{l.description}</p>
-                      <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
-                        <span
-                          className={`px-2 py-0.5 rounded-md ${TON_STATUT[l.statut].fond} ${TON_STATUT[l.statut].texte}`}
-                        >
-                          {LIBELLE_STATUT[l.statut]}
-                        </span>
-                        <span className="text-ink-faint">
-                          {l.constate_par ? `${l.constate_par}, ` : ""}
-                          {jours(l.jours_depuis)}
-                        </span>
-                      </p>
-                    </Link>
-                    {/* Le fil, en fenêtre, À CÔTÉ du lien — un bouton dans un
-                        lien reste un lien. Elle porte tout : les photos, les
-                        passages, ce qui s'est dit. */}
-                    <ApercuFil
-                      messages={fil(l.anomalie_id)}
-                      libelle="Le fil"
-                      fiche={`/anomalie/${l.anomalie_id}`}
-                      contexte={{
-                        description: l.description,
-                        emplacement: emplacement.code,
-                        etage: emplacement.etage,
-                        statut: {
-                          libelle: LIBELLE_STATUT[l.statut],
-                          fond: TON_STATUT[l.statut].fond,
-                          texte: TON_STATUT[l.statut].texte,
-                        },
-                        depuis: jours(l.jours_depuis),
-                        constate_par: l.constate_par,
-                        constat: parAnomalie(l.anomalie_id, "constat"),
-                        apres: parAnomalie(l.anomalie_id, "apres"),
-                        verif: parAnomalie(l.anomalie_id, "validation"),
-                        passages: parPassage(l.anomalie_id).map((p) =>
-                          [
-                            `${p.intervenant ?? "intervenant inconnu"} le ${new Date(
-                              p.date_intervention,
-                            ).toLocaleDateString("fr-FR")}`,
-                            p.materiel ?? "aucun matériel",
-                            p.decision_gouvernante === "validee"
-                              ? `validé par ${p.gouvernante ?? "la gouvernante"}`
-                              : p.decision_gouvernante === "a_refaire"
-                                ? `à refaire, selon ${p.gouvernante ?? "la gouvernante"}`
-                                : p.decision_gouvernante === "en_cours"
-                                  ? `remis en cours par ${p.gouvernante ?? "la gouvernante"}`
-                                  : p.decision_technicien === "fait"
-                                    ? "déclaré fait — pas encore vérifié"
-                                    : "passage sans avis",
-                          ].join(" · "),
-                        ),
-                      }}
-                    />
-                    {/* Un crayon, pas une poubelle. Sur un historique on
-                        corrige — la reprise s'est trompée de porte, le
-                        libellé est approximatif, la date est fausse. */}
-                    {corrigeable && (
-                      <Link
-                        href={`/anomalie/${l.anomalie_id}#corriger` as Route}
-                        aria-label="Corriger cette anomalie"
-                        className="w-11 h-11 shrink-0 rounded-[11px] bg-surface-muted grid place-items-center"
-                      >
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-                             stroke="#453A6E" strokeWidth="1.8" strokeLinecap="round"
-                             strokeLinejoin="round">
-                          <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
-                          <path d="M14.5 5.5l3 3" />
-                        </svg>
-                      </Link>
-                    )}
-                  </div>
-                  {/* Qui a réparé, quand, avec quoi, et ce que la gouvernante
-                      en a dit. L'historique s'arrêtait à « validée » : on ne
-                      savait pas qui était venu ni s'il avait mis la bonne
-                      pièce — or c'est la première question quand le problème
-                      revient. Les deux avis restent côte à côte (règle 3). */}
-                  {parPassage(l.anomalie_id).map((p, i) => (
-                    <p
-                      key={i}
-                      className="text-[12px] text-ink-soft text-pretty border-l-2 border-line pl-2.5"
-                    >
-                      <span className="text-ink">
-                        {p.intervenant ?? "intervenant inconnu"}
-                      </span>{" "}
-                      le{" "}
-                      {new Date(p.date_intervention).toLocaleDateString("fr-FR")}
-                      {p.materiel ? ` · ${p.materiel}` : " · aucun matériel"}
-                      <br />
-                      {/* Rapprochée d'une facture, ou pas : sans ce signe, on
-                          ne peut pas distinguer ce qui est déjà couvert de ce
-                          qui attend encore sa pièce. */}
-                      {p.facture_id && (
-                        <>
+            <div className="flex flex-col gap-4">
+              {groupes.map((g) => (
+                <div key={g.cle} className="flex flex-col gap-1.5">
+                  {/* Le titre du groupe ne s'affiche que s'il sert : une
+                      anomalie seule porte déjà son libellé sur sa propre
+                      ligne (règle 18sexies). */}
+                  {g.lignes.length > 1 && (
+                    <div className="flex items-center gap-2 px-0.5">
+                      <span className="grow min-w-0 text-[13px] font-display font-semibold text-pretty">
+                        {g.libelle}
+                      </span>
+                      <span className="shrink-0 px-2 py-0.5 rounded-md bg-amber-soft text-amber text-[11.5px] tabular-nums">
+                        ×{g.lignes.length} · récurrent
+                      </span>
+                    </div>
+                  )}
+                  <ul className="flex flex-col gap-1.5">
+                    {g.lignes.map((l) => (
+                      <li key={l.anomalie_id} className="carte px-4 py-3 flex flex-col gap-2">
+                        <div className="flex items-start gap-3">
                           <Link
-                            href={`/technique/facture/${p.facture_id}` as Route}
-                            className="text-blue underline underline-offset-2"
+                            href={`/anomalie/${l.anomalie_id}`}
+                            className="flex flex-col gap-1 grow min-w-0"
                           >
-                            facture {p.facture ?? "sans numéro"}
+                            <p className="text-[14px] leading-snug text-pretty">{l.description}</p>
+                            <p className="flex flex-wrap items-center gap-2 text-[11.5px]">
+                              <span
+                                className={`px-2 py-0.5 rounded-md ${TON_STATUT[l.statut].fond} ${TON_STATUT[l.statut].texte}`}
+                              >
+                                {LIBELLE_STATUT[l.statut]}
+                              </span>
+                              <span className="text-ink-faint">
+                                {l.constate_par ? `${l.constate_par}, ` : ""}
+                                {depuis(l.jours_depuis, l.declare_le)}
+                              </span>
+                            </p>
                           </Link>
-                          {" · "}
-                        </>
-                      )}
-                      {p.decision_gouvernante === "validee" ? (
-                        <span className="text-green">
-                          validé par {p.gouvernante ?? "la gouvernante"}
-                        </span>
-                      ) : p.decision_gouvernante === "a_refaire" ? (
-                        <span className="text-red">
-                          à refaire, selon {p.gouvernante ?? "la gouvernante"}
-                        </span>
-                      ) : p.decision_gouvernante === "en_cours" ? (
-                        <span className="text-blue">
-                          remis en cours par {p.gouvernante ?? "la gouvernante"}
-                        </span>
-                      ) : p.decision_technicien === "fait" ? (
-                        <span className="text-ink-faint">
-                          déclaré fait — pas encore vérifié
-                        </span>
-                      ) : (
-                        <span className="text-ink-faint">passage sans avis</span>
-                      )}
-                    </p>
-                  ))}
-                  <Vignettes chemins={parAnomalie(l.anomalie_id, "constat")}
-                             titre="Au constat" ton="text-blue" />
-                  <Vignettes chemins={parAnomalie(l.anomalie_id, "apres")}
-                             titre="Après intervention" ton="text-green" />
-                  <Vignettes chemins={parAnomalie(l.anomalie_id, "validation")}
-                             titre="Vérifié par la gouvernante" ton="text-plum" />
-                </li>
+                          {/* Le fil, en fenêtre, À CÔTÉ du lien — un bouton dans un
+                              lien reste un lien. Elle porte tout : les photos, les
+                              passages, ce qui s'est dit. */}
+                          <ApercuFil
+                            messages={fil(l.anomalie_id)}
+                            libelle="Le fil"
+                            fiche={`/anomalie/${l.anomalie_id}`}
+                            contexte={{
+                              description: l.description,
+                              emplacement: emplacement.code,
+                              etage: emplacement.etage,
+                              statut: {
+                                libelle: LIBELLE_STATUT[l.statut],
+                                fond: TON_STATUT[l.statut].fond,
+                                texte: TON_STATUT[l.statut].texte,
+                              },
+                              depuis: depuis(l.jours_depuis, l.declare_le),
+                              constate_par: l.constate_par,
+                              constat: parAnomalie(l.anomalie_id, "constat"),
+                              apres: parAnomalie(l.anomalie_id, "apres"),
+                              verif: parAnomalie(l.anomalie_id, "validation"),
+                              passages: parPassage(l.anomalie_id).map((p) =>
+                                [
+                                  `${p.intervenant ?? "intervenant inconnu"} le ${new Date(
+                                    p.date_intervention,
+                                  ).toLocaleDateString("fr-FR")}`,
+                                  p.materiel ?? "aucun matériel",
+                                  p.decision_gouvernante === "validee"
+                                    ? `validé par ${p.gouvernante ?? "la gouvernante"}`
+                                    : p.decision_gouvernante === "a_refaire"
+                                      ? `à refaire, selon ${p.gouvernante ?? "la gouvernante"}`
+                                      : p.decision_gouvernante === "en_cours"
+                                        ? `remis en cours par ${p.gouvernante ?? "la gouvernante"}`
+                                        : p.decision_technicien === "fait"
+                                          ? "déclaré fait — pas encore vérifié"
+                                          : "passage sans avis",
+                                ].join(" · "),
+                              ),
+                            }}
+                          />
+                          {/* Un crayon, pas une poubelle. Sur un historique on
+                              corrige — la reprise s'est trompée de porte, le
+                              libellé est approximatif, la date est fausse. */}
+                          {corrigeable && (
+                            <Link
+                              href={`/anomalie/${l.anomalie_id}#corriger` as Route}
+                              aria-label="Corriger cette anomalie"
+                              className="w-11 h-11 shrink-0 rounded-[11px] bg-surface-muted grid place-items-center"
+                            >
+                              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                                   stroke="#453A6E" strokeWidth="1.8" strokeLinecap="round"
+                                   strokeLinejoin="round">
+                                <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+                                <path d="M14.5 5.5l3 3" />
+                              </svg>
+                            </Link>
+                          )}
+                        </div>
+                        {/* Qui a réparé, quand, avec quoi, et ce que la gouvernante
+                            en a dit. L'historique s'arrêtait à « validée » : on ne
+                            savait pas qui était venu ni s'il avait mis la bonne
+                            pièce — or c'est la première question quand le problème
+                            revient. Les deux avis restent côte à côte (règle 3). */}
+                        {parPassage(l.anomalie_id).map((p, i) => (
+                          <p
+                            key={i}
+                            className="text-[12px] text-ink-soft text-pretty border-l-2 border-line pl-2.5"
+                          >
+                            <span className="text-ink">
+                              {p.intervenant ?? "intervenant inconnu"}
+                            </span>{" "}
+                            le{" "}
+                            {new Date(p.date_intervention).toLocaleDateString("fr-FR")}
+                            {p.materiel ? ` · ${p.materiel}` : " · aucun matériel"}
+                            <br />
+                            {/* Rapprochée d'une facture, ou pas : sans ce signe, on
+                                ne peut pas distinguer ce qui est déjà couvert de ce
+                                qui attend encore sa pièce. */}
+                            {p.facture_id && (
+                              <>
+                                <Link
+                                  href={`/technique/facture/${p.facture_id}` as Route}
+                                  className="text-blue underline underline-offset-2"
+                                >
+                                  facture {p.facture ?? "sans numéro"}
+                                </Link>
+                                {" · "}
+                              </>
+                            )}
+                            {p.decision_gouvernante === "validee" ? (
+                              <span className="text-green">
+                                validé par {p.gouvernante ?? "la gouvernante"}
+                              </span>
+                            ) : p.decision_gouvernante === "a_refaire" ? (
+                              <span className="text-red">
+                                à refaire, selon {p.gouvernante ?? "la gouvernante"}
+                              </span>
+                            ) : p.decision_gouvernante === "en_cours" ? (
+                              <span className="text-blue">
+                                remis en cours par {p.gouvernante ?? "la gouvernante"}
+                              </span>
+                            ) : p.decision_technicien === "fait" ? (
+                              <span className="text-ink-faint">
+                                déclaré fait — pas encore vérifié
+                              </span>
+                            ) : (
+                              <span className="text-ink-faint">passage sans avis</span>
+                            )}
+                          </p>
+                        ))}
+                        <Vignettes chemins={parAnomalie(l.anomalie_id, "constat")}
+                                   titre="Au constat" ton="text-blue" />
+                        <Vignettes chemins={parAnomalie(l.anomalie_id, "apres")}
+                                   titre="Après intervention" ton="text-green" />
+                        <Vignettes chemins={parAnomalie(l.anomalie_id, "validation")}
+                                   titre="Vérifié par la gouvernante" ton="text-plum" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       </div>
