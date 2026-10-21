@@ -6,24 +6,31 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { aujourdhuiISO, heureISO, peutSupprimer, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
-import { annulerRecapNonParti, deposerRecap } from "@/lib/recap";
+import { annulerRecapCompletNonParti, annulerRecapNonParti, deposerRecap } from "@/lib/recap";
+import { colonneExiste, valeurEnumExiste } from "@/lib/schema";
+import { enregistrerPhoto } from "@/lib/stockage";
+import { alerterSiSousSeuil } from "@/lib/seuil";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { AvisReprise, type Compteur } from "@/app/composants/avis-reprise";
+import { Vignettes } from "@/app/composants/photos";
+import { EditeurMateriel, type ProduitDisponible } from "@/app/composants/editeur-materiel";
 import type { Message } from "@/app/composants/fil";
 
 export const dynamic = "force-dynamic";
 
 type Ligne = {
   anomalie_id: string;
+  catalogue_id: string | null;
   emplacement: string;
   etage: string;
   ordre: number;
   description: string;
   statut: string;
   priorite: string;
+  essai: boolean;
   traitee: boolean;
   /**
    * La gouvernante l'a remise « en cours » ou « à refaire » sur un passage
@@ -142,6 +149,7 @@ export default async function Tournee({
     rendre?: string;
     jour?: string;
     vue?: string;
+    ouvre?: string;
   }>;
 }) {
   const profil = await profilActif();
@@ -154,7 +162,11 @@ export default async function Tournee({
   // Celle qu'on vient de déclarer : elle se retrouve cochée, mise en avant, et
   // l'ancre du navigateur amène l'écran dessus. Sans cela on revenait en haut
   // d'une liste de douze lignes sans savoir ce qui avait changé.
-  const { fait, etage, q = "", rendre, jour, vue } = await searchParams;
+  // `ouvre` : l'anomalie dont la ligne est dépliée pour déclarer le matériel
+  // EN PLACE — « ce qui est déplié vit dans l'adresse », comme les mois de
+  // /technique/historique, jamais dans un état client qui se perdrait au
+  // moindre rechargement.
+  const { fait, etage, q = "", rendre, jour, vue, ouvre } = await searchParams;
 
   /**
    * Saisir un passage d'un autre jour.
@@ -178,6 +190,11 @@ export default async function Tournee({
   /** Le suffixe à recoller sur chaque lien de l'écran, pour ne pas perdre le jour. */
   const jourEnPlus = historique ? `jour=${passe}` : "";
 
+  // `essai` n'existe qu'après la migration 0008 : d'ici là, aucun lieu n'en
+  // est un. Une condition booléenne dans le SQL casserait l'écran entier —
+  // le code part en ligne avant la migration.
+  const margeEssai = await colonneExiste("emplacements", "essai");
+
   // Ce qu'il a à traiter — filtré par sa spécialité — plus ce qu'il a déjà
   // coché dans cette tournée, pour qu'il voie son avancement.
   const lignes = await sql<Ligne[]>`
@@ -189,8 +206,9 @@ export default async function Tournee({
                where f.anomalie_id = a.id)::int as commentaires
         from anomalies a
     )
-    select a.id as anomalie_id, e.code as emplacement, et.nom as etage, et.ordre,
+    select a.id as anomalie_id, a.catalogue_id, e.code as emplacement, et.nom as etage, et.ordre,
            a.description, a.statut::text, a.priorite::text,
+           ${margeEssai ? sql`e.essai` : sql`false`} as essai,
            (i.id is not null) as traitee,
            (select v.acteur::text from validations v
              where v.intervention_id = i.id order by v.decide_le desc limit 1) as dernier_acteur,
@@ -204,7 +222,8 @@ export default async function Tournee({
     join accompagnement ac on ac.id = a.id
     left join interventions i on i.anomalie_id = a.id and i.tournee_id = ${tournee.id}
     union all
-    select a.id, e.code, et.nom, et.ordre, a.description, a.statut::text, a.priorite::text, true,
+    select a.id, a.catalogue_id, e.code, et.nom, et.ordre, a.description, a.statut::text,
+           a.priorite::text, ${margeEssai ? sql`e.essai` : sql`false`}, true,
            (select v.acteur::text from validations v
              where v.intervention_id = i.id order by v.decide_le desc limit 1),
            (select string_agg(p.designation || ' × ' || abs(m.quantite), ', ')
@@ -300,6 +319,105 @@ export default async function Tournee({
         order by date_commentaire`
     : [];
   const fil = (anomalie: string) => fils.filter((f) => f.anomalie_id === anomalie);
+
+  /**
+   * La ligne dépliée, avec tout ce qu'il faut pour déclarer EN PLACE.
+   *
+   * Une seule à la fois, et seulement si elle reste à traiter : une anomalie
+   * déjà en attente de l'avis de la gouvernante, ou déjà déclarée, n'a rien
+   * à éditer ici. Tout ce détail — photos, matériel proposé — ne se charge
+   * QUE pour celle-ci : le demander pour les cent dix-neuf lignes d'un coup
+   * n'aurait aucun sens.
+   */
+  const ouverte = ouvre
+    ? uniques.find(
+        (l) => l.anomalie_id === ouvre && !l.traitee && l.statut !== "attente_validation",
+      )
+    : undefined;
+
+  let detailOuverte:
+    | { constat: string[]; apres: string[]; verifie: string[]; produits: ProduitDisponible[] }
+    | undefined;
+
+  if (ouverte) {
+    // Le code part en ligne avant la migration 0032 : tant que `moment_photo`
+    // ne porte pas encore `'validation'`, comparer directement dedans le SQL
+    // fait échouer la requête entière.
+    const momentValidationExiste = await valeurEnumExiste("moment_photo", "validation");
+    const [constatRows, apresRows, verifieRows, produits] = await Promise.all([
+      sql<{ chemin: string }[]>`
+        select chemin from photos_anomalie
+        where anomalie_id = ${ouverte.anomalie_id} and moment = 'constat' order by prise_le`,
+      sql<{ chemin: string }[]>`
+        select chemin from photos_anomalie
+        where anomalie_id = ${ouverte.anomalie_id} and moment = 'apres' order by prise_le`,
+      momentValidationExiste
+        ? sql<{ chemin: string }[]>`
+            select chemin from photos_anomalie
+            where anomalie_id = ${ouverte.anomalie_id} and moment = 'validation' order by prise_le`
+        : Promise.resolve([]),
+      /**
+       * Ce qu'on lui propose, dans l'ordre : ce qui a déjà servi pour CE
+       * problème, puis ce qui recoupe ses mots, puis le reste. Tout le
+       * catalogue actif d'un coup — jamais une page à la fois — pour que
+       * chercher dans le pop-up ne fasse plus un seul aller-retour (voir
+       * EditeurMateriel).
+       */
+      sql<(ProduitDisponible & { recoupe_mots: boolean })[]>`
+        with deja_servi as (
+          select m.produit_id, count(*) as fois
+            from mouvements_stock m
+            join interventions i on i.id = m.intervention_id
+            join anomalies a     on a.id = i.anomalie_id
+           where m.type = 'sortie'
+             and a.id <> ${ouverte.anomalie_id}
+             and (
+               (${ouverte.catalogue_id}::uuid is not null
+                 and a.catalogue_id = ${ouverte.catalogue_id}::uuid)
+               or (${ouverte.catalogue_id}::uuid is null
+                 and a.description = ${ouverte.description})
+             )
+           group by m.produit_id
+        ),
+        mots_anomalie as (
+          select distinct mot from unnest(
+            regexp_split_to_array(
+              lower(${ouverte.description}), '[^a-zàâäéèêëïîôöùûüç0-9]+')
+          ) as mot
+          where length(mot) >= 4
+            and mot not in ('faut', 'pour', 'avec', 'dans', 'sous', 'vers',
+                            'chez', 'mais', 'donc', 'cette', 'leur', 'leurs',
+                            'tout', 'tous', 'toute', 'toutes', 'elle', 'elles',
+                            'être', 'avoir', 'fait', 'faire')
+        ),
+        courant as (
+          select m.produit_id, count(*) as fois
+            from mouvements_stock m
+           where m.type = 'sortie' and m.date_mouvement > now() - interval '18 months'
+           group by m.produit_id
+        )
+        select p.id, p.designation, p.code, p.stock,
+               coalesce((select array_agg(x.chemin order by x.principale desc, x.ordre,
+                                          x.ajoutee_le)
+                           from photos_produit x where x.produit_id = p.id),
+                        '{}') as photos,
+               exists (
+                 select 1 from mots_anomalie ma where lower(p.designation) like '%' || ma.mot || '%'
+               ) as recoupe_mots
+          from v_stock_produits p
+          left join deja_servi d on d.produit_id = p.id
+          left join courant   c on c.produit_id = p.id
+         where p.actif
+         order by (d.produit_id is not null) desc, d.fois desc nulls last,
+                  recoupe_mots desc, p.stock > 0 desc, c.fois desc nulls last, p.designation`,
+    ]);
+    detailOuverte = {
+      constat: constatRows.map((r) => r.chemin),
+      apres: apresRows.map((r) => r.chemin),
+      verifie: verifieRows.map((r) => r.chemin),
+      produits,
+    };
+  }
 
   /**
    * Les étages, en onglets sur le côté.
@@ -398,6 +516,17 @@ export default async function Tournee({
   const encadre = peutValider(profil.role);
   const supprimable = peutSupprimer(profil.role);
 
+  /**
+   * Déplier ou replier une ligne, sans perdre l'étage ni la recherche en
+   * cours. Un second appui referme — même bouton, même geste.
+   */
+  const toggleHref = (id: string) =>
+    `${versLaListe(nom, passe, {
+      ...(choisi ? { etage: choisi } : {}),
+      ...(q ? { q } : {}),
+      ...(ouvre === id ? {} : { ouvre: id }),
+    })}#a-${id}` as Route;
+
   // Le jour affiché en grand est celui du PASSAGE, pas celui de l'horloge.
   // Saisir un passage du 3 septembre en lisant « 23.mar » en haut de l'écran,
   // c'est se tromper de journée sans s'en apercevoir.
@@ -411,6 +540,114 @@ export default async function Tournee({
   // du même piège.
   const aujourdhui = new Date(`${historique ? passe : aujourdhuiISO()}T12:00:00`);
   const jourCourt = aujourdhui.toLocaleDateString("fr-FR", { weekday: "short" });
+
+  /**
+   * Déclarer ce qui a été fait, avec le matériel choisi — EN PLACE. Même
+   * geste que l'ancien /technique/anomalie/[id], qui redirigeait de toute
+   * façon ici une fois fini : il n'y avait plus de raison d'y passer par un
+   * écran à part, puisque tout se décide désormais sur la ligne elle-même.
+   */
+  async function enregistrerMateriel(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_) redirect("/profil");
+    // `intervenant` est déjà garanti par le `notFound()` du rendu — ce
+    // garde-fou est pour TypeScript, qui ne fait pas confiance à un
+    // affinement de type traversant une fermeture.
+    if (!intervenant) redirect(versLaListe(nom, passe) as Route);
+
+    const anomalieId = String(donnees.get("anomalie_id") ?? "");
+    if (!anomalieId) return;
+
+    let articles: { id: string; qte: number }[] = [];
+    try {
+      const brut = JSON.parse(String(donnees.get("articles") || "[]"));
+      if (Array.isArray(brut)) {
+        articles = brut
+          .filter((a) => a && typeof a.id === "string")
+          .map((a) => ({ id: a.id, qte: Math.max(1, Math.min(99, Number(a.qte) || 1)) }));
+      }
+    } catch {
+      articles = [];
+    }
+
+    /**
+     * Même garde-fou que l'ancien écran (voir son historique) : une
+     * anomalie ne se déclare qu'une fois par passage, sauf reprise après un
+     * avis de la gouvernante — sans quoi un double envoi la déclarerait
+     * deux fois, et un avis de refus resterait sans réponse.
+     */
+    const [existante] = await sql<{ id: string; statut_anomalie: string }[]>`
+      select i.id, a.statut::text as statut_anomalie
+      from interventions i
+      join anomalies a on a.id = i.anomalie_id
+      where i.anomalie_id = ${anomalieId} and i.tournee_id = ${tournee.id}`;
+
+    let intervention: { id: string } | undefined;
+    if (!existante) {
+      [intervention] = await sql<{ id: string }[]>`
+        insert into interventions (anomalie_id, tournee_id, technicien_id, prestataire_id,
+                                   saisie_par, date_intervention)
+        values (${anomalieId}, ${tournee.id}, ${intervenant.utilisateur_id},
+               ${intervenant.prestataire_id}, ${profil_.id},
+               ${tournee.date_tournee}::date)
+        returning id`;
+    } else if (
+      existante.statut_anomalie === "a_faire" ||
+      (existante.statut_anomalie === "en_cours" && tournee.cloturee_le !== null)
+    ) {
+      intervention = { id: existante.id };
+    }
+    if (!intervention) {
+      redirect(
+        `${versLaListe(nom, passe, {
+          ...(choisi ? { etage: choisi } : {}),
+          ...(q ? { q } : {}),
+          fait: anomalieId,
+        })}#a-${anomalieId}` as Route,
+      );
+    }
+
+    await annulerRecapCompletNonParti(tournee.id);
+
+    for (const article of articles) {
+      await sql`
+        insert into mouvements_stock (produit_id, type, quantite, utilisateur_id,
+                                      prestataire_id, emplacement_id, intervention_id, commentaire)
+        select ${article.id}, 'sortie', -least(${article.qte}::numeric, s.stock),
+               ${intervenant.utilisateur_id},
+               ${intervenant.prestataire_id}, a.emplacement_id, ${intervention.id},
+               'Intervention — ' || a.description
+        from anomalies a, v_stock_produits s
+        where a.id = ${anomalieId} and s.id = ${article.id} and s.stock > 0`;
+    }
+
+    for (const fichier of donnees.getAll("photos")) {
+      if (!(fichier instanceof File) || fichier.size === 0) continue;
+      const chemin = await enregistrerPhoto(fichier);
+      if (!chemin) continue;
+      await sql`
+        insert into photos_anomalie (anomalie_id, intervention_id, chemin, moment, prise_par)
+        values (${anomalieId}, ${intervention.id}, ${chemin}, 'apres', ${profil_.id})`;
+    }
+
+    if (articles.length > 0) await alerterSiSousSeuil(articles.map((a) => a.id));
+
+    const mot = String(donnees.get("commentaire") ?? "").trim() || null;
+    await sql`
+      insert into validations (intervention_id, acteur, decision, utilisateur_id,
+                               saisie_par, commentaire)
+      values (${intervention.id}, 'technicien', 'fait',
+              ${intervenant.utilisateur_id}, ${profil_.id}, ${mot})`;
+
+    redirect(
+      `${versLaListe(nom, passe, {
+        ...(choisi ? { etage: choisi } : {}),
+        ...(q ? { q } : {}),
+        fait: anomalieId,
+      })}#a-${anomalieId}` as Route,
+    );
+  }
 
   /**
    * Se déraviser.
@@ -795,60 +1032,90 @@ export default async function Tournee({
                       </form>
                     ) : (
                       <Link
-                        href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}${
-                          historique ? `&jour=${passe}` : ""
+                        href={toggleHref(l.anomalie_id)}
+                        replace
+                        scroll={false}
+                        aria-label={
+                          ouvre === l.anomalie_id ? "Replier cette anomalie" : "Traiter cette anomalie"
+                        }
+                        className={`w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] border-[2px] active:bg-plum-soft ${
+                          ouvre === l.anomalie_id
+                            ? "border-plum bg-plum-soft"
+                            : "border-[#C9C5D8]"
                         }`}
-                        aria-label="Traiter cette anomalie"
-                        className="w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] border-[2px] border-[#C9C5D8] active:bg-plum-soft"
                       />
                     )}
 
-                    <Link
-                      href={`/technique/anomalie/${l.anomalie_id}?par=${encodeURIComponent(nom)}${
-                          historique ? `&jour=${passe}` : ""
-                        }`}
-                      className="grow min-w-0 flex flex-col gap-1 active:opacity-70"
-                    >
-                      <span
-                        className={`text-[17.5px] font-display font-semibold leading-snug text-pretty ${
-                          l.traitee ? "text-ink-faint line-through" : ""
-                        }`}
-                      >
-                        {l.description}
-                      </span>
-                      {/* Une anomalie ne se montre jamais séparée de son lieu :
-                          sinon on croit qu'il y a un lave-vaisselle en 57. */}
-                      <span className="flex flex-wrap items-center gap-1.5">
+                    {l.traitee || l.statut === "attente_validation" ? (
+                      <span className="grow min-w-0 flex flex-col gap-1">
                         <span
-                          className={`px-2 py-0.5 rounded-md text-[13px] font-medium ${
-                            l.traitee
-                              ? "bg-surface-muted text-ink-faint"
-                              : "bg-amber-soft text-amber"
+                          className={`text-[17.5px] font-display font-semibold leading-snug text-pretty ${
+                            l.traitee ? "text-ink-faint line-through" : ""
                           }`}
                         >
-                          {l.emplacement}
+                          {l.description}
                         </span>
-                        <span className="text-[12.5px] text-ink-faint">{l.etage}</span>
-                        {l.traitee && (
-                          <span className="text-[12.5px] text-ink-faint">
-                            · {l.materiel ?? "aucun matériel"}
+                        {/* Une anomalie ne se montre jamais séparée de son lieu :
+                            sinon on croit qu'il y a un lave-vaisselle en 57. */}
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[13px] font-medium ${
+                              l.traitee
+                                ? "bg-surface-muted text-ink-faint"
+                                : "bg-amber-soft text-amber"
+                            }`}
+                          >
+                            {l.emplacement}
                           </span>
-                        )}
-                        {l.statut === "attente_validation" && (
-                          <span className="text-[12.5px] text-amber font-medium">
-                            · en attente de l’avis de la gouvernante
-                          </span>
-                        )}
-                        {l.aReprendre && (
-                          <span className="text-[12.5px] text-blue font-medium">
-                            ·{" "}
-                            {l.statut === "a_faire"
-                              ? "à refaire, d’après la gouvernante"
-                              : "remise en cours par la gouvernante"}
-                          </span>
-                        )}
+                          <span className="text-[12.5px] text-ink-faint">{l.etage}</span>
+                          {l.traitee && (
+                            <span className="text-[12.5px] text-ink-faint">
+                              · {l.materiel ?? "aucun matériel"}
+                            </span>
+                          )}
+                          {l.statut === "attente_validation" && (
+                            <span className="text-[12.5px] text-amber font-medium">
+                              · en attente de l’avis de la gouvernante
+                            </span>
+                          )}
+                          {l.aReprendre && (
+                            <span className="text-[12.5px] text-blue font-medium">
+                              ·{" "}
+                              {l.statut === "a_faire"
+                                ? "à refaire, d’après la gouvernante"
+                                : "remise en cours par la gouvernante"}
+                            </span>
+                          )}
+                        </span>
                       </span>
-                    </Link>
+                    ) : (
+                      <Link
+                        href={toggleHref(l.anomalie_id)}
+                        replace
+                        scroll={false}
+                        className="grow min-w-0 flex flex-col gap-1 active:opacity-70"
+                      >
+                        <span className="text-[17.5px] font-display font-semibold leading-snug text-pretty">
+                          {l.description}
+                        </span>
+                        {/* Une anomalie ne se montre jamais séparée de son lieu :
+                            sinon on croit qu'il y a un lave-vaisselle en 57. */}
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-md text-[13px] font-medium bg-amber-soft text-amber">
+                            {l.emplacement}
+                          </span>
+                          <span className="text-[12.5px] text-ink-faint">{l.etage}</span>
+                          {l.aReprendre && (
+                            <span className="text-[12.5px] text-blue font-medium">
+                              ·{" "}
+                              {l.statut === "a_faire"
+                                ? "à refaire, d’après la gouvernante"
+                                : "remise en cours par la gouvernante"}
+                            </span>
+                          )}
+                        </span>
+                      </Link>
+                    )}
 
                     <span
                       className={`shrink-0 mt-[1px] flex items-center gap-1.5 ${
@@ -860,6 +1127,43 @@ export default async function Tournee({
                       <ApercuFil messages={fil(l.anomalie_id)} eteint={l.traitee} />
                     </span>
                   </div>
+
+                  {/* La ligne dépliée : tout ce qu'il faut pour déclarer,
+                      SANS naviguer vers un autre écran — « ajouter un
+                      produit » ouvre un pop-up, se choisit, se referme, et
+                      « C'est fait » part d'ici. */}
+                  {l.anomalie_id === ouvre && detailOuverte && (
+                    <div className="pb-4 flex flex-col gap-4">
+                      {l.essai && (
+                        <p className="text-[11.5px] text-ink-faint">
+                          Chambre d’essai · matériel non déduit du stock
+                        </p>
+                      )}
+                      <Vignettes
+                        chemins={detailOuverte.constat}
+                        titre="Photographié au constat"
+                        ton="text-blue"
+                        taille={88}
+                      />
+                      <Vignettes
+                        chemins={detailOuverte.apres}
+                        titre="Après le dernier passage"
+                        ton="text-green"
+                        taille={88}
+                      />
+                      <Vignettes
+                        chemins={detailOuverte.verifie}
+                        titre="Vérifié par la gouvernante"
+                        ton="text-plum"
+                        taille={88}
+                      />
+                      <EditeurMateriel
+                        anomalieId={l.anomalie_id}
+                        produits={detailOuverte.produits}
+                        action={enregistrerMateriel}
+                      />
+                    </div>
+                  )}
 
                   {/* Supprimer là où on la lit : une chambre déclarée de
                       travers se voit devant la porte, pas depuis un écran
