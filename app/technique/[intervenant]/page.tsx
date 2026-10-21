@@ -452,29 +452,33 @@ export default async function Tournee({
 
   /**
    * Ce qui est traité quitte la liste à faire — il ne reste pas barré en
-   * bas. Cocher le matériel puis retomber sur une anomalie barrée, au
-   * milieu de ce qu'il reste à faire, n'avait rien d'un avancement : ça
-   * ressemblait à du travail qui traîne. « Voir mes déclarées » (le
-   * compteur du haut, devenu un bouton) est désormais le SEUL chemin vers
-   * ce qu'on a déjà coché — pas une persistance au bas de l'écran.
+   * bas, pas même le temps d'un aller-retour. « Voir mes déclarées » (le
+   * compteur du haut, devenu un bouton) est le SEUL chemin vers ce qu'on a
+   * déjà coché.
    *
-   * Une exception : celle qu'on vient tout juste de déclarer reste à sa
-   * place un instant, cochée et barrée (règle 14sexies) — c'est la
-   * confirmation visuelle que le geste a été pris en compte. Elle rejoint
-   * « mes déclarées » au chargement suivant, dès que `fait` disparaît de
-   * l'adresse.
+   * Une première version la laissait à sa place un instant, cochée et
+   * barrée, comme confirmation visuelle (règle 14sexies). Mais « elle reste
+   * dans la liste au lieu d'aller directement dans voir mes déclarées » :
+   * ce n'est pas ce qui était demandé. Elle part directement dans « mes
+   * déclarées », et c'est le bandeau `declaree` plus bas qui confirme le
+   * geste — à sa place, pas dans une ligne qui n'est plus censée être là.
    */
   const vues = uniques.filter(
     (l) =>
       (choisi === null || l.etage === choisi) &&
       correspond(l) &&
-      (vue === "faites" ? l.traitee : !l.traitee || l.anomalie_id === fait),
+      (vue === "faites" ? l.traitee : !l.traitee),
   );
-
-  const faites = vues.filter((l) => l.traitee);
-  const restantes = vues.filter((l) => !l.traitee);
   // La clôture porte sur TOUT le passage, pas sur l'étage regardé.
   const faitesEnTout = uniques.filter((l) => l.traitee);
+
+  /**
+   * Ce qu'on vient de déclarer, pour le dire — puisqu'elle ne reste plus
+   * visible dans la liste. Seul un vrai succès compte : les sentinelles
+   * (`fait=supprime`, `fait=passage-repris…`) ne correspondent à aucune
+   * anomalie et ne déclenchent rien ici.
+   */
+  const declaree = fait ? uniques.find((l) => l.anomalie_id === fait && l.traitee) : undefined;
 
   /**
    * L'ordre du bâtiment, pas l'ordre de l'alphabet.
@@ -485,9 +489,7 @@ export default async function Tournee({
    * autre — après la chambre 39, donc au milieu du troisième.
    *
    * On suit donc l'étage (`ordre`, celui du bâtiment), puis le lieu dans
-   * l'étage, puis la priorité pour départager deux lignes du même endroit. On
-   * monte une fois, on fait l'étage, on continue. Ce qui est déjà déclaré
-   * passe à la fin, barré : c'est de l'avancement, pas du travail.
+   * l'étage, puis la priorité pour départager deux lignes du même endroit.
    */
   const rang: Record<string, number> = { urgente: 0, haute: 1, normale: 2, basse: 3 };
   const parLieu = (a: Ligne, b: Ligne) =>
@@ -495,24 +497,7 @@ export default async function Tournee({
     a.emplacement.localeCompare(b.emplacement, "fr", { numeric: true }) ||
     (rang[a.priorite] ?? 2) - (rang[b.priorite] ?? 2);
 
-  /**
-   * Celle qu'on vient de déclarer reste À SA PLACE.
-   *
-   * Ce qui est coché passe à la fin — c'est de l'avancement, pas du travail.
-   * Mais le renvoi porte son ancre : en la déplaçant tout en bas, l'écran
-   * s'ouvrait EN BAS de cent dix-neuf lignes, et il fallait tout remonter pour
-   * reprendre. On la laisse donc où elle était le temps de ce retour : cochée,
-   * barrée, sur fond vert, au milieu de ce qui reste — c'est exactement ce
-   * qu'on veut voir. Au chargement suivant elle rejoint les autres.
-   */
-  const vientDeDeclarer = Boolean(fait && uniques.some((l) => l.anomalie_id === fait));
-  const ordonnees = vientDeDeclarer
-    ? [...vues].sort(
-        (a, b) =>
-          Number(a.traitee && a.anomalie_id !== fait) -
-            Number(b.traitee && b.anomalie_id !== fait) || parLieu(a, b),
-      )
-    : [...restantes.sort(parLieu), ...faites.sort(parLieu)];
+  const ordonnees = [...vues].sort(parLieu);
 
   const encadre = peutValider(profil.role);
   const supprimable = peutSupprimer(profil.role);
@@ -732,8 +717,17 @@ export default async function Tournee({
   return (
     /* Une coque, pas une page qui défile : l'en-tête et la colonne d'étages
        restent, seule la liste bouge. C'est la seule façon pour les bandes de
-       tenir tout le bord de l'écran, du haut jusqu'en bas. */
-    <main className="h-dvh overflow-hidden flex flex-col max-w-md mx-auto">
+       tenir tout le bord de l'écran, du haut jusqu'en bas.
+       `h-dvh` posait un défaut à deux visages sur un vrai téléphone : tantôt
+       trop court (la barre « Fin d'intervention » recouvrait la liste),
+       tantôt trop long (un vide restait sous le bouton) — exactement ce
+       qu'on attend d'une hauteur dynamique qui ne se recalcule pas de façon
+       fiable à chaque fois que la barre de Safari se cache ou reparaît en
+       faisant défiler. `fixed inset-0` ne dépend d'aucune unité de
+       viewport : il colle aux quatre bords de l'écran RÉEL, à chaque
+       instant — la technique la plus ancienne, et la plus sûre, pour
+       remplir vraiment l'écran sur mobile. */
+    <main className="fixed inset-0 overflow-hidden flex flex-col max-w-md mx-auto">
       <Entete
         titre={nom}
         sous_titre="Ce qu’il y a à traiter"
@@ -803,6 +797,14 @@ export default async function Tournee({
         >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
         {fait?.startsWith("passage-repris") && <Confirmation quoi={fait} />}
+        {/* Elle ne reste plus visible dans la liste (voir `vues` plus haut) :
+            c'est ce bandeau qui confirme que le geste a été pris en compte,
+            et dit où la retrouver. */}
+        {declaree && (
+          <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug animate-[apparait_.25s_ease-out]">
+            <strong>{declaree.description}</strong> déclarée — dans « voir mes déclarées ».
+          </p>
+        )}
 
         {/* On ne saisit pas un passage d'il y a trois semaines en croyant être
             aujourd'hui. Le bandeau le dit, et il est de la couleur d'un
@@ -969,36 +971,21 @@ export default async function Tournee({
         ) : (
             <ul className="flex flex-col">
               {ordonnees.map((l, i) => {
-              const vientDEtreFaite = fait === l.anomalie_id;
-              const premiereFaite = l.traitee && (i === 0 || !ordonnees[i - 1].traitee);
+              const premiereFaite = l.traitee && i === 0;
               return (
                 <li key={l.anomalie_id} id={`a-${l.anomalie_id}`} className="scroll-mt-4 relative">
-                  {/* La bascule entre ce qui reste et ce qui est fait se voit :
-                      sinon la liste paraît mélangée. Seulement dans « mes
-                      déclarées » — dans la liste par défaut, il n'y a plus
-                      de bloc à annoncer : au plus une ligne qu'on vient de
-                      cocher, mise en évidence par son fond vert, pas par un
-                      titre de section. */}
+                  {/* Un seul titre, en tête de « mes déclarées » : dans la
+                      liste par défaut, `ordonnees` ne contient plus que ce
+                      qui reste à faire, donc rien à annoncer ici. */}
                   {premiereFaite && vue === "faites" && (
                     <p className="etiquette pt-5 pb-2 text-[12px]">Déjà déclarées</p>
                   )}
                   {/* En regardant « Tout », l'étage change en cours de liste :
                       sans un trait, on ne voit pas qu'on a changé de niveau. */}
-                  {choisi === null &&
-                    (i === 0 ||
-                      ordonnees[i - 1].etage !== l.etage ||
-                      (l.traitee && !ordonnees[i - 1].traitee)) && (
-                      <p className="etiquette pt-4 pb-1.5 text-[12px] text-plum">
-                        {l.etage}
-                      </p>
-                    )}
-                  <div
-                    className={`flex items-start gap-3 py-3 border-b border-line ${
-                      vientDEtreFaite
-                        ? "bg-green-soft -mx-2 px-2 rounded-[10px] border-transparent"
-                        : ""
-                    }`}
-                  >
+                  {choisi === null && (i === 0 || ordonnees[i - 1].etage !== l.etage) && (
+                    <p className="etiquette pt-4 pb-1.5 text-[12px] text-plum">{l.etage}</p>
+                  )}
+                  <div className="flex items-start gap-3 py-3 border-b border-line">
                     {/* La case coche ET décoche : tant que la tournée n'est pas
                         rendue, on peut revenir sur ce qu'on a déclaré. Une fois
                         rendue, ce n'est plus vrai — la croix ne ferait plus rien
