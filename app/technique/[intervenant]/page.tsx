@@ -16,6 +16,7 @@ import { ApercuFil } from "@/app/composants/apercu-fil";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { AvisReprise, type Compteur } from "@/app/composants/avis-reprise";
 import { Vignettes } from "@/app/composants/photos";
+import { IndicateurLien } from "@/app/composants/liens";
 import { EditeurMateriel, type ProduitDisponible } from "@/app/composants/editeur-materiel";
 import type { Message } from "@/app/composants/fil";
 
@@ -792,9 +793,13 @@ export default async function Tournee({
         )}
 
         {/* Seule la liste défile, et de la place sous la dernière ligne : le
-            bouton d'ajout flotte au-dessus et masquait ce qui était en bas. */}
+            bouton d'ajout flotte au-dessus et masquait ce qui était en bas.
+            La dernière ligne visible se coupe toujours un peu en défilant —
+            c'est normal — mais SANS une marge franche avant la barre du bas
+            (« Fin d'intervention » ou « Reprendre »), elle semblait collée
+            dessous, tassée, plutôt que simplement en cours de défilement. */}
         <div
-          className="grow min-h-0 overflow-y-auto pl-3 pr-5 pt-3 pb-4 flex flex-col gap-4"
+          className="grow min-h-0 overflow-y-auto pl-3 pr-5 pt-3 pb-10 flex flex-col gap-4"
         >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
         {fait?.startsWith("passage-repris") && <Confirmation quoi={fait} />}
@@ -1038,12 +1043,18 @@ export default async function Tournee({
                         aria-label={
                           ouvre === l.anomalie_id ? "Replier cette anomalie" : "Traiter cette anomalie"
                         }
-                        className={`w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] border-[2px] active:bg-plum-soft ${
+                        className={`relative w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] border-[2px] active:bg-plum-soft text-plum ${
                           ouvre === l.anomalie_id
                             ? "border-plum bg-plum-soft"
                             : "border-[#C9C5D8]"
                         }`}
-                      />
+                      >
+                        {/* L'appui lance un aller-retour au serveur — chercher
+                            le détail, les photos, le matériel proposé — qui
+                            peut prendre un instant. Sans ce signe, l'écran
+                            semblait figé le temps que la ligne s'ouvre. */}
+                        <IndicateurLien className="absolute inset-[3px]" />
+                      </Link>
                     )}
 
                     {l.traitee || l.statut === "attente_validation" ? (
@@ -1105,6 +1116,7 @@ export default async function Tournee({
                             {l.emplacement}
                           </span>
                           <span className="text-[12.5px] text-ink-faint">{l.etage}</span>
+                          <IndicateurLien className="w-[13px] h-[13px] text-plum" />
                           {l.aReprendre && (
                             <span className="text-[12.5px] text-blue font-medium">
                               ·{" "}
@@ -1227,7 +1239,10 @@ export default async function Tournee({
           ce qui part et à qui. Et puisqu'un passage se reprend maintenant — même
           jour, même lot — l'erreur ne coûte plus une journée. */}
       {tournee.cloturee_le ? (
-        <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground flex flex-col gap-2">
+        <div
+          className="px-5 pt-3 sticky bottom-0 bg-ground border-t border-line shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.12)] flex flex-col gap-2"
+          style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
+        >
           <p className="text-[13px] text-ink-faint text-pretty">
             Passage rendu à {heureISO(tournee.cloturee_le)}.{" "}
             {historique
@@ -1306,7 +1321,10 @@ export default async function Tournee({
             </div>
           </div>
         ) : (
-          <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground">
+          <div
+            className="px-5 pt-3 sticky bottom-0 bg-ground border-t border-line shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.12)]"
+            style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
+          >
             <Link
               replace
               href={
