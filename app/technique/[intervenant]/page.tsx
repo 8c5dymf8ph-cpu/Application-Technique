@@ -925,9 +925,10 @@ export default async function Tournee({
       {tournee.cloturee_le ? (
         <div className="px-5 pb-6 pt-2 sticky bottom-0 bg-ground flex flex-col gap-2">
           <p className="text-[13px] text-ink-faint text-pretty">
-            Passage rendu à {heureISO(tournee.cloturee_le)}. Si tu reviens
-            aujourd’hui, reprends-le : c’est la même journée,
-            donc le même passage.
+            Passage rendu à {heureISO(tournee.cloturee_le)}.{" "}
+            {historique
+              ? "Une anomalie ou du matériel manque sur ce jour-là ? Reprends-le : c’est la même journée, donc le même passage."
+              : "Si tu reviens aujourd’hui, reprends-le : c’est la même journée, donc le même passage."}
           </p>
           <form action={reprendre}>
             <BoutonEnvoi
