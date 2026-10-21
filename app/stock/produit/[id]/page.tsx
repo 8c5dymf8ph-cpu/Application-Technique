@@ -651,6 +651,29 @@ export default async function FicheProduit({
     revalidatePath("/stock");
   }
 
+  /**
+   * Supprimer un produit créé par erreur — jamais un produit qui a servi
+   * (règle 14ter : on retire ce qui a un historique, on ne l'efface pas).
+   * `mouvements_stock`, `inventaire_lignes_produit` et `commande_lignes`
+   * référencent `produits` SANS cascade : la base refuse elle-même (23503)
+   * dès qu'une seule ligne existe, et c'est ce refus qu'on affiche — jamais
+   * une vérification refaite à côté, qui pourrait se tromper ou se démoder.
+   */
+  async function supprimerProduit() {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !suitLesDossiers(profil_.role)) redirect(`/stock/produit/${id}` as Route);
+    try {
+      await sql`delete from produits where id = ${id}`;
+    } catch (e) {
+      const aHistorique =
+        typeof e === "object" && e !== null && (e as { code?: string }).code === "23503";
+      if (!aHistorique) throw e;
+      redirect(`/stock/produit/${id}?fait=produit-a-historique` as Route);
+    }
+    redirect("/stock?fait=produit-supprime" as Route);
+  }
+
   const LIBELLE_MOUVEMENT: Record<string, string> = {
     entree: "Entrée",
     sortie: "Sortie",
@@ -1375,6 +1398,33 @@ export default async function FicheProduit({
                 {p.actif ? "Retirer" : "Remettre"}
               </button>
             </form>
+
+            {/* Supprimer reste possible — seulement pour un produit créé par
+                erreur, qui n'a JAMAIS servi. La base refuse elle-même s'il
+                porte un historique ; on ne fait que montrer son refus. */}
+            {suitLesDossiers(profil.role) && (
+              <details className="carte px-4 py-3">
+                <summary className="text-[13px] text-ink-faint cursor-pointer list-none flex items-center gap-2">
+                  <span className="text-[16px] leading-none">⌄</span>
+                  Supprimer ce produit
+                </summary>
+                <div className="pt-3 flex flex-col gap-2.5">
+                  <p className="text-[12.5px] text-ink-soft text-pretty">
+                    Seulement s’il n’a jamais servi : dès qu’il porte une entrée de stock, un
+                    inventaire ou une commande, la base refuse — retirez-le plutôt (ci-dessus),
+                    ce qu’il a déjà coûté reste exact.
+                  </p>
+                  <form action={supprimerProduit}>
+                    <BoutonEnvoi
+                      pendant="Suppression…"
+                      className="w-full h-[44px] rounded-[12px] bg-red-soft text-red text-[13.5px] font-medium active:opacity-70 active:scale-[.99] transition"
+                    >
+                      Oui, supprimer ce produit
+                    </BoutonEnvoi>
+                  </form>
+                </div>
+              </details>
+            )}
           </Depliant>
         )}
 

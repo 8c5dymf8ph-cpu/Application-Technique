@@ -4,11 +4,11 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
-import { Entete, Vide } from "@/app/composants/ui";
+import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres, Recherche, Stat } from "@/app/composants/suivi";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
-import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
+import { MarquerApresSuppression, QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { MenuFiltre } from "@/app/composants/menu-filtre";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { categoriesExistantes, normaliserCategorie } from "@/lib/categories";
@@ -36,11 +36,11 @@ type Produit = {
 export default async function Stock({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; lieu?: string; metier?: string; etat?: string }>;
+  searchParams: Promise<{ q?: string; lieu?: string; metier?: string; etat?: string; fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
-  const { q = "", lieu = "tous", metier = "tous", etat = "tous" } = await searchParams;
+  const { q = "", lieu = "tous", metier = "tous", etat = "tous", fait } = await searchParams;
   const administre = peutValider(profil.role);
   const terme = q.trim().toLowerCase();
 
@@ -229,6 +229,11 @@ export default async function Stock({
       />
 
       <div className="px-5 py-4 flex flex-col gap-3.5">
+        <Confirmation quoi={fait} />
+        {/* On peut arriver ici après la suppression d'un produit : sa fiche
+            disparue reste dans l'historique du navigateur. */}
+        {fait === "produit-supprime" && <MarquerApresSuppression vers="/stock" />}
+
         <div className="flex gap-2">
           <Stat
             valeur={c.alertes}
