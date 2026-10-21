@@ -332,18 +332,24 @@ export default async function Tournee({
     l.emplacement.toLowerCase().includes(terme);
 
   /**
-   * Ne voir QUE ce qu'on a déclaré.
+   * Ce qui est traité quitte la liste à faire — il ne reste pas barré en
+   * bas. Cocher le matériel puis retomber sur une anomalie barrée, au
+   * milieu de ce qu'il reste à faire, n'avait rien d'un avancement : ça
+   * ressemblait à du travail qui traîne. « Voir mes déclarées » (le
+   * compteur du haut, devenu un bouton) est désormais le SEUL chemin vers
+   * ce qu'on a déjà coché — pas une persistance au bas de l'écran.
    *
-   * Ce qui est coché passe en bas de la liste — c'est de l'avancement, pas du
-   * travail (14sexies) — mais sur cent dix-neuf lignes, le relire demandait de
-   * tout faire défiler, et on rend son lot sans avoir revu ce qu'on rend. Le
-   * compteur du haut bascule la liste ; le même appui la ramène.
+   * Une exception : celle qu'on vient tout juste de déclarer reste à sa
+   * place un instant, cochée et barrée (règle 14sexies) — c'est la
+   * confirmation visuelle que le geste a été pris en compte. Elle rejoint
+   * « mes déclarées » au chargement suivant, dès que `fait` disparaît de
+   * l'adresse.
    */
   const vues = uniques.filter(
     (l) =>
       (choisi === null || l.etage === choisi) &&
       correspond(l) &&
-      (vue !== "faites" || l.traitee),
+      (vue === "faites" ? l.traitee : !l.traitee || l.anomalie_id === fait),
   );
 
   const faites = vues.filter((l) => l.traitee);
@@ -726,8 +732,12 @@ export default async function Tournee({
               return (
                 <li key={l.anomalie_id} id={`a-${l.anomalie_id}`} className="scroll-mt-4 relative">
                   {/* La bascule entre ce qui reste et ce qui est fait se voit :
-                      sinon la liste paraît mélangée. */}
-                  {premiereFaite && restantes.length > 0 && (
+                      sinon la liste paraît mélangée. Seulement dans « mes
+                      déclarées » — dans la liste par défaut, il n'y a plus
+                      de bloc à annoncer : au plus une ligne qu'on vient de
+                      cocher, mise en évidence par son fond vert, pas par un
+                      titre de section. */}
+                  {premiereFaite && vue === "faites" && (
                     <p className="etiquette pt-5 pb-2 text-[12px]">Déjà déclarées</p>
                   )}
                   {/* En regardant « Tout », l'étage change en cours de liste :
