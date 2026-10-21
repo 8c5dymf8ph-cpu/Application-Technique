@@ -1251,110 +1251,125 @@ export default async function Tournee({
           attendre sans rien apprendre ; ce qui empêche l'erreur, c'est de VOIR
           ce qui part et à qui. Et puisqu'un passage se reprend maintenant — même
           jour, même lot — l'erreur ne coûte plus une journée. */}
-      {tournee.cloturee_le ? (
-        <div
-          className="px-5 pt-3 sticky bottom-0 bg-ground border-t border-line shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.12)] flex flex-col gap-2"
-          style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
-        >
-          <p className="text-[13px] text-ink-faint text-pretty">
-            Passage rendu à {heureISO(tournee.cloturee_le)}.{" "}
-            {historique
-              ? "Une anomalie ou du matériel manque sur ce jour-là ? Reprends-le : c’est la même journée, donc le même passage."
-              : "Si tu reviens aujourd’hui, reprends-le : c’est la même journée, donc le même passage."}
-          </p>
-          <form action={reprendre}>
-            <BoutonEnvoi
-              pendant="Reprise…"
-              className="w-full h-[52px] rounded-[15px] border-[1.5px] border-plum text-plum font-display font-semibold text-[16px]"
-            >
-              Reprendre le passage
-            </BoutonEnvoi>
-          </form>
-        </div>
-      ) : faitesEnTout.length > 0 ? (
-        rendre ? (
-          /* Un appui de trop envoie un message irréversible pour qui le
-             reçoit : rien ne doit permettre de glisser dessus sans le voir.
-             Au milieu de l'écran, par-dessus tout, impossible à manquer ni
-             à confondre avec un autre bouton de la page. */
-          <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-5">
-            <div className="w-full max-w-md flex flex-col gap-3">
-              <div className="rounded-card bg-surface px-4 py-3.5 flex flex-col gap-2">
-                <p className="font-display font-semibold text-[16px]">
-                  Tu as fini pour aujourd’hui ?
-                </p>
-                {/* Ce qui part, nommé. Un compte ne dit pas ce qu'on rend :
-                    on relit les lignes, pas un chiffre. La liste défile dans
-                    elle-même pour ne pas repousser les deux boutons hors de
-                    l'écran. */}
-                <ul className="max-h-[34dvh] overflow-y-auto flex flex-col gap-1 -mx-1 px-1">
-                  {faitesEnTout.map((l) => (
-                    <li key={l.anomalie_id} className="flex items-baseline gap-2">
-                      <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-muted text-ink-soft text-[11px]">
-                        {l.emplacement}
-                      </span>
-                      <span className="grow min-w-0 text-[12.5px] leading-snug text-pretty">
-                        {l.description}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[13.5px] text-ink-faint text-pretty">
-                  {faitesEnTout.length} anomalie{faitesEnTout.length > 1 ? "s" : ""}{" "}
-                  déclarée{faitesEnTout.length > 1 ? "s" : ""} faite
-                  {faitesEnTout.length > 1 ? "s" : ""}
-                  {uniques.length - faitesEnTout.length > 0
-                    ? `, ${uniques.length - faitesEnTout.length} encore à traiter`
-                    : ""}
-                  . Le récapitulatif part tout de suite, et la gouvernante reçoit
-                  le lot à vérifier.
-                </p>
-              </div>
-              <div className="flex gap-2.5">
-                <Link
-                  replace
-                  href={`/technique/${encodeURIComponent(nom)}${
-                new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) }).size
-                  ? `?${new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) })}`
-                  : ""
-              }` as Route}
-                  className="flex-1 h-[52px] rounded-[15px] border-[1.5px] border-line bg-surface text-ink-faint font-display font-semibold text-[16px] grid place-items-center active:opacity-70"
+      {/* Un seul emplacement, TOUJOURS monté, pour ce pied de page — son
+          contenu change (rien, « Reprendre », « Fin d'intervention »), mais
+          le nœud reste. Avant : trois branches qui montaient et démontaient
+          un `<div>` entier selon ce qui venait d'être déclaré — ajouter ou
+          retirer un enfant d'une coque `fixed inset-0` juste au moment où la
+          barre de Safari peut être en train d'apparaître ou de se cacher,
+          c'est le moment précis où `fixed inset-0` lit une taille d'écran
+          encore en train de bouger. Ne plus jamais démonter cette coque : ne
+          varier que ce qu'il y a dedans, en classe comme en contenu. */}
+      <div
+        className={`px-5 sticky bottom-0 bg-ground flex flex-col gap-2 ${
+          tournee.cloturee_le || (faitesEnTout.length > 0 && !rendre)
+            ? "pt-3 border-t border-line shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.12)]"
+            : ""
+        }`}
+        style={
+          tournee.cloturee_le || (faitesEnTout.length > 0 && !rendre)
+            ? { paddingBottom: "max(24px, env(safe-area-inset-bottom))" }
+            : undefined
+        }
+      >
+        {tournee.cloturee_le ? (
+          <>
+            <p className="text-[13px] text-ink-faint text-pretty">
+              Passage rendu à {heureISO(tournee.cloturee_le)}.{" "}
+              {historique
+                ? "Une anomalie ou du matériel manque sur ce jour-là ? Reprends-le : c’est la même journée, donc le même passage."
+                : "Si tu reviens aujourd’hui, reprends-le : c’est la même journée, donc le même passage."}
+            </p>
+            <form action={reprendre}>
+              <BoutonEnvoi
+                pendant="Reprise…"
+                className="w-full h-[52px] rounded-[15px] border-[1.5px] border-plum text-plum font-display font-semibold text-[16px]"
+              >
+                Reprendre le passage
+              </BoutonEnvoi>
+            </form>
+          </>
+        ) : faitesEnTout.length > 0 && !rendre ? (
+          <Link
+            replace
+            href={
+              `/technique/${encodeURIComponent(nom)}?${new URLSearchParams({
+                rendre: "1",
+                ...(q ? { q } : {}),
+                ...(historique ? { jour: passe! } : {}),
+              })}` as Route
+            }
+            className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px] grid place-items-center active:opacity-80"
+          >
+            Fin d’intervention — {faitesEnTout.length} anomalie
+            {faitesEnTout.length > 1 ? "s" : ""}
+          </Link>
+        ) : null}
+      </div>
+
+      {/* Un appui de trop envoie un message irréversible pour qui le reçoit :
+          rien ne doit permettre de glisser dessus sans le voir. Au milieu de
+          l'écran, par-dessus tout, impossible à manquer ni à confondre avec
+          un autre bouton de la page. Cette boîte EST `fixed inset-0` elle-même
+          — la montrer ou la retirer ne touche pas à la coque principale. */}
+      {!tournee.cloturee_le && faitesEnTout.length > 0 && rendre && (
+        <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-5">
+          <div className="w-full max-w-md flex flex-col gap-3">
+            <div className="rounded-card bg-surface px-4 py-3.5 flex flex-col gap-2">
+              <p className="font-display font-semibold text-[16px]">
+                Tu as fini pour aujourd’hui ?
+              </p>
+              {/* Ce qui part, nommé. Un compte ne dit pas ce qu'on rend :
+                  on relit les lignes, pas un chiffre. La liste défile dans
+                  elle-même pour ne pas repousser les deux boutons hors de
+                  l'écran. */}
+              <ul className="max-h-[34dvh] overflow-y-auto flex flex-col gap-1 -mx-1 px-1">
+                {faitesEnTout.map((l) => (
+                  <li key={l.anomalie_id} className="flex items-baseline gap-2">
+                    <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-muted text-ink-soft text-[11px]">
+                      {l.emplacement}
+                    </span>
+                    <span className="grow min-w-0 text-[12.5px] leading-snug text-pretty">
+                      {l.description}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[13.5px] text-ink-faint text-pretty">
+                {faitesEnTout.length} anomalie{faitesEnTout.length > 1 ? "s" : ""}{" "}
+                déclarée{faitesEnTout.length > 1 ? "s" : ""} faite
+                {faitesEnTout.length > 1 ? "s" : ""}
+                {uniques.length - faitesEnTout.length > 0
+                  ? `, ${uniques.length - faitesEnTout.length} encore à traiter`
+                  : ""}
+                . Le récapitulatif part tout de suite, et la gouvernante reçoit
+                le lot à vérifier.
+              </p>
+            </div>
+            <div className="flex gap-2.5">
+              <Link
+                replace
+                href={`/technique/${encodeURIComponent(nom)}${
+              new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) }).size
+                ? `?${new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) })}`
+                : ""
+            }` as Route}
+                className="flex-1 h-[52px] rounded-[15px] border-[1.5px] border-line bg-surface text-ink-faint font-display font-semibold text-[16px] grid place-items-center active:opacity-70"
+              >
+                Pas encore
+              </Link>
+              <form action={cloturer} className="flex-1">
+                <BoutonEnvoi
+                  pendant="Clôture…"
+                  className="w-full h-[52px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
                 >
-                  Pas encore
-                </Link>
-                <form action={cloturer} className="flex-1">
-                  <BoutonEnvoi
-                    pendant="Clôture…"
-                    className="w-full h-[52px] rounded-[15px] bg-plum text-white font-display font-semibold text-[16px]"
-                  >
-                    Oui, j’ai fini
-                  </BoutonEnvoi>
-                </form>
-              </div>
+                  Oui, j’ai fini
+                </BoutonEnvoi>
+              </form>
             </div>
           </div>
-        ) : (
-          <div
-            className="px-5 pt-3 sticky bottom-0 bg-ground border-t border-line shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.12)]"
-            style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
-          >
-            <Link
-              replace
-              href={
-                `/technique/${encodeURIComponent(nom)}?${new URLSearchParams({
-                  rendre: "1",
-                  ...(q ? { q } : {}),
-                  ...(historique ? { jour: passe! } : {}),
-                })}` as Route
-              }
-              className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px] grid place-items-center active:opacity-80"
-            >
-              Fin d’intervention — {faitesEnTout.length} anomalie
-              {faitesEnTout.length > 1 ? "s" : ""}
-            </Link>
-          </div>
-        )
-      ) : null}
+        </div>
+      )}
     </main>
   );
 }
