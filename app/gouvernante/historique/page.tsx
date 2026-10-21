@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { Entete, Vide } from "@/app/composants/ui";
-import { Recherche } from "@/app/composants/suivi";
+import { RechercheVive } from "@/app/composants/recherche-vive";
 import { Depliant } from "@/app/composants/depliant";
 
 export const dynamic = "force-dynamic";
@@ -107,7 +107,7 @@ export default async function Historique({
       />
 
       <div className="px-5 py-4 flex flex-col gap-4">
-        <Recherche valeur={q} placeholder="Une chambre, un étage…" />
+        <RechercheVive valeur={q} base="/gouvernante/historique" placeholder="Une chambre, un étage…" />
 
         {/* Ce qui revient, en premier : c'est l'information qu'on ne peut
             trouver nulle part ailleurs. Un lieu, on sait où le chercher ; un

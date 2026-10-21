@@ -7,7 +7,8 @@ import { profilActif } from "@/lib/profil";
 import { vueContient } from "@/lib/schema";
 import { depuis, euros } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
-import { Frise, Recherche, Stat } from "@/app/composants/suivi";
+import { Frise, Stat } from "@/app/composants/suivi";
+import { RechercheVive } from "@/app/composants/recherche-vive";
 import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
 import { MenuFiltre } from "@/app/composants/menu-filtre";
 import type { LigneBouteille } from "@/lib/courriel";
@@ -220,10 +221,11 @@ export default async function Dossiers({
           <Stat valeur={euros(c.en_jeu)} libelle="En jeu" />
         </div>
 
-        <Recherche
+        <RechercheVive
           valeur={q}
+          base="/bouteilles/dossiers"
+          garde={{ filtre, tri }}
           placeholder="Nom du client, chambre, n° de dossier…"
-          caches={{ filtre, tri }}
         />
 
         {/* Deux icônes plutôt que deux rangées de boutons toujours affichées :

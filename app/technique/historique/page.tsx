@@ -5,7 +5,8 @@ import { exigerEncadrement } from "@/lib/acces";
 import { euros, jourISO } from "@/lib/domaine";
 import { Entete, Vide, Confirmation } from "@/app/composants/ui";
 import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
-import { Filtres, Recherche, Stat, Surligne } from "@/app/composants/suivi";
+import { Filtres, Stat, Surligne } from "@/app/composants/suivi";
+import { RechercheVive } from "@/app/composants/recherche-vive";
 import { VoirDocument } from "@/app/composants/fenetre";
 
 export const dynamic = "force-dynamic";
@@ -418,13 +419,14 @@ export default async function PassagesEtFactures({
           </p>
         )}
 
-        <Recherche
+        <RechercheVive
           valeur={q}
-          placeholder={factures_ ? "Un intervenant, un numéro…" : "Une chambre, un mot, un nom…"}
+          base="/technique/historique"
           // Les mois ouverts ne suivent pas la recherche : une question neuve
           // rouvre ce qui répond, sinon le mot tombe dans une section restée
           // fermée par la question d'avant.
-          caches={factures_ ? { vue, filtre } : { qui }}
+          garde={factures_ ? { vue, filtre } : { qui }}
+          placeholder={factures_ ? "Un intervenant, un numéro…" : "Une chambre, un mot, un nom…"}
         />
 
         {factures_ ? (

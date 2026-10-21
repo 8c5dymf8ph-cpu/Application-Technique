@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
 import type { Route } from "next";
 
 type Adresse = Route | (string & {});
@@ -180,51 +179,3 @@ export function Surligne({ texte, mot }: { texte: string; mot?: string }) {
   );
 }
 
-/**
- * La barre de recherche d'une liste : l'adresse reste partageable (`?q=…`).
- *
- * Un `<form method="get">` natif navigue vraiment à chaque envoi, et empile
- * une entrée d'historique par recherche — comme les pastilles de `Filtres` :
- * revenir en arrière rejouait les recherches précédentes une par une au lieu
- * de sortir de l'écran. Interceptée et posée en `replace`, comme
- * `RechercheVive` le fait déjà pour la recherche au fil de la frappe.
- */
-export function Recherche({
-  valeur,
-  placeholder,
-  caches,
-}: {
-  valeur: string;
-  placeholder: string;
-  caches?: Record<string, string>;
-}) {
-  const routeur = useRouter();
-  const chemin = usePathname();
-  return (
-    <form
-      className="flex gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
-        const p = new URLSearchParams(caches ?? {});
-        if (q) p.set("q", q);
-        const suite = p.toString();
-        routeur.replace(`${chemin}${suite ? `?${suite}` : ""}` as Route, { scroll: false });
-      }}
-    >
-      {Object.entries(caches ?? {}).map(([n, v]) => (
-        <input key={n} type="hidden" name={n} value={v} />
-      ))}
-      <input
-        name="q"
-        defaultValue={valeur}
-        autoComplete="off"
-        placeholder={placeholder}
-        className="carte grow px-4 h-[46px] text-[16px] placeholder:text-ink-faint"
-      />
-      <button className="px-4 rounded-card bg-surface border border-line text-[14.5px]">
-        Chercher
-      </button>
-    </form>
-  );
-}

@@ -5,7 +5,8 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
-import { Filtres, Recherche, Stat } from "@/app/composants/suivi";
+import { Filtres, Stat } from "@/app/composants/suivi";
+import { RechercheVive } from "@/app/composants/recherche-vive";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { MarquerApresSuppression, QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
@@ -263,10 +264,11 @@ export default async function Stock({
           Inventaire
         </Link>
 
-        <Recherche
+        <RechercheVive
           valeur={q}
+          base="/stock"
+          garde={{ etat, lieu, metier }}
           placeholder="Chercher un produit…"
-          caches={{ etat, lieu, metier }}
         />
 
         {/* L'état de l'article : ce qu'on regarde le plus souvent, donc visible
