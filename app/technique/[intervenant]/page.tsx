@@ -659,6 +659,32 @@ export default async function Tournee({
       update anomalies set statut = 'a_faire', maj_le = now()
       where id = ${anomalie} and statut in ('en_cours', 'attente_validation')`;
     revalidatePath(`/technique/${encodeURIComponent(nom)}`);
+
+    // Décocher la dernière anomalie de « voir mes déclarées » laisse cet
+    // écran vide : on en revient à la liste de ce qui reste à faire. Le
+    // calcul reprend exactement la définition de `traitee` (ligne ~278) —
+    // une intervention dont le DERNIER avis ne vient pas de la gouvernante
+    // sur une anomalie encore ouverte.
+    if (vue === "faites") {
+      const [{ n }] = await sql<{ n: string }[]>`
+        select count(*) as n
+        from interventions i
+        join anomalies a on a.id = i.anomalie_id
+        where i.tournee_id = ${tournee.id}
+          and not (
+            a.statut in ('en_cours', 'a_faire')
+            and (select v.acteur::text from validations v
+                  where v.intervention_id = i.id order by v.decide_le desc limit 1) = 'gouvernante'
+          )`;
+      if (Number(n) === 0) {
+        redirect(
+          versLaListe(nom, passe, {
+            ...(choisi ? { etage: choisi } : {}),
+            ...(q ? { q } : {}),
+          }) as Route,
+        );
+      }
+    }
   }
 
   /**
