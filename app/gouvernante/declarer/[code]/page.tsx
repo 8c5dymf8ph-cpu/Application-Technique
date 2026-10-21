@@ -84,13 +84,14 @@ export default async function Declarer({
     jour?: string;
     presse?: string;
     mot?: string;
+    fusionne?: string;
   }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
 
   const { code } = await params;
-  const { q = "", choix, jour, presse, mot } = await searchParams;
+  const { q = "", choix, jour, presse, mot, fusionne } = await searchParams;
   /**
    * La date du constat.
    *
@@ -276,12 +277,37 @@ export default async function Declarer({
     // retape pas, et c'est là qu'on l'a en tête.
     const mot = String(donnees.get("mot") ?? "").trim().slice(0, 600);
 
-    // `on conflict` : le libellé est unique. Si quelqu'un vient de l'ajouter,
-    // on récupère le sien plutôt que de refuser — c'est le même problème.
+    // Un libellé devenu INACTIF n'a qu'un seul chemin : une fusion (0030/0031)
+    // — jamais une suppression. Le recréer à l'identique le ressusciterait en
+    // silence, et déferait la fusion sans que personne l'ait demandé : c'est
+    // exactement « télérupteur de la 3 », fusionné dans un autre libellé puis
+    // redéclaré sous son ancien nom parce que la recherche, elle, l'ignore
+    // (fn_rechercher_catalogue ne voit que les actifs — rien ne dit qu'il a
+    // existé). On retrouve où il est parti et on propose CE libellé-là.
+    const [existant] = await sql<{ id: string; actif: boolean }[]>`
+      select id, actif from catalogue_anomalies where libelle = ${libelle}`;
+
+    if (existant && !existant.actif) {
+      const [fusion] = await sql<{ survivant_id: string; survivant_libelle: string }[]>`
+        select survivant_id, survivant_libelle
+          from fusions_catalogue
+         where ${existant.id} = any(autres_ids) and annulee_le is null
+         order by fusionne_le desc
+         limit 1`;
+      redirect(
+        `/gouvernante/declarer/${encodeURIComponent(lieu)}?q=${encodeURIComponent(
+          fusion?.survivant_libelle ?? libelle,
+        )}${fusion ? `&choix=${fusion.survivant_id}` : ""}&fusionne=${encodeURIComponent(libelle)}`,
+      );
+    }
+
+    // `on conflict` : le libellé est unique. Si quelqu'un vient de l'ajouter
+    // (actif, donc jamais le cas ci-dessus), on récupère le sien plutôt que
+    // de refuser — c'est le même problème.
     const [entree] = await sql<{ id: string }[]>`
       insert into catalogue_anomalies (libelle, type_id, cree_par)
       values (${libelle}, ${type}::uuid, ${profil_.id})
-      on conflict (libelle) do update set actif = true
+      on conflict (libelle) do update set libelle = excluded.libelle
       returning id`;
 
     // On revient sur l'écran avec le libellé cherché ET choisi : le
@@ -422,6 +448,20 @@ export default async function Declarer({
       />
 
       <div className="px-5 py-5 flex flex-col gap-6">
+        {/* « télérupteur » retapé après avoir été fusionné dans un autre
+            libellé : on ne l'a pas ressuscité, on propose le bon à la place
+            (règle 8/9bis — le catalogue fermé n'a de sens que si une fusion
+            tient). */}
+        {fusionne && (
+          <div className="rounded-card bg-amber-soft px-4 py-3 flex flex-col gap-1">
+            <p className="text-[13.5px] text-amber leading-snug text-pretty">
+              « {fusionne} » a déjà été fusionné dans un autre libellé du catalogue — ce n’est
+              plus un problème à part.
+              {choix ? " C’est celui-ci qui est proposé ci-dessous." : ""}
+            </p>
+          </div>
+        )}
+
         {/* Ce qui reste à traiter ici — rien d'autre */}
         <section className="flex flex-col gap-2.5">
           <div className="flex items-baseline justify-between gap-3">
