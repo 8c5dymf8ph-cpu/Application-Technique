@@ -838,9 +838,12 @@ export default async function FicheProduit({
                 </span>
               </>
             )}
-            <button className="h-[48px] rounded-[12px] bg-green text-white font-display font-semibold text-[15px]">
+            <BoutonEnvoi
+              pendant="Enregistrement…"
+              className="h-[48px] rounded-[12px] bg-green text-white font-display font-semibold text-[15px]"
+            >
               Enregistrer l’entrée
-            </button>
+            </BoutonEnvoi>
           </form>
         </Depliant>
 
@@ -880,9 +883,12 @@ export default async function FicheProduit({
               placeholder="Ce qu’il faut savoir (facultatif)"
               className="w-full h-[44px] px-3 rounded-[11px] border border-line bg-surface text-[15px] placeholder:text-ink-faint"
             />
-            <button className="h-[48px] rounded-[12px] bg-surface-muted border border-line font-display font-semibold text-[15px]">
+            <BoutonEnvoi
+              pendant="Enregistrement…"
+              className="h-[48px] rounded-[12px] bg-surface-muted border border-line font-display font-semibold text-[15px]"
+            >
               Enregistrer l’ajustement
-            </button>
+            </BoutonEnvoi>
             <p className="text-[11px] text-ink-faint text-pretty leading-snug">
               Un comptage complet se fait depuis l’inventaire. Ici, c’est la correction au fil de
               l’eau — une casse, une erreur — et elle laisse une trace.

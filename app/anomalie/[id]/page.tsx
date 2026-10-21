@@ -358,9 +358,12 @@ export default async function DetailAnomalie({
         <form action={commenter} className="flex flex-col gap-3 border-t border-line pt-5">
           <ChampCommentaire libelle="Ajouter un commentaire" />
           <ChampPhotos libelle="Ajouter une photo" />
-          <button className="h-[50px] rounded-[14px] bg-plum text-white font-display font-semibold text-[15px]">
+          <BoutonEnvoi
+            pendant="Envoi…"
+            className="h-[50px] rounded-[14px] bg-plum text-white font-display font-semibold text-[15px]"
+          >
             Ajouter au fil
-          </button>
+          </BoutonEnvoi>
         </form>
 
         {modifiable && (

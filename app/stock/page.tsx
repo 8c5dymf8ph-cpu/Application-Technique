@@ -10,6 +10,7 @@ import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
 import { QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { MenuFiltre } from "@/app/composants/menu-filtre";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { categoriesExistantes, normaliserCategorie } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
@@ -448,9 +449,12 @@ export default async function Stock({
                 </div>
               </details>
 
-              <button className="h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[15px]">
+              <BoutonEnvoi
+                pendant="Création…"
+                className="h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[15px]"
+              >
                 Créer le produit
-              </button>
+              </BoutonEnvoi>
               <p className="text-[11px] text-ink-faint text-pretty leading-snug">
                 La photo, le fournisseur et la première entrée de stock se règlent ensuite sur
                 sa fiche — on y arrive directement.

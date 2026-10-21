@@ -9,6 +9,7 @@ import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Filtres } from "@/app/composants/suivi";
 import { MarquerApresSuppression, QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { VoirDocument } from "@/app/composants/fenetre";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 
 export const dynamic = "force-dynamic";
 
@@ -194,9 +195,12 @@ export default async function Commandes({
               </option>
             ))}
           </select>
-          <button className="h-[50px] rounded-[14px] bg-plum text-white font-display font-semibold text-[15.5px]">
+          <BoutonEnvoi
+            pendant="Création…"
+            className="h-[50px] rounded-[14px] bg-plum text-white font-display font-semibold text-[15.5px]"
+          >
             Créer la commande
-          </button>
+          </BoutonEnvoi>
         </form>
       </div>
     </main>
