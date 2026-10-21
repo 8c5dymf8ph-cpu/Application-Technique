@@ -185,6 +185,24 @@ export default async function TraiterAnomalie({
          )
        group by m.produit_id
     ),
+    -- Un deuxième chemin, pour quand « déjà servi » ne dit rien — un
+    -- problème jamais encore réparé ici n'a aucun historique. « il faut
+    -- changer le flexible de douche » et le produit « Flexible de douche »
+    -- partagent des mots : ce recoupement vaut mieux que l'ordre alphabétique
+    -- ou la popularité générale de l'hôtel, qui ne savent rien du problème.
+    -- Les mots de moins de 4 lettres et les mots de liaison les plus
+    -- courants sont écartés : ils ne distinguent rien.
+    mots_anomalie as (
+      select distinct mot from unnest(
+        regexp_split_to_array(
+          lower(${anomalie.description}), '[^a-zàâäéèêëïîôöùûüç0-9]+')
+      ) as mot
+      where length(mot) >= 4
+        and mot not in ('faut', 'pour', 'avec', 'dans', 'sous', 'vers',
+                        'chez', 'mais', 'donc', 'cette', 'leur', 'leurs',
+                        'tout', 'tous', 'toute', 'toutes', 'elle', 'elles',
+                        'être', 'avoir', 'fait', 'faire')
+    ),
     courant as (
       select m.produit_id, count(*) as fois
         from mouvements_stock m
@@ -195,13 +213,17 @@ export default async function TraiterAnomalie({
            coalesce((select array_agg(x.chemin order by x.principale desc, x.ordre,
                                       x.ajoutee_le)
                        from photos_produit x where x.produit_id = p.id),
-                    '{}') as photos
+                    '{}') as photos,
+           exists (
+             select 1 from mots_anomalie ma where lower(p.designation) like '%' || ma.mot || '%'
+           ) as recoupe_mots
       from v_stock_produits p
       left join deja_servi d on d.produit_id = p.id
       left join courant   c on c.produit_id = p.id
      where p.actif
        and (${q} = '' or p.designation ilike ${"%" + q + "%"} or p.code ilike ${"%" + q + "%"})
      order by (d.produit_id is not null) desc, d.fois desc nulls last,
+              recoupe_mots desc,
               p.stock > 0 desc, c.fois desc nulls last, p.designation
      limit 24`;
 
