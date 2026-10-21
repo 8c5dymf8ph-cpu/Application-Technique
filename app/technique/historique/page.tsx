@@ -6,6 +6,7 @@ import { euros, jourISO } from "@/lib/domaine";
 import { Entete, Vide, Confirmation } from "@/app/composants/ui";
 import { MarquerApresSuppression } from "@/app/composants/quitter-si-revenu";
 import { Filtres, Recherche, Stat, Surligne } from "@/app/composants/suivi";
+import { VoirDocument } from "@/app/composants/fenetre";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ type Lot = {
   /** La facture qui couvre ce passage, et combien de journées elle couvre. */
   facture: string | null;
   facture_id: string | null;
+  facture_fichier: string | null;
   nb_journees_couvertes: number;
 };
 
@@ -156,11 +158,11 @@ export default async function PassagesEtFactures({
                t.reprise, t.mail_recap_envoye_le,
                (select string_agg(distinct r.emplacement, ', ' order by r.emplacement)
                   from v_recap_interventions r where r.tournee = t.reference) as emplacements,
-               fa.reference as facture, fa.id as facture_id,
+               fa.reference as facture, fa.id as facture_id, fa.fichier_url as facture_fichier,
                coalesce(fa.nb_journees, 0)::int as nb_journees_couvertes
         from v_tournees t
         left join lateral (
-          select f.id, f.reference,
+          select f.id, f.reference, f.fichier_url,
                  (select count(distinct i2.date_intervention)
                     from facture_interventions fi2
                     join interventions i2 on i2.id = fi2.intervention_id
@@ -726,12 +728,17 @@ export default async function PassagesEtFactures({
                       </Link>
                         {/* La facture, d'un coup d'œil : ce qui est couvert et
                             ce qui attend encore sa pièce ne se distinguaient
-                            pas. Un lien À PART : elle mène à la facture — la
-                            première journée qu'elle couvre — pas forcément à
-                            CE passage-ci. */}
-                        {l.facture_id ? (
-                          <Link
-                            href={`/technique/facture/${l.facture_id}` as Route}
+                            pas. Elle s'ouvre SUR PLACE quand la pièce est
+                            jointe — un lien vers /technique/facture/[id]
+                            mène au passage qu'elle couvre (règle 16duodecies),
+                            ce qui n'apprend rien ici : on est déjà sur UN
+                            passage, et on veut voir la pièce, pas y revenir.
+                            Sans pièce encore jointe, le lien vers le passage
+                            qui la couvre reste : c'est là qu'on l'ajoute. */}
+                        {l.facture_id && l.facture_fichier ? (
+                          <VoirDocument
+                            chemin={l.facture_fichier}
+                            titre={`Facture ${l.facture ?? "sans numéro"}`}
                             className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-soft text-green active:opacity-70"
                           >
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
@@ -744,6 +751,19 @@ export default async function PassagesEtFactures({
                             {l.nb_journees_couvertes > 1
                               ? ` · ${l.nb_journees_couvertes} journées`
                               : ""}
+                          </VoirDocument>
+                        ) : l.facture_id ? (
+                          <Link
+                            href={`/technique/facture/${l.facture_id}` as Route}
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-soft text-green active:opacity-70"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                 strokeLinejoin="round" aria-hidden>
+                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 3v5h5" />
+                            </svg>
+                            {l.facture ?? "facturé"} — sans pièce
                           </Link>
                         ) : (
                           l.cout_total > 0 && (
