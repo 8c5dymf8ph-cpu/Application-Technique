@@ -402,9 +402,7 @@ export default async function TraiterAnomalie({
 
   // Un petit nombre d'abord — « ce qui a déjà servi pour ce problème vient
   // en premier » (le tri de la requête), donc le bon article est souvent
-  // déjà dedans — le reste se déplie sur demande (voir plus bas) plutôt que
-  // de tout défiler pour atteindre « C'est fait ».
-  const GALERIE_VISIBLE = 6;
+  // déjà dedans.
   const disponibles = produits.filter((p) => !choisis.includes(p.id));
 
   function ligneArticle(p: Produit) {
@@ -451,47 +449,6 @@ export default async function TraiterAnomalie({
           </Link>
         )}
       </li>
-    );
-  }
-
-  /**
-   * La galerie, par pages de `GALERIE_VISIBLE`.
-   *
-   * Un `<details>` par page, chacun ne dépliant que la page SUIVANTE — pas
-   * le reste entier — via un appel récursif sur ce qu'il y a après. Les
-   * noms de classe Tailwind doivent être des chaînes LITTÉRALES pour que
-   * l'outil les génère (un `group/plus${n}` construit à l'exécution ne
-   * produirait aucune règle CSS) : chaque page garde donc la même flèche,
-   * sans bouton intermédiaire pour la replier — inutile de toute façon pour
-   * un défilement qui s'empile plutôt qu'il ne se referme. Une simple
-   * flèche suffit : « une » page de plus n'a pas besoin d'être précisée,
-   * et elle réapparaît d'elle-même au bas des six articles qu'elle vient
-   * de révéler, pour la page suivante.
-   */
-  function blocGalerie(items: Produit[]): React.ReactNode {
-    const page = items.slice(0, GALERIE_VISIBLE);
-    const reste = items.slice(GALERIE_VISIBLE);
-    const nVoir = Math.min(GALERIE_VISIBLE, reste.length);
-    return (
-      <>
-        <ul className="flex flex-col gap-1.5 -mx-1 px-1">{page.map(ligneArticle)}</ul>
-        {reste.length > 0 && (
-          <details className="mt-1.5">
-            <summary
-              aria-label={`Voir ${nVoir} article${nVoir > 1 ? "s" : ""} de plus`}
-              className="list-none flex items-center justify-center py-1 cursor-pointer"
-            >
-              <span className="w-9 h-9 rounded-full bg-plum-soft grid place-items-center">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#453A6E"
-                     strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </span>
-            </summary>
-            <div className="pt-1.5">{blocGalerie(reste)}</div>
-          </details>
-        )}
-      </>
     );
   }
 
@@ -677,24 +634,25 @@ export default async function TraiterAnomalie({
           </details>
           </div>
 
-          {/* La galerie avait sa propre hauteur bornée (`max-h`), pour
+          {/* La galerie avait sa propre hauteur bornée (`max-h`) pour
               atteindre « C'est fait » sans défiler toute une quarantaine
               d'articles — mais sur un vrai téléphone, `dvh` sur <main> ne
               tenait pas sa promesse : l'espace que le reste de l'écran
               devait reprendre restait vide, en bas, sous le bouton (voir
-              a437c6a, qui a fait défiler toute la page comme une seule
-              liste). Supprimer le `max-h` a réglé le vide, mais a ouvert
-              l'autre défaut qu'il évitait : tout défiler, même quarante
-              articles, pour atteindre le bouton. Un premier correctif
-              montrait six articles puis TOUT le reste d'un coup au premier
-              « voir plus » — sur une vraie galerie de quarante, un seul
-              appui ramenait le même défilement qu'avant.
-              Le compromis est donc un défilement PAR PAGES de six, chacune
-              dépliée par son propre « voir plus » (`blocGalerie`,
-              récursive) — jamais plus de six articles de plus d'un coup,
-              et toujours dans le MÊME flux de page (`<details>` imbriqués,
-              pas une zone de défilement à part). */}
-          {blocGalerie(disponibles)}
+              a437c6a). Deux correctifs par pages (« voir plus », puis
+              `blocGalerie` récursive par six) ont suivi — mais un bouton
+              pour voir la suite n'est pas un défilement, et c'est ce qu'on
+              voulait depuis le début.
+              La hauteur bornée revient donc, mais en PIXELS FIXES, jamais
+              en `dvh`/`vh` : c'est précisément l'unité dynamique qui s'est
+              décalée sur un vrai téléphone, pas la galerie elle-même. Un
+              nombre de pixels ne bouge pas avec la barre du navigateur, et
+              `overflow-y-auto` donne un défilement natif — fluide, sans
+              bouton — borné à sa propre zone, pendant que « C'est fait »
+              reste atteignable juste en dessous. */}
+          <ul className="flex flex-col gap-1.5 -mx-1 px-1 max-h-[430px] overflow-y-auto overscroll-contain">
+            {disponibles.map(ligneArticle)}
+          </ul>
           </details>
         </section>
       </div>
