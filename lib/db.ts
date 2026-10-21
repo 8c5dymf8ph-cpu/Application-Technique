@@ -18,6 +18,16 @@ export const sql =
     // matin heure française. Même raison que FUSEAU_HOTEL dans lib/domaine.ts,
     // côté base plutôt que côté JS.
     connection: { TimeZone: "Europe/Paris" },
+    // Vercel se connecte à Supabase par le POOLER (transaction mode,
+    // Supavisor/PgBouncer) : chaque requête peut atterrir sur une connexion
+    // physique différente d'une fois sur l'autre. Les requêtes préparées de
+    // `postgres` sont posées sur UNE connexion et appelées depuis une autre —
+    // Postgres répond alors « prepared statement does not exist » ou refuse
+    // d'en recréer une qui existe déjà ailleurs. L'erreur ne dépend que de
+    // quelle connexion le pooler a choisi ce coup-ci : exactement
+    // « parfois », jamais à coup sûr. On désactive la préparation, comme le
+    // recommande Supabase pour tout client qui passe par le pooler.
+    prepare: false,
     // Les vues de calcul renvoient des numeric ; on les veut en nombres et non
     // en chaînes, sinon chaque addition côté interface serait une concaténation.
     types: {
