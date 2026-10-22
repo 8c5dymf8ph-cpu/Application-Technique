@@ -42,11 +42,18 @@ export function MenuFiltre({
   titre,
   actif,
   choix,
+  defaut,
 }: {
   icone: "tri" | "filtre" | "lieu" | "metier";
   titre: string;
   actif: string;
   choix: { valeur: string; libelle: string; nombre?: number; href: string }[];
+  /**
+   * La valeur qui ne filtre rien. Quand on s'en écarte, le bouton passe en
+   * couleur : une liste raccourcie doit se voir AVANT de lire chaque libellé,
+   * sinon on croit qu'il manque des produits.
+   */
+  defaut?: string;
 }) {
   const fenetre = useRef<HTMLDialogElement>(null);
   const [recherche, setRecherche] = useState("");
@@ -65,7 +72,11 @@ export function MenuFiltre({
           fenetre.current?.showModal();
         }}
         aria-label={`${titre} : ${courant?.libelle ?? actif}. Changer`}
-        className="h-[38px] pl-3 pr-3.5 rounded-pill border border-line bg-surface text-[13px] text-ink-soft flex items-center gap-2"
+        className={`h-[38px] pl-3 pr-3.5 rounded-pill border text-[13px] flex items-center gap-2 ${
+          defaut !== undefined && actif !== defaut
+            ? "bg-plum-soft border-plum text-plum font-medium"
+            : "bg-surface border-line text-ink-soft"
+        }`}
       >
         {icone === "tri" && (
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"

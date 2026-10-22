@@ -5,7 +5,7 @@ import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, peutValider } from "@/lib/domaine";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
-import { Filtres, Stat } from "@/app/composants/suivi";
+import { Stat } from "@/app/composants/suivi";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { Depliant } from "@/app/composants/depliant";
 import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
@@ -271,31 +271,35 @@ export default async function Stock({
           placeholder="Chercher un produit…"
         />
 
-        {/* L'état de l'article : ce qu'on regarde le plus souvent, donc visible
-            sans rien ouvrir. */}
-        <Filtres
-          actif={etat}
-          choix={[
-            { valeur: "tous", libelle: "Tous", nombre: c.produits, href: lien("etat", "tous") },
-            { valeur: "alertes", libelle: "Sous le seuil", nombre: c.alertes, href: lien("etat", "alertes") },
-            { valeur: "rupture", libelle: "À zéro", nombre: c.rupture, href: lien("etat", "rupture") },
-            ...(retires > 0
-              ? [{ valeur: "retires", libelle: "Retirés", nombre: retires, href: lien("etat", "retires") }]
-              : []),
-          ]}
-        />
-
-        {/* Les deux colonnes de la liste de Miguel : le rayon et le métier.
-            Elles se croisent — « plomberie » dans « salle de bain ». Chacune
-            derrière une icône plutôt qu'une rangée de boutons : un rayon,
-            à lui seul, peut en compter une douzaine. */}
-        <div className="flex gap-2">
+        {/* Les trois filtres sur UNE ligne, comme sur l'écran des dossiers :
+            l'état, le rayon, le métier. Ils se croisent — « plomberie » dans
+            « salle de bain », sous le seuil. Chaque bouton dit son choix en
+            clair (« Tous les rayons », pas « Tous ») et passe en couleur dès
+            qu'il filtre : une liste raccourcie se voit avant de lire. La
+            rangée de pastilles de l'état prenait une ligne de plus pour un
+            choix qu'on change rarement. */}
+        <div className="flex flex-wrap gap-2">
+          <MenuFiltre
+            icone="filtre"
+            titre="État"
+            actif={etat}
+            defaut="tous"
+            choix={[
+              { valeur: "tous", libelle: "Tous les produits", nombre: c.produits, href: lien("etat", "tous") },
+              { valeur: "alertes", libelle: "Sous le seuil", nombre: c.alertes, href: lien("etat", "alertes") },
+              { valeur: "rupture", libelle: "À zéro", nombre: c.rupture, href: lien("etat", "rupture") },
+              ...(retires > 0
+                ? [{ valeur: "retires", libelle: "Retirés", nombre: retires, href: lien("etat", "retires") }]
+                : []),
+            ]}
+          />
           <MenuFiltre
             icone="lieu"
             titre="Rayon"
             actif={lieu}
+            defaut="tous"
             choix={[
-              { valeur: "tous", libelle: "Tous", nombre: c.produits, href: lien("lieu", "tous") },
+              { valeur: "tous", libelle: "Tous les rayons", nombre: c.produits, href: lien("lieu", "tous") },
               ...familles.map((f) => ({
                 valeur: f.cle,
                 libelle: f.lieu,
@@ -308,8 +312,9 @@ export default async function Stock({
             icone="metier"
             titre="Métier"
             actif={metier}
+            defaut="tous"
             choix={[
-              { valeur: "tous", libelle: "Tous", nombre: c.produits, href: lien("metier", "tous") },
+              { valeur: "tous", libelle: "Tous les métiers", nombre: c.produits, href: lien("metier", "tous") },
               ...metiers_filtre.map((m) => ({
                 valeur: m.cle,
                 libelle: m.metier,
@@ -318,7 +323,22 @@ export default async function Stock({
               })),
             ]}
           />
+          {(etat !== "tous" || lieu !== "tous" || metier !== "tous") && (
+            <Link
+              href={`/stock${q ? `?${new URLSearchParams({ q })}` : ""}` as Route}
+              replace
+              scroll={false}
+              className="h-[38px] px-3.5 rounded-pill text-[13px] text-plum underline underline-offset-4 flex items-center"
+            >
+              Effacer
+            </Link>
+          )}
         </div>
+        {(etat !== "tous" || lieu !== "tous" || metier !== "tous" || terme) && (
+          <p className="text-[12.5px] text-ink-faint -mt-1.5">
+            {produits.length} produit{produits.length > 1 ? "s" : ""} sur {c.produits}
+          </p>
+        )}
 
         {administre && (
           <Depliant titre="Ajouter un produit">

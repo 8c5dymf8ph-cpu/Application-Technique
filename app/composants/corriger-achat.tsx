@@ -78,7 +78,18 @@ export function CorrigerAchat({
           if (e.target === fenetre.current) fenetre.current?.close();
         }}
       >
-        <form action={action} className="flex flex-col gap-3 p-5">
+        {/* Enregistrer referme la fenêtre : on revient sur la fiche, là où
+            l'on était, l'entrée corrigée sous les yeux. Sans ça, la fenêtre
+            restait ouverte, vidée par l'envoi, et on croyait être encore
+            dans le formulaire. Un échec (facture refusée) redirige, lui,
+            vers le bandeau qui le dit. */}
+        <form
+          action={async (donnees) => {
+            await action(donnees);
+            fenetre.current?.close();
+          }}
+          className="flex flex-col gap-3 p-5"
+        >
           <input type="hidden" name="mouvement_id" value={mouvementId} />
           <div className="flex items-start gap-3">
             <p className="grow font-display font-semibold text-[16.5px] leading-snug">
