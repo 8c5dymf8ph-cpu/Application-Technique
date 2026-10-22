@@ -1,47 +1,77 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
- * La vraie hauteur de l'écran, mesurée — pas devinée par une unité CSS.
+ * La vraie hauteur de l'écran, mesurée — pas devinée par une unité CSS, et
+ * FIGÉE une fois posée.
  *
- * `100dvh` promet de suivre la barre de Safari quand elle se cache ou
- * reparaît, mais sur un vrai iPhone elle se RECALCULE à l'instant précis où
- * le défilement s'arrête — exactement le moment où la barre reprend sa
- * place. Pendant qu'on défile, la barre est cachée et `dvh` vaut la grande
- * valeur : tout semble juste. Dès que le doigt se lève, la barre revient,
- * `dvh` retombe à la petite valeur, et tout ce qui comptait sur elle
- * (hauteur minimale de la page, colonne d'onglets) se redessine d'un coup —
- * le vide sous le bouton réapparaît, ou le bouton recouvre la liste.
+ * Premier essai : mettre à jour `--h-reelle` sur chaque `resize` de
+ * `visualViewport`. Faux calcul — c'est exactement ce que fait `dvh`, pour
+ * la même raison. La barre de Safari qui se cache en défilant vers le bas
+ * et qui REVIENT en défilant vers le haut déclenche elle aussi ce
+ * `resize`, en continu pendant son animation : « ce n'est pas figé, donc
+ * l'espace réapparaît » dès qu'on remonte un peu dans la liste.
  *
- * Deux tentatives l'ont montré : `h-dvh` sur la coque entière, puis
- * `fixed inset-0`, portent toutes les deux ce même défaut parce qu'elles
- * demandent au NAVIGATEUR de recalculer une taille d'écran pendant qu'elle
- * change. La mesure, elle, ne recalcule que quand on lui dit de le faire —
- * au chargement, et sur `resize` (Safari ne déclenche PAS cet événement
- * pendant un simple défilement, seulement quand sa barre finit de bouger).
- * `visualViewport` est l'API faite pour ça : elle existe précisément parce
- * que `window.innerHeight` a les mêmes trous que `dvh` sur ce point.
+ * Et prendre la DERNIÈRE valeur mesurée a un second défaut, pire que le
+ * premier : si elle est mesurée pendant que la barre est cachée (la
+ * grande valeur), tout ce qui s'appuie dessus — la colonne d'étages —
+ * devient plus haut que l'écran RÉELLEMENT visible une fois la barre
+ * revenue. Un élément `sticky` plus haut que le viewport ne peut pas
+ * montrer sa fin tant qu'il est collé : ses derniers onglets (sous-sol)
+ * restent hors champ jusqu'à ce que le défilement atteigne le bas de la
+ * liste et le décolle.
  *
- * Posé une fois, dans la mise en page : la variable `--h-reelle` est
- * disponible partout, mais seul l'écran qui en a besoin la réclame
- * (`min-h-[var(--h-reelle)]`, `h-[var(--h-reelle)]`) — les autres gardent
- * `min-h-dvh`, qui ne leur a jamais posé ce problème.
+ * La bonne mesure est donc double : on observe un court instant après le
+ * montage (le temps que la barre de Safari se stabilise), on retient la
+ * PLUS PETITE valeur vue pendant cette fenêtre — jamais trop haut, au pire
+ * un peu de place en plus quand la barre est cachée — puis on FIGE
+ * `--h-reelle` et on arrête d'écouter la hauteur. On ne la reprend que sur
+ * un vrai changement, signalé par la LARGEUR qui bouge — une rotation, un
+ * iPad qui change de disposition — jamais un simple défilement, qui ne
+ * change que la hauteur.
  */
 export function HauteurReelle() {
+  const largeurConnue = useRef<number | null>(null);
+
   useEffect(() => {
-    const mesurer = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty("--h-reelle", `${h}px`);
+    let min = Infinity;
+    let minuteur: ReturnType<typeof setTimeout> | null = null;
+
+    const figer = () => {
+      document.documentElement.style.setProperty("--h-reelle", `${min}px`);
+      largeurConnue.current = window.innerWidth;
     };
-    mesurer();
-    window.visualViewport?.addEventListener("resize", mesurer);
-    window.addEventListener("resize", mesurer);
-    window.addEventListener("orientationchange", mesurer);
+
+    const observer = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      if (h < min) min = h;
+      if (minuteur) clearTimeout(minuteur);
+      // 600 ms sans nouvelle mesure plus petite : la barre a fini de bouger.
+      minuteur = setTimeout(figer, 600);
+    };
+
+    const auResize = () => {
+      // Une rotation ou un changement de disposition change la LARGEUR ;
+      // la barre de Safari, elle, ne touche qu'à la hauteur. Ignorer l'un
+      // pour ne réagir qu'à l'autre évite de reprendre la mesure à chaque
+      // simple défilement.
+      if (largeurConnue.current !== null && window.innerWidth === largeurConnue.current) {
+        return;
+      }
+      min = Infinity;
+      observer();
+    };
+
+    observer();
+    window.visualViewport?.addEventListener("resize", auResize);
+    window.addEventListener("resize", auResize);
+    window.addEventListener("orientationchange", auResize);
     return () => {
-      window.visualViewport?.removeEventListener("resize", mesurer);
-      window.removeEventListener("resize", mesurer);
-      window.removeEventListener("orientationchange", mesurer);
+      if (minuteur) clearTimeout(minuteur);
+      window.visualViewport?.removeEventListener("resize", auResize);
+      window.removeEventListener("resize", auResize);
+      window.removeEventListener("orientationchange", auResize);
     };
   }, []);
 
