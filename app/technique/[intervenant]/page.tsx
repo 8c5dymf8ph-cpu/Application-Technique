@@ -775,12 +775,23 @@ export default async function Tournee({
       <div className="flex grow">
         {/* Les étages, sur tout le bord, dans l'ordre du bâtiment — collés
             en haut pendant que la liste défile à côté, et non plus sur leur
-            propre défilement interne. */}
+            propre défilement interne.
+            La taille est bonne — « le menu sur le côté est bien
+            paramétré » — mais remonter dans la liste fait REVENIR la barre
+            du bas de Safari, qui RECOUVRE le dernier onglet (sous-sol) sans
+            que rien, côté CSS, ne prévienne de sa hauteur : elle se pose
+            par-dessus la page, elle ne la rétrécit pas. `--h-reelle` ne
+            peut pas le savoir à l'avance ; on réserve donc une marge fixe
+            en bas, pour qu'aucun onglet ne finisse jamais sous cette barre,
+            qu'elle soit là ou non. */}
         {uniques.length > 0 && (
           <nav
             aria-label="Étages"
             className="sticky top-0 self-start shrink-0 flex flex-col gap-[3px] py-1.5"
-            style={{ height: "var(--h-reelle)" }}
+            style={{
+              height:
+                "calc(var(--h-reelle) - max(96px, env(safe-area-inset-bottom) + 56px))",
+            }}
           >
             <Link
               replace
