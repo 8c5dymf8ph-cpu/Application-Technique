@@ -741,19 +741,23 @@ export default async function Tournee({
   }
 
   return (
-    /* Une coque, pas une page qui défile : l'en-tête et la colonne d'étages
-       restent, seule la liste bouge. C'est la seule façon pour les bandes de
-       tenir tout le bord de l'écran, du haut jusqu'en bas.
-       `h-dvh` posait un défaut à deux visages sur un vrai téléphone : tantôt
-       trop court (la barre « Fin d'intervention » recouvrait la liste),
-       tantôt trop long (un vide restait sous le bouton) — exactement ce
-       qu'on attend d'une hauteur dynamique qui ne se recalcule pas de façon
-       fiable à chaque fois que la barre de Safari se cache ou reparaît en
-       faisant défiler. `fixed inset-0` ne dépend d'aucune unité de
-       viewport : il colle aux quatre bords de l'écran RÉEL, à chaque
-       instant — la technique la plus ancienne, et la plus sûre, pour
-       remplir vraiment l'écran sur mobile. */
-    <main className="fixed inset-0 overflow-hidden flex flex-col max-w-md mx-auto">
+    /* Une page qui défile normalement, comme toutes les autres de
+       l'application — PAS une coque hors du flot.
+       Deux tentatives précédentes (`h-dvh`, puis `fixed inset-0`) ont
+       chacune laissé le même défaut sur un vrai téléphone : un vide sous le
+       bouton, ou le bouton qui recouvre la liste. Les deux essaient de dire
+       au navigateur une hauteur EXACTE pour l'écran — et sur un vrai
+       téléphone, cette hauteur bouge pendant qu'on regarde (la barre de
+       Safari qui se cache ou reparaît), à un instant qu'aucune des deux
+       techniques ne rattrape de façon fiable.
+       La bonne hauteur, c'est celle que le document a déjà SANS qu'on la
+       lui dise : `min-h-dvh` pose un plancher, pas une boîte fermée, et le
+       reste de l'application vit déjà comme ça (`grep -rn min-h-dvh app/`
+       le confirme) sans ce défaut. La colonne d'étages reste `sticky`, pour
+       occuper toute la hauteur visible pendant qu'elle est collée en haut —
+       elle se décolle simplement en bas de la liste, comme n'importe quel
+       élément sticky. */
+    <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete
         titre={nom}
         sous_titre="Ce qu’il y a à traiter"
@@ -763,12 +767,14 @@ export default async function Tournee({
         retour={encadre ? "/technique/intervenants" : "/"}
       />
 
-      <div className="flex grow min-h-0">
-        {/* Les étages, sur tout le bord, dans l'ordre du bâtiment. */}
+      <div className="flex grow">
+        {/* Les étages, sur tout le bord, dans l'ordre du bâtiment — collés
+            en haut pendant que la liste défile à côté, et non plus sur leur
+            propre défilement interne. */}
         {uniques.length > 0 && (
           <nav
             aria-label="Étages"
-            className="shrink-0 flex flex-col gap-[3px] py-1.5"
+            className="sticky top-0 self-start h-dvh shrink-0 flex flex-col gap-[3px] py-1.5"
           >
             <Link
               replace
@@ -812,14 +818,12 @@ export default async function Tournee({
           </nav>
         )}
 
-        {/* Seule la liste défile, et de la place sous la dernière ligne : le
-            bouton d'ajout flotte au-dessus et masquait ce qui était en bas.
-            La dernière ligne visible se coupe toujours un peu en défilant —
-            c'est normal — mais SANS une marge franche avant la barre du bas
-            (« Fin d'intervention » ou « Reprendre »), elle semblait collée
-            dessous, tassée, plutôt que simplement en cours de défilement. */}
+        {/* La liste défile avec la page entière, plus avec elle-même : de
+            la place sous la dernière ligne, pour qu'elle ne semble pas
+            collée, tassée, contre la barre du bas (« Fin d'intervention »
+            ou « Reprendre »). */}
         <div
-          className="grow min-h-0 overflow-y-auto pl-3 pr-5 pt-3 pb-10 flex flex-col gap-4"
+          className="grow min-w-0 pl-3 pr-5 pt-3 pb-10 flex flex-col gap-4"
         >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
         {fait?.startsWith("passage-repris") && <Confirmation quoi={fait} />}
@@ -1253,13 +1257,11 @@ export default async function Tournee({
           jour, même lot — l'erreur ne coûte plus une journée. */}
       {/* Un seul emplacement, TOUJOURS monté, pour ce pied de page — son
           contenu change (rien, « Reprendre », « Fin d'intervention »), mais
-          le nœud reste. Avant : trois branches qui montaient et démontaient
-          un `<div>` entier selon ce qui venait d'être déclaré — ajouter ou
-          retirer un enfant d'une coque `fixed inset-0` juste au moment où la
-          barre de Safari peut être en train d'apparaître ou de se cacher,
-          c'est le moment précis où `fixed inset-0` lit une taille d'écran
-          encore en train de bouger. Ne plus jamais démonter cette coque : ne
-          varier que ce qu'il y a dedans, en classe comme en contenu. */}
+          le nœud reste : ajouter ou retirer un enfant juste au moment où un
+          geste vient de changer la page est le moment précis où un
+          navigateur mobile peut lire une taille d'écran encore en train de
+          bouger. Ne jamais démonter ce pied de page : ne varier que ce
+          qu'il y a dedans, en classe comme en contenu. */}
       <div
         className={`px-5 sticky bottom-0 bg-ground flex flex-col gap-2 ${
           tournee.cloturee_le || (faitesEnTout.length > 0 && !rendre)
@@ -1310,8 +1312,10 @@ export default async function Tournee({
       {/* Un appui de trop envoie un message irréversible pour qui le reçoit :
           rien ne doit permettre de glisser dessus sans le voir. Au milieu de
           l'écran, par-dessus tout, impossible à manquer ni à confondre avec
-          un autre bouton de la page. Cette boîte EST `fixed inset-0` elle-même
-          — la montrer ou la retirer ne touche pas à la coque principale. */}
+          un autre bouton de la page. Cette boîte est `fixed inset-0` —
+          toujours relative au vrai viewport puisque rien, ici, ne lui pose
+          d'ancêtre transformé — et la montrer ou la retirer ne touche pas
+          au reste de la page, qui défile normalement. */}
       {!tournee.cloturee_le && faitesEnTout.length > 0 && rendre && (
         <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-5">
           <div className="w-full max-w-md flex flex-col gap-3">
