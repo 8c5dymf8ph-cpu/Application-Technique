@@ -1089,6 +1089,15 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   seule fois, dans `globals.css`** : boutons, dépliants et tuiles se réduisent et s'éclaircissent,
   les liens s'éclaircissent seulement (un lien au milieu d'une phrase qui rétrécit fait sauter le
   texte). Ne pas repeindre ça écran par écran.
+- **Le mouvement se règle une fois, dans `globals.css`, et il respecte les réglages du téléphone.**
+  L'appui se marque à l'image même où le doigt se pose, le relâcher revient en souplesse. Les
+  fenêtres grandissent légèrement depuis le centre et repartent par le même chemin, sur un fond
+  qui s'assombrit ET se floute ; les dépliants font descendre leur contenu de leur titre. Avec
+  « Réduire les animations », la même information arrive par un fondu, sans agrandissement ni
+  pulsation ; avec « Réduire la transparence », un fond franc ; avec « Augmenter le contraste »,
+  les gris pâles et les filets se lisent. L'interlettrage suit la taille — resserré sur les grands
+  titres, aéré sous 12 px — et le texte courant utilise l'axe optique de Source Serif. Ne pas
+  reposer d'animation écran par écran.
 - **L'administration est un menu, pas un écran.** Tout y était posé bout à bout — l'état de la
   base, la file des courriels, le test du dépôt, le journal des suppressions, les destinataires
   — puis quatre tuiles tout en bas : « toutes les sous-menus en vrac ». On faisait défiler pour

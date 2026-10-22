@@ -3,7 +3,13 @@
 @tailwind utilities;
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* L'application dit elle-même qu'un appui a porté (plus bas) : le voile
+       gris que Safari pose sur tout ce qui se touche faisait doublon, et
+       arrivait en retard sur le nôtre. */
+    -webkit-tap-highlight-color: transparent;
+  }
   /* Mesurée par `HauteurReelle` (composants/hauteur-reelle.tsx), avant que
      le JS tourne ou s'il est bloqué : `100dvh` reste un repli raisonnable,
      jamais la source de vérité une fois la mesure posée. */
@@ -18,6 +24,22 @@
   .carte { @apply bg-surface border border-line rounded-card; }
   .etiquette { @apply text-[10px] uppercase tracking-[0.12em] text-ink-faint; }
   .titre { @apply font-display font-semibold text-ink; }
+}
+
+/* La typographie change avec la taille.
+ *
+ * Un même interlettrage pour 11 px et pour 30 px n'est juste pour aucun des
+ * deux : un grand titre se resserre, sinon ses lettres flottent ; un petit
+ * texte s'aère, sinon il s'empâte sur un écran de téléphone. Posé ici, une
+ * fois, à partir des tailles que les écrans emploient déjà. */
+.font-display:is([class*="text-[2"], [class*="text-[3"]) {
+  letter-spacing: -0.014em;
+}
+.font-display:is([class*="text-[17"], [class*="text-[18"], [class*="text-[19"]) {
+  letter-spacing: -0.006em;
+}
+:is([class*="text-[10"], [class*="text-[11"]):not(.etiquette) {
+  letter-spacing: 0.012em;
 }
 
 /* Un geste qui aboutit doit se voir : le bandeau de confirmation arrive en
@@ -88,10 +110,33 @@ a[class*="rounded-tile"]:active {
   transform: scale(0.985);
 }
 
+/* Instantané à l'appui, souple au relâcher.
+ *
+ * La réponse doit tomber sur l'image même où le doigt se pose : attendre
+ * 110 ms pour montrer qu'on a été touché, c'est déjà paraître lent. Au
+ * relâcher, en revanche, le bouton reprend sa place sans à-coup — une courbe
+ * qui part vite et se pose doucement, comme un ressort sans rebond. Une
+ * transition CSS repart de la valeur affichée : un second appui en plein
+ * retour ne fait pas sauter le bouton. */
 button, summary, a, [role="button"], label[data-cible] {
   transition:
-    transform 0.11s ease-out,
-    opacity 0.11s ease-out;
+    transform 0.32s cubic-bezier(0.2, 0.9, 0.25, 1),
+    opacity 0.32s cubic-bezier(0.2, 0.9, 0.25, 1);
+  touch-action: manipulation;
+}
+button:not(:disabled):active,
+summary:active,
+[role="button"]:active,
+label[data-cible]:active,
+a:active {
+  transition-duration: 0.04s;
+}
+
+/* Un appui long sur un bouton ne doit pas sélectionner son texte : on le
+   tient pour viser, pas pour copier. */
+button, summary, [role="button"], label[data-cible] {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Un bouton désactivé ne bouge pas : il dit déjà qu'il n'attend rien. */
@@ -120,3 +165,110 @@ input[type="time"] {
 /* Et il faut qu'il y ait quelque part où défiler : un écran qui s'arrête juste
  * sous son dernier champ ne peut pas le remonter. */
 .place-pour-le-calendrier { padding-bottom: 46vh; }
+
+/* Les fenêtres arrivent d'où elles partent.
+ *
+ * Elles apparaissaient d'un coup et disparaissaient de même : rien ne disait
+ * d'où elles venaient, et le fond basculait au noir sans transition. Elles
+ * grandissent maintenant légèrement depuis le centre en se dévoilant, et
+ * repartent par le même chemin — ce qui s'en va comme c'est venu se
+ * comprend sans y penser. Le fond s'assombrit ET se floute : l'écran
+ * derrière recule, on sait qu'on y revient.
+ *
+ * Une transition, pas une animation : elle repart de la valeur affichée, et
+ * une fenêtre refermée en pleine ouverture fait demi-tour sans saut. Les
+ * navigateurs qui ne savent pas animer la fermeture (Safari) referment d'un
+ * coup, comme avant. */
+dialog {
+  overscroll-behavior: contain;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.34s cubic-bezier(0.2, 0.9, 0.25, 1),
+    overlay 0.2s allow-discrete,
+    display 0.2s allow-discrete;
+}
+dialog:not([open]) {
+  opacity: 0;
+  transform: scale(0.96) translateY(6px);
+}
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+}
+dialog::backdrop {
+  -webkit-backdrop-filter: blur(5px) saturate(140%);
+  backdrop-filter: blur(5px) saturate(140%);
+  transition:
+    background-color 0.2s ease-out,
+    backdrop-filter 0.2s ease-out,
+    -webkit-backdrop-filter 0.2s ease-out,
+    overlay 0.2s allow-discrete,
+    display 0.2s allow-discrete;
+}
+@starting-style {
+  dialog[open]::backdrop {
+    background-color: transparent;
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+}
+
+/* Un dépliant qui s'ouvre montre ce qu'il contient en le faisant descendre
+   de son titre : le regard suit le mouvement jusqu'au contenu. */
+details[open] > :not(summary) {
+  animation: deplie 0.24s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+@keyframes deplie {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Mouvement réduit : la même information, sans déplacement.
+ *
+ * Ce n'est pas « plus rien ne bouge » : la case se remplit toujours de vert,
+ * le bandeau apparaît toujours, la fenêtre se dévoile toujours — par un
+ * fondu, sans agrandissement ni rebond, et sans pulsation qui tourne en
+ * boucle. */
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active,
+  summary:active,
+  [role="button"]:active,
+  label[data-cible]:active,
+  a.carte:active,
+  a[data-cible]:active,
+  a[class*="rounded-tile"]:active {
+    transform: none;
+  }
+  dialog:not([open]),
+  dialog { transform: none; }
+  @starting-style { dialog[open] { transform: none; } }
+  details[open] > :not(summary) { animation-name: fondu; }
+  .case-se-remplit,
+  .case-se-vide { animation-name: fondu; animation-timing-function: ease-out; }
+  .animate-pulse { animation: none; }
+  [class*="animate-[apparait"] { animation-name: fondu !important; }
+}
+@keyframes fondu { from { opacity: 0; } to { opacity: 1; } }
+
+/* Transparence réduite : un fond franc derrière les fenêtres, sans flou. */
+@media (prefers-reduced-transparency: reduce) {
+  dialog::backdrop {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgb(27 25 48 / 0.85);
+  }
+}
+
+/* Contraste renforcé : les filets et les textes discrets se lisent. Le gris
+   pâle des mentions secondaires et le filet des cartes sont choisis pour la
+   douceur ; ceux qui ont demandé plus de contraste en ont besoin. */
+@media (prefers-contrast: more) {
+  .text-ink-faint, .etiquette { color: #4F4B6B; }
+  .text-ink-soft { color: #2E2B47; }
+  .border-line, .carte { border-color: #8E8AA3; }
+  .text-white\/60, .text-white\/70, .text-white\/75 { color: #fff; }
+}

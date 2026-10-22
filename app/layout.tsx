@@ -10,9 +10,12 @@ const display = Playfair_Display({
   weight: ["500", "600", "700"],
   variable: "--font-display",
 });
+// Le texte courant est dessiné pour sa taille : Source Serif porte un axe
+// optique, qui ouvre les petites lettres et affine les grandes. Sans lui, la
+// même lettre sert à 11 px comme à 17 px, et les mentions s'empâtent.
 const body = Source_Serif_4({
   subsets: ["latin"],
-  weight: ["400", "600"],
+  axes: ["opsz"],
   variable: "--font-body",
 });
 
