@@ -275,6 +275,19 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
       "Passage supprimé. Ses anomalies restent dans l’hôtel, remises « à faire » — " +
       "c’est ce passage-ci qui a disparu, avec ses avis et ses sorties de stock.",
   },
+  "avis-non-rendu": {
+    ton: "amber",
+    texte:
+      "Rien n’a été enregistré : ce passage n’est plus rendu — il a été repris " +
+      "entre-temps. Réessayez une fois qu’il sera de nouveau clôturé.",
+  },
+  "avis-deja-tranche": {
+    ton: "amber",
+    texte:
+      "Rien n’a été enregistré : un avis existe déjà sur cette anomalie, sans " +
+      "nouvelle déclaration du technicien depuis — pour ne pas écraser une " +
+      "décision déjà prise.",
+  },
   "passage-repris": {
     ton: "green",
     texte:

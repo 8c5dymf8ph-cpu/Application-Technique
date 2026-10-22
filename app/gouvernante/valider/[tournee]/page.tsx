@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { euros, jourLong, peutValider, suitLesDossiers } from "@/lib/domaine";
-import { Entete, Indices, Vide } from "@/app/composants/ui";
+import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ChampPhotos, Vignettes } from "@/app/composants/photos";
 import { ApercuFil } from "@/app/composants/apercu-fil";
@@ -74,14 +74,17 @@ function quand(d: string | null): string {
 
 export default async function ValiderLot({
   params,
+  searchParams,
 }: {
   params: Promise<{ tournee: string }>;
+  searchParams: Promise<{ fait?: string }>;
 }) {
   const profil = await profilActif();
   if (!profil) redirect("/profil");
   if (!peutValider(profil.role)) redirect("/");
 
   const { tournee } = await params;
+  const { fait } = await searchParams;
 
   const [lot] = await sql<Lot[]>`
     select id, reference, date_tournee, intervenant, cloturee_le,
@@ -193,10 +196,47 @@ export default async function ValiderLot({
                  ('gouvernante', 'operations', 'admin')`
           )[0]?.id ?? profil_.id
         : profil_.id;
-    // Un lot non rendu ne se valide pas : le technicien est peut-être encore
-    // dans les étages, il peut revenir sur ce qu'il a coché. La liste ne le
-    // propose pas, mais un écran resté ouvert depuis avant la clôture, ou une
-    // adresse conservée, passerait à travers.
+    /**
+     * Un lot non rendu ne se valide pas : le technicien est peut-être encore
+     * dans les étages, il peut revenir sur ce qu'il a coché. La liste ne le
+     * propose pas, mais un écran resté ouvert depuis avant la clôture, ou une
+     * adresse conservée, passerait à travers — et l'INSERT ci-dessous, qui
+     * filtre ce cas dans son propre WHERE, le filtrait en SILENCE : l'avis
+     * semblait pris (l'écran ne disait rien de travers), rien n'était écrit,
+     * et l'anomalie restait « en attente » des jours durant sans qu'aucun
+     * message ne le dise. Exactement le défaut déjà nommé par les règles
+     * 7undecies/14quater pour une écriture qui se filtre d'elle-même : on le
+     * VÉRIFIE D'ABORD, pour pouvoir le dire, plutôt que de laisser
+     * l'insertion avaler le cas en silence.
+     */
+    const [etat] = await sql<{ cloturee: boolean }[]>`
+      select (t.cloturee_le is not null) as cloturee
+        from interventions i join tournees t on t.id = i.tournee_id
+       where i.id = ${intervention}`;
+    if (!etat?.cloturee) {
+      redirect(`/gouvernante/valider/${tournee}?fait=avis-non-rendu` as Route);
+    }
+
+    // Même principe pour l'autre filtre silencieux : un second avis DIFFÉRENT
+    // sur une anomalie déjà tranchée, sans nouvelle déclaration du technicien
+    // depuis, ne doit pas juste disparaître — « corriger » n'existe pas.
+    const [deja] = await sql<{ bloque: boolean }[]>`
+      select exists (
+        select 1 from validations vg
+         where vg.intervention_id = ${intervention} and vg.acteur = 'gouvernante'
+           and vg.decide_le >= coalesce(
+             (select max(vt.decide_le) from validations vt
+               where vt.intervention_id = ${intervention} and vt.acteur = 'technicien'),
+             vg.decide_le)
+      ) as bloque`;
+    if (deja?.bloque) {
+      redirect(`/gouvernante/valider/${tournee}?fait=avis-deja-tranche` as Route);
+    }
+
+    // Les deux vérifications ci-dessus couvrent les cas réels ; le WHERE
+    // ci-dessous reste le filet de sécurité qui écrit réellement — y compris
+    // contre un double appui qui soumettrait deux fois le même avis (un
+    // « déjà fait » silencieux, celui-là sans rien à annoncer).
     await sql`
       insert into validations (intervention_id, acteur, decision, utilisateur_id,
                                saisie_par, commentaire)
@@ -213,18 +253,6 @@ export default async function ValiderLot({
               and v.acteur = 'gouvernante'
               and v.decision = ${decision}::decision_validation
               and coalesce(v.commentaire, '') = coalesce(${mot}, ''))
-         /**
-          * Un écran resté affiché peut encore proposer les trois boutons
-          * sur une anomalie déjà tranchée — c'est tout l'écran du passage
-          * du 2 octobre qui l'a montré : une « validée » redevenait « en
-          * cours » d'un appui sur une page qui n'avait jamais vu la
-          * décision passer. Aucun écran ne propose aujourd'hui de revenir
-          * sur un avis déjà donné — « corriger » n'existe pas — donc un
-          * second avis DIFFÉRENT ne peut venir que de là. On ne l'accepte
-          * que si un nouveau « fait » du technicien l'a suivi : c'est
-          * exactement ce qui distingue une vraie reprise après refus
-          * (migration 0033) d'une resoumission accidentelle.
-          */
          and not exists (
            select 1 from validations vg
             where vg.intervention_id = ${intervention} and vg.acteur = 'gouvernante'
@@ -287,6 +315,7 @@ export default async function ValiderLot({
       />
 
       <div className="px-5 py-5 flex flex-col gap-4 grow">
+        <Confirmation quoi={fait} />
         {lignes.length === 0 && <Vide>Ce lot ne contient aucune anomalie traitée.</Vide>}
 
         {lignes.map((l) => {
