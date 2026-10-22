@@ -9,6 +9,7 @@ import { peutValider } from "@/lib/domaine";
 import { Entete } from "@/app/composants/ui";
 import { Depliant } from "@/app/composants/depliant";
 import { depot, verifierDepot } from "@/lib/stockage";
+import { mesurerRapidite } from "@/lib/rapidite";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export default async function EtatDeLApplication({
   const enAttente = etat.filter((c) => !c.prete);
   const fichiersEnAttente = await migrationsEnAttente();
   const ouVontLesFichiers = depot();
+  const vitesse = await mesurerRapidite();
+  const lent = vitesse.msParAllerRetour >= 40;
 
   /**
    * Le test du dépôt, à la demande.
@@ -75,6 +78,32 @@ export default async function EtatDeLApplication({
       <Entete titre="État de l’application" sous_titre={profil.nom} retour="/administration" />
 
       <div className="px-5 py-5 flex flex-col gap-5">
+        {/* La rapidité : un écran fait une dizaine de requêtes à la base, l'une
+            après l'autre. Ce chiffre multiplié par dix, c'est l'attente en
+            plus de la connexion de l'hôtel. */}
+        <section
+          className={`rounded-card px-4 py-3 flex flex-col gap-1 ${
+            lent ? "bg-amber-soft text-amber" : "bg-green-soft text-green"
+          }`}
+        >
+          <h2 className="titre text-[16px] text-inherit">Rapidité</h2>
+          <p className="text-[13px] leading-snug text-pretty">
+            Un aller-retour vers la base : <strong>{vitesse.msParAllerRetour} ms</strong>
+            {" "}— un écran en fait une dizaine.
+          </p>
+          <p className="text-[12.5px] leading-snug text-pretty">
+            Serveur : {vitesse.serveurLieu ?? vitesse.serveur ?? "poste local"}
+            {" · "}
+            Base : {vitesse.baseLieu ?? vitesse.base ?? "inconnue"}
+          </p>
+          {lent && vitesse.conseil && vitesse.serveur !== vitesse.conseil && (
+            <p className="text-[12.5px] leading-snug text-pretty">
+              Le serveur et la base sont loin l’un de l’autre. Dans <code>vercel.json</code>,
+              {" "}<code>&quot;regions&quot;: [&quot;{vitesse.conseil}&quot;]</code> les rapprocherait.
+            </p>
+          )}
+        </section>
+
         {/* Ce que la base sait faire. Sur son propre écran, la section est ce
             qu'on vient voir : elle s'ouvre. Repliée, elle demandait un appui
             de plus pour rien. */}

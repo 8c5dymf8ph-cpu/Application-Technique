@@ -7,7 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { aujourdhuiISO, heureISO, peutSupprimer, peutValider, suitLesDossiers } from "@/lib/domaine";
 import { intervenants, tourneeEnCours } from "@/lib/tournee";
 import { annulerRecapCompletNonParti, annulerRecapNonParti, deposerRecap } from "@/lib/recap";
-import { colonneExiste, valeurEnumExiste } from "@/lib/schema";
+import { colonneExiste } from "@/lib/schema";
 import { enregistrerPhoto } from "@/lib/stockage";
 import { alerterSiSousSeuil } from "@/lib/seuil";
 import { Confirmation, Entete, Indices, Vide } from "@/app/composants/ui";
@@ -15,9 +15,16 @@ import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { AvisReprise, type Compteur } from "@/app/composants/avis-reprise";
-import { Vignettes } from "@/app/composants/photos";
-import { IndicateurLien } from "@/app/composants/liens";
-import { EditeurMateriel, type ProduitDisponible } from "@/app/composants/editeur-materiel";
+import {
+  CaseOuvrir,
+  OuvertureAnomalies,
+  PanneauAnomalie,
+  TexteOuvrir,
+  type DejaServi,
+  type DetailLigne,
+  type ProduitCatalogue,
+} from "@/app/composants/ouverture-anomalie";
+import { OngletEtage } from "@/app/composants/onglet-etage";
 import type { Message } from "@/app/composants/fil";
 
 export const dynamic = "force-dynamic";
@@ -330,95 +337,77 @@ export default async function Tournee({
    * QUE pour celle-ci : le demander pour les cent dix-neuf lignes d'un coup
    * n'aurait aucun sens.
    */
-  const ouverte = ouvre
-    ? uniques.find(
-        (l) => l.anomalie_id === ouvre && !l.traitee && l.statut !== "attente_validation",
-      )
-    : undefined;
+  // Les lignes qu'on peut ouvrir : ce qui reste à traiter, pas ce qui attend
+  // déjà la gouvernante ni ce qui est déclaré.
+  const ouvrables = uniques.filter((l) => !l.traitee && l.statut !== "attente_validation");
+  const idsOuvrables = ouvrables.map((l) => l.anomalie_id);
+  const cleDe = (l: { catalogue_id: string | null; description: string }) =>
+    l.catalogue_id ?? `d:${l.description}`;
 
-  let detailOuverte:
-    | { constat: string[]; apres: string[]; verifie: string[]; produits: ProduitDisponible[] }
-    | undefined;
-
-  if (ouverte) {
-    // Le code part en ligne avant la migration 0032 : tant que `moment_photo`
-    // ne porte pas encore `'validation'`, comparer directement dedans le SQL
-    // fait échouer la requête entière.
-    const momentValidationExiste = await valeurEnumExiste("moment_photo", "validation");
-    const [constatRows, apresRows, verifieRows, produits] = await Promise.all([
-      sql<{ chemin: string }[]>`
-        select chemin from photos_anomalie
-        where anomalie_id = ${ouverte.anomalie_id} and moment = 'constat' order by prise_le`,
-      sql<{ chemin: string }[]>`
-        select chemin from photos_anomalie
-        where anomalie_id = ${ouverte.anomalie_id} and moment = 'apres' order by prise_le`,
-      momentValidationExiste
-        ? sql<{ chemin: string }[]>`
-            select chemin from photos_anomalie
-            where anomalie_id = ${ouverte.anomalie_id} and moment = 'validation' order by prise_le`
-        : Promise.resolve([]),
-      /**
-       * Ce qu'on lui propose, dans l'ordre : ce qui a déjà servi pour CE
-       * problème, puis ce qui recoupe ses mots, puis le reste. Tout le
-       * catalogue actif d'un coup — jamais une page à la fois — pour que
-       * chercher dans le pop-up ne fasse plus un seul aller-retour (voir
-       * EditeurMateriel).
-       */
-      sql<(ProduitDisponible & { recoupe_mots: boolean })[]>`
-        with deja_servi as (
-          select m.produit_id, count(*) as fois
+  /**
+   * Tout ce qu'il faut pour OUVRIR n'importe quelle ligne, chargé avec la
+   * liste — trois requêtes, en parallèle, au lieu de onze à chaque appui.
+   * Ouvrir une ligne ne demande ensuite plus rien au serveur (voir
+   * composants/ouverture-anomalie.tsx) : c'est ce qui la rend instantanée.
+   */
+  const [photosOuvrables, catalogue, dejaServi] = idsOuvrables.length
+    ? await Promise.all([
+        // `moment::text` : avant la migration 0032, `moment_photo` ne connaît
+        // pas `'validation'`, et le nommer comme valeur d'enum casserait la
+        // requête entière.
+        sql<{ anomalie_id: string; moment: string; chemin: string }[]>`
+          select anomalie_id, moment::text as moment, chemin
+            from photos_anomalie
+           where anomalie_id = any(${idsOuvrables})
+             and moment::text in ('constat', 'apres', 'validation')
+           order by prise_le`,
+        sql<ProduitCatalogue[]>`
+          with courant as (
+            select m.produit_id, count(*)::int as fois
+              from mouvements_stock m
+             where m.type = 'sortie' and m.date_mouvement > now() - interval '18 months'
+             group by m.produit_id
+          )
+          select p.id, p.designation, p.code, p.stock,
+                 coalesce((select array_agg(x.chemin order by x.principale desc, x.ordre,
+                                            x.ajoutee_le)
+                             from photos_produit x where x.produit_id = p.id),
+                          '{}') as photos,
+                 coalesce(c.fois, 0) as courant
+            from v_stock_produits p
+            left join courant c on c.produit_id = p.id
+           where p.actif`,
+        // Ce qui a déjà servi pour le MÊME problème — même libellé du
+        // catalogue, ou à défaut même description —, anomalie par anomalie
+        // pour que la ligne ouverte puisse s'exclure elle-même.
+        sql<DejaServi[]>`
+          select coalesce(a.catalogue_id::text, 'd:' || a.description) as cle,
+                 m.produit_id, a.id as anomalie_id, count(*)::int as fois
             from mouvements_stock m
             join interventions i on i.id = m.intervention_id
             join anomalies a     on a.id = i.anomalie_id
            where m.type = 'sortie'
-             and a.id <> ${ouverte.anomalie_id}
-             and (
-               (${ouverte.catalogue_id}::uuid is not null
-                 and a.catalogue_id = ${ouverte.catalogue_id}::uuid)
-               or (${ouverte.catalogue_id}::uuid is null
-                 and a.description = ${ouverte.description})
-             )
-           group by m.produit_id
-        ),
-        mots_anomalie as (
-          select distinct mot from unnest(
-            regexp_split_to_array(
-              lower(${ouverte.description}), '[^a-zàâäéèêëïîôöùûüç0-9]+')
-          ) as mot
-          where length(mot) >= 4
-            and mot not in ('faut', 'pour', 'avec', 'dans', 'sous', 'vers',
-                            'chez', 'mais', 'donc', 'cette', 'leur', 'leurs',
-                            'tout', 'tous', 'toute', 'toutes', 'elle', 'elles',
-                            'être', 'avoir', 'fait', 'faire')
-        ),
-        courant as (
-          select m.produit_id, count(*) as fois
-            from mouvements_stock m
-           where m.type = 'sortie' and m.date_mouvement > now() - interval '18 months'
-           group by m.produit_id
-        )
-        select p.id, p.designation, p.code, p.stock,
-               coalesce((select array_agg(x.chemin order by x.principale desc, x.ordre,
-                                          x.ajoutee_le)
-                           from photos_produit x where x.produit_id = p.id),
-                        '{}') as photos,
-               exists (
-                 select 1 from mots_anomalie ma where lower(p.designation) like '%' || ma.mot || '%'
-               ) as recoupe_mots
-          from v_stock_produits p
-          left join deja_servi d on d.produit_id = p.id
-          left join courant   c on c.produit_id = p.id
-         where p.actif
-         order by (d.produit_id is not null) desc, d.fois desc nulls last,
-                  recoupe_mots desc, p.stock > 0 desc, c.fois desc nulls last, p.designation`,
-    ]);
-    detailOuverte = {
-      constat: constatRows.map((r) => r.chemin),
-      apres: apresRows.map((r) => r.chemin),
-      verifie: verifieRows.map((r) => r.chemin),
-      produits,
+             and coalesce(a.catalogue_id::text, 'd:' || a.description)
+                 = any(${[...new Set(ouvrables.map(cleDe))]})
+           group by 1, 2, 3`,
+      ])
+    : [[], [], []];
+
+  const detailDe = (l: Ligne): DetailLigne => {
+    const serie = (moment: string) =>
+      photosOuvrables
+        .filter((p) => p.anomalie_id === l.anomalie_id && p.moment === moment)
+        .map((p) => p.chemin);
+    return {
+      anomalieId: l.anomalie_id,
+      cle: cleDe(l),
+      description: l.description,
+      essai: l.essai,
+      constat: serie("constat"),
+      apres: serie("apres"),
+      verifie: serie("validation"),
     };
-  }
+  };
 
   /**
    * Les étages, en onglets sur le côté.
@@ -501,17 +490,6 @@ export default async function Tournee({
 
   const encadre = peutValider(profil.role);
   const supprimable = peutSupprimer(profil.role);
-
-  /**
-   * Déplier ou replier une ligne, sans perdre l'étage ni la recherche en
-   * cours. Un second appui referme — même bouton, même geste.
-   */
-  const toggleHref = (id: string) =>
-    `${versLaListe(nom, passe, {
-      ...(choisi ? { etage: choisi } : {}),
-      ...(q ? { q } : {}),
-      ...(ouvre === id ? {} : { ouvre: id }),
-    })}#a-${id}` as Route;
 
   // Le jour affiché en grand est celui du PASSAGE, pas celui de l'horloge.
   // Saisir un passage du 3 septembre en lisant « 23.mar » en haut de l'écran,
@@ -784,20 +762,20 @@ export default async function Tournee({
             className="sticky top-0 self-start shrink-0 flex flex-col gap-[3px] py-1.5"
             style={{ height: "var(--h-reelle)" }}
           >
-            <Link
-              replace
+            <OngletEtage
               href={`/technique/${encodeURIComponent(nom)}${
                 new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) }).size
                   ? `?${new URLSearchParams({ ...(q ? { q } : {}), ...(historique ? { jour: passe! } : {}) })}`
                   : ""
-              }` as Route}
-              className={`w-[36px] flex-1 min-h-[40px] rounded-r-[10px] grid place-items-center text-[14px] font-medium ${
+              }`}
+              actif={choisi === null}
+              className={`w-[46px] flex-1 min-h-[44px] rounded-r-[10px] grid place-items-center text-[16.5px] font-medium ${
                 choisi === null ? "bg-ink text-white" : "bg-surface-muted text-ink-faint"
               }`}
               style={{ writingMode: "vertical-rl", rotate: "180deg" }}
             >
               Tout
-            </Link>
+            </OngletEtage>
             {etages.map((e, i) => {
               const ton = TONS[i % TONS.length];
               const actif = choisi === e.nom;
@@ -807,20 +785,28 @@ export default async function Tournee({
                 ...(historique ? { jour: passe! } : {}),
               });
               return (
-                <Link
+                <OngletEtage
                   key={e.nom}
-                  replace
-                  href={`/technique/${encodeURIComponent(nom)}?${p}` as Route}
-                  aria-current={actif ? "page" : undefined}
-                  className={`flex-1 min-h-[40px] rounded-r-[10px] grid place-items-center text-[14px] ${ton.fond} ${ton.texte} ${
-                    actif ? "w-[42px] font-semibold shadow-sm" : "w-[36px] opacity-75"
+                  href={`/technique/${encodeURIComponent(nom)}?${p}`}
+                  actif={actif}
+                  className={`flex-1 min-h-[44px] rounded-r-[10px] grid place-items-center text-[16.5px] ${ton.fond} ${ton.texte} ${
+                    actif ? "w-[54px] font-semibold shadow-sm" : "w-[46px] opacity-75"
                   }`}
                   style={{ writingMode: "vertical-rl", rotate: "180deg" }}
                 >
-                  {/* Le nom court : « 3ème étage » tient mal à la verticale. */}
-                  {e.nom.replace(" étage", "").replace("Rez-de-chaussée", "RDC")}
-                  {e.reste > 0 && ` · ${e.reste}`}
-                </Link>
+                  {/* Le nom court : « 3ème étage » tient mal à la verticale.
+                      Le reste à traiter passe dans sa propre colonne, à
+                      côté du nom : en grand, « Sous-sol · 6 » sur une seule
+                      ligne ne tenait plus dans la hauteur d'un onglet. */}
+                  <span className="leading-[1.05]">
+                    <span className="block">
+                      {e.nom.replace(" étage", "").replace("Rez-de-chaussée", "RDC")}
+                    </span>
+                    {e.reste > 0 && (
+                      <span className="block text-[13px] font-semibold opacity-80">{e.reste}</span>
+                    )}
+                  </span>
+                </OngletEtage>
               );
             })}
           </nav>
@@ -1058,6 +1044,12 @@ export default async function Tournee({
         {uniques.length === 0 ? (
           <Vide>Rien à traiter pour {nom} aujourd’hui.</Vide>
         ) : (
+          <OuvertureAnomalies
+            initial={ouvre ?? null}
+            catalogue={catalogue}
+            dejaServi={dejaServi}
+            action={enregistrerMateriel}
+          >
             <ul className="flex flex-col">
               {ordonnees.map((l, i) => {
               const premiereFaite = l.traitee && i === 0;
@@ -1112,25 +1104,9 @@ export default async function Tournee({
                         </button>
                       </form>
                     ) : (
-                      <Link
-                        href={toggleHref(l.anomalie_id)}
-                        replace
-                        scroll={false}
-                        aria-label={
-                          ouvre === l.anomalie_id ? "Replier cette anomalie" : "Traiter cette anomalie"
-                        }
-                        className={`relative w-[26px] h-[26px] mt-[1px] shrink-0 rounded-[7px] border-[2px] active:bg-plum-soft text-plum ${
-                          ouvre === l.anomalie_id
-                            ? "border-plum bg-plum-soft"
-                            : "border-[#C9C5D8]"
-                        }`}
-                      >
-                        {/* L'appui lance un aller-retour au serveur — chercher
-                            le détail, les photos, le matériel proposé — qui
-                            peut prendre un instant. Sans ce signe, l'écran
-                            semblait figé le temps que la ligne s'ouvre. */}
-                        <IndicateurLien className="absolute inset-[3px]" />
-                      </Link>
+                      // Ouvrir ne demande plus rien au serveur : tout est
+                      // déjà là (composants/ouverture-anomalie.tsx).
+                      <CaseOuvrir id={l.anomalie_id} />
                     )}
 
                     {l.traitee || l.statut === "attente_validation" ? (
@@ -1176,12 +1152,7 @@ export default async function Tournee({
                         </span>
                       </span>
                     ) : (
-                      <Link
-                        href={toggleHref(l.anomalie_id)}
-                        replace
-                        scroll={false}
-                        className="grow min-w-0 flex flex-col gap-1 active:opacity-70"
-                      >
+                      <TexteOuvrir id={l.anomalie_id}>
                         <span className="text-[17.5px] font-display font-semibold leading-snug text-pretty">
                           {l.description}
                         </span>
@@ -1192,7 +1163,6 @@ export default async function Tournee({
                             {l.emplacement}
                           </span>
                           <span className="text-[12.5px] text-ink-faint">{l.etage}</span>
-                          <IndicateurLien className="w-[13px] h-[13px] text-plum" />
                           {l.aReprendre && (
                             <span className="text-[12.5px] text-blue font-medium">
                               ·{" "}
@@ -1202,7 +1172,7 @@ export default async function Tournee({
                             </span>
                           )}
                         </span>
-                      </Link>
+                      </TexteOuvrir>
                     )}
 
                     <span
@@ -1220,37 +1190,8 @@ export default async function Tournee({
                       SANS naviguer vers un autre écran — « ajouter un
                       produit » ouvre un pop-up, se choisit, se referme, et
                       « C'est fait » part d'ici. */}
-                  {l.anomalie_id === ouvre && detailOuverte && (
-                    <div className="pb-4 flex flex-col gap-4">
-                      {l.essai && (
-                        <p className="text-[11.5px] text-ink-faint">
-                          Chambre d’essai · matériel non déduit du stock
-                        </p>
-                      )}
-                      <Vignettes
-                        chemins={detailOuverte.constat}
-                        titre="Photographié au constat"
-                        ton="text-blue"
-                        taille={88}
-                      />
-                      <Vignettes
-                        chemins={detailOuverte.apres}
-                        titre="Après le dernier passage"
-                        ton="text-green"
-                        taille={88}
-                      />
-                      <Vignettes
-                        chemins={detailOuverte.verifie}
-                        titre="Vérifié par la gouvernante"
-                        ton="text-plum"
-                        taille={88}
-                      />
-                      <EditeurMateriel
-                        anomalieId={l.anomalie_id}
-                        produits={detailOuverte.produits}
-                        action={enregistrerMateriel}
-                      />
-                    </div>
+                  {!l.traitee && l.statut !== "attente_validation" && (
+                    <PanneauAnomalie ligne={detailDe(l)} />
                   )}
 
                   {/* Supprimer là où on la lit : une chambre déclarée de
@@ -1303,6 +1244,7 @@ export default async function Tournee({
                 </li>
               )}
             </ul>
+          </OuvertureAnomalies>
         )}
         </div>
       </div>

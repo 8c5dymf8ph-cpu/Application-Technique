@@ -27,25 +27,6 @@
   to   { opacity: 1; transform: none; }
 }
 
-/* Ouvrir une anomalie, changer d'étage, chercher : chaque geste part en
-   aller-retour au serveur, et rien ne le disait — entre l'appui et la
-   réponse, l'écran reste figé une seconde ou deux, et on réappuie en
-   croyant que rien ne s'est passé. `IndicateurLien` (composants/liens.tsx)
-   pose cet anneau DANS le lien, via `useLinkStatus` : il ne s'affiche que
-   si la navigation prend réellement du temps — 150 ms de délai avant de
-   paraître, pour ne jamais clignoter sur un aller-retour rapide. */
-.indicateur-attente {
-  opacity: 0;
-  visibility: hidden;
-}
-.indicateur-attente.en-attente {
-  visibility: visible;
-  animation: apparait-attente 150ms 150ms ease forwards;
-}
-@keyframes apparait-attente {
-  to { opacity: 1; }
-}
-
 /* Un geste doit se voir AU MOMENT où on le fait.
  *
  * Un écran tactile n'a pas de survol : entre l'appui et la réponse du serveur,
