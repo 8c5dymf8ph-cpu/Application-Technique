@@ -4,6 +4,10 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
+  /* Mesurée par `HauteurReelle` (composants/hauteur-reelle.tsx), avant que
+     le JS tourne ou s'il est bloqué : `100dvh` reste un repli raisonnable,
+     jamais la source de vérité une fois la mesure posée. */
+  :root { --h-reelle: 100dvh; }
   body { @apply bg-ground text-ink font-sans antialiased; }
   /* L'application se manipule à une main, en marchant : aucune cible sous 44 px. */
   button, a[role="button"], [data-cible] { min-height: 44px; }

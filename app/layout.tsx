@@ -3,6 +3,7 @@ import { Playfair_Display, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import { Parcours } from "./composants/parcours";
 import { RelireEnRevenant } from "./composants/relire-en-revenant";
+import { HauteurReelle } from "./composants/hauteur-reelle";
 
 const display = Playfair_Display({
   subsets: ["latin"],
@@ -38,6 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             derrière. Il doit voir tous les changements d'écran, y compris ceux
             qui n'ont pas de bouton retour : sa place est ici. */}
         <Parcours />
+        {/* La vraie hauteur d'écran, mesurée plutôt que devinée par `dvh` —
+            voir composants/hauteur-reelle.tsx pour pourquoi. */}
+        <HauteurReelle />
         {/* Revenir sur un écran, c'est le redemander au serveur. Posé ICI et
             pas écran par écran : dix-sept écrans écrivaient sans la
             protection, et on retrouvait le formulaire qu'on venait

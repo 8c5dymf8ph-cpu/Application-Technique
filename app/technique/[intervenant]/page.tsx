@@ -745,19 +745,24 @@ export default async function Tournee({
        l'application — PAS une coque hors du flot.
        Deux tentatives précédentes (`h-dvh`, puis `fixed inset-0`) ont
        chacune laissé le même défaut sur un vrai téléphone : un vide sous le
-       bouton, ou le bouton qui recouvre la liste. Les deux essaient de dire
-       au navigateur une hauteur EXACTE pour l'écran — et sur un vrai
-       téléphone, cette hauteur bouge pendant qu'on regarde (la barre de
-       Safari qui se cache ou reparaît), à un instant qu'aucune des deux
-       techniques ne rattrape de façon fiable.
-       La bonne hauteur, c'est celle que le document a déjà SANS qu'on la
-       lui dise : `min-h-dvh` pose un plancher, pas une boîte fermée, et le
-       reste de l'application vit déjà comme ça (`grep -rn min-h-dvh app/`
-       le confirme) sans ce défaut. La colonne d'étages reste `sticky`, pour
-       occuper toute la hauteur visible pendant qu'elle est collée en haut —
-       elle se décolle simplement en bas de la liste, comme n'importe quel
-       élément sticky. */
-    <main className="min-h-dvh flex flex-col max-w-md mx-auto">
+       bouton, ou le bouton qui recouvre la liste. Une troisième
+       (`min-h-dvh` + colonne `h-dvh`, ci-dessous jusqu'il y a peu) a montré
+       EXACTEMENT quand : « tant que je défile, ça va ; dès que ça s'arrête,
+       le problème revient ». `dvh` se RECALCULE à l'instant précis où la
+       barre de Safari finit de bouger — caché pendant le défilement (grande
+       valeur, tout semblait juste), elle reparaît dès que le doigt se lève
+       (petite valeur, tout se redessine). Les trois tentatives demandaient
+       au NAVIGATEUR une taille d'écran pendant qu'elle change.
+       `--h-reelle` (composants/hauteur-reelle.tsx) MESURE la fenêtre au lieu
+       de la deviner — elle ne change que sur un vrai `resize`, que Safari ne
+       déclenche PAS pendant un simple défilement. La colonne d'étages reste
+       `sticky`, pour occuper toute la hauteur visible pendant qu'elle est
+       collée en haut — elle se décolle simplement en bas de la liste, comme
+       n'importe quel élément sticky. */
+    <main
+      className="flex flex-col max-w-md mx-auto"
+      style={{ minHeight: "var(--h-reelle)" }}
+    >
       <Entete
         titre={nom}
         sous_titre="Ce qu’il y a à traiter"
@@ -774,7 +779,8 @@ export default async function Tournee({
         {uniques.length > 0 && (
           <nav
             aria-label="Étages"
-            className="sticky top-0 self-start h-dvh shrink-0 flex flex-col gap-[3px] py-1.5"
+            className="sticky top-0 self-start shrink-0 flex flex-col gap-[3px] py-1.5"
+            style={{ height: "var(--h-reelle)" }}
           >
             <Link
               replace
