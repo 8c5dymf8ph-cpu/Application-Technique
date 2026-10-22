@@ -263,6 +263,33 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
     texte: "Commande supprimée. Si elle était reçue, ses entrées de stock sont parties avec elle.",
   },
   "produit-supprime": { ton: "green", texte: "Produit supprimé : il n’avait jamais servi." },
+  "dossier-cree": {
+    ton: "green",
+    texte:
+      "Dossier créé. Ajoutez son premier acte ci-dessous ; ses étapes se corrigent dans " +
+      "« Les étapes ».",
+  },
+  "etape-ajoutee": { ton: "green", texte: "Étape ajoutée à la liste « Quoi »." },
+  "etape-supprimee": { ton: "green", texte: "Étape supprimée : aucun acte ne l’avait utilisée." },
+  "etape-retiree": {
+    ton: "green",
+    texte:
+      "Étape retirée de la liste « Quoi ». Les actes qui l’ont utilisée la gardent ; elle se " +
+      "remet depuis « Étapes retirées ».",
+  },
+  "etape-utilisee": {
+    ton: "amber",
+    texte:
+      "Cette étape est déjà utilisée par des actes : elle ne pourra se retirer qu’une fois la " +
+      "base mise à jour (Administration → État de l’application).",
+  },
+  "document-ajoute": { ton: "green", texte: "Document joint au dossier." },
+  "document-refuse": {
+    ton: "red",
+    texte:
+      "Le document n’a pas pu être enregistré : il n’apparaîtra nulle part. Vérifiez le dépôt " +
+      "des fichiers dans Administration.",
+  },
   "passages-reunis": {
     ton: "green",
     texte:

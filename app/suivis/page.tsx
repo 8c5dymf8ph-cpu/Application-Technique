@@ -1,11 +1,16 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { exigerEncadrement } from "@/lib/acces";
 import { tableExiste } from "@/lib/schema";
-import { depuis, jourISO } from "@/lib/domaine";
+import { depuis, jourISO, suitLesDossiers } from "@/lib/domaine";
+import { codeDepuis, ETAPES_PROPOSEES, ressembleAUneVisite } from "@/lib/suivis";
 import { Entete, Vide } from "@/app/composants/ui";
 import { Stat } from "@/app/composants/suivi";
+import { Depliant } from "@/app/composants/depliant";
+import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 
 export const dynamic = "force-dynamic";
 
@@ -34,8 +39,73 @@ type Suivi = {
  * actes dont l'ordre varie, et ne se termine pas par une réparation mais par
  * une vérification qui revient négative.
  */
+/**
+ * Créer un dossier de suivi à soi — un contrat de désenfumage, la
+ * vérification des extincteurs.
+ *
+ * Une seule nature existait, posée par la migration : les punaises. « Je
+ * souhaite que ce soit moi-même qui le fasse » : le nom, le rythme des visites
+ * du contrat, et la liste des étapes (le « quoi »), qui se corrige ensuite
+ * dans « Les étapes » du dossier. Le dossier créé est permanent — c'est lui
+ * qui porte la chronologie du contrat.
+ */
+async function creerDossier(donnees: FormData) {
+  "use server";
+  const p = await exigerEncadrement();
+  if (!suitLesDossiers(p.role)) redirect("/suivis" as Route);
+
+  const nom = String(donnees.get("nom") ?? "").trim();
+  if (nom.length < 3) return;
+  const mois = Number(String(donnees.get("mois") ?? "").replace(",", "."));
+  const periodicite = mois > 0 ? Math.round((mois * 365) / 12) : null;
+  const etapes = [
+    ...new Set(
+      String(donnees.get("etapes") ?? "")
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0),
+    ),
+  ];
+  if (etapes.length === 0) return;
+
+  const id = await sql.begin(async (tx) => {
+    // Un code unique, même si deux dossiers portent un nom proche.
+    const base = codeDepuis(nom);
+    const pris = await tx<{ code: string }[]>`
+      select code from natures_suivi where code = ${base} or code like ${base + "-%"}`;
+    let code = base;
+    for (let n = 2; pris.some((x) => x.code === code); n++) code = `${base}-${n}`;
+
+    await tx`
+      insert into natures_suivi (code, libelle, periodicite_jours, ordre)
+      values (${code}, ${nom}, ${periodicite},
+              (select coalesce(max(ordre), 0) + 1 from natures_suivi))`;
+
+    const vus = new Set<string>();
+    for (const [i, libelle] of etapes.entries()) {
+      let codeEtape = codeDepuis(libelle);
+      while (vus.has(codeEtape)) codeEtape += "-bis";
+      vus.add(codeEtape);
+      await tx`
+        insert into types_acte (nature_code, code, libelle, est_verification,
+                                est_traitement, porte_sur_lieux, ordre)
+        values (${code}, ${codeEtape}, ${libelle}, ${ressembleAUneVisite(libelle)},
+                false, false, ${i + 1})`;
+    }
+
+    const [cree] = await tx<{ id: string }[]>`
+      insert into suivis (nature_code, titre, declencheur, cree_par)
+      values (${code}, ${nom}, 'reglementaire', ${p.id})
+      returning id`;
+    return cree.id;
+  });
+
+  revalidatePath("/suivis");
+  redirect(`/suivis/${id}?fait=dossier-cree` as Route);
+}
+
 export default async function Suivis() {
-  await exigerEncadrement();
+  const profil = await exigerEncadrement();
 
   // Le code part en ligne avant la migration : sans la 0023, l'écran le dit
   // au lieu de casser.
@@ -104,8 +174,12 @@ export default async function Suivis() {
                 <span className="etiquette text-white/60">Dossier permanent</span>
                 <span className="font-display font-bold text-[21px]">{p.titre}</span>
                 <span className="text-[12.5px] text-white/75">
-                  {p.nb_episodes} épisode{p.nb_episodes > 1 ? "s" : ""} · {p.nb_lieux} lieux
-                  surveillés
+                  {/* Un contrat de désenfumage ne surveille pas de chambres :
+                      « 0 lieux surveillés » n'apprenait rien. */}
+                  {p.nb_actes} acte{p.nb_actes > 1 ? "s" : ""}
+                  {p.nb_episodes > 0 &&
+                    ` · ${p.nb_episodes} épisode${p.nb_episodes > 1 ? "s" : ""}`}
+                  {p.nb_lieux > 0 && ` · ${p.nb_lieux} lieux surveillés`}
                 </span>
               </Link>
               {enRetard && (
@@ -117,6 +191,67 @@ export default async function Suivis() {
             </section>
           );
         })}
+
+        {/* Créer un dossier à soi : un contrat, une vérification réglementaire —
+            n'importe quelle histoire qui ne tient pas dans une anomalie. */}
+        {suitLesDossiers(profil.role) && (
+          <Depliant
+            titre="Nouveau dossier de suivi"
+            aide="Un contrat, une vérification réglementaire : son nom, son rythme, ses étapes."
+          >
+            <form action={creerDossier} className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Nom du dossier</span>
+                <input
+                  name="nom"
+                  required
+                  minLength={3}
+                  autoComplete="off"
+                  placeholder="Désenfumage, Extincteurs…"
+                  className="h-[48px] rounded-[12px] border border-line px-3 bg-surface text-[16px] placeholder:text-ink-faint"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Une visite tous les… (facultatif)</span>
+                <span className="flex items-center gap-2">
+                  <input
+                    name="mois"
+                    type="number"
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    placeholder="12"
+                    className="w-[96px] h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[16px] tabular-nums placeholder:text-ink-faint"
+                  />
+                  <span className="text-[14px] text-ink-soft">mois</span>
+                </span>
+                <span className="text-[11.5px] text-ink-faint text-pretty">
+                  Le dossier dira quand la visite est en retard.
+                </span>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="etiquette">Les étapes — une par ligne</span>
+                <textarea
+                  name="etapes"
+                  rows={6}
+                  required
+                  defaultValue={ETAPES_PROPOSEES.join("\n")}
+                  className="rounded-[12px] border border-line px-3 py-2.5 bg-surface text-[15px] leading-snug"
+                />
+                <span className="text-[11.5px] text-ink-faint text-pretty">
+                  C’est la liste « Quoi » des actes. Elle se corrige ensuite dans « Les étapes »
+                  du dossier.
+                </span>
+              </label>
+              <BoutonEnvoi
+                pendant="Création…"
+                className="h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[15.5px]"
+              >
+                Créer le dossier
+              </BoutonEnvoi>
+            </form>
+          </Depliant>
+        )}
 
         <section className="flex flex-col gap-2">
           <h2 className="titre text-[15.5px]">Les épisodes</h2>

@@ -557,6 +557,17 @@ Ne jamais utiliser d'accent dans un identifiant SQL.
    lieux par état en pastilles, et replie le détail ligne à ligne — « je ne sais pas à quoi ça
    correspond ».
 
+18octies. **Un dossier de suivi se crée et se règle depuis l'application.** Les punaises
+   étaient la seule nature, posée par la migration ; le désenfumage et les extincteurs ne leur
+   ressemblent en rien. `/suivis` crée une nature, ses étapes et son dossier permanent ;
+   « Les étapes et le rythme du dossier » renomme, ajoute et retire le « quoi ». **Une étape
+   utilisée se RETIRE** (`types_acte.actif`, migration 0041) — la chronologie passée garde son
+   mot — et seule une étape jamais utilisée se supprime. Une pièce jointe dit ce qu'elle EST
+   (rapport, attestation, contrat…), jamais « facture » d'office ; le contrat se range au
+   dossier, hors de toute étape. Le récapitulatif PDF (`/api/export/suivi/[id]`) porte la
+   chronologie entière et, à la fin, les seules pièces cochées — un PDF illisible y est nommé,
+   il ne fait pas échouer le document.
+
 18septies. **Un intertitre ne se lit pas plus petit que le texte qu'il annonce.** `etiquette`
    (10 px, capitales, gris pâle) titrait des sections dont le corps fait 15,5 px : ça ne titre
    rien, ça flotte. Les titres de section prennent `titre`, et dans la chronologie **c'est le

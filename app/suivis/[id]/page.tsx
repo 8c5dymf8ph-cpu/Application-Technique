@@ -5,9 +5,10 @@ import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { profilActif } from "@/lib/profil";
 import { exigerEncadrement } from "@/lib/acces";
-import { peutValider, jourISO, aujourdhuiISO, euros } from "@/lib/domaine";
-import { enregistrerFichier } from "@/lib/stockage";
-import { tableExiste } from "@/lib/schema";
+import { peutValider, suitLesDossiers, jourISO, aujourdhuiISO, euros } from "@/lib/domaine";
+import { enregistrerFichier, typeMime } from "@/lib/stockage";
+import { colonneExiste, tableExiste } from "@/lib/schema";
+import { NATURES_PIECE } from "@/lib/suivis";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { MarquerValide, QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
@@ -97,6 +98,7 @@ type TypeActe = {
   code: string;
   est_verification: boolean;
   porte_sur_lieux: boolean;
+  actif: boolean;
 };
 
 /**
@@ -181,7 +183,7 @@ async function joindreLesPieces(
     await sql`
       insert into pieces_suivi (suivi_id, acte_id, chemin, nom, nature_piece, ajoute_par)
       values (${suiviId}, ${acteId}, ${chemin}, ${fichier.name},
-              ${String(donnees.get("nature_piece") ?? "facture")}, ${profilId})`;
+              ${String(donnees.get("nature_piece") ?? "document")}, ${profilId})`;
   }
   return refusee;
 }
@@ -282,8 +284,11 @@ export default async function Dossier({
     select id, chemin, nom, nature_piece, ajoute_le, acte_id
       from pieces_suivi where suivi_id = ${id} order by ajoute_le desc`;
 
+  // `actif` arrive avec la 0041 (une étape retirée de la liste « Quoi »).
+  const etapesRetirables = await colonneExiste("types_acte", "actif");
   const types = await sql<TypeActe[]>`
-    select id, libelle, code, est_verification, porte_sur_lieux
+    select id, libelle, code, est_verification, porte_sur_lieux,
+           ${etapesRetirables ? sql`actif` : sql`true`} as actif
       from types_acte where nature_code = ${suivi.nature_code} order by ordre`;
 
   const typesConsequence: TypeConsequence[] = avecConsequences
@@ -497,6 +502,53 @@ export default async function Dossier({
     redirect(`/suivis/${id}?fait=etat` as Route);
   }
 
+  /**
+   * Les documents rangés au DOSSIER, pas à un acte : le contrat, une
+   * attestation. Un contrat de désenfumage n'est pas une étape de la
+   * chronologie — il en est le cadre.
+   */
+  async function joindreAuDossier(donnees: FormData) {
+    "use server";
+    const p = await profilActif();
+    if (!p || !peutValider(p.role)) redirect(`/suivis/${id}` as Route);
+    let refuse = false;
+    let joints = 0;
+    for (const fichier of donnees.getAll("document")) {
+      if (!(fichier instanceof File) || fichier.size === 0) continue;
+      const chemin = await enregistrerFichier(fichier);
+      if (!chemin) {
+        refuse = true;
+        continue;
+      }
+      joints++;
+      await sql`
+        insert into pieces_suivi (suivi_id, acte_id, chemin, nom, nature_piece, ajoute_par)
+        values (${id}, null, ${chemin},
+                ${String(donnees.get("nom") ?? "").trim() || fichier.name},
+                ${String(donnees.get("nature_piece") ?? "document")}, ${p.id})`;
+    }
+    if (joints === 0 && !refuse) return;
+    revalidatePath(`/suivis/${id}`);
+    redirect(`/suivis/${id}?fait=${refuse ? "document-refuse" : "document-ajoute"}` as Route);
+  }
+
+  // Ce qui peut s'ajouter au récapitulatif PDF : les PDF et les images, de ce
+  // dossier et — pour un dossier permanent — de ses épisodes.
+  const annexables = (
+    await sql<
+      { id: string; nom: string | null; nature_piece: string; chemin: string;
+        date_acte: string | Date | null; episode: string | null }[]
+    >`
+      select p.id, p.nom, p.nature_piece, p.chemin, a.date_acte,
+             case when s.id <> ${id}::uuid then s.titre end as episode
+        from pieces_suivi p
+        join suivis s on s.id = p.suivi_id
+        left join actes a on a.id = p.acte_id
+       where p.suivi_id = ${id} or s.parent_id = ${id}
+       order by coalesce(a.date_acte, p.ajoute_le::date), p.ajoute_le`
+  ).filter((p) => /^(application\/pdf|image\/(jpeg|png))$/.test(typeMime(p.chemin)));
+  const documentsDuDossier = pieces.filter((p) => !p.acte_id);
+
   const derniere = suivi.derniere_verification_nature
     ? new Date(jourISO(suivi.derniere_verification_nature))
     : null;
@@ -515,6 +567,7 @@ export default async function Dossier({
   const typeChoisi =
     types.find((t) => t.id === (typeForce ?? ouvrirActe)) ??
     (acteModifie ? types.find((t) => t.id === acteModifie.type_acte_id) : undefined) ??
+    types.find((t) => t.actif) ??
     types[0];
 
   /**
@@ -647,16 +700,19 @@ export default async function Dossier({
             />
             <label className="flex flex-col gap-1">
               <span className="etiquette">La pièce jointe est…</span>
+              {/* Pas forcément une facture : un rapport de vérification, une
+                  attestation, le contrat. « Facture » était choisi d'office
+                  et tout ce qu'on joignait en prenait le nom. */}
               <select
                 name="nature_piece"
-                defaultValue="facture"
+                defaultValue="document"
                 className="h-[46px] rounded-[12px] border border-line px-2 bg-surface text-[14.5px]"
               >
-                <option value="facture">Une facture</option>
-                <option value="devis">Un devis</option>
-                <option value="rapport">Un rapport</option>
-                <option value="photo">Une photo</option>
-                <option value="autre">Autre</option>
+                {NATURES_PIECE.map((n) => (
+                  <option key={n.v} value={n.v}>
+                    {n.l}
+                  </option>
+                ))}
               </select>
             </label>
             <ChampPhotos nom="piece" libelle="Ajouter une photo ou un document" documents />
@@ -683,9 +739,20 @@ export default async function Dossier({
   /** Les pastilles de type : elles décident si l'acte porte un résultat. */
   const pastillesDeType = (a?: Acte) => (
     <div className="flex flex-col gap-1.5">
-      <span className="etiquette">Quoi</span>
+      <span className="flex items-baseline gap-2">
+        <span className="etiquette grow">Quoi</span>
+        {/* Le « quoi » se règle soi-même : renommer, ajouter, retirer. */}
+        {suitLesDossiers(profil.role) && (
+          <Link
+            href={`/suivis/${id}/etapes` as Route}
+            className="text-[12px] text-plum underline underline-offset-4"
+          >
+            Modifier les étapes
+          </Link>
+        )}
+      </span>
       <div className="flex flex-wrap gap-1.5">
-        {types.map((t) => (
+        {types.filter((t) => t.actif || t.id === a?.type_acte_id).map((t) => (
           <Link
             key={t.id}
             href={
@@ -731,6 +798,22 @@ export default async function Dossier({
           <QuitterSiRevenu cle="episode" vers={`/suivis/${id}`} />
         )}
         {fait && <Confirmation quoi={fait} />}
+
+        {/* Le « quoi » de ce dossier se règle soi-même — visible sans ouvrir
+            « Ajouter un acte », où il n'apparaissait qu'à côté des pastilles. */}
+        {suitLesDossiers(profil.role) && (
+          <Link
+            href={`/suivis/${id}/etapes` as Route}
+            className="self-start h-[38px] px-3.5 rounded-pill border border-line bg-surface text-[13px] text-ink-soft flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+            Les étapes et le rythme du dossier
+          </Link>
+        )}
 
         {/* L'état, en un mot */}
         {!suivi.permanent && (
@@ -1149,6 +1232,124 @@ export default async function Dossier({
             {formulaire()}
           </div>
         </details>
+
+        {/* ---------------------------------------------- les documents */}
+        <Depliant
+          titre="Documents du dossier"
+          aide="Le contrat, une attestation — ce qui n’appartient à aucune étape."
+          indice={documentsDuDossier.length > 0 ? `${documentsDuDossier.length}` : undefined}
+        >
+          <div className="flex flex-col gap-3">
+            {documentsDuDossier.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {documentsDuDossier.map((p) => (
+                  <VoirDocument
+                    key={p.id}
+                    chemin={p.chemin}
+                    titre={p.nom ?? p.nature_piece}
+                    ariaLabel={`${p.nature_piece} — ${p.nom ?? "voir le document"}`}
+                    className="inline-flex items-center gap-1 h-[28px] pl-2 pr-2.5 rounded-md bg-green-soft text-green text-[12.5px] font-medium"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
+                         strokeLinejoin="round" aria-hidden>
+                      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                      <path d="M14 3v5h5" />
+                    </svg>
+                    {p.nom ?? p.nature_piece}
+                  </VoirDocument>
+                ))}
+              </div>
+            )}
+            {peutValider(profil.role) && (
+              <form action={joindreAuDossier} className="flex flex-col gap-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="etiquette">C’est…</span>
+                    <select
+                      name="nature_piece"
+                      defaultValue="contrat"
+                      className="h-[46px] rounded-[12px] border border-line px-2 bg-surface text-[14.5px]"
+                    >
+                      {NATURES_PIECE.map((n) => (
+                        <option key={n.v} value={n.v}>
+                          {n.l}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="etiquette">Nom (facultatif)</span>
+                    <input
+                      name="nom"
+                      autoComplete="off"
+                      placeholder="Contrat 2026"
+                      className="h-[46px] rounded-[12px] border border-line px-3 bg-surface text-[15px] placeholder:text-ink-faint"
+                    />
+                  </label>
+                </div>
+                <ChampPhotos nom="document" libelle="Choisir un document ou une photo" documents />
+                <BoutonEnvoi
+                  pendant="Envoi…"
+                  className="h-[46px] rounded-[12px] bg-surface-muted border border-line font-display font-semibold text-[14.5px]"
+                >
+                  Joindre au dossier
+                </BoutonEnvoi>
+              </form>
+            )}
+          </div>
+        </Depliant>
+
+        {/* ---------------------------------------------- le récapitulatif */}
+        {/* Un PDF de toute l'histoire, à transmettre ou à classer — et, à la
+            fin, les documents qu'on choisit d'y joindre : le rapport de la
+            dernière visite, pas forcément toutes les factures. */}
+        <Depliant
+          titre="Récapitulatif PDF"
+          aide="La chronologie complète, et les documents qu’on choisit d’y joindre."
+        >
+          <form
+            method="get"
+            action={`/api/export/suivi/${id}`}
+            className="flex flex-col gap-3"
+          >
+            {annexables.length > 0 ? (
+              <fieldset className="flex flex-col gap-1">
+                <legend className="etiquette mb-1.5">Joindre à la fin du récapitulatif</legend>
+                {annexables.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex items-start gap-2.5 py-1.5 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      name="piece"
+                      value={p.id}
+                      className="mt-0.5 w-[18px] h-[18px] shrink-0 accent-[#453A6E]"
+                    />
+                    <span className="flex flex-col min-w-0">
+                      <span className="text-[14px] truncate">{p.nom ?? p.nature_piece}</span>
+                      <span className="text-[11.5px] text-ink-faint">
+                        {p.nature_piece}
+                        {p.date_acte
+                          ? ` · ${new Date(p.date_acte).toLocaleDateString("fr-FR")}`
+                          : " · document du dossier"}
+                        {p.episode ? ` · ${p.episode}` : ""}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            ) : (
+              <p className="text-[12.5px] text-ink-faint text-pretty">
+                Aucun PDF ni photo joint : le récapitulatif contiendra la chronologie seule.
+              </p>
+            )}
+            <button className="h-[50px] rounded-[13px] bg-plum text-white font-display font-semibold text-[15.5px]">
+              Télécharger le récapitulatif
+            </button>
+          </form>
+        </Depliant>
 
         {/* ---------------------------------------------- l'état par lieu */}
         {/* Replié par défaut : sur un dossier déjà entièrement réglé en un

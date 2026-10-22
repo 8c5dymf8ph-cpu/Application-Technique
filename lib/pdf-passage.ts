@@ -1,7 +1,16 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { sql } from "./db";
 import { lireFichier, typeMime } from "./stockage";
 import { euros } from "./domaine";
+import {
+  Curseur,
+  LARGEUR,
+  LARGEUR_UTILE,
+  MARGE,
+  dateCourte,
+  dateLongue,
+  ecrivable,
+} from "./pdf-mise-en-page";
 
 /**
  * Le PDF d'un passage : de quoi le garder, l'imprimer, le joindre à un
@@ -53,99 +62,6 @@ const DECISION_GOUVERNANTE: Record<string, string> = {
   en_cours: "Remise en cours",
   a_refaire: "À refaire",
 };
-
-const MARGE = 48;
-const LARGEUR = 595.28;
-const HAUTEUR = 841.89;
-const LARGEUR_UTILE = LARGEUR - MARGE * 2;
-
-/** Découpe un texte en lignes qui tiennent dans `largeur`, à la police donnée. */
-function decouper(texte: string, police: PDFFont, taille: number, largeur: number): string[] {
-  const mots = texte.replace(/\s+/g, " ").trim().split(" ");
-  const lignes: string[] = [];
-  let ligne = "";
-  for (const mot of mots) {
-    const essai = ligne ? `${ligne} ${mot}` : mot;
-    if (police.widthOfTextAtSize(essai, taille) > largeur && ligne) {
-      lignes.push(ligne);
-      ligne = mot;
-    } else {
-      ligne = essai;
-    }
-  }
-  if (ligne) lignes.push(ligne);
-  return lignes;
-}
-
-function dateLongue(v: string | Date): string {
-  const d = v instanceof Date ? v : new Date(v);
-  return new Intl.DateTimeFormat("fr-FR", {
-    timeZone: "Europe/Paris",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(d);
-}
-
-function dateCourte(v: string | Date): string {
-  const d = v instanceof Date ? v : new Date(v);
-  return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris" }).format(d);
-}
-
-/** Un classeur de pages, qui sait passer à la suivante quand la place manque. */
-class Curseur {
-  doc: PDFDocument;
-  page: PDFPage;
-  y: number;
-  regular: PDFFont;
-  bold: PDFFont;
-
-  constructor(doc: PDFDocument, regular: PDFFont, bold: PDFFont) {
-    this.doc = doc;
-    this.regular = regular;
-    this.bold = bold;
-    this.page = doc.addPage([LARGEUR, HAUTEUR]);
-    this.y = HAUTEUR - MARGE;
-  }
-
-  /** Assure qu'il reste au moins `h` points avant le bas de page. */
-  assurer(h: number) {
-    if (this.y - h < MARGE) {
-      this.page = this.doc.addPage([LARGEUR, HAUTEUR]);
-      this.y = HAUTEUR - MARGE;
-    }
-  }
-
-  texte(
-    contenu: string,
-    { taille = 10, gras = false, couleur = rgb(0.1, 0.09, 0.15), interligne = 1.35 }:
-      { taille?: number; gras?: boolean; couleur?: ReturnType<typeof rgb>; interligne?: number } = {},
-  ) {
-    const police = gras ? this.bold : this.regular;
-    const lignes = decouper(contenu, police, taille, LARGEUR_UTILE);
-    for (const ligne of lignes) {
-      this.assurer(taille * interligne);
-      this.page.drawText(ligne, { x: MARGE, y: this.y - taille, size: taille, font: police, color: couleur });
-      this.y -= taille * interligne;
-    }
-  }
-
-  espace(h: number) {
-    this.y -= h;
-  }
-
-  trait() {
-    this.assurer(10);
-    this.page.drawLine({
-      start: { x: MARGE, y: this.y },
-      end: { x: LARGEUR - MARGE, y: this.y },
-      thickness: 0.75,
-      color: rgb(0.85, 0.84, 0.88),
-    });
-    this.y -= 10;
-  }
-}
 
 async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
   const [lot] = await sql<Lot[]>`
@@ -220,7 +136,7 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
   const HAUTEUR_BLOC_VIGNETTE = TAILLE_VIGNETTE + ESPACE_LEGENDE + TAILLE_LEGENDE + 2;
 
   for (const l of lignes) {
-    const titre = `${l.emplacement} — ${l.description}`;
+    const titre = ecrivable(`${l.emplacement} — ${l.description}`);
 
     /**
      * Les vignettes se tiennent SUR LA LIGNE DU TITRE, pas les unes en

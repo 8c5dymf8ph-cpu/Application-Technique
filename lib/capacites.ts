@@ -202,6 +202,13 @@ const ATTENDUES: Attendue[] = [
       "récapitulatif ne montre ni la pièce ni le commentaire d’un comptage.",
     verifier: () => colonneExiste("inventaires", "piece_jointe_url"),
   },
+  {
+    titre: "Retirer une étape d’un dossier de suivi",
+    sans:
+      "Une étape déjà utilisée par un acte ne peut pas être retirée de la liste " +
+      "« Quoi » ; seule une étape jamais utilisée se supprime.",
+    verifier: () => colonneExiste("types_acte", "actif"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {
