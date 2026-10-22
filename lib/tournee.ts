@@ -43,6 +43,22 @@ export async function intervenants(): Promise<Intervenant[]> {
 }
 
 /**
+ * Ce qui attend chaque intervenant — à faire et en cours, dans SA section
+ * (tout s'il est polyvalent, son seul métier s'il a une spécialité). Partagé
+ * par « Intervenir » et la fenêtre de l'accueil : les deux montrent le même
+ * chiffre à côté du même nom.
+ */
+export async function chargeParIntervenant(): Promise<Map<string, number>> {
+  const charges = await sql<{ nom: string; n: number }[]>`
+    select i.nom, count(a.*) filter (where a.statut in ('a_faire', 'en_cours'))::int as n
+      from v_intervenants i
+      left join lateral fn_anomalies_pour_intervenant(i.nom) a on true
+     where i.actif
+     group by i.nom`;
+  return new Map(charges.map((c) => [c.nom, c.n]));
+}
+
+/**
  * La tournée du jour d'un intervenant, ou une nouvelle.
  *
  * **Un passage ne s'étale pas sur deux jours.** Un technicien vient le lundi,

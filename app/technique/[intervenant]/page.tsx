@@ -25,6 +25,7 @@ import {
   type ProduitCatalogue,
 } from "@/app/composants/ouverture-anomalie";
 import { OngletEtage } from "@/app/composants/onglet-etage";
+import { CaseDeclaree } from "@/app/composants/case-declaree";
 import type { Message } from "@/app/composants/fil";
 
 export const dynamic = "force-dynamic";
@@ -440,34 +441,26 @@ export default async function Tournee({
     l.emplacement.toLowerCase().includes(terme);
 
   /**
-   * Ce qui est traité quitte la liste à faire — il ne reste pas barré en
-   * bas, pas même le temps d'un aller-retour. « Voir mes déclarées » (le
-   * compteur du haut, devenu un bouton) est le SEUL chemin vers ce qu'on a
-   * déjà coché.
+   * Ce qui est déclaré RESTE À SA PLACE, coché en vert et barré — dans l'ordre
+   * du bâtiment, au milieu de ce qui reste. « Voir mes déclarées » (le
+   * compteur du haut) ne montre que les déclarées, pour les relire avant de
+   * rendre le passage.
    *
-   * Une première version la laissait à sa place un instant, cochée et
-   * barrée, comme confirmation visuelle (règle 14sexies). Mais « elle reste
-   * dans la liste au lieu d'aller directement dans voir mes déclarées » :
-   * ce n'est pas ce qui était demandé. Elle part directement dans « mes
-   * déclarées », et c'est le bandeau `declaree` plus bas qui confirme le
-   * geste — à sa place, pas dans une ligne qui n'est plus censée être là.
+   * Une version précédente les faisait quitter la liste aussitôt, parce que
+   * la ligne mettait une seconde à se redessiner et qu'on ne voyait pas où
+   * elle en était. L'ouverture est maintenant instantanée : « il est possible
+   * de maintenir sur le même écran une anomalie qui est validée barrée. Elle
+   * ne se déplace pas vers le bas de l'écran, elle reste à la même place
+   * mais cochée. » La case se remplit en vert sous les yeux (`CaseDeclaree`).
    */
   const vues = uniques.filter(
     (l) =>
       (choisi === null || l.etage === choisi) &&
       correspond(l) &&
-      (vue === "faites" ? l.traitee : !l.traitee),
+      (vue !== "faites" || l.traitee),
   );
   // La clôture porte sur TOUT le passage, pas sur l'étage regardé.
   const faitesEnTout = uniques.filter((l) => l.traitee);
-
-  /**
-   * Ce qu'on vient de déclarer, pour le dire — puisqu'elle ne reste plus
-   * visible dans la liste. Seul un vrai succès compte : les sentinelles
-   * (`fait=supprime`, `fait=passage-repris…`) ne correspondent à aucune
-   * anomalie et ne déclenchent rien ici.
-   */
-  const declaree = fait ? uniques.find((l) => l.anomalie_id === fait && l.traitee) : undefined;
 
   /**
    * L'ordre du bâtiment, pas l'ordre de l'alphabet.
@@ -820,15 +813,6 @@ export default async function Tournee({
         >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
         {fait?.startsWith("passage-repris") && <Confirmation quoi={fait} />}
-        {/* Elle ne reste plus visible dans la liste (voir `vues` plus haut) :
-            c'est ce bandeau qui confirme que le geste a été pris en compte,
-            et dit où la retrouver. */}
-        {declaree && (
-          <p className="rounded-card bg-green-soft px-4 py-3 text-[13px] text-green text-pretty leading-snug animate-[apparait_.25s_ease-out]">
-            <strong>{declaree.description}</strong> déclarée — dans « voir mes déclarées ».
-          </p>
-        )}
-
         {/* On ne saisit pas un passage d'il y a trois semaines en croyant être
             aujourd'hui. Le bandeau le dit, et il est de la couleur d'un
             avertissement : tout ce qui sera coché ici portera CETTE date. */}
@@ -994,7 +978,14 @@ export default async function Tournee({
               <RechercheVive
                 valeur={q}
                 base={`/technique/${encodeURIComponent(nom)}`}
-                garde={choisi ? { etage: choisi } : {}}
+                // Le JOUR aussi : sans lui, taper une lettre dans un passage
+                // passé renvoyait sur celui d'aujourd'hui, et ce qu'on cochait
+                // ensuite partait à la mauvaise date.
+                garde={{
+                  ...(choisi ? { etage: choisi } : {}),
+                  ...(historique ? { jour: passe! } : {}),
+                  ...(vue === "faites" ? { vue } : {}),
+                }}
                 placeholder="Chercher une anomalie, une chambre…"
               />
             </span>
@@ -1090,19 +1081,11 @@ export default async function Tournee({
                         </svg>
                       </span>
                     ) : l.traitee ? (
-                      <form action={deselectionner} className="shrink-0 mt-[1px]">
-                        <input type="hidden" name="anomalie" value={l.anomalie_id} />
-                        <button
-                          aria-label="Annuler ma déclaration"
-                          className="w-[26px] h-[26px] rounded-[7px] bg-plum grid place-items-center active:opacity-70"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                               stroke="#fff" strokeWidth="2.8" strokeLinecap="round"
-                               strokeLinejoin="round">
-                            <path d="M5 12.5l4.5 4.5L19 7.5" />
-                          </svg>
-                        </button>
-                      </form>
+                      <CaseDeclaree
+                        anomalieId={l.anomalie_id}
+                        action={deselectionner}
+                        anime={fait === l.anomalie_id}
+                      />
                     ) : (
                       // Ouvrir ne demande plus rien au serveur : tout est
                       // déjà là (composants/ouverture-anomalie.tsx).
@@ -1268,7 +1251,10 @@ export default async function Tournee({
                   elle-même pour ne pas repousser les deux boutons hors de
                   l'écran. */}
               <ul className="max-h-[34dvh] overflow-y-auto flex flex-col gap-1 -mx-1 px-1">
-                {faitesEnTout.map((l) => (
+                {/* Dans l'ordre du bâtiment — étage, puis chambre croissante —
+                    comme la liste elle-même : on relit dans l'ordre où l'on a
+                    marché, pas dans l'ordre où l'on a coché. */}
+                {[...faitesEnTout].sort(parLieu).map((l) => (
                   <li key={l.anomalie_id} className="flex items-baseline gap-2">
                     <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-muted text-ink-soft text-[11px]">
                       {l.emplacement}

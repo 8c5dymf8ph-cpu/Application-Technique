@@ -237,13 +237,51 @@ export default async function DetailTournee({
     }
     const jour = String(donnees.get("jour") ?? "").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(jour)) return;
-    await sql`update tournees set date_tournee = ${jour}::date where id = ${id}`;
-    await sql`
-      update interventions
-         set date_intervention = ${jour}::date
-       where tournee_id = ${id}`;
-    revalidatePath(`/technique/tournee/${id}`);
+
+    /**
+     * Un passage, c'est qui est venu et quel jour (règle 10septies) : la base
+     * n'en tolère qu'un par intervenant et par jour. Déplacer ce passage sur
+     * un jour où l'intervenant en a DÉJÀ un se heurtait à l'index et
+     * finissait sur une page d'erreur. Les deux sont la même journée : on les
+     * réunit, comme `fn_fusionner_les_passages_du_jour` — les interventions
+     * rejoignent celui qui existe, il garde ce qui s'est réellement passé
+     * (clos si l'un l'était, la date du dernier envoi), et celui-ci disparaît.
+     */
+    const cible = await sql.begin(async (tx) => {
+      const [autre] = await tx<{ id: string }[]>`
+        select t2.id from tournees t
+        join tournees t2
+          on t2.technicien_id  is not distinct from t.technicien_id
+         and t2.prestataire_id is not distinct from t.prestataire_id
+         and t2.date_tournee = ${jour}::date
+         and t2.id <> t.id
+        where t.id = ${id}`;
+      if (!autre) {
+        await tx`update tournees set date_tournee = ${jour}::date where id = ${id}`;
+        await tx`update interventions set date_intervention = ${jour}::date where tournee_id = ${id}`;
+        return null;
+      }
+      await tx`
+        update interventions
+           set tournee_id = ${autre.id}, date_intervention = ${jour}::date
+         where tournee_id = ${id}`;
+      await tx`
+        update tournees g set
+          cloturee_le = greatest(g.cloturee_le, t.cloturee_le),
+          mail_technicien_envoye_le = greatest(g.mail_technicien_envoye_le, t.mail_technicien_envoye_le),
+          mail_recap_envoye_le = greatest(g.mail_recap_envoye_le, t.mail_recap_envoye_le),
+          reprise = g.reprise and t.reprise
+          from tournees t
+         where g.id = ${autre.id} and t.id = ${id}`;
+      await tx`delete from tournees where id = ${id}`;
+      return autre.id;
+    });
+
     revalidatePath("/technique/historique");
+    if (cible) {
+      redirect(`/technique/tournee/${cible}?fait=passages-reunis` as Route);
+    }
+    revalidatePath(`/technique/tournee/${id}`);
     redirect(`/technique/tournee/${id}?fait=modifie` as Route);
   }
 

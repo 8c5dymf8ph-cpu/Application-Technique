@@ -263,6 +263,16 @@ const MOTS: Record<string, { ton: string; texte: string }> = {
     texte: "Commande supprimée. Si elle était reçue, ses entrées de stock sont parties avec elle.",
   },
   "produit-supprime": { ton: "green", texte: "Produit supprimé : il n’avait jamais servi." },
+  "passages-reunis": {
+    ton: "green",
+    texte:
+      "L’intervenant avait déjà un passage ce jour-là : les deux sont réunis en un seul, " +
+      "avec toutes leurs interventions. Un passage, c’est qui est venu et quel jour.",
+  },
+  "ajustement-supprime": {
+    ton: "green",
+    texte: "Ajustement supprimé. Le stock est recalculé sans lui.",
+  },
   "produit-a-historique": {
     ton: "amber",
     texte:

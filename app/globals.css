@@ -27,6 +27,37 @@
   to   { opacity: 1; transform: none; }
 }
 
+/* La case d'une anomalie déclarée (composants/case-declaree.tsx).
+   Cochée : verte, la coche tracée. On arrive d'un « C'est fait » : la case
+   se remplit avec un léger rebond et la coche se dessine. On la décoche :
+   elle se vide et la coche s'efface, dès l'appui. */
+.case-remplie,
+.case-se-remplit {
+  background-color: #357051;
+  border-color: #357051;
+}
+.case-se-vide {
+  background-color: transparent;
+  border-color: #C9C5D8;
+  animation: case-se-vide 0.32s ease-in both;
+}
+.coche { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.case-se-remplit { animation: case-se-remplit 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.25) both; }
+.case-se-remplit .coche { animation: coche-se-trace 0.3s 0.22s ease-out both; }
+.case-se-vide .coche { animation: coche-s-efface 0.22s ease-in both; }
+@keyframes case-se-remplit {
+  0%   { background-color: transparent; border-color: #C9C5D8; transform: scale(0.8); }
+  55%  { background-color: #357051; border-color: #357051; transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+@keyframes case-se-vide {
+  0%   { background-color: #357051; border-color: #357051; transform: scale(1); }
+  45%  { transform: scale(0.85); }
+  100% { background-color: transparent; border-color: #C9C5D8; transform: scale(1); }
+}
+@keyframes coche-se-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes coche-s-efface { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 1; } }
+
 /* Un geste doit se voir AU MOMENT où on le fait.
  *
  * Un écran tactile n'a pas de survol : entre l'appui et la réponse du serveur,

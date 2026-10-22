@@ -5,7 +5,7 @@ import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { profilActif, type Profil } from "@/lib/profil";
 import { saTournee } from "@/lib/acces";
-import { intervenants } from "@/lib/tournee";
+import { chargeParIntervenant, intervenants } from "@/lib/tournee";
 import { aujourdhuiLong, peutValider } from "@/lib/domaine";
 import { Compteur, Tuile } from "./composants/ui";
 import { CompteurChoixIntervenant } from "./composants/choix-intervenant";
@@ -69,9 +69,13 @@ export default async function Accueil() {
   // travail d'UN intervenant, sur sa tournée. La fenêtre demande lequel
   // avant d'y mener, plutôt qu'une liste hotel-wide qui ne ressemble à
   // aucun écran existant.
+  const charge = await chargeParIntervenant();
   const nomsIntervenants = (await intervenants()).map((i) => ({
     cle: i.utilisateur_id ?? i.prestataire_id ?? i.nom,
     nom: i.nom,
+    specialites: i.specialites,
+    charge: charge.get(i.nom) ?? 0,
+    compte: i.compte,
   }));
 
   const gouvernante = peutValider(profil.role);

@@ -16,6 +16,7 @@ import { VoirDocument } from "@/app/composants/fenetre";
 import { ApercuFil } from "@/app/composants/apercu-fil";
 import type { Message } from "@/app/composants/fil";
 import { CorrigerAchat } from "@/app/composants/corriger-achat";
+import { CorrigerAjustement } from "@/app/composants/corriger-ajustement";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
 import { demanderDevisProduit } from "@/lib/devis";
 import { avecValeurActuelle, categoriesExistantes, normaliserCategorie } from "@/lib/categories";
@@ -498,8 +499,49 @@ export default async function FicheProduit({
     revalidatePath(`/stock/produit/${id}`);
   }
 
+  /**
+   * Corriger un ajustement passé — l'écart, le motif, la date, le mot.
+   *
+   * Une casse saisie à « −10 » au lieu de « −1 » ne se rattrapait que par un
+   * second ajustement en sens inverse : deux lignes fausses dans l'historique
+   * pour une faute de frappe. Jamais un ajustement d'INVENTAIRE : celui-là
+   * est l'écart d'un comptage complet (règle 4), il se corrige en recomptant.
+   */
+  async function corrigerAjustement(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/profil");
+    const mouvementId = String(donnees.get("mouvement_id") ?? "");
+    const ecart = Number(donnees.get("ecart") ?? 0);
+    const motif = String(donnees.get("motif") ?? "");
+    if (!mouvementId || !ecart || !MOTIFS.some((m) => m.v === motif)) return;
+    const saisieDate = String(donnees.get("date") ?? "").trim();
+    await sql`
+      update mouvements_stock
+         set quantite = ${ecart},
+             motif = ${motif}::motif_regularisation,
+             commentaire = ${String(donnees.get("commentaire") ?? "").trim() || null},
+             date_mouvement = coalesce(${saisieDate ? `${saisieDate} 12:00` : null}::timestamptz,
+                                       date_mouvement)
+       where id = ${mouvementId} and produit_id = ${id}
+         and type = 'regularisation' and motif <> 'inventaire'`;
+    revalidatePath(`/stock/produit/${id}`);
+  }
 
-
+  /** Supprimer un ajustement saisi par erreur — même réserve : jamais un inventaire. */
+  async function supprimerAjustement(donnees: FormData) {
+    "use server";
+    const profil_ = await profilActif();
+    if (!profil_ || !peutValider(profil_.role)) redirect("/profil");
+    const mouvementId = String(donnees.get("mouvement_id") ?? "");
+    if (!mouvementId) return;
+    await sql`
+      delete from mouvements_stock
+       where id = ${mouvementId} and produit_id = ${id}
+         and type = 'regularisation' and motif <> 'inventaire'`;
+    revalidatePath(`/stock/produit/${id}`);
+    redirect(`/stock/produit/${id}?fait=ajustement-supprime` as Route);
+  }
 
   async function rattacher(donnees: FormData) {
     "use server";
@@ -952,10 +994,15 @@ export default async function FicheProduit({
                   )}
                 </div>
 
+                {/* Une fourchette et une moyenne n'ont de sens qu'à partir de
+                    deux prix différents : « de 31,36 € à 31,36 €, 31,36 € en
+                    moyenne » répétait trois fois le chiffre déjà écrit en gros. */}
                 <p className="text-[12px] text-ink-soft text-pretty leading-snug">
-                  {prix.nb_achats} achat{prix.nb_achats > 1 ? "s" : ""} — de{" "}
-                  {euros(prix.prix_min)} à {euros(prix.prix_max)}, {euros(prix.prix_moyen)} en
-                  moyenne.
+                  {prix.nb_achats === 1
+                    ? "Un seul achat enregistré."
+                    : Number(prix.prix_min) === Number(prix.prix_max)
+                      ? `${prix.nb_achats} achats, tous à ${euros(prix.prix_min)}.`
+                      : `${prix.nb_achats} achats, de ${euros(prix.prix_min)} à ${euros(prix.prix_max)} — ${euros(prix.prix_moyen)} en moyenne.`}
                 </p>
 
                 {prix.ecart_reference_pct !== null &&
@@ -1553,6 +1600,23 @@ export default async function FicheProduit({
                         factureFichier={m.facture_fichier}
                       />
                     )}
+                    {/* Un ajustement passé se corrige ou se supprime — jamais
+                        celui d'un inventaire, qui est l'écart d'un comptage
+                        complet et se corrige en recomptant (règle 4). */}
+                    {m.type === "regularisation" && m.motif !== "inventaire" &&
+                      peutValider(profil.role) && (
+                        <CorrigerAjustement
+                          action={corrigerAjustement}
+                          supprimerAction={supprimerAjustement}
+                          mouvementId={m.id}
+                          date={new Date(m.date_mouvement).toLocaleDateString("fr-FR")}
+                          dateISO={jourISO(m.date_mouvement)}
+                          ecart={Number(m.quantite)}
+                          motif={m.motif}
+                          commentaire={m.commentaire}
+                          motifs={MOTIFS}
+                        />
+                      )}
                     {/* Sur une sortie liée à une intervention, le vrai fil
                         est celui de l'ANOMALIE (v_fil_commentaires) : les mots
                         que quelqu'un a écrits, pas « Intervention —

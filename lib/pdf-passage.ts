@@ -210,10 +210,13 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
     apres: "Après",
     validation: "Vérif.",
   };
-  const TAILLE_VIGNETTE = 36;
-  const TAILLE_LEGENDE = 6.5;
+  // 60 points (2 cm) : à 36, une vignette disait qu'il y avait une photo,
+  // pas ce qu'elle montrait. La mise en page ne change pas — sur la ligne du
+  // titre quand elles y tiennent, sinon juste dessous.
+  const TAILLE_VIGNETTE = 60;
+  const TAILLE_LEGENDE = 7.5;
   const ESPACE_LEGENDE = 2;
-  const ESPACE_VIGNETTE = 6;
+  const ESPACE_VIGNETTE = 8;
   const HAUTEUR_BLOC_VIGNETTE = TAILLE_VIGNETTE + ESPACE_LEGENDE + TAILLE_LEGENDE + 2;
 
   for (const l of lignes) {
@@ -276,9 +279,30 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
 
     c.assurer(Math.max(12.5 * 1.35, HAUTEUR_BLOC_VIGNETTE) + 4);
 
-    const dessinerVignettes = (xDepart: number, yHaut: number) => {
+    // Plus grandes, elles peuvent ne plus tenir sur une seule ligne : on les
+    // range par rangées dans la largeur de la page, au lieu de les laisser
+    // déborder à droite.
+    const rangees: (typeof vignettes)[] = [];
+    for (const v of vignettes) {
+      const derniere = rangees[rangees.length - 1];
+      const largeurDerniere = derniere
+        ? derniere.reduce((s, w) => s + w.largeur + ESPACE_VIGNETTE, 0)
+        : Infinity;
+      if (!derniere || largeurDerniere + v.largeur > LARGEUR_UTILE) rangees.push([v]);
+      else derniere.push(v);
+    }
+    const dessinerRangeesSousLeTitre = () => {
+      if (rangees.length > 0) c.y -= 4;
+      for (const rangee of rangees) {
+        c.assurer(HAUTEUR_BLOC_VIGNETTE + 4);
+        dessinerVignettes(MARGE, c.y, rangee);
+        c.y -= HAUTEUR_BLOC_VIGNETTE + 4;
+      }
+    };
+
+    const dessinerVignettes = (xDepart: number, yHaut: number, lot = vignettes) => {
       let x = xDepart;
-      for (const v of vignettes) {
+      for (const v of lot) {
         const xImage = x + (v.largeur - v.largeurImage) / 2;
         c.page.drawRectangle({
           x: xImage - 1,
@@ -315,22 +339,14 @@ async function genererPdfPassage(tourneeId: string): Promise<Uint8Array> {
         c.y -= Math.max(12.5 * 1.35, HAUTEUR_BLOC_VIGNETTE + 4);
       } else {
         c.y -= 12.5 * 1.35;
-        if (vignettes.length > 0) {
-          c.assurer(HAUTEUR_BLOC_VIGNETTE + 4);
-          dessinerVignettes(MARGE, c.y);
-          c.y -= HAUTEUR_BLOC_VIGNETTE + 4;
-        }
+        dessinerRangeesSousLeTitre();
       }
     } else {
       // Une description longue a déjà besoin de plusieurs lignes : les
       // vignettes suivent sur une ligne à elles, mais toujours compacte —
       // jamais un bloc par moment.
       c.texte(titre, { taille: 12.5, gras: true });
-      if (vignettes.length > 0) {
-        c.assurer(HAUTEUR_BLOC_VIGNETTE + 4);
-        dessinerVignettes(MARGE, c.y);
-        c.y -= HAUTEUR_BLOC_VIGNETTE + 4;
-      }
+      dessinerRangeesSousLeTitre();
     }
     for (const chemin of illisibles) {
       c.texte(`(photo non affichable — ${chemin})`, { taille: 8.5, couleur: rgb(0.6, 0.3, 0.1) });
