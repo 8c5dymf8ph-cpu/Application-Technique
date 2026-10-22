@@ -114,6 +114,12 @@ export default async function Administration() {
             badge={c.variations}
             ton="bg-blue-soft"
           />
+          <Tuile
+            href="/administration/produits"
+            titre="Produits"
+            detail="Nom, référence, prix HT et fournisseurs, tous réunis"
+            ton="bg-surface"
+          />
           {suitLesDossiers(profil.role) && (
             <Tuile
               href="/administration/catalogue"
