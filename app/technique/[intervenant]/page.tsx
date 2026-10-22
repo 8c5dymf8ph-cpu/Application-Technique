@@ -775,23 +775,14 @@ export default async function Tournee({
       <div className="flex grow">
         {/* Les étages, sur tout le bord, dans l'ordre du bâtiment — collés
             en haut pendant que la liste défile à côté, et non plus sur leur
-            propre défilement interne.
-            La taille est bonne — « le menu sur le côté est bien
-            paramétré » — mais remonter dans la liste fait REVENIR la barre
-            du bas de Safari, qui RECOUVRE le dernier onglet (sous-sol) sans
-            que rien, côté CSS, ne prévienne de sa hauteur : elle se pose
-            par-dessus la page, elle ne la rétrécit pas. `--h-reelle` ne
-            peut pas le savoir à l'avance ; on réserve donc une marge fixe
-            en bas, pour qu'aucun onglet ne finisse jamais sous cette barre,
-            qu'elle soit là ou non. */}
+            propre défilement interne. Elle occupe TOUTE la hauteur de
+            l'écran : ne pas lui retrancher de marge — « elle était parfaite
+            puisqu'elle s'étalait sur tout l'écran ». */}
         {uniques.length > 0 && (
           <nav
             aria-label="Étages"
             className="sticky top-0 self-start shrink-0 flex flex-col gap-[3px] py-1.5"
-            style={{
-              height:
-                "calc(var(--h-reelle) - max(96px, env(safe-area-inset-bottom) + 56px))",
-            }}
+            style={{ height: "var(--h-reelle)" }}
           >
             <Link
               replace
@@ -835,12 +826,11 @@ export default async function Tournee({
           </nav>
         )}
 
-        {/* La liste défile avec la page entière, plus avec elle-même : de
-            la place sous la dernière ligne, pour qu'elle ne semble pas
-            collée, tassée, contre la barre du bas (« Fin d'intervention »
-            ou « Reprendre »). */}
+        {/* La liste défile avec la page entière, plus avec elle-même. De la
+            place sous la dernière ligne : en bas de page, elle doit pouvoir
+            remonter au-dessus de la barre de Safari plutôt que finir dessous. */}
         <div
-          className="grow min-w-0 pl-3 pr-5 pt-3 pb-10 flex flex-col gap-4"
+          className="grow min-w-0 pl-3 pr-5 pt-3 pb-24 flex flex-col gap-4"
         >
         {fait === "supprime" && <Confirmation quoi="supprime" />}
         {fait?.startsWith("passage-repris") && <Confirmation quoi={fait} />}
@@ -952,6 +942,58 @@ export default async function Tournee({
             </span>
           )}
         </div>
+
+        {/* Rendre son lot, en deux temps.
+            « Fin d'intervention » envoie un message, et c'est irréversible
+            pour qui le reçoit : un appui de trop en début de journée, et le
+            récapitulatif annonce deux anomalies sur douze. Ce qui empêche
+            l'erreur, c'est de VOIR ce qui part et à qui (la fenêtre de
+            confirmation, plus bas). Et puisqu'un passage se reprend — même
+            jour, même lot — l'erreur ne coûte plus une journée.
+
+            Ici, dans la page, sous le compteur — et PAS épinglé au bas de
+            l'écran. Quatre tentatives ont buté sur le même mur : dès qu'un
+            élément est collé en bas, Safari réserve autour de sa propre
+            barre une bande qu'il peint de la couleur de cet élément. C'est
+            le « vide sous le bouton », et il grandit chaque fois que la barre
+            de Safari revient en remontant. En haut, la liste passe sous la
+            barre d'adresse ; aucun autre écran de l'application n'épingle
+            rien en bas, et aucun n'a ce défaut. Le bouton suit donc le
+            défilement, à côté du compteur qui porte, lui aussi, sur tout le
+            passage. */}
+        {tournee.cloturee_le ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] text-ink-faint text-pretty">
+              Passage rendu à {heureISO(tournee.cloturee_le)}.{" "}
+              {historique
+                ? "Une anomalie ou du matériel manque sur ce jour-là ? Reprends-le : c’est la même journée, donc le même passage."
+                : "Si tu reviens aujourd’hui, reprends-le : c’est la même journée, donc le même passage."}
+            </p>
+            <form action={reprendre}>
+              <BoutonEnvoi
+                pendant="Reprise…"
+                className="w-full h-[52px] rounded-[15px] border-[1.5px] border-plum text-plum font-display font-semibold text-[16px]"
+              >
+                Reprendre le passage
+              </BoutonEnvoi>
+            </form>
+          </div>
+        ) : faitesEnTout.length > 0 && !rendre ? (
+          <Link
+            replace
+            href={
+              `/technique/${encodeURIComponent(nom)}?${new URLSearchParams({
+                rendre: "1",
+                ...(q ? { q } : {}),
+                ...(historique ? { jour: passe! } : {}),
+              })}` as Route
+            }
+            className="w-full h-[54px] rounded-[15px] bg-plum text-white font-display font-semibold text-[17px] grid place-items-center active:opacity-80"
+          >
+            Fin d’intervention — {faitesEnTout.length} anomalie
+            {faitesEnTout.length > 1 ? "s" : ""}
+          </Link>
+        ) : null}
 
         {/* Chercher plutôt que faire défiler. On tape « mitigeur » ou « 27 » :
             la description et le lieu, rien d'autre — un numéro de référence ne
@@ -1263,67 +1305,6 @@ export default async function Tournee({
             </ul>
         )}
         </div>
-      </div>
-
-      {/* Rendre son lot, en deux temps.
-          « Fin d'intervention » envoie un message, et c'est irréversible pour
-          qui le reçoit : un appui de trop en début de journée, et le
-          récapitulatif annonce deux anomalies sur douze. Un décompte ferait
-          attendre sans rien apprendre ; ce qui empêche l'erreur, c'est de VOIR
-          ce qui part et à qui. Et puisqu'un passage se reprend maintenant — même
-          jour, même lot — l'erreur ne coûte plus une journée. */}
-      {/* Un seul emplacement, TOUJOURS monté, pour ce pied de page — son
-          contenu change (rien, « Reprendre », « Fin d'intervention »), mais
-          le nœud reste : ajouter ou retirer un enfant juste au moment où un
-          geste vient de changer la page est le moment précis où un
-          navigateur mobile peut lire une taille d'écran encore en train de
-          bouger. Ne jamais démonter ce pied de page : ne varier que ce
-          qu'il y a dedans, en classe comme en contenu. */}
-      <div
-        className={`px-5 sticky bottom-0 bg-ground flex flex-col gap-2 ${
-          tournee.cloturee_le || (faitesEnTout.length > 0 && !rendre)
-            ? "pt-3 border-t border-line shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.12)]"
-            : ""
-        }`}
-        style={
-          tournee.cloturee_le || (faitesEnTout.length > 0 && !rendre)
-            ? { paddingBottom: "max(24px, env(safe-area-inset-bottom))" }
-            : undefined
-        }
-      >
-        {tournee.cloturee_le ? (
-          <>
-            <p className="text-[13px] text-ink-faint text-pretty">
-              Passage rendu à {heureISO(tournee.cloturee_le)}.{" "}
-              {historique
-                ? "Une anomalie ou du matériel manque sur ce jour-là ? Reprends-le : c’est la même journée, donc le même passage."
-                : "Si tu reviens aujourd’hui, reprends-le : c’est la même journée, donc le même passage."}
-            </p>
-            <form action={reprendre}>
-              <BoutonEnvoi
-                pendant="Reprise…"
-                className="w-full h-[52px] rounded-[15px] border-[1.5px] border-plum text-plum font-display font-semibold text-[16px]"
-              >
-                Reprendre le passage
-              </BoutonEnvoi>
-            </form>
-          </>
-        ) : faitesEnTout.length > 0 && !rendre ? (
-          <Link
-            replace
-            href={
-              `/technique/${encodeURIComponent(nom)}?${new URLSearchParams({
-                rendre: "1",
-                ...(q ? { q } : {}),
-                ...(historique ? { jour: passe! } : {}),
-              })}` as Route
-            }
-            className="w-full h-[58px] rounded-[15px] bg-plum text-white font-display font-semibold text-[18px] grid place-items-center active:opacity-80"
-          >
-            Fin d’intervention — {faitesEnTout.length} anomalie
-            {faitesEnTout.length > 1 ? "s" : ""}
-          </Link>
-        ) : null}
       </div>
 
       {/* Un appui de trop envoie un message irréversible pour qui le reçoit :
