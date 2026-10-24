@@ -80,7 +80,7 @@ export function PhotoProduit({
 
       <dialog
         ref={fenetre}
-        className="m-auto w-[min(94vw,32rem)] rounded-card bg-ink p-0 backdrop:bg-ink/80"
+        className="m-auto touch-pan-y touch-pinch-zoom w-[min(94vw,32rem)] rounded-card bg-ink p-0 backdrop:bg-ink/80"
         onClick={(e) => {
           if (e.target === fenetre.current) fenetre.current?.close();
         }}

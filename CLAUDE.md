@@ -1098,6 +1098,12 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   les gris pâles et les filets se lisent. L'interlettrage suit la taille — resserré sur les grands
   titres, aéré sous 12 px — et le texte courant utilise l'axe optique de Source Serif. Ne pas
   reposer d'animation écran par écran.
+- **Un champ s'écrit en 16 px au doigt, jamais moins.** En dessous, Safari agrandit la page au
+  premier appui et ne la rétrécit pas : on fait défiler de côté un écran décalé. `globals.css` le
+  pose sous `(pointer: coarse)` — corriger la cause, jamais interdire le zoom. Au même endroit :
+  pas de « tirer pour rafraîchir » sur la page (un formulaire à moitié rempli s'effaçait), pas de
+  menu « Copier, Partager » sur un appui long d'une tuile, et la barre d'état prend la couleur du
+  HAUT de l'écran — prune sous un en-tête, clair sur l'accueil et le choix du profil.
 - **L'administration est un menu, pas un écran.** Tout y était posé bout à bout — l'état de la
   base, la file des courriels, le test du dépôt, le journal des suppressions, les destinataires
   — puis quatre tuiles tout en bas : « toutes les sous-menus en vrac ». On faisait défiler pour

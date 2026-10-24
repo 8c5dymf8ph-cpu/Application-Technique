@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Route } from "next";
+import type { Route, Viewport } from "next";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
@@ -11,6 +11,10 @@ import { Compteur, Tuile } from "./composants/ui";
 import { CompteurChoixIntervenant } from "./composants/choix-intervenant";
 
 export const dynamic = "force-dynamic";
+
+// L'accueil commence sur le fond clair, pas sur un en-tête prune : la barre
+// d'état prend la même couleur, sinon un bandeau prune flotte au-dessus.
+export const viewport: Viewport = { themeColor: "#F4F2F7" };
 
 type Chiffres = {
   a_faire: number;

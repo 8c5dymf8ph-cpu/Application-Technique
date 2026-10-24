@@ -9,6 +9,17 @@
        gris que Safari pose sur tout ce qui se touche faisait doublon, et
        arrivait en retard sur le nôtre. */
     -webkit-tap-highlight-color: transparent;
+    /* Une application ne se rafraîchit pas en tirant l'écran vers le bas : sur
+       un formulaire à moitié rempli, ce geste fait sous le pouce effaçait la
+       saisie. Et le fond de page ne rebondit plus derrière les en-têtes. Les
+       listes et fenêtres qui défilent dans elles-mêmes gardent leur rebond. */
+    overscroll-behavior-y: none;
+  }
+  /* En paysage, l'encoche mange un côté : le contenu s'en écarte, le fond
+     va jusqu'au bord. */
+  body {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
   /* Mesurée par `HauteurReelle` (composants/hauteur-reelle.tsx), avant que
      le JS tourne ou s'il est bloqué : `100dvh` reste un repli raisonnable,
@@ -137,6 +148,26 @@ a:active {
 button, summary, [role="button"], label[data-cible] {
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Un appui long sur une tuile ou une vignette ouvrait l'aperçu du lien et le
+   menu « Copier, Partager » de Safari : un réflexe de site web. Les liens au
+   milieu d'un texte gardent leur menu ; les liens qui sont des CONTRÔLES, et
+   les images, non. */
+a.carte, a[data-cible], a[class*="rounded-"], img {
+  -webkit-touch-callout: none;
+}
+
+/* Safari agrandit toute la page quand on touche un champ écrit sous 16 px, et
+   ne la rétrécit pas en sortant : on se retrouvait à faire défiler de côté un
+   écran décalé. Les champs de l'application étaient à 15 px. Sur un écran
+   tactile, ils passent à 16 px — la cause, plutôt que d'interdire le zoom. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
 }
 
 /* Un bouton désactivé ne bouge pas : il dit déjà qu'il n'attend rien. */

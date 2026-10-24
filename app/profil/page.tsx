@@ -1,10 +1,14 @@
 import { redirect } from "next/navigation";
-import type { Route } from "next";
+import type { Route, Viewport } from "next";
 import { choisirProfil, profilActif, profilsDisponibles } from "@/lib/profil";
 import { Retour } from "@/app/composants/retour";
 import { LIBELLE_ROLE } from "@/lib/domaine";
 
 export const dynamic = "force-dynamic";
+
+// Le choix du profil commence sur le fond clair, pas sur un en-tête prune : la barre
+// d'état prend la même couleur, sinon un bandeau prune flotte au-dessus.
+export const viewport: Viewport = { themeColor: "#F4F2F7" };
 
 export default async function ChoixProfil() {
   const profils = await profilsDisponibles();

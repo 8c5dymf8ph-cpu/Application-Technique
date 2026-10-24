@@ -28,10 +28,20 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // La barre d'état prend la couleur du HAUT de l'écran : le prune des
+  // en-têtes. L'accueil et le choix du profil, qui commencent sur le fond
+  // clair, posent la leur.
   themeColor: "#453A6E",
+  // L'application n'a pas de thème sombre : sans cette ligne, un téléphone en
+  // mode sombre dessine ses calendriers et ses listes déroulantes en noir au
+  // milieu d'écrans clairs.
+  colorScheme: "light",
   // L'application s'installe sur l'écran d'accueil : elle doit passer sous
   // l'encoche sans que son contenu s'y cache.
   viewportFit: "cover",
+  // Sur Android, le clavier réduit la page au lieu de passer par-dessus, comme
+  // il le fait déjà sur iPhone.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
