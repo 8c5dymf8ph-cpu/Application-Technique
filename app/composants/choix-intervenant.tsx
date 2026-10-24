@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { CarteIntervenant } from "./carte-intervenant";
+import { CLASSE_SOCLE, ContenuCompteur } from "./ui";
 
 export type NomIntervenant = {
   cle: string;
@@ -54,12 +55,9 @@ export function CompteurChoixIntervenant({
       <button
         type="button"
         onClick={() => fenetre.current?.showModal()}
-        className="rounded-[18px] bg-surface px-2 py-5 flex flex-col items-center gap-1 shadow-[0_2px_4px_rgba(27,25,48,0.04),0_10px_22px_-10px_rgba(27,25,48,0.18)] active:bg-surface-muted"
+        className={CLASSE_SOCLE}
       >
-        <span className={`font-display font-semibold text-[30px] leading-none tabular-nums ${ton}`}>
-          {valeur}
-        </span>
-        <span className="etiquette">{libelle}</span>
+        <ContenuCompteur valeur={valeur} libelle={libelle} ton={ton} />
       </button>
 
       <dialog

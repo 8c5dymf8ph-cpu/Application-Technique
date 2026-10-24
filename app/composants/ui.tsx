@@ -72,37 +72,54 @@ export function Compteur({
       par exemple, où il n'y a rien à ouvrir de plus). */
   href?: Adresse;
 }) {
-  const contenu = (
+  const contenu = <ContenuCompteur valeur={valeur} libelle={libelle} ton={ton} />;
+  return href ? (
+    <Link href={href as Route} className={CLASSE_SOCLE}>
+      {contenu}
+    </Link>
+  ) : (
+    <div className={CLASSE_SOCLE}>{contenu}</div>
+  );
+}
+
+/** Un compteur de l'accueil est un socle de pâte, son chiffre en relief
+ *  (globals.css, « La pâte ») — partagé avec celui qui ouvre le choix de
+ *  l'intervenant, pour que les trois se ressemblent. */
+export const CLASSE_SOCLE = "socle-pate px-2 pt-[22px] pb-[18px] flex flex-col items-center gap-1";
+
+export function ContenuCompteur({
+  valeur,
+  libelle,
+  ton,
+}: {
+  valeur: number | string;
+  libelle: string;
+  ton: string;
+}) {
+  return (
     <>
-      <span className={`font-display font-semibold text-[30px] leading-none tabular-nums ${ton}`}>
+      <span className={`chiffre-pate font-display font-semibold text-[38px] leading-none tabular-nums ${ton}`}>
         {valeur}
       </span>
       <span className="etiquette">{libelle}</span>
     </>
   );
-  const classe =
-    "rounded-[18px] bg-surface px-2 py-5 flex flex-col items-center gap-1 shadow-[0_2px_4px_rgba(27,25,48,0.04),0_10px_22px_-10px_rgba(27,25,48,0.18)]";
-  return href ? (
-    <Link href={href as Route} className={`${classe} active:bg-surface-muted`}>
-      {contenu}
-    </Link>
-  ) : (
-    <div className={classe}>{contenu}</div>
-  );
 }
 
 /**
- * L'ombre d'une tuile porte la teinte de son fond, pas un gris générique :
- * la carte verte projette une ombre verte. `OMBRE_DEFAUT` couvre les fonds
- * neutres (`bg-surface`, `bg-surface-muted`) et tout ton non répertorié.
+ * Une tuile de menu est une dalle de pâte : sa face, sa tranche, son ombre au
+ * sol, toutes de la teinte de son fond — la carte verte projette une ombre
+ * verte. Appuyer l'enfonce. Les teintes vivent dans globals.css (« La pâte »)
+ * ; le reste de l'application continue de nommer un fond (`bg-green-soft`),
+ * traduit ici.
  */
-const OMBRES: Record<string, string> = {
-  "bg-plum-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(69,58,110,0.45)]",
-  "bg-green-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(53,112,81,0.40)]",
-  "bg-blue-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(58,100,153,0.40)]",
-  "bg-amber-soft": "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-12px_rgba(168,100,31,0.40)]",
+const PATES: Record<string, string> = {
+  "bg-plum-soft": "pate-plum",
+  "bg-green-soft": "pate-green",
+  "bg-blue-soft": "pate-blue",
+  "bg-amber-soft": "pate-amber",
+  "bg-red-soft": "pate-red",
 };
-const OMBRE_DEFAUT = "shadow-[0_2px_4px_rgba(27,25,48,0.04),0_14px_28px_-14px_rgba(27,25,48,0.30)]";
 
 export function Tuile({
   href,
@@ -118,44 +135,30 @@ export function Tuile({
   badge?: string | number;
   ton?: string;
   /**
-   * Une pastille d'icône avant le texte, et l'ombre en relief qui va avec.
-   * Réservée aux écrans qui la passent — l'accueil — pour ne rien changer
-   * aux tuiles qui n'ont pas d'icône à donner.
+   * Une pastille d'icône avant le texte, posée sur son palet. Réservée aux
+   * écrans qui la passent — l'accueil.
    */
   icone?: React.ReactNode;
 }) {
-  if (!icone) {
-    return (
-      <Link
-        href={href as Route}
-        className={`${ton} rounded-tile px-5 py-[22px] flex items-center gap-4 min-h-[96px]`}
-      >
-        <div className="flex flex-col gap-[3px] grow min-w-0">
-          <span className="font-display font-bold text-[22px] text-ink">{titre}</span>
-          <span className="text-[13px] text-ink-soft">{detail}</span>
-        </div>
-        {badge !== undefined && badge !== 0 && (
-          <span className="shrink-0 min-w-[34px] h-[34px] px-2 rounded-[10px] bg-white grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums">
-            {badge}
-          </span>
-        )}
-      </Link>
-    );
-  }
-
-  const ombre = OMBRES[ton] ?? OMBRE_DEFAUT;
+  const pate = PATES[ton] ?? "pate-neutre";
   return (
     <Link
       href={href as Route}
-      className={`${ton} ${ombre} rounded-[22px] px-5 py-[18px] flex items-center gap-4 min-h-[96px]`}
+      className={`dalle-pate ${pate} px-5 ${icone ? "py-[18px] min-h-[104px]" : "py-[22px] min-h-[96px]"} flex items-center gap-4`}
     >
-      <span className="shrink-0 w-11 h-11 rounded-full bg-white/65 grid place-items-center">{icone}</span>
+      {icone && (
+        <span className="palet-pate shrink-0 w-[66px] h-[66px] rounded-full grid place-items-center">
+          {icone}
+        </span>
+      )}
       <div className="flex flex-col gap-[3px] grow min-w-0">
-        <span className="font-display font-bold text-[21px] text-ink">{titre}</span>
+        <span className={`font-display font-bold ${icone ? "text-[21px]" : "text-[22px]"} text-ink`}>
+          {titre}
+        </span>
         <span className="text-[13px] text-ink-soft">{detail}</span>
       </div>
       {badge !== undefined && badge !== 0 && (
-        <span className="shrink-0 min-w-[34px] h-[34px] px-2 rounded-[11px] bg-white grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums shadow-[0_2px_5px_rgba(27,25,48,0.12)]">
+        <span className="pastille-pate shrink-0 min-w-[42px] h-[40px] px-2 rounded-[15px] grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums">
           {badge}
         </span>
       )}

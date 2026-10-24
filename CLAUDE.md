@@ -1098,6 +1098,17 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   les gris pâles et les filets se lisent. L'interlettrage suit la taille — resserré sur les grands
   titres, aéré sous 12 px — et le texte courant utilise l'axe optique de Source Serif. Ne pas
   reposer d'animation écran par écran.
+- **Ce qui se touche est en pâte, et ça se règle UNE fois.** L'accueil et les boutons ont pris
+  le style « clay » : une face éclairée par le haut, une TRANCHE visible dessous — l'épaisseur —
+  et une ombre au sol de la couleur de l'objet ; appuyer ENFONCE l'objet de son épaisseur au lieu
+  de le rétrécir. Tout vit dans `globals.css` (« La pâte ») : les dalles, socles, palets et
+  pastilles de l'accueil par leurs classes (`dalle-pate`, `socle-pate`…), les boutons de toute
+  l'application **par leur couleur de fond** — pleins (`bg-plum`, `bg-green`…) ou doux (fonds
+  pâles, blanc). Une ligne de liste (`carte`, ou un fond blanc aux coins `rounded-card`) n'est pas
+  un bouton et reste à plat ; un bouton en cours d'envoi perd son épaisseur. Les pictogrammes de
+  l'accueil sont **les mêmes dessins**, en pâte (`IconePate`) : on a essayé des objets redessinés,
+  « il ne fallait pas forcément changer, juste les améliorer ». **La barre latérale des étages
+  n'est pas concernée** — ses teintes sont écrites à part (`bg-[#…]`) et elle ne se touche pas.
 - **Un champ s'écrit en 16 px au doigt, jamais moins.** En dessous, Safari agrandit la page au
   premier appui et ne la rétrécit pas : on fait défiler de côté un écran décalé. `globals.css` le
   pose sous `(pointer: coarse)` — corriger la cause, jamais interdire le zoom. Au même endroit :

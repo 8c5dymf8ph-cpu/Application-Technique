@@ -303,3 +303,180 @@ details[open] > :not(summary) {
   .border-line, .carte { border-color: #8E8AA3; }
   .text-white\/60, .text-white\/70, .text-white\/75 { color: #fff; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * La pâte.
+ *
+ * Ce qui se touche est un objet modelé : une face éclairée par le haut, une
+ * TRANCHE visible dessous — l'épaisseur, comme le mur d'une maquette — et une
+ * ombre posée au sol, de la couleur de l'objet. Appuyer l'ENFONCE : la
+ * tranche disparaît, l'objet descend de son épaisseur. C'est le retour d'un
+ * vrai bouton, et il se lit sans y penser.
+ *
+ * Posé ici une fois, pour toute l'application : l'accueil (dalles, socles,
+ * palets) par ses classes, les boutons par leur couleur de fond. La barre
+ * latérale des étages n'est pas concernée — ses teintes sont à part, et elle
+ * se règle ailleurs.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.pate-plum    { --p-haut: #EEE9F8; --p-bas: #DED6F0; --p-tranche: #C6BBDF; --p-ombre: rgb(69 58 110 / .55); --p-creux: rgb(69 58 110 / .10); }
+.pate-green   { --p-haut: #E6F3EB; --p-bas: #D2E7DA; --p-tranche: #B3D3BF; --p-ombre: rgb(53 112 81 / .50);  --p-creux: rgb(53 112 81 / .10); }
+.pate-blue    { --p-haut: #E8EFF9; --p-bas: #D4E1F1; --p-tranche: #B5C9E3; --p-ombre: rgb(58 100 153 / .50); --p-creux: rgb(58 100 153 / .10); }
+.pate-amber   { --p-haut: #FAF0E3; --p-bas: #F1DFC6; --p-tranche: #E2C49C; --p-ombre: rgb(168 100 31 / .45); --p-creux: rgb(168 100 31 / .10); }
+.pate-red     { --p-haut: #FBEDEE; --p-bas: #F3DADC; --p-tranche: #E3B9BC; --p-ombre: rgb(158 53 56 / .45);  --p-creux: rgb(158 53 56 / .10); }
+.pate-neutre  { --p-haut: #FFFFFF; --p-bas: #EFECF5; --p-tranche: #D6D1E2; --p-ombre: rgb(79 75 107 / .40);  --p-creux: rgb(79 75 107 / .08); }
+
+/* Une tuile de menu : une dalle épaisse. La marge du bas réserve la place
+   de la tranche, pour que deux dalles ne se touchent pas. */
+.dalle-pate {
+  background: linear-gradient(180deg, var(--p-haut) 0%, var(--p-bas) 100%);
+  border-radius: 30px;
+  margin-bottom: 10px;
+  box-shadow:
+    inset 0 3px 2px rgb(255 255 255 / .95),
+    inset 0 -8px 16px var(--p-creux),
+    0 10px 0 var(--p-tranche),
+    0 30px 26px -14px var(--p-ombre);
+}
+a.dalle-pate:active {
+  opacity: 1;
+  transform: translateY(8px);
+  transition-duration: .05s;
+  box-shadow:
+    inset 0 3px 2px rgb(255 255 255 / .95),
+    inset 0 -8px 16px var(--p-creux),
+    0 2px 0 var(--p-tranche),
+    0 10px 12px -8px var(--p-ombre);
+}
+
+/* Le compteur de l'accueil : un socle blanc, et son chiffre en relief. */
+.socle-pate {
+  border-radius: 26px;
+  margin-bottom: 10px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5F2FA 100%);
+  box-shadow:
+    inset 0 3px 2px #fff,
+    inset 0 -6px 12px rgb(69 58 110 / .06),
+    0 10px 0 #DDD6EA,
+    0 26px 22px -12px rgb(69 58 110 / .45);
+}
+:is(a, button).socle-pate:active {
+  opacity: 1;
+  transform: translateY(8px);
+  transition-duration: .05s;
+  box-shadow: inset 0 3px 2px #fff, inset 0 -6px 12px rgb(69 58 110 / .06), 0 2px 0 #DDD6EA, 0 8px 10px -6px rgb(69 58 110 / .35);
+}
+.chiffre-pate.text-amber { color: #C27A2E; text-shadow: 0 1px 0 #9C5E1E, 0 2px 0 #8E5419, 0 3px 0 #7D4A15, 0 7px 8px rgb(125 74 21 / .3); }
+.chiffre-pate.text-blue  { color: #4A78B0; text-shadow: 0 1px 0 #3A6499, 0 2px 0 #33598A, 0 3px 0 #2A4A73, 0 7px 8px rgb(42 74 115 / .3); }
+.chiffre-pate.text-plum  { color: #5D509A; text-shadow: 0 1px 0 #4B3F78, 0 2px 0 #403567, 0 3px 0 #342B57, 0 7px 8px rgb(52 43 87 / .3); }
+
+/* Le palet où l'icône est posée, la pastille du compte, le galet du profil. */
+.palet-pate {
+  background: radial-gradient(circle at 50% 38%, #FFFFFF 0%, #F7F5FB 60%, #E9E4F2 100%);
+  box-shadow:
+    inset 0 2px 1px #fff,
+    inset 0 -3px 6px rgb(69 58 110 / .10),
+    0 5px 0 rgb(69 58 110 / .10),
+    0 10px 12px -6px rgb(27 25 48 / .28);
+}
+.pastille-pate {
+  background: linear-gradient(180deg, #FFFFFF, #F3F0F8);
+  box-shadow:
+    inset 0 2px 1px #fff,
+    0 5px 0 rgb(69 58 110 / .16),
+    0 12px 12px -6px rgb(27 25 48 / .30);
+  transform: translateY(-3px);
+}
+.galet-pate {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F4F1F9 100%);
+  box-shadow: inset 0 2px 1px #fff, 0 5px 0 #DAD3E8, 0 14px 16px -8px rgb(69 58 110 / .40);
+}
+a.galet-pate:active {
+  opacity: 1;
+  transform: translateY(4px);
+  transition-duration: .05s;
+  box-shadow: inset 0 2px 1px #fff, 0 1px 0 #DAD3E8, 0 5px 8px -5px rgb(69 58 110 / .35);
+}
+.bille-pate {
+  background: radial-gradient(circle at 34% 28%, #8C80C2 0%, #5A4D8D 45%, #3A3063 100%);
+  box-shadow: inset 0 -3px 4px rgb(0 0 0 / .25), 0 3px 5px -2px rgb(47 39 82 / .6);
+}
+
+/* Le nom de l'hôtel : des lettres en pâte prune, à peine épaisses. */
+.titre-pate {
+  color: #4B3F78;
+  text-shadow: 0 1.5px 0 #2E2650, 0 7px 12px rgb(47 39 82 / .22);
+}
+
+/* L'accueil se pose dans une lumière de studio, claire en haut. */
+body:has(.fond-studio) {
+  background: radial-gradient(120% 60% at 50% 0%, #FCFBFE 0%, #F1EDF7 48%, #E7E1F0 100%) fixed;
+}
+
+/* ── Les boutons de toute l'application ──────────────────────────────────
+ * Reconnus à leur couleur de fond, pour ne pas les reprendre écran par écran.
+ * PLEINS (prune, vert, rouge…) : une tranche du même ton, plus sombre.
+ * DOUX (fond pâle ou blanc) : une tranche fine, du ton de leur fond.
+ * Une ligne de liste n'est pas un bouton : `carte`, et un fond BLANC aux coins
+ * de carte, restent à plat. Un fond teinté, lui, est toujours un geste. */
+:is(button, a, [role="button"]):is(.bg-plum, .bg-green, .bg-red, .bg-amber, .bg-blue, .bg-ink) {
+  --b-ep: 4px;
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .18) 0%, rgb(255 255 255 / 0) 55%, rgb(0 0 0 / .07) 100%);
+  box-shadow:
+    inset 0 1.5px 0 rgb(255 255 255 / .30),
+    inset 0 -3px 6px rgb(0 0 0 / .10),
+    0 var(--b-ep) 0 var(--b-tranche),
+    0 calc(var(--b-ep) + 6px) 14px -6px var(--b-ombre);
+}
+:is(button, a, [role="button"]).bg-plum  { --b-tranche: #2F2752; --b-ombre: rgb(69 58 110 / .50); }
+:is(button, a, [role="button"]).bg-green { --b-tranche: #24543B; --b-ombre: rgb(53 112 81 / .45); }
+:is(button, a, [role="button"]).bg-red   { --b-tranche: #74262A; --b-ombre: rgb(158 53 56 / .45); }
+:is(button, a, [role="button"]).bg-amber { --b-tranche: #7D4A15; --b-ombre: rgb(168 100 31 / .45); }
+:is(button, a, [role="button"]).bg-blue  { --b-tranche: #284A73; --b-ombre: rgb(58 100 153 / .45); }
+:is(button, a, [role="button"]).bg-ink   { --b-tranche: #08070F; --b-ombre: rgb(27 25 48 / .45); }
+
+:is(button, [role="button"], a[class*="rounded-"]):is(.bg-plum-soft, .bg-green-soft, .bg-red-soft, .bg-amber-soft, .bg-blue-soft):not(.carte):not([class*="rounded-r-"]),
+:is(button, [role="button"], a[class*="rounded-"]):is(.bg-surface, .bg-surface-muted, .bg-white):not(.carte):not([class*="rounded-card"]):not([class*="rounded-r-"]) {
+  --b-ep: 3px;
+  --b-tranche: #DAD5E5;
+  --b-ombre: rgb(69 58 110 / .22);
+  box-shadow:
+    inset 0 1.5px 0 rgb(255 255 255 / .9),
+    inset 0 -2px 5px rgb(69 58 110 / .06),
+    0 var(--b-ep) 0 var(--b-tranche),
+    0 calc(var(--b-ep) + 5px) 12px -6px var(--b-ombre);
+}
+:is(button, [role="button"], a).bg-plum-soft  { --b-tranche: #D3CAE8; --b-ombre: rgb(69 58 110 / .28); }
+:is(button, [role="button"], a).bg-green-soft { --b-tranche: #BFDCCB; --b-ombre: rgb(53 112 81 / .28); }
+:is(button, [role="button"], a).bg-red-soft   { --b-tranche: #EBC4C6; --b-ombre: rgb(158 53 56 / .26); }
+:is(button, [role="button"], a).bg-amber-soft { --b-tranche: #E8D2B2; --b-ombre: rgb(168 100 31 / .26); }
+:is(button, [role="button"], a).bg-blue-soft  { --b-tranche: #C3D3E8; --b-ombre: rgb(58 100 153 / .26); }
+
+/* Appuyer enfonce le bouton de son épaisseur, au lieu de le rétrécir. */
+:is(button, a, [role="button"]):is(.bg-plum, .bg-green, .bg-red, .bg-amber, .bg-blue, .bg-ink):not(:disabled):active,
+:is(button, [role="button"], a[class*="rounded-"]):is(.bg-plum-soft, .bg-green-soft, .bg-red-soft, .bg-amber-soft, .bg-blue-soft):not(.carte):not([class*="rounded-r-"]):not(:disabled):active,
+:is(button, [role="button"], a[class*="rounded-"]):is(.bg-surface, .bg-surface-muted, .bg-white):not(.carte):not([class*="rounded-card"]):not([class*="rounded-r-"]):not(:disabled):active {
+  opacity: 1;
+  transform: translateY(var(--b-ep));
+  transition-duration: .05s;
+  box-shadow:
+    inset 0 1.5px 0 rgb(255 255 255 / .25),
+    inset 0 -2px 5px rgb(0 0 0 / .06),
+    0 0 0 var(--b-tranche),
+    0 3px 6px -3px var(--b-ombre);
+}
+
+/* Un bouton qui ne répond pas — en cours d'envoi, ou indisponible — n'a plus
+   d'épaisseur : il ne promet rien sous le doigt. */
+:is(button, [role="button"]):is(.bg-plum, .bg-green, .bg-red, .bg-amber, .bg-blue, .bg-ink, .bg-plum-soft, .bg-green-soft, .bg-red-soft, .bg-amber-soft, .bg-blue-soft, .bg-surface, .bg-surface-muted, .bg-white):disabled {
+  box-shadow: inset 0 2px 4px rgb(27 25 48 / .12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.dalle-pate:active,
+  :is(a, button).socle-pate:active,
+  a.galet-pate:active,
+  :is(button, a, [role="button"]):active {
+    transform: none !important;
+  }
+}

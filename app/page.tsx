@@ -8,6 +8,7 @@ import { saTournee } from "@/lib/acces";
 import { chargeParIntervenant, intervenants } from "@/lib/tournee";
 import { aujourdhuiLong, peutValider } from "@/lib/domaine";
 import { Compteur, Tuile } from "./composants/ui";
+import { IconePate } from "./composants/icones-pate";
 import { CompteurChoixIntervenant } from "./composants/choix-intervenant";
 
 export const dynamic = "force-dynamic";
@@ -86,7 +87,7 @@ export default async function Accueil() {
   const admin = profil.role === "admin" || profil.role === "operations";
 
   return (
-    <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
+    <main className="fond-studio min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
       <div className="flex flex-col gap-[2px]">
         <div className="flex items-center gap-3">
           <p className="text-[14px] text-ink-faint grow min-w-0 truncate">
@@ -100,21 +101,21 @@ export default async function Accueil() {
         <Link
           href={"/profil" as Route}
           aria-label={`Profil : ${profil.nom}. Changer de profil`}
-          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface shadow-[0_2px_8px_rgba(27,25,48,0.08)]"
+          className="galet-pate shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full"
         >
-          <span className="w-8 h-8 rounded-full bg-plum grid place-items-center font-display font-semibold text-[12.5px] text-white">
+          <span className="bille-pate w-8 h-8 rounded-full grid place-items-center font-display font-semibold text-[12.5px] text-white">
             {profil.nom.slice(0, 2).toUpperCase()}
           </span>
           <span className="text-[12.5px] text-ink-soft">Changer</span>
         </Link>
         </div>
-        <h1 className="font-display font-bold text-[32px] leading-tight tracking-tight">
+        <h1 className="titre-pate font-display font-bold text-[32px] leading-tight tracking-tight">
           Hôtel Parisianer
         </h1>
         <p className="text-[13px] text-ink-faint mt-1">{aujourdhuiLong()}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-3.5">
         <CompteurChoixIntervenant
           valeur={c.a_faire}
           libelle="À faire"
@@ -139,10 +140,7 @@ export default async function Accueil() {
             badge={c.a_valider_lots}
             ton="bg-plum-soft"
             icone={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#453A6E" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="8.4" />
-                <path d="M8.4 12.3l2.3 2.3 4.7-5.1" />
-              </svg>
+              <IconePate nom="gouvernante" />
             }
           />
         )}
@@ -153,9 +151,7 @@ export default async function Accueil() {
           badge={c.a_faire}
           ton="bg-green-soft"
           icone={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#357051" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z" />
-            </svg>
+            <IconePate nom="technique" />
           }
         />
         <Tuile
@@ -165,9 +161,7 @@ export default async function Accueil() {
           badge={c.dossiers_bouteille}
           ton="bg-blue-soft"
           icone={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3A6499" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z" />
-            </svg>
+            <IconePate nom="bouteilles" />
           }
         />
         <Tuile
@@ -177,11 +171,7 @@ export default async function Accueil() {
           badge={c.sous_seuil}
           ton="bg-amber-soft"
           icone={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A8641F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3.5 8.5L12 4l8.5 4.5L12 13z" />
-              <path d="M3.5 8.5V16L12 20.5 20.5 16V8.5" />
-              <path d="M12 13v7.5" />
-            </svg>
+            <IconePate nom="stock" />
           }
         />
         {admin && (
@@ -192,11 +182,7 @@ export default async function Accueil() {
             badge={c.sans_facture + c.a_controler}
             ton="bg-surface-muted"
             icone={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F4B6B" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
-                <circle cx="15" cy="7" r="2.3" />
-                <circle cx="8" cy="17" r="2.3" />
-              </svg>
+              <IconePate nom="administration" />
             }
           />
         )}
@@ -213,7 +199,7 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
       from fn_anomalies_pour_intervenant(${profil.nom})`;
 
   return (
-    <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
+    <main className="fond-studio min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
       <div className="flex flex-col gap-[2px]">
         <div className="flex items-center gap-3">
           <p className="text-[15px] text-ink-faint grow min-w-0 truncate">
@@ -227,15 +213,15 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
         <Link
           href={"/profil" as Route}
           aria-label={`Profil : ${profil.nom}. Changer de profil`}
-          className="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full bg-surface shadow-[0_2px_8px_rgba(27,25,48,0.08)]"
+          className="galet-pate shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full"
         >
-          <span className="w-8 h-8 rounded-full bg-plum grid place-items-center font-display font-semibold text-[12.5px] text-white">
+          <span className="bille-pate w-8 h-8 rounded-full grid place-items-center font-display font-semibold text-[12.5px] text-white">
             {profil.nom.slice(0, 2).toUpperCase()}
           </span>
           <span className="text-[12.5px] text-ink-soft">Changer</span>
         </Link>
         </div>
-        <h1 className="font-display font-bold text-[32px] leading-tight tracking-tight">
+        <h1 className="titre-pate font-display font-bold text-[32px] leading-tight tracking-tight">
           Hôtel Parisianer
         </h1>
         <p className="text-[14px] text-ink-faint mt-1">{aujourdhuiLong()}</p>
@@ -249,9 +235,7 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
           badge={c.a_traiter}
           ton="bg-green-soft"
           icone={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#357051" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z" />
-            </svg>
+            <IconePate nom="technique" />
           }
         />
       </nav>
