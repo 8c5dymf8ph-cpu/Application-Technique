@@ -7,10 +7,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        ground: "#F4F2F7",
-        surface: { DEFAULT: "#FFFFFF", muted: "#FAF9FC" },
-        ink: { DEFAULT: "#1B1930", soft: "#4F4B6B", faint: "#8E8AA3" },
-        line: "#E7E4EF",
+        // Le fond et les surfaces sont une seule matière : le relief doux
+        // (globals.css) fait sortir ou creuser ce qui doit se distinguer.
+        ground: "#ECE9F2",
+        surface: { DEFAULT: "#ECE9F2", muted: "#E6E2EE" },
+        ink: { DEFAULT: "#1B1930", soft: "#4F4B6B", faint: "#847F9A" },
+        line: "#DCD7E6",
         plum: { DEFAULT: "#453A6E", soft: "#EDE9F5", ink: "#35305A" },
         amber: { DEFAULT: "#A8641F", soft: "#F6EEE3" },
         blue: { DEFAULT: "#3A6499", soft: "#E6EDF6" },

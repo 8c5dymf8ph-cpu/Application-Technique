@@ -83,7 +83,7 @@ export function Compteur({
 }
 
 /** Un compteur de l'accueil sort de la surface, en relief doux (globals.css,
- *  « Le relief doux de l'accueil ») — partagé avec celui qui ouvre le choix
+ *  « Le relief doux ») — partagé avec celui qui ouvre le choix
  *  de l'intervenant, pour que les trois se ressemblent. */
 export const CLASSE_SOCLE = "relief rounded-[20px] px-2 py-5 flex flex-col items-center gap-1";
 
@@ -107,27 +107,16 @@ export function ContenuCompteur({
 }
 
 /**
- * Une tuile de menu.
- *
- * Avec une icône, c'est une tuile de l'ACCUEIL : en relief doux, taillée dans
- * la matière du fond, un soupçon de la couleur de son menu et l'icône dans un
- * creux teinté (globals.css, « Le relief doux de l'accueil »). Sans icône,
- * c'est une tuile de sous-menu : une dalle de pâte, sa tranche et son ombre de
- * la teinte de son fond (« La pâte »). Le reste de l'application nomme un
- * fond (`bg-green-soft`), traduit ici.
+ * Une tuile de menu, en relief doux : taillée dans la matière du fond, un
+ * soupçon de la couleur de son menu (globals.css, « Le relief doux »). Le
+ * reste de l'application nomme un fond (`bg-green-soft`), traduit ici.
  */
-const PATES: Record<string, string> = {
-  "bg-plum-soft": "pate-plum",
-  "bg-green-soft": "pate-green",
-  "bg-blue-soft": "pate-blue",
-  "bg-amber-soft": "pate-amber",
-  "bg-red-soft": "pate-red",
-};
 const RELIEFS: Record<string, string> = {
   "bg-plum-soft": "relief-plum",
   "bg-green-soft": "relief-green",
   "bg-blue-soft": "relief-blue",
   "bg-amber-soft": "relief-amber",
+  "bg-red-soft": "relief-red",
 };
 
 export function Tuile({
@@ -144,44 +133,29 @@ export function Tuile({
   badge?: string | number;
   ton?: string;
   /**
-   * Une icône avant le texte, dans son creux. Réservée aux écrans qui la
-   * passent — l'accueil.
+   * Une icône avant le texte, dans son creux teinté. Réservée aux écrans qui
+   * la passent — l'accueil.
    */
   icone?: React.ReactNode;
 }) {
-  const compte = badge !== undefined && badge !== 0;
-  if (icone) {
-    return (
-      <Link
-        href={href as Route}
-        className={`relief ${RELIEFS[ton] ?? "relief-neutre"} rounded-[24px] px-5 py-[18px] min-h-[96px] flex items-center gap-4`}
-      >
-        <span className="relief-creux shrink-0 w-[52px] h-[52px] rounded-full grid place-items-center">
-          {icone}
-        </span>
-        <div className="flex flex-col gap-[3px] grow min-w-0">
-          <span className="font-display font-bold text-[21px] text-ink">{titre}</span>
-          <span className="text-[13px] text-ink-soft">{detail}</span>
-        </div>
-        {compte && (
-          <span className="relief-creux relief-petit shrink-0 min-w-[36px] h-[36px] px-2 rounded-[11px] grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums">
-            {badge}
-          </span>
-        )}
-      </Link>
-    );
-  }
   return (
     <Link
       href={href as Route}
-      className={`dalle-pate ${PATES[ton] ?? "pate-neutre"} px-5 py-[22px] min-h-[96px] flex items-center gap-4`}
+      className={`relief ${RELIEFS[ton] ?? "relief-neutre"} rounded-[24px] px-5 ${icone ? "py-[18px]" : "py-[22px]"} min-h-[96px] flex items-center gap-4`}
     >
+      {icone && (
+        <span className="relief-creux shrink-0 w-[52px] h-[52px] rounded-full grid place-items-center">
+          {icone}
+        </span>
+      )}
       <div className="flex flex-col gap-[3px] grow min-w-0">
-        <span className="font-display font-bold text-[22px] text-ink">{titre}</span>
+        <span className={`font-display font-bold ${icone ? "text-[21px]" : "text-[22px]"} text-ink`}>
+          {titre}
+        </span>
         <span className="text-[13px] text-ink-soft">{detail}</span>
       </div>
-      {compte && (
-        <span className="shrink-0 min-w-[34px] h-[34px] px-2 rounded-[10px] bg-white grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums">
+      {badge !== undefined && badge !== 0 && (
+        <span className="relief-creux relief-petit shrink-0 min-w-[36px] h-[36px] px-2 rounded-[11px] grid place-items-center font-display font-semibold text-[16px] text-ink tabular-nums">
           {badge}
         </span>
       )}

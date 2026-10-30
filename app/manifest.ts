@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Interventions, stock et bouteilles de l'Hôtel Parisianer",
     start_url: "/",
     display: "standalone",
-    background_color: "#F4F2F7",
+    background_color: "#ECE9F2",
     theme_color: "#453A6E",
     lang: "fr",
   };

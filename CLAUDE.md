@@ -1098,20 +1098,19 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   les gris pâles et les filets se lisent. L'interlettrage suit la taille — resserré sur les grands
   titres, aéré sous 12 px — et le texte courant utilise l'axe optique de Source Serif. Ne pas
   reposer d'animation écran par écran.
-- **L'accueil est en relief doux ; le reste de ce qui se touche est en pâte.** Le style « clay »
-  — une face éclairée, une TRANCHE visible dessous, une ombre au sol de la couleur de l'objet, et
-  l'appui qui ENFONCE — a d'abord été posé partout, accueil compris : « trop imposant ». L'accueil
-  est donc passé au **neumorphism** : tout est taillé dans la matière du fond, sans contour ni
-  tranche ; ce qui se touche sort de la surface, ce qui se lit y est creusé (le rond de l'icône,
-  le compte), et appuyer creuse. Chaque tuile garde **un soupçon de la couleur de son menu**, et
-  le creux de son icône un peu plus — sans cela les cinq tuiles se ressemblent et l'on cherche
-  son menu au lieu de le reconnaître. Les pictogrammes sont les dessins d'origine : des icônes
-  redessinées en objets ont été essayées et refusées. Ailleurs, la pâte reste : les tuiles des
-  sous-menus (`dalle-pate`) et les boutons de toute l'application, reconnus **par leur couleur de
-  fond** — pleins (`bg-plum`, `bg-green`…) ou doux (fonds pâles, blanc). Une ligne de liste
-  (`carte`, ou un fond blanc aux coins `rounded-card`) n'est pas un bouton et reste à plat. Tout
-  vit dans `globals.css` (« La pâte », « Le relief doux de l'accueil ») ; **la barre latérale des
-  étages n'est pas concernée** — ses teintes sont écrites à part (`bg-[#…]`) et elle ne se touche
+- **Toute l'application est en relief doux (neumorphism), et ça se règle UNE fois.** Tout est
+  taillé dans la matière du fond (`ground` = `surface` = #ECE9F2) : aucun contour, aucune carte
+  blanche posée dessus. Le relief tient à deux ombres douces, claire en haut à gauche, teintée en
+  bas à droite. Ce qui se touche ou se lit comme un bloc SORT de la surface — cartes (`carte`, et
+  un fond `bg-surface border-line`), boutons, tuiles ; ce qui se remplit y est CREUSÉ — champs,
+  rond d'une icône, compte ; **appuyer creuse**. Les boutons PLEINS gardent leur couleur : c'est
+  le geste principal, il doit se voir. Chaque tuile de menu garde **un soupçon de la couleur de
+  son menu**, et le creux de son icône un peu plus — sans cela elles se ressemblent toutes. Tout
+  vit dans `globals.css` (« Le relief doux ») : les boutons sont reconnus par leur couleur de
+  fond, les champs par leur balise ; un écran n'a rien à repeindre. **Ce qui a été essayé et
+  refusé** : le « clay » (une tranche épaisse sous chaque objet) — « trop imposant » ; des
+  pictogrammes redessinés en objets — on garde les dessins d'origine. **La barre latérale des
+  étages n'est pas concernée** : ses teintes sont écrites à part (`bg-[#…]`) et elle ne se touche
   pas.
 - **Un champ s'écrit en 16 px au doigt, jamais moins.** En dessous, Safari agrandit la page au
   premier appui et ne la rétrécit pas : on fait défiler de côté un écran décalé. `globals.css` le

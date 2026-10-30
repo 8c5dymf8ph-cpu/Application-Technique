@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // Le choix du profil commence sur le fond clair, pas sur un en-tête prune : la barre
 // d'état prend la même couleur, sinon un bandeau prune flotte au-dessus.
-export const viewport: Viewport = { themeColor: "#F4F2F7" };
+export const viewport: Viewport = { themeColor: "#ECE9F2" };
 
 export default async function ChoixProfil() {
   const profils = await profilsDisponibles();

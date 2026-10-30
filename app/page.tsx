@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 // L'accueil commence sur le fond clair, pas sur un en-tête prune : la barre
 // d'état prend la même couleur, sinon un bandeau prune flotte au-dessus.
-export const viewport: Viewport = { themeColor: "#F4F2F7" };
+export const viewport: Viewport = { themeColor: "#ECE9F2" };
 
 type Chiffres = {
   a_faire: number;
@@ -86,7 +86,7 @@ export default async function Accueil() {
   const admin = profil.role === "admin" || profil.role === "operations";
 
   return (
-    <main className="fond-relief min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
+    <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
       <div className="flex flex-col gap-[2px]">
         <div className="flex items-center gap-3">
           <p className="text-[14px] text-ink-faint grow min-w-0 truncate">
@@ -213,7 +213,7 @@ async function AccueilIntervenant({ profil }: { profil: Profil }) {
       from fn_anomalies_pour_intervenant(${profil.nom})`;
 
   return (
-    <main className="fond-relief min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
+    <main className="min-h-dvh px-5 pb-8 pt-8 flex flex-col gap-7 max-w-md mx-auto">
       <div className="flex flex-col gap-[2px]">
         <div className="flex items-center gap-3">
           <p className="text-[15px] text-ink-faint grow min-w-0 truncate">
