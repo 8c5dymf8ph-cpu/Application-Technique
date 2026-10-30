@@ -313,8 +313,9 @@ details[open] > :not(summary) {
  * tranche disparaît, l'objet descend de son épaisseur. C'est le retour d'un
  * vrai bouton, et il se lit sans y penser.
  *
- * Posé ici une fois, pour toute l'application : l'accueil (dalles, socles,
- * palets) par ses classes, les boutons par leur couleur de fond. La barre
+ * Posé ici une fois, pour toute l'application : les tuiles des sous-menus
+ * par leurs classes, les boutons par leur couleur de fond — l'accueil, lui,
+ * est en relief doux (plus bas). La barre
  * latérale des étages n'est pas concernée — ses teintes sont à part, et elle
  * se règle ailleurs.
  * ───────────────────────────────────────────────────────────────────────── */
@@ -326,8 +327,8 @@ details[open] > :not(summary) {
 .pate-red     { --p-haut: #FBEDEE; --p-bas: #F3DADC; --p-tranche: #E3B9BC; --p-ombre: rgb(158 53 56 / .45);  --p-creux: rgb(158 53 56 / .10); }
 .pate-neutre  { --p-haut: #FFFFFF; --p-bas: #EFECF5; --p-tranche: #D6D1E2; --p-ombre: rgb(79 75 107 / .40);  --p-creux: rgb(79 75 107 / .08); }
 
-/* Une tuile de menu : une dalle épaisse. La marge du bas réserve la place
-   de la tranche, pour que deux dalles ne se touchent pas. */
+/* Une tuile de sous-menu : une dalle épaisse. La marge du bas réserve la
+   place de la tranche, pour que deux dalles ne se touchent pas. */
 .dalle-pate {
   background: linear-gradient(180deg, var(--p-haut) 0%, var(--p-bas) 100%);
   border-radius: 30px;
@@ -347,70 +348,6 @@ a.dalle-pate:active {
     inset 0 -8px 16px var(--p-creux),
     0 2px 0 var(--p-tranche),
     0 10px 12px -8px var(--p-ombre);
-}
-
-/* Le compteur de l'accueil : un socle blanc, et son chiffre en relief. */
-.socle-pate {
-  border-radius: 26px;
-  margin-bottom: 10px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #F5F2FA 100%);
-  box-shadow:
-    inset 0 3px 2px #fff,
-    inset 0 -6px 12px rgb(69 58 110 / .06),
-    0 10px 0 #DDD6EA,
-    0 26px 22px -12px rgb(69 58 110 / .45);
-}
-:is(a, button).socle-pate:active {
-  opacity: 1;
-  transform: translateY(8px);
-  transition-duration: .05s;
-  box-shadow: inset 0 3px 2px #fff, inset 0 -6px 12px rgb(69 58 110 / .06), 0 2px 0 #DDD6EA, 0 8px 10px -6px rgb(69 58 110 / .35);
-}
-.chiffre-pate.text-amber { color: #C27A2E; text-shadow: 0 1px 0 #9C5E1E, 0 2px 0 #8E5419, 0 3px 0 #7D4A15, 0 7px 8px rgb(125 74 21 / .3); }
-.chiffre-pate.text-blue  { color: #4A78B0; text-shadow: 0 1px 0 #3A6499, 0 2px 0 #33598A, 0 3px 0 #2A4A73, 0 7px 8px rgb(42 74 115 / .3); }
-.chiffre-pate.text-plum  { color: #5D509A; text-shadow: 0 1px 0 #4B3F78, 0 2px 0 #403567, 0 3px 0 #342B57, 0 7px 8px rgb(52 43 87 / .3); }
-
-/* Le palet où l'icône est posée, la pastille du compte, le galet du profil. */
-.palet-pate {
-  background: radial-gradient(circle at 50% 38%, #FFFFFF 0%, #F7F5FB 60%, #E9E4F2 100%);
-  box-shadow:
-    inset 0 2px 1px #fff,
-    inset 0 -3px 6px rgb(69 58 110 / .10),
-    0 5px 0 rgb(69 58 110 / .10),
-    0 10px 12px -6px rgb(27 25 48 / .28);
-}
-.pastille-pate {
-  background: linear-gradient(180deg, #FFFFFF, #F3F0F8);
-  box-shadow:
-    inset 0 2px 1px #fff,
-    0 5px 0 rgb(69 58 110 / .16),
-    0 12px 12px -6px rgb(27 25 48 / .30);
-  transform: translateY(-3px);
-}
-.galet-pate {
-  background: linear-gradient(180deg, #FFFFFF 0%, #F4F1F9 100%);
-  box-shadow: inset 0 2px 1px #fff, 0 5px 0 #DAD3E8, 0 14px 16px -8px rgb(69 58 110 / .40);
-}
-a.galet-pate:active {
-  opacity: 1;
-  transform: translateY(4px);
-  transition-duration: .05s;
-  box-shadow: inset 0 2px 1px #fff, 0 1px 0 #DAD3E8, 0 5px 8px -5px rgb(69 58 110 / .35);
-}
-.bille-pate {
-  background: radial-gradient(circle at 34% 28%, #8C80C2 0%, #5A4D8D 45%, #3A3063 100%);
-  box-shadow: inset 0 -3px 4px rgb(0 0 0 / .25), 0 3px 5px -2px rgb(47 39 82 / .6);
-}
-
-/* Le nom de l'hôtel : des lettres en pâte prune, à peine épaisses. */
-.titre-pate {
-  color: #4B3F78;
-  text-shadow: 0 1.5px 0 #2E2650, 0 7px 12px rgb(47 39 82 / .22);
-}
-
-/* L'accueil se pose dans une lumière de studio, claire en haut. */
-body:has(.fond-studio) {
-  background: radial-gradient(120% 60% at 50% 0%, #FCFBFE 0%, #F1EDF7 48%, #E7E1F0 100%) fixed;
 }
 
 /* ── Les boutons de toute l'application ──────────────────────────────────
@@ -474,9 +411,62 @@ body:has(.fond-studio) {
 
 @media (prefers-reduced-motion: reduce) {
   a.dalle-pate:active,
-  :is(a, button).socle-pate:active,
-  a.galet-pate:active,
   :is(button, a, [role="button"]):active {
     transform: none !important;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Le relief doux de l'accueil (neumorphism).
+ *
+ * Le clay était « trop imposant » : l'épaisseur et l'ombre plaisaient, pas
+ * la place qu'elles prenaient. Ici tout est taillé dans la même matière que
+ * le fond — aucun contour, aucune tranche. Le relief tient à deux ombres
+ * douces, une claire en haut à gauche et une teintée en bas à droite. Ce qui
+ * se touche SORT de la surface (tuiles, compteurs, profil) ; ce qui se lit y
+ * est CREUSÉ (le rond de l'icône, la pastille du compte). Appuyer creuse.
+ *
+ * Chaque tuile garde un soupçon de la couleur de son menu, et le creux de
+ * son icône un peu plus : sans cela les cinq tuiles se ressemblent, et l'on
+ * cherche son menu au lieu de le reconnaître.
+ *
+ * Réservé à l'accueil pour l'instant : les autres écrans restent en pâte.
+ * ───────────────────────────────────────────────────────────────────────── */
+body:has(.fond-relief) { background: #ECE9F2; }
+
+.relief {
+  --clair: rgb(255 255 255 / .95);
+  --sombre: rgb(160 151 190 / .50);
+  background: var(--relief-fond, #ECE9F2);
+  box-shadow: -6px -6px 14px var(--clair), 6px 7px 15px var(--sombre);
+}
+.relief-creux {
+  --clair: rgb(255 255 255 / .95);
+  --sombre: rgb(160 151 190 / .50);
+  background: var(--relief-creux, #ECE9F2);
+  box-shadow: inset 3px 3px 7px var(--sombre), inset -3px -3px 7px var(--clair);
+}
+.relief-petit { box-shadow: -4px -4px 9px var(--clair), 4px 5px 10px var(--sombre); }
+.relief-creux.relief-petit { box-shadow: inset 2px 2px 5px var(--sombre), inset -2px -2px 5px var(--clair); }
+
+/* Appuyer creuse l'objet dans la surface, et l'icône en ressort. */
+:is(a, button).relief:active {
+  opacity: 1;
+  transform: none;
+  transition-duration: .05s;
+  box-shadow: inset 5px 5px 12px var(--sombre), inset -5px -5px 12px var(--clair);
+}
+:is(a, button).relief:active .relief-creux {
+  box-shadow: -3px -3px 7px var(--clair), 3px 3px 7px var(--sombre);
+}
+
+.relief-plum   { --relief-fond: #EAE5F3; --relief-creux: #E2DBF1; }
+.relief-green  { --relief-fond: #E6EEEA; --relief-creux: #D8E9DF; }
+.relief-blue   { --relief-fond: #E7EAF3; --relief-creux: #DAE3F1; }
+.relief-amber  { --relief-fond: #F0EAE3; --relief-creux: #EFE1D0; }
+.relief-neutre { --relief-fond: #ECE9F2; --relief-creux: #E4E1EB; }
+
+@media (prefers-contrast: more) {
+  .relief { box-shadow: 0 0 0 1px #8E8AA3; }
+  .relief-creux { box-shadow: inset 0 0 0 1px #8E8AA3; }
 }
