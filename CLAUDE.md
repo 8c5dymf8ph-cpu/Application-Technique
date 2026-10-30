@@ -839,6 +839,13 @@ on compare des écrans de mémoire et on se trompe. `/administration` affiche le
 `lib/version.ts` le lit dans les variables système de Vercel, et dit « inconnue » plutôt que
 d'inventer quand le projet ne les expose pas.
 
+**Une poussée peut ne jamais arriver chez Vercel.** Le 30/10, « Toute l'application en relief
+doux » est partie sur `main` six minutes après une autre — celle-ci déployée en une minute — et
+Vercel n'en a jamais rien su : aucun déploiement, aucun statut sur le commit, et seul l'accueil
+avait changé sur le téléphone. Avant de chercher un défaut dans le code, lire l'état du commit
+(`gh api repos/<dépôt>/commits/<sha>/status`) : sans statut « Vercel », c'est la notification
+qui s'est perdue, et une nouvelle poussée relance le déploiement.
+
 **L'application dit elle-même ce que la base sait faire.** Le code part en ligne avant la
 migration : entre les deux, un bouton est grisé sans que rien n'explique pourquoi — « donner un
 profil ne fonctionne pas ». `lib/capacites.ts` liste les capacités et leur sonde
