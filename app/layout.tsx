@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   title: "Application Technique — Parisianer",
   description: "Interventions, stock et bouteilles de l'Hôtel Parisianer",
   manifest: "/manifest.webmanifest",
+  // Ni référencée, ni suivie : voir aussi app/robots.ts et l'en-tête
+  // X-Robots-Tag de next.config.ts, qui couvre les photos et les PDF.
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

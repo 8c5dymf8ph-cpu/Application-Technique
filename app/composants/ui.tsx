@@ -225,6 +225,14 @@ export function Indices({
  */
 const MOTS: Record<string, { ton: string; texte: string }> = {
   acte: { ton: "green", texte: "Acte enregistré. La chronologie est à jour." },
+  "code-pose": {
+    ton: "green",
+    texte:
+      "Code enregistré. Cet appareil reste ouvert ; tous les autres devront le saisir " +
+      "à leur prochain écran.",
+  },
+  "code-court": { ton: "red", texte: "Le code doit faire au moins six caractères." },
+  "code-different": { ton: "red", texte: "Les deux saisies ne sont pas identiques." },
   "acte-sans-piece": {
     ton: "red",
     texte:

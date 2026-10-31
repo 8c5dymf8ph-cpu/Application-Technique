@@ -209,6 +209,13 @@ const ATTENDUES: Attendue[] = [
       "« Quoi » ; seule une étape jamais utilisée se supprime.",
     verifier: () => colonneExiste("types_acte", "actif"),
   },
+  {
+    titre: "Code d’accès de l’hôtel",
+    sans:
+      "Aucun code ne peut être posé : l’application reste ouverte à quiconque connaît " +
+      "son adresse.",
+    verifier: () => tableExiste("acces_hotel"),
+  },
 ];
 
 export async function capacites(): Promise<Capacite[]> {

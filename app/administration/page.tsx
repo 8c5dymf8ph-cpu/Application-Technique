@@ -7,6 +7,7 @@ import { profilActif } from "@/lib/profil";
 import { peutValider, suitLesDossiers } from "@/lib/domaine";
 import { Entete, Tuile } from "@/app/composants/ui";
 import { tableExiste } from "@/lib/schema";
+import { etatAcces } from "@/lib/acces-hotel";
 
 export const dynamic = "force-dynamic";
 
@@ -50,12 +51,24 @@ export default async function Administration() {
   const enAttente = etat.filter((x) => !x.prete).length;
   const fichiers = (await migrationsEnAttente()).length;
   const v = version();
+  const acces = await etatAcces();
 
   return (
     <main className="min-h-dvh flex flex-col max-w-md mx-auto">
       <Entete titre="Administration" sous_titre={profil.nom} retour="/" />
 
       <div className="px-5 py-5 flex flex-col gap-6">
+        {/* Une porte ouverte se dit en premier, et en rouge : c'est la seule
+            ligne de cet écran qui concerne quelqu'un d'extérieur à l'hôtel. */}
+        {!acces.actif && (
+          <p className="rounded-card bg-red-soft px-4 py-3 text-[13px] text-red text-pretty leading-snug">
+            Aucun code d’accès : l’application est ouverte à quiconque connaît son adresse.{" "}
+            {profil.role === "admin"
+              ? "Choisissez-en un dans « Code d’accès », plus bas."
+              : "Miguel peut en choisir un depuis l’administration."}
+          </p>
+        )}
+
         {/* Ce qui ne marche pas encore se dit AVANT le menu : sinon on va
             chercher le défaut dans l'écran qui le subit. */}
         {(enAttente > 0 || fichiers > 0) && (
@@ -145,6 +158,14 @@ export default async function Administration() {
             badge={fichiers + enAttente}
             ton="bg-surface"
           />
+          {profil.role === "admin" && (
+            <Tuile
+              href="/administration/acces"
+              titre="Code d’accès"
+              detail={acces.actif ? "Le code de l’hôtel, pour ouvrir l’application" : "Aucun code : l’application est ouverte"}
+              ton={acces.actif ? "bg-surface" : "bg-red-soft"}
+            />
+          )}
         </section>
 
         {/* Quelle version est en ligne.

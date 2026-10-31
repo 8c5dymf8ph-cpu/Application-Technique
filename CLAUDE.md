@@ -654,6 +654,23 @@ l'instruction entière, il n'ignore pas la condition. Écrire deux requêtes et 
 | `operations` | Supprime une anomalie (Sarah P, chargée des opérations) |
 | `admin` | Référentiels, catalogue, paramétrage, suivi des dossiers (Miguel) |
 
+**La porte se ferme avec le code de l'hôtel, AVANT le choix du profil.** L'application était
+ouverte à quiconque connaissait son adresse : on se disait Miguel, et l'on voyait coûts,
+factures, export complet, bouton des migrations. Un code partagé (`acces_hotel`, migration 0042),
+demandé une fois par appareil sur `/acces` puis retenu 30 jours par un jeton signé — jamais le
+code lui-même, dont la base ne garde que l'empreinte scrypt. **`proxy.ts` le vérifie devant
+CHAQUE requête** — écrans, actions, photos, exports — parce qu'une mise en page ne voit ni les
+photos ni les exports ; seuls `/acces`, l'envoi planifié (son propre secret) et les fichiers du
+navigateur passent sans. Changer le code (`/administration/acces`, admin seul) change la version
+et met tous les autres appareils dehors — le geste quand quelqu'un quitte l'hôtel ; le proxy
+garde l'état 10 s en mémoire, dans une mémoire à part des écrans. Huit codes faux en 15 minutes
+depuis une même adresse font patienter (`acces_essais`). **Tant qu'aucun code n'est posé, ou que
+la 0042 n'est pas jouée, la porte reste ouverte** — poser la serrure n'enferme personne — et
+`/administration` le dit en rouge. Code perdu : `update acces_hotel set code_empreinte = null`
+dans l'éditeur SQL de Supabase. Le choix du profil, derrière, reste « chacun dit qui il est ».
+Ni référencée (`robots.ts`, `X-Robots-Tag`), ni affichable dans le cadre d'un autre site
+(`frame-ancestors 'self'`) : les en-têtes vivent dans `next.config.ts`.
+
 **Qui intervient ne se déduit pas d'un rôle.** La chargée des opérations n'intervient pas ; le
 réceptionniste qui donne un coup de main, si. La liste est donnée par l'hôtel et posée par
 `outils/equipe.py`, qui corrige aussi l'orthographe des noms repris des exports. Quinze
