@@ -803,7 +803,9 @@ après l'ajout**, les nouvelles photos sous la confirmation.
 n'en voyait qu'une : les trois autres n'existaient nulle part pour lui, alors que ce sont elles
 qui montrent le filetage, le dos, la référence imprimée. `PhotoProduit` prend la liste entière,
 avec les flèches et le glissement du doigt, et une pastille sur la vignette dit combien il y en
-a — sans elle, rien n'indique qu'il y a autre chose à regarder.
+a — sans elle, rien n'indique qu'il y a autre chose à regarder. La liste du stock fait de même : la vignette
+ouvre les photos du produit, le reste de la ligne ouvre sa fiche — la photo est posée à côté du
+lien, jamais dedans.
 
 **Un bouton dans un lien reste un lien.** La photo d'un article ouvrait sa fenêtre ET ajoutait
 l'article : `preventDefault()` et `stopPropagation()` n'y suffisaient pas. Elle est désormais

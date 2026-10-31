@@ -8,7 +8,8 @@ import { Confirmation, Entete, Vide } from "@/app/composants/ui";
 import { Stat } from "@/app/composants/suivi";
 import { RechercheVive } from "@/app/composants/recherche-vive";
 import { Depliant } from "@/app/composants/depliant";
-import { EtatStock, JaugeStock, VignetteProduit } from "@/app/composants/produit";
+import { EtatStock, JaugeStock } from "@/app/composants/produit";
+import { PhotoProduit } from "@/app/composants/photo-produit";
 import { MarquerApresSuppression, QuitterSiRevenu } from "@/app/composants/quitter-si-revenu";
 import { MenuFiltre } from "@/app/composants/menu-filtre";
 import { BoutonEnvoi } from "@/app/composants/bouton-envoi";
@@ -27,6 +28,7 @@ type Produit = {
   prix_inconnu: boolean;
   seuil_alerte: number;
   photo_principale: string | null;
+  photos: string[];
   stock: number;
   valeur_stock: number | null;
   sous_seuil: boolean;
@@ -98,6 +100,12 @@ export default async function Stock({
   const produits = await sql<Produit[]>`
     select id, code, designation, categorie, categorie_lieu, unite,
            prix_unitaire, prix_inconnu, seuil_alerte, photo_principale,
+           -- Toutes les photos, pas seulement celle mise en avant : un appui sur
+           -- la vignette les montre comme au technicien.
+           coalesce((select array_agg(x.chemin order by x.principale desc, x.ordre,
+                                      x.ajoutee_le)
+                       from photos_produit x where x.produit_id = v_stock_produits.id),
+                    '{}') as photos,
            stock, valeur_stock, sous_seuil, actif, dernier_mouvement
     from v_stock_produits
     -- Trois filtres qui se croisent, chacun sur son axe : l'état, le rayon, le
@@ -512,11 +520,7 @@ export default async function Stock({
         ) : (
           <ul className="flex flex-col gap-2">
             {produits.map((p) => (
-              <li key={p.id}>
-                <Link
-                  href={`/stock/produit/${p.id}` as Route}
-                  className="carte overflow-hidden flex active:bg-surface-muted"
-                >
+              <li key={p.id} className="carte overflow-hidden flex">
                   {/* Le liseré dit l'état avant même qu'on lise le chiffre. */}
                   <span
                     aria-hidden
@@ -530,8 +534,19 @@ export default async function Stock({
                             : "bg-green"
                     }`}
                   />
-                  <span className="grow min-w-0 px-3 py-3 flex items-center gap-3">
-                    <VignetteProduit photo={p.photo_principale} taille={52} />
+                  {/* La photo est À CÔTÉ du lien, jamais dedans : elle ouvre la
+                      galerie du produit, le reste de la ligne ouvre sa fiche. */}
+                  <span className="shrink-0 pl-3 py-3 flex items-center">
+                    <PhotoProduit
+                      photos={p.photos.length > 0 ? p.photos : p.photo_principale ? [p.photo_principale] : []}
+                      designation={p.designation}
+                      taille={52}
+                    />
+                  </span>
+                  <Link
+                    href={`/stock/produit/${p.id}` as Route}
+                    className="grow min-w-0 px-3 py-3 flex items-center gap-3 active:bg-surface-muted"
+                  >
                     <span className="grow min-w-0 flex flex-col gap-1.5">
                       <span className="text-[14.5px] leading-snug text-pretty">
                         {p.designation}
@@ -565,8 +580,7 @@ export default async function Stock({
                       </span>
                       <EtatStock stock={Number(p.stock)} seuil={Number(p.seuil_alerte)} />
                     </span>
-                  </span>
-                </Link>
+                  </Link>
               </li>
             ))}
           </ul>
