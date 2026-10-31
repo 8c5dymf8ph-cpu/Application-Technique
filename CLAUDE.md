@@ -1118,7 +1118,13 @@ ligne « essai · non déduit » : sans cela l'historique ne tombe plus juste.
   refusé** : le « clay » (une tranche épaisse sous chaque objet) — « trop imposant » ; des
   pictogrammes redessinés en objets — on garde les dessins d'origine. **La barre latérale des
   étages n'est pas concernée** : ses teintes sont écrites à part (`bg-[#…]`) et elle ne se touche
-  pas.
+  pas. **Seul le filet neutre (`border-line`) disparaît**, par une règle faible (`:where`) : le
+  premier passage effaçait TOUS les contours, et avec eux le liseré prune d'un choix fait — qui
+  a constaté, à qui on l'a dit, perte / casse / remplacer — tandis que le prune pâle se fondait
+  dans le fond. « Je sais que c'est pris en compte mais il n'y a aucun repère visuel. » Un choix
+  fait (case cochée dans une étiquette, `aria-pressed`, lien `border-plum bg-plum-soft`) est donc
+  ENFONCÉ et garde son liseré, et `plum-soft` est assez soutenu pour se distinguer du fond. Un
+  lien qui ouvre un écran porte `<AttenteLien />` : il pulse jusqu'à l'arrivée de l'écran.
 - **Un champ s'écrit en 16 px au doigt, jamais moins.** En dessous, Safari agrandit la page au
   premier appui et ne la rétrécit pas : on fait défiler de côté un écran décalé. `globals.css` le
   pose sous `(pointer: coarse)` — corriger la cause, jamais interdire le zoom. Au même endroit :

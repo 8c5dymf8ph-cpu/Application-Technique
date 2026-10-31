@@ -13,7 +13,8 @@ export default {
         surface: { DEFAULT: "#ECE9F2", muted: "#E6E2EE" },
         ink: { DEFAULT: "#1B1930", soft: "#4F4B6B", faint: "#847F9A" },
         line: "#DCD7E6",
-        plum: { DEFAULT: "#453A6E", soft: "#EDE9F5", ink: "#35305A" },
+        // Le prune pâle dit qu'un choix est fait : il doit se distinguer du fond.
+        plum: { DEFAULT: "#453A6E", soft: "#E1D9F2", ink: "#35305A" },
         amber: { DEFAULT: "#A8641F", soft: "#F6EEE3" },
         blue: { DEFAULT: "#3A6499", soft: "#E6EDF6" },
         green: { DEFAULT: "#357051", soft: "#E3EFE8" },

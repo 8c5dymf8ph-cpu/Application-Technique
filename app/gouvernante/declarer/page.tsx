@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AttenteLien } from "@/app/composants/attente-lien";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
 import { Confirmation, Entete } from "../../composants/ui";
@@ -121,6 +122,7 @@ export default async function ChoixLieu({
                         : "border-line bg-surface-muted"
                     }`}
                   >
+                    <AttenteLien />
                     {l.code}
                     {/* Un lieu d'essai se voit : on y fait ce qu'on veut, et
                         rien de ce qu'on y fait ne compte dans les chiffres. */}

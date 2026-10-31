@@ -352,14 +352,18 @@ details[open] > :not(summary) {
 /* Une carte sort de la surface ; son contour devient inutile. Il reste
    transparent plutôt qu'absent, pour qu'une carte choisie (`border-plum`)
    garde son liseré. */
+/* Seul le filet NEUTRE (`border-line`) disparaît, et sa règle reste faible
+   (`:where`) : un contour qui dit quelque chose — la sélection en prune, la
+   bouteille à sa couleur — passe toujours devant. L'effacer partout rendait
+   un choix fait invisible : « je sais que c'est pris en compte mais il n'y a
+   aucun repère visuel ». */
 .carte,
-.bg-surface.border-line:not(input):not(textarea):not(select) {
+.bg-surface:where(.border-line):not(input):not(textarea):not(select) {
   border-color: transparent;
   box-shadow: var(--releve-petit);
 }
-.carte.border-plum { border-color: #453A6E; }
 /* Un encadré pâle posé dans une carte est un creux. */
-.bg-surface-muted.border-line:not(button):not(a):not(input):not(textarea):not(select) {
+.bg-surface-muted:where(.border-line):not(button):not(a):not(input):not(textarea):not(select) {
   border-color: transparent;
   box-shadow: var(--creuse-petit);
 }
@@ -397,8 +401,10 @@ select:not([hidden]):focus {
 
 :is(button, [role="button"], a[class*="rounded-"]):is(.bg-plum-soft, .bg-green-soft, .bg-red-soft, .bg-amber-soft, .bg-blue-soft):not(.carte):not([class*="rounded-r-"]),
 :is(button, [role="button"], a[class*="rounded-"]):is(.bg-surface, .bg-surface-muted, .bg-white):not(.carte):not([class*="rounded-card"]):not([class*="rounded-r-"]) {
-  border-color: transparent;
   box-shadow: var(--releve-petit);
+}
+:where(button, [role="button"], a).border-line:where(.bg-surface, .bg-surface-muted, .bg-white, .bg-plum-soft, .bg-green-soft, .bg-red-soft, .bg-amber-soft, .bg-blue-soft) {
+  border-color: transparent;
 }
 
 /* Appuyer creuse — un bouton, une carte qui s'ouvre, une tuile. */
@@ -419,6 +425,24 @@ select:not([hidden]):focus {
 }
 :is(a, button).relief:active .relief-creux {
   box-shadow: -3px -3px 7px var(--clair), 3px 3px 7px var(--sombre);
+}
+
+/* Un choix FAIT est enfoncé dans la surface, et garde son contour prune.
+   Les choix de l'application se disent de trois façons — une case cochée
+   dans une étiquette, un bouton `aria-pressed`, ou un lien qui prend
+   `border-plum bg-plum-soft` — et les trois se voient pareil. Enfoncé plutôt
+   que sorti : c'est l'état d'un interrupteur qu'on a basculé. */
+label:has(> input:is([type="radio"], [type="checkbox"]):checked),
+:is(button, a)[aria-pressed="true"],
+:is(button, a).border-plum.bg-plum-soft:not(.border-dashed) {
+  box-shadow: var(--creuse) !important;
+}
+/* Et l'appui sur un choix se voit avant qu'il soit fait. */
+label:has(> input:is([type="radio"], [type="checkbox"])):active {
+  opacity: 1;
+  transform: none;
+  transition-duration: .05s;
+  box-shadow: var(--creuse) !important;
 }
 
 /* Un bouton qui ne répond pas — en cours d'envoi, ou indisponible — est déjà

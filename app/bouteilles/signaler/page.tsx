@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { AttenteLien } from "@/app/composants/attente-lien";
 import type { Route } from "next";
 import { sql } from "@/lib/db";
 import { colonneExiste } from "@/lib/schema";
@@ -275,10 +276,11 @@ export default async function Signaler({
               href={lien({ mode: m.v })}
               replace
               scroll={false}
-              className={`flex-1 min-w-0 rounded-card border px-2.5 py-2.5 flex flex-col gap-0.5 ${
+              className={`relative flex-1 min-w-0 rounded-card border px-2.5 py-2.5 flex flex-col gap-0.5 ${
                 mode === m.v ? "border-plum bg-plum-soft" : "border-line bg-surface"
               }`}
             >
+              <AttenteLien />
               <span className="text-[13.5px] font-medium leading-tight">{m.l}</span>
               <span className="text-[10.5px] text-ink-faint leading-tight text-pretty">{m.d}</span>
             </Link>
@@ -325,7 +327,7 @@ export default async function Signaler({
                           replace
                           scroll={false}
                           data-cible
-                          className={`px-3.5 flex items-center gap-1.5 justify-center min-w-[54px] rounded-pill border text-[15px] ${
+                          className={`relative px-3.5 flex items-center gap-1.5 justify-center min-w-[54px] rounded-pill border text-[15px] ${
                             c.essai
                               ? "border-dashed border-plum bg-plum-soft text-plum"
                               : c.en_place < c.dotation
@@ -333,6 +335,7 @@ export default async function Signaler({
                                 : "border-line bg-surface-muted"
                           }`}
                         >
+                          <AttenteLien />
                           {c.code}
                           {/* La couleur dit LAQUELLE manque — bleue pour la
                               filtrée, rouge pour la gazeuse — sans quoi
